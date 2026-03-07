@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Rota de Visitas</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root {
+  --bg:       #0c0c0e;
+  --surface:  #141416;
+  --card:     #1c1c1f;
+  --border:   #2a2a2f;
+  --border2:  #333338;
+  --text:     #eeeeee;
+  --muted:    #66666e;
+  --muted2:   #999;
+
+  --gold:     #fbbf24;
+  --green:    #4ade80;
+  --blue:     #60a5fa;
+  --red:      #f87171;
+  --purple:   #c084fc;
+
+  --gold-bg:   rgba(251,191,36,0.08);
+  --green-bg:  rgba(74,222,128,0.08);
+  --blue-bg:   rgba(96,165,250,0.08);
+  --red-bg:    rgba(248,113,113,0.08);
+  --purple-bg: rgba(192,132,252,0.08);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; overflow:hidden; }
+body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans', sans-serif; }
+
+/* HEADER */
+header {
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 16px;
+  height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+  position:relative;
+  z-index:500;
+}
+.logo { font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; color:var(--green); letter-spacing:3px; text-transform:uppercase; }
+.date-chip { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; background:var(--green); color:#000; padding:4px 10px; border-radius:4px; }
+
+/* TABS */
+.tabs { display:flex; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; position:relative; z-index:499; }
+.tab { flex:1; height:42px; display:flex; align-items:center; justify-content:center; gap:5px; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:500; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; user-select:none; }
+.tab.active { color:var(--green); border-bottom-color:var(--green); }
+.tab svg { width:14px; height:14px; flex-shrink:0; }
+
+/* SHELL */
+.app-shell { display:flex; flex-direction:column; height:100vh; }
+.screens { flex:1; overflow:hidden; position:relative; }
+.screen { position:absolute; inset:0; display:none; flex-direction:column; overflow:hidden; }
+.screen.active { display:flex; }
+
+/* LISTA */
+.search-wrap { padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+.search-wrap input { width:100%; background:var(--card); border:1px solid var(--border2); color:var(--text); padding:9px 14px; border-radius:6px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; outline:none; transition:border-color 0.2s; }
+.search-wrap input:focus { border-color:var(--green); }
+.search-wrap input::placeholder { color:var(--muted); }
+
+.stats-bar { display:flex; gap:8px; padding:10px 14px; background:var(--bg); border-bottom:1px solid var(--border); flex-shrink:0; overflow-x:auto; }
+.stat-chip { display:flex; align-items:center; gap:7px; background:var(--card); border:1px solid var(--border2); border-radius:6px; padding:7px 12px; white-space:nowrap; flex-shrink:0; }
+.stat-chip .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.stat-chip .num { font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:700; }
+.stat-chip .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+
+.list-scroll { flex:1; overflow-y:auto; padding:10px 14px 30px; -webkit-overflow-scrolling:touch; }
+
+.section-label { font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--muted); padding:12px 2px 6px; display:flex; align-items:center; gap:6px; }
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* CARD */
+.client-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:13px 14px; margin-bottom:7px; cursor:pointer; transition:border-color 0.15s, transform 0.1s; position:relative; overflow:hidden; }
+.client-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
+.client-card.today::before  { background:var(--gold); }
+.client-card.green::before  { background:var(--green); }
+.client-card.blue::before   { background:var(--blue); }
+.client-card.red::before    { background:var(--red); }
+.client-card.purple::before { background:var(--purple); }
+.client-card:active { transform:scale(0.985); }
+
+.card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.card-name { font-weight:600; font-size:14px; line-height:1.35; }
+
+.status-tag { font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; padding:3px 8px; border-radius:4px; white-space:nowrap; flex-shrink:0; letter-spacing:0.5px; }
+.status-tag.today  { background:var(--gold-bg);   color:var(--gold);   border:1px solid rgba(251,191,36,0.2); }
+.status-tag.green  { background:var(--green-bg);  color:var(--green);  border:1px solid rgba(74,222,128,0.2); }
+.status-tag.blue   { background:var(--blue-bg);   color:var(--blue);   border:1px solid rgba(96,165,250,0.2); }
+.status-tag.red    { background:var(--red-bg);    color:var(--red);    border:1px solid rgba(248,113,113,0.2); }
+.status-tag.purple { background:var(--purple-bg); color:var(--purple); border:1px solid rgba(192,132,252,0.2); }
+
+.card-info { font-size:12px; color:var(--muted2); display:flex; flex-direction:column; gap:3px; margin-bottom:8px; }
+.card-info span { display:flex; align-items:center; gap:5px; }
+
+.card-footer { display:flex; align-items:center; justify-content:space-between; padding-top:8px; border-top:1px solid var(--border); }
+.card-footer .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.card-footer .val { font-family:'IBM Plex Mono',monospace; font-size:11px; }
+.val.today  { color:var(--gold); }
+.val.green  { color:var(--green); }
+.val.blue   { color:var(--blue); }
+.val.red    { color:var(--red); }
+.val.purple { color:var(--purple); }
+.val.none   { color:var(--muted); font-style:italic; }
+
+.obs-bubble { margin-top:8px; background:rgba(96,165,250,0.06); border:1px solid rgba(96,165,250,0.15); border-radius:6px; padding:6px 10px; font-size:11px; color:var(--blue); line-height:1.4; }
+
+/* MAPA */
+#screen-map { flex-direction:column; }
+#map { flex:1; width:100%; }
+.leaflet-container { background:#111 !important; }
+.leaflet-tile { filter:brightness(0.85) saturate(0.5) contrast(1.05); }
+
+.leaflet-popup-content-wrapper { background:var(--card) !important; border:1px solid var(--border2) !important; border-radius:10px !important; box-shadow:0 8px 40px rgba(0,0,0,0.7) !important; padding:0 !important; }
+.leaflet-popup-content { margin:0 !important; padding:0 !important; min-width:210px; }
+.leaflet-popup-tip-container { display:none; }
+.leaflet-popup-close-button { color:var(--muted) !important; font-size:18px !important; top:8px !important; right:10px !important; z-index:10; }
+
+.popup-body { padding:14px 15px 12px; }
+.popup-name { font-weight:600; font-size:13px; padding-right:20px; margin-bottom:2px; }
+.popup-city { font-size:11px; color:var(--muted); margin-bottom:10px; }
+.popup-lv { display:flex; justify-content:space-between; align-items:center; background:var(--surface); border-radius:6px; padding:7px 10px; margin-bottom:10px; }
+.popup-lv-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.popup-lv-val { font-family:'IBM Plex Mono',monospace; font-size:11px; }
+.popup-actions { display:flex; gap:6px; }
+.popup-btn { flex:1; border:none; padding:9px 6px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.5px; cursor:pointer; text-transform:uppercase; }
+.popup-btn.checkin { background:var(--green); color:#000; }
+.popup-btn.checkin:disabled { opacity:0.4; cursor:default; background:var(--border2); color:var(--muted); }
+.popup-btn.maps { background:var(--surface); color:var(--blue); border:1px solid rgba(96,165,250,0.25); }
+
+.map-legend { background:var(--surface); border-top:1px solid var(--border); padding:8px 14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; flex-shrink:0; }
+.leg { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--muted); }
+.leg-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.geo-status { margin-left:auto; font-size:10px; color:var(--muted); font-family:'IBM Plex Mono',monospace; }
+
+.pin-label { background:rgba(12,12,14,0.88); backdrop-filter:blur(4px); border:1px solid var(--border2); color:var(--text); font-family:'IBM Plex Sans',sans-serif; font-size:10px; font-weight:500; padding:2px 7px; border-radius:4px; white-space:nowrap; pointer-events:none; box-shadow:0 2px 8px rgba(0,0,0,0.5); }
+
+/* RELATÓRIO */
+#screen-report { overflow-y:auto; padding:14px 14px 40px; -webkit-overflow-scrolling:touch; }
+
+.report-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px; }
+.report-title { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; color:var(--green); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px; }
+.report-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.rg-item { background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:10px 12px; }
+.rg-item .rv { font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:700; }
+.rg-item .rl { font-size:10px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:1px; }
+.prog-bar { height:3px; background:var(--border); border-radius:2px; margin-top:12px; overflow:hidden; }
+.prog-fill { height:100%; background:var(--green); border-radius:2px; transition:width 0.5s ease; }
+
+.rsec-title { font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--muted); padding:10px 2px 7px; display:flex; align-items:center; gap:6px; }
+.rsec-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.report-row { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:11px 13px; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.rr-name { font-size:13px; font-weight:600; }
+.rr-city { font-size:11px; color:var(--muted); margin-top:2px; }
+.rr-right { text-align:right; flex-shrink:0; }
+.rr-time { font-family:'IBM Plex Mono',monospace; font-size:12px; }
+.rr-obs { font-size:11px; color:var(--muted); margin-top:2px; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* MODAL */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:900; align-items:flex-end; justify-content:center; backdrop-filter:blur(6px); }
+.overlay.open { display:flex; }
+.modal { background:var(--surface); border:1px solid var(--border2); border-radius:16px 16px 0 0; padding:20px 18px 44px; width:100%; max-width:520px; animation:slideUp 0.22s cubic-bezier(0.4,0,0.2,1); }
+@keyframes slideUp { from { transform:translateY(100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
+.modal-handle { width:36px; height:4px; background:var(--border2); border-radius:2px; margin:0 auto 18px; }
+.modal-tag { font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:4px; }
+.modal-name { font-size:18px; font-weight:600; margin-bottom:4px; line-height:1.3; }
+.modal-sub { font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.6; }
+.modal-lv-row { background:var(--card); border:1px solid var(--border); border-radius:7px; padding:10px 12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+.modal-lv-row .ml-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.modal-lv-row .ml-val { font-family:'IBM Plex Mono',monospace; font-size:12px; }
+.modal label { display:block; font-size:10px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; margin-top:14px; }
+.modal textarea { width:100%; background:var(--card); border:1px solid var(--border2); color:var(--text); padding:11px 13px; border-radius:8px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; outline:none; resize:none; height:80px; transition:border-color 0.2s; }
+.modal textarea:focus { border-color:var(--blue); }
+.modal textarea::placeholder { color:var(--muted); }
+.modal-actions { display:flex; flex-direction:column; gap:8px; margin-top:18px; }
+
+.btn-primary { width:100%; background:var(--green); color:#000; border:none; padding:14px; border-radius:9px; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; letter-spacing:1px; cursor:pointer; text-transform:uppercase; }
+.btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
+.btn-maps-modal { width:100%; background:transparent; color:var(--blue); border:1px solid rgba(96,165,250,0.3); padding:13px; border-radius:9px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; letter-spacing:1px; cursor:pointer; text-transform:uppercase; }
+.btn-cancel { width:100%; background:transparent; color:var(--muted); border:1px solid var(--border); padding:12px; border-radius:9px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; cursor:pointer; }
+
+/* TOAST */
+.toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); background:var(--green); color:#000; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700; padding:9px 18px; border-radius:6px; z-index:999; opacity:0; transition:opacity 0.25s; pointer-events:none; white-space:nowrap; letter-spacing:0.5px; }
+.toast.show { opacity:1; }
+.toast.err { background:var(--red); color:#fff; }
+
+/* MISC */
+.loading { text-align:center; padding:50px 20px; color:var(--muted); }
+.spinner { width:28px; height:28px; border:2px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin 0.7s linear infinite; margin:0 auto 10px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.empty { text-align:center; color:var(--muted); padding:28px 20px; font-size:13px; }
+
+.config-banner { margin:14px; background:var(--card); border:1px solid rgba(251,191,36,0.3); border-radius:10px; padding:16px; }
+.config-banner h3 { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); letter-spacing:1px; margin-bottom:8px; }
+.config-banner p { font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:12px; }
+.config-banner input { width:100%; background:var(--surface); border:1px solid var(--border2); color:var(--text); padding:10px 12px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11px; outline:none; margin-bottom:10px; }
+.config-banner input:focus { border-color:var(--green); }
+.btn-save-url { width:100%; background:var(--green); color:#000; border:none; padding:11px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:1px; }
+
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <header>
+    <span class="logo">Rota de Visitas</span>
+    <span class="date-chip" id="date-chip">—</span>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-list" onclick="showScreen('list')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
+      Lista
+    </div>
+    <div class="tab" id="tab-map" onclick="showScreen('map')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+      Mapa
+    </div>
+    <div class="tab" id="tab-report" onclick="showScreen('report')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="8" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="16" y1="10" x2="16" y2="16"/></svg>
+      Relatório
+    </div>
+  </div>
+
+  <div class="screens">
+
+    <!-- LISTA -->
+    <div class="screen active" id="screen-list">
+      <div class="search-wrap">
+        <input type="text" id="search" placeholder="Buscar cliente, cidade, CNPJ..." oninput="renderList()">
+      </div>
+      <div class="stats-bar">
+        <div class="stat-chip"><div class="dot" style="background:var(--gold)"></div><span class="num" id="s-today" style="color:var(--gold)">0</span><span class="lbl">Hoje</span></div>
+        <div class="stat-chip"><div class="dot" style="background:var(--green)"></div><span class="num" id="s-green" style="color:var(--green)">0</span><span class="lbl">≤30d</span></div>
+        <div class="stat-chip"><div class="dot" style="background:var(--blue)"></div><span class="num" id="s-blue" style="color:var(--blue)">0</span><span class="lbl">31–60d</span></div>
+        <div class="stat-chip"><div class="dot" style="background:var(--red)"></div><span class="num" id="s-red" style="color:var(--red)">0</span><span class="lbl">&gt;60d</span></div>
+        <div class="stat-chip"><div class="dot" style="background:var(--purple)"></div><span class="num" id="s-purple" style="color:var(--purple)">0</span><span class="lbl">Nunca</span></div>
+      </div>
+      <div class="list-scroll" id="list">
+        <div class="loading"><div class="spinner"></div>Carregando clientes...</div>
+      </div>
+    </div>
+
+    <!-- MAPA -->
+    <div class="screen" id="screen-map">
+      <div id="map"></div>
+      <div class="map-legend">
+        <div class="leg"><div class="leg-dot" style="background:var(--gold)"></div>Hoje</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>≤30d</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div>31–60d</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--red)"></div>&gt;60d</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--purple)"></div>Nunca</div>
+        <span class="geo-status" id="geo-status"></span>
+      </div>
+    </div>
+
+    <!-- RELATÓRIO -->
+    <div class="screen" id="screen-report">
+      <div class="report-card">
+        <div class="report-title">Resumo do dia</div>
+        <div class="report-grid">
+          <div class="rg-item"><div class="rv" id="r-vis" style="color:var(--gold)">0</div><div class="rl">Visitados hoje</div></div>
+          <div class="rg-item"><div class="rv" id="r-pct" style="color:var(--green)">0%</div><div class="rl">Concluído</div></div>
+          <div class="rg-item"><div class="rv" id="r-blue" style="color:var(--blue)">0</div><div class="rl">31–60 dias</div></div>
+          <div class="rg-item"><div class="rv" id="r-over" style="color:var(--red)">0</div><div class="rl">&gt;60 dias</div></div>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" id="r-prog" style="width:0%"></div></div>
+      </div>
+      <div class="rsec-title">Visitados hoje</div><div id="r-list-vis"></div>
+      <div class="rsec-title">Mais de 60 dias</div><div id="r-list-over"></div>
+      <div class="rsec-title">31 a 60 dias</div><div id="r-list-blue"></div>
+      <div class="rsec-title">Até 30 dias</div><div id="r-list-green"></div>
+      <div class="rsec-title">Nunca visitados</div><div id="r-list-never"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-tag">Check-in</div>
+    <div class="modal-name" id="m-nome">—</div>
+    <div class="modal-sub"  id="m-sub">—</div>
+    <div class="modal-lv-row">
+      <div><div class="ml-lbl">Última visita</div><div class="ml-val" id="m-lv">—</div></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)" id="m-ago"></div>
+    </div>
+    <label>Observações</label>
+    <textarea id="m-obs" placeholder="Ex: pedido feito, retornar em 15 dias..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-primary"    id="btn-checkin"    onclick="doCheckin()">✓ Registrar visita agora</button>
+      <button class="btn-maps-modal" id="btn-maps-modal" onclick="openMaps()">↗ Abrir no Google Maps</button>
+      <button class="btn-cancel"                         onclick="closeModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ─────────────────────────────────────────────
+let SCRIPT_URL  = localStorage.getItem('scriptUrl') || '';
+let clientes    = [];
+let activeId    = null;
+let map         = null;
+let markers     = {};
+let labelLayers = {};
+let mapReady    = false;
+let currentZoom = 7;
+const LABEL_ZOOM = 11;
+
+// ── INIT ───────────────────────────────────────────────
+document.getElementById('date-chip').textContent =
+  new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
+
+if (SCRIPT_URL) { loadClientes(); } else { loadDemo(); }
+
+// ── STATUS ─────────────────────────────────────────────
+function getStatus(c) {
+  if (c.visitadoHoje) return 'today';
+  const d = diasDesde(c.ultimaVisita);
+  if (d === null) return 'purple';
+  if (d <= 30)    return 'green';
+  if (d <= 60)    return 'blue';
+  return 'red';
+}
+const STATUS_LABEL = { today:'Hoje', green:'≤30d', blue:'31–60d', red:'>60d', purple:'Nunca' };
+const STATUS_COLOR = { today:'var(--gold)', green:'var(--green)', blue:'var(--blue)', red:'var(--red)', purple:'var(--purple)' };
+const PIN_COLOR    = { today:'#fbbf24', green:'#4ade80', blue:'#60a5fa', red:'#f87171', purple:'#c084fc' };
+
+function diasDesde(d) {
+  if (!d) return null;
+  return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+}
+function formatDate(d) {
+  if (!d) return null;
+  const [y,m,day] = String(d).split('-');
+  return `${day}/${m}/${y}`;
+}
+function lastVisitText(c) {
+  if (c.visitadoHoje) return { text:`Hoje às ${c.horaHoje}`, cls:'today' };
+  const n = diasDesde(c.ultimaVisita);
+  if (n === null) return { text:'Nunca visitado', cls:'none' };
+  const s = getStatus(c);
+  return { text:`${formatDate(c.ultimaVisita)} (${n}d)`, cls:s };
+}
+
+// ── DEMO ───────────────────────────────────────────────
+function loadDemo() {
+  clientes = [
+    {id:1,nome:"Distribuidora São Paulo Ltda",cnpj:"12.345.678/0001-90",cidade:"São Paulo - SP",endereco:"Av. Paulista, 1000, São Paulo, SP",ultimaVisita:"2025-02-10",ultimaObs:"",visitadoHoje:false,horaHoje:null,lat:null,lng:null},
+    {id:2,nome:"Mercado Central",cnpj:"98.765.432/0001-10",cidade:"Campinas - SP",endereco:"Rua Barão de Jaguara, 1300, Campinas, SP",ultimaVisita:"2025-03-05",ultimaObs:"Cliente antigo, pedir reposição",visitadoHoje:true,horaHoje:"09:14",lat:null,lng:null},
+    {id:3,nome:"Farmácia Bem Estar",cnpj:"55.123.456/0001-77",cidade:"Sorocaba - SP",endereco:"Rua XV de Novembro, 200, Sorocaba, SP",ultimaVisita:"2025-01-15",ultimaObs:"",visitadoHoje:false,horaHoje:null,lat:null,lng:null},
+    {id:4,nome:"Supermercado do João",cnpj:"33.444.555/0001-20",cidade:"Santos - SP",endereco:"Av. Ana Costa, 88, Santos, SP",ultimaVisita:"2024-12-20",ultimaObs:"Contrato renovado",visitadoHoje:false,horaHoje:null,lat:null,lng:null},
+    {id:5,nome:"Loja Eletro Norte",cnpj:"71.234.567/0001-44",cidade:"São José dos Campos - SP",endereco:"Av. João Guilhermino, 280, São José dos Campos, SP",ultimaVisita:null,ultimaObs:"",visitadoHoje:false,horaHoje:null,lat:null,lng:null},
+  ];
+  renderList();
+  geocodeAll();
+}
+
+// ── LOAD ───────────────────────────────────────────────
+async function loadClientes() {
+  document.getElementById('list').innerHTML = `<div class="loading"><div class="spinner"></div>Carregando...</div>`;
+  try {
+    const res  = await fetch(`${SCRIPT_URL}?action=getClientes`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    clientes = data.clientes.map(c => ({...c, visitadoHoje:false, horaHoje:null, lat:null, lng:null}));
+    renderList();
+    geocodeAll();
+  } catch(e) {
+    document.getElementById('list').innerHTML =
+      `<div class="empty">❌ Erro ao carregar.<br><small>${e.message}</small></div>
+       <div class="config-banner">
+         <h3>⚙️ Configurar URL</h3>
+         <p>Cole a URL do seu Google Apps Script:</p>
+         <input type="text" id="url-input" placeholder="https://script.google.com/macros/s/..."/>
+         <button class="btn-save-url" onclick="saveUrl()">Salvar e conectar</button>
+       </div>`;
+    loadDemo();
+  }
+}
+
+function saveUrl() {
+  const url = (document.getElementById('url-input')?.value || '').trim();
+  if (!url.startsWith('https://script.google.com')) { showToast('❌ URL inválida', true); return; }
+  localStorage.setItem('scriptUrl', url);
+  SCRIPT_URL = url;
+  loadClientes();
+}
+
+// ── GEOCODING ──────────────────────────────────────────
+async function geocodeAddress(addr) {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1&countrycodes=br`,
+      { headers: { 'Accept-Language':'pt-BR', 'User-Agent':'RotaVisitas/2.0' } }
+    );
+    const d = await r.json();
+    return d.length ? { lat:parseFloat(d[0].lat), lng:parseFloat(d[0].lon) } : null;
+  } catch { return null; }
+}
+
+async function geocodeAll() {
+  const pending = clientes.filter(c => !c.lat);
+  if (!pending.length) return;
+  let done = 0;
+  document.getElementById('geo-status').textContent = `Localizando ${pending.length}...`;
+  for (const c of pending) {
+    const coords = await geocodeAddress(c.endereco || c.cidade);
+    if (coords) { c.lat = coords.lat; c.lng = coords.lng; }
+    done++;
+    document.getElementById('geo-status').textContent = `${done}/${pending.length}`;
+    await new Promise(r => setTimeout(r, 1200));
+    if (mapReady) updateMarker(c);
+  }
+  const found = clientes.filter(c => c.lat).length;
+  document.getElementById('geo-status').textContent = `✓ ${found}/${clientes.length}`;
+  if (mapReady) fitMap();
+}
+
+// ── SCREENS ────────────────────────────────────────────
+function showScreen(s) {
+  document.querySelectorAll('.screen').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+  document.getElementById('screen-' + s).classList.add('active');
+  document.getElementById('tab-' + s).classList.add('active');
+  if (s === 'map')    initMap();
+  if (s === 'report') renderReport();
+}
+
+// ── MAPA ───────────────────────────────────────────────
+function initMap() {
+  if (mapReady) { refreshMarkers(); return; }
+  map = L.map('map', { center:[-23.5,-47], zoom:7 });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(map);
+  mapReady = true;
+  map.on('zoomend', () => { currentZoom = map.getZoom(); updateAllLabels(); });
+  refreshMarkers();
+}
+
+function makePinIcon(c) {
+  const col = PIN_COLOR[getStatus(c)];
+  const inner = c.visitadoHoje ? '✓' : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,0.6)"/></filter>
+    <path d="M14 1C6.8 1 1 6.8 1 14c0 10 13 21 13 21s13-11 13-21C27 6.8 21.2 1 14 1z" fill="${col}" filter="url(#sh)"/>
+    <circle cx="14" cy="14" r="5.5" fill="#0c0c0e" opacity="0.9"/>
+    <text x="14" y="18" text-anchor="middle" font-size="7" font-family="monospace" font-weight="bold" fill="${col}">${inner}</text>
+  </svg>`;
+  return L.divIcon({ html:svg, iconSize:[28,36], iconAnchor:[14,36], popupAnchor:[0,-38], className:'' });
+}
+
+function makeLabelIcon(c) {
+  const short = c.nome.length > 22 ? c.nome.substring(0,20) + '…' : c.nome;
+  return L.divIcon({ html:`<div class="pin-label">${short}</div>`, iconSize:null, iconAnchor:[-2,44], className:'' });
+}
+
+function makePopup(c) {
+  const lv   = lastVisitText(c);
+  const done = c.visitadoHoje;
+  return `<div class="popup-body">
+    <div class="popup-name">${c.nome}</div>
+    <div class="popup-city">📍 ${c.cidade}</div>
+    <div class="popup-lv">
+      <div class="popup-lv-lbl">Última visita</div>
+      <div class="popup-lv-val" style="color:${STATUS_COLOR[lv.cls] || 'var(--muted)'}">${lv.text}</div>
+    </div>
+    <div class="popup-actions">
+      <button class="popup-btn checkin" ${done?'disabled':''} onclick="openModal(${c.id});map.closePopup()">
+        ${done ? `✓ ${c.horaHoje}` : '✓ Check-in'}
+      </button>
+      <button class="popup-btn maps" onclick="openMapsFor(${c.id})">↗ Maps</button>
+    </div>
+  </div>`;
+}
+
+function updateMarker(c) {
+  if (!c.lat || !c.lng) return;
+  if (markers[c.id]) {
+    markers[c.id].setIcon(makePinIcon(c));
+    markers[c.id].setPopupContent(makePopup(c));
+  } else {
+    markers[c.id] = L.marker([c.lat, c.lng], { icon:makePinIcon(c) })
+      .addTo(map)
+      .bindPopup(makePopup(c), { maxWidth:240, minWidth:210, closeButton:true });
+  }
+  if (labelLayers[c.id]) { map.removeLayer(labelLayers[c.id]); delete labelLayers[c.id]; }
+  if (currentZoom >= LABEL_ZOOM) {
+    labelLayers[c.id] = L.marker([c.lat, c.lng], { icon:makeLabelIcon(c), interactive:false }).addTo(map);
+  }
+}
+
+function updateAllLabels() {
+  clientes.forEach(c => {
+    if (!c.lat || !c.lng) return;
+    if (labelLayers[c.id]) { map.removeLayer(labelLayers[c.id]); delete labelLayers[c.id]; }
+    if (currentZoom >= LABEL_ZOOM) {
+      labelLayers[c.id] = L.marker([c.lat, c.lng], { icon:makeLabelIcon(c), interactive:false }).addTo(map);
+    }
+  });
+}
+
+function refreshMarkers() { clientes.forEach(c => updateMarker(c)); fitMap(); }
+function fitMap() {
+  const pts = clientes.filter(c => c.lat && c.lng).map(c => [c.lat, c.lng]);
+  if (pts.length) map.fitBounds(pts, { padding:[40,40] });
+}
+
+// ── LISTA ──────────────────────────────────────────────
+function renderList() {
+  const q = (document.getElementById('search')?.value || '').toLowerCase();
+  const f = clientes.filter(c =>
+    c.nome?.toLowerCase().includes(q) ||
+    c.cidade?.toLowerCase().includes(q) ||
+    c.cnpj?.includes(q)
+  );
+  const g = {
+    today:  f.filter(c => getStatus(c) === 'today'),
+    red:    f.filter(c => getStatus(c) === 'red'),
+    blue:   f.filter(c => getStatus(c) === 'blue'),
+    purple: f.filter(c => getStatus(c) === 'purple'),
+    green:  f.filter(c => getStatus(c) === 'green'),
+  };
+  let h = '';
+  const sec = (lbl, arr) => { if (!arr.length) return; h += `<div class="section-label">${lbl}</div>`; arr.forEach(c => h += cardHTML(c)); };
+  sec('✅ Visitados hoje', g.today);
+  sec('🔴 Mais de 60 dias', g.red);
+  sec('🔵 31 a 60 dias', g.blue);
+  sec('🟣 Nunca visitados', g.purple);
+  sec('🟢 Até 30 dias', g.green);
+  if (!f.length) h = `<div class="empty">Nenhum cliente encontrado</div>`;
+  document.getElementById('list').innerHTML = h;
+  ['today','green','blue','red','purple'].forEach(k =>
+    document.getElementById('s-' + k).textContent = clientes.filter(c => getStatus(c) === k).length
+  );
+}
+
+function cardHTML(c) {
+  const s  = getStatus(c);
+  const lv = lastVisitText(c);
+  const obs = c.visitadoHoje ? c.obs : c.ultimaObs;
+  return `<div class="client-card ${s}" onclick="openModal(${c.id})">
+    <div class="card-top">
+      <div class="card-name">${c.nome}</div>
+      <span class="status-tag ${s}">${c.visitadoHoje ? `✓ ${c.horaHoje}` : STATUS_LABEL[s]}</span>
+    </div>
+    <div class="card-info">
+      <span>📍 ${c.cidade}</span>
+      ${c.endereco ? `<span>🏠 ${c.endereco}</span>` : ''}
+      ${c.cnpj     ? `<span>🔢 ${c.cnpj}</span>`     : ''}
+    </div>
+    <div class="card-footer">
+      <span class="lbl">Última visita</span>
+      <span class="val ${lv.cls}">${lv.text}</span>
+    </div>
+    ${obs ? `<div class="obs-bubble">💬 ${obs}</div>` : ''}
+  </div>`;
+}
+
+// ── RELATÓRIO ──────────────────────────────────────────
+function renderReport() {
+  const today  = clientes.filter(c => getStatus(c) === 'today');
+  const green  = clientes.filter(c => getStatus(c) === 'green');
+  const blue   = clientes.filter(c => getStatus(c) === 'blue');
+  const red    = clientes.filter(c => getStatus(c) === 'red');
+  const purple = clientes.filter(c => getStatus(c) === 'purple');
+  const pct    = clientes.length ? Math.round(today.length / clientes.length * 100) : 0;
+
+  document.getElementById('r-vis').textContent  = today.length;
+  document.getElementById('r-pct').textContent  = pct + '%';
+  document.getElementById('r-blue').textContent = blue.length;
+  document.getElementById('r-over').textContent = red.length;
+  document.getElementById('r-prog').style.width = pct + '%';
+
+  const rr = (c, showHora) => {
+    const lv = lastVisitText(c);
+    return `<div class="report-row">
+      <div><div class="rr-name">${c.nome}</div><div class="rr-city">${c.cidade}</div></div>
+      <div class="rr-right">
+        <div class="rr-time" style="color:${STATUS_COLOR[getStatus(c)]}">${showHora ? c.horaHoje : lv.text}</div>
+        ${c.obs ? `<div class="rr-obs">${c.obs}</div>` : ''}
+      </div>
+    </div>`;
+  };
+  const empty = m => `<div class="empty" style="padding:8px 4px">${m}</div>`;
+  document.getElementById('r-list-vis').innerHTML   = today.length  ? today.map(c=>rr(c,true)).join('')   : empty('Nenhuma visita ainda');
+  document.getElementById('r-list-over').innerHTML  = red.length    ? red.map(c=>rr(c,false)).join('')    : empty('Nenhum 🎉');
+  document.getElementById('r-list-blue').innerHTML  = blue.length   ? blue.map(c=>rr(c,false)).join('')   : empty('Nenhum');
+  document.getElementById('r-list-green').innerHTML = green.length  ? green.map(c=>rr(c,false)).join('')  : empty('Nenhum');
+  document.getElementById('r-list-never').innerHTML = purple.length ? purple.map(c=>rr(c,false)).join('') : empty('Nenhum');
+}
+
+// ── MODAL ──────────────────────────────────────────────
+function openModal(id) {
+  activeId = id;
+  const c  = clientes.find(x => x.id == id);
+  const n  = diasDesde(c.ultimaVisita);
+  const lv = lastVisitText(c);
+
+  document.getElementById('m-nome').textContent = c.nome;
+  document.getElementById('m-sub').innerHTML    = `${c.cidade}${c.endereco ? ' — ' + c.endereco : ''}<br>${c.cnpj || ''}`;
+  document.getElementById('m-lv').textContent   = c.ultimaVisita ? formatDate(c.ultimaVisita) : 'Nunca visitado';
+  document.getElementById('m-lv').className     = `ml-val ${lv.cls}`;
+  document.getElementById('m-ago').textContent  = n !== null ? `${n} dias atrás` : '';
+  document.getElementById('m-obs').value        = '';
+
+  const btn = document.getElementById('btn-checkin');
+  btn.disabled    = c.visitadoHoje;
+  btn.textContent = c.visitadoHoje ? `✓ Visitado às ${c.horaHoje}` : '✓ Registrar visita agora';
+
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('overlay')) {
+    document.getElementById('overlay').classList.remove('open');
+    activeId = null;
+  }
+}
+
+async function doCheckin() {
+  const c   = clientes.find(x => x.id == activeId);
+  const obs = document.getElementById('m-obs').value.trim();
+  const btn = document.getElementById('btn-checkin');
+  btn.disabled = true; btn.textContent = '⏳ Salvando...';
+
+  try {
+    if (SCRIPT_URL) {
+      const res  = await fetch(`${SCRIPT_URL}?action=checkin&id=${c.id}&nome=${encodeURIComponent(c.nome)}&obs=${encodeURIComponent(obs)}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      c.horaHoje = data.hora; c.ultimaVisita = data.data;
+    } else {
+      c.horaHoje     = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+      c.ultimaVisita = new Date().toISOString().split('T')[0];
+    }
+    c.visitadoHoje = true; c.obs = obs;
+    document.getElementById('overlay').classList.remove('open');
+    renderList();
+    if (mapReady) updateMarker(c);
+    showToast('✓ Visita registrada!');
+  } catch(e) {
+    showToast('❌ ' + e.message, true);
+    btn.disabled = false; btn.textContent = '✓ Registrar visita agora';
+  }
+}
+
+// ── GOOGLE MAPS ────────────────────────────────────────
+function openMaps() {
+  const c = clientes.find(x => x.id == activeId);
+  if (c) openMapsFor(c.id);
+}
+function openMapsFor(id) {
+  const c = clientes.find(x => x.id == id);
+  if (!c) return;
+  const q = encodeURIComponent(c.endereco || c.cidade);
+  window.open(`https://maps.google.com/?q=${q}`, '_blank');
+}
+
+// ── TOAST ──────────────────────────────────────────────
+function showToast(msg, isErr = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
