@@ -795,30 +795,29 @@ function fazerLogout() {
 }
 
 function esconderLogin() {
-  document.getElementById('screen-login').style.display = 'none';
-  // Mostra botão admin só para o admin
-  if (currentUser && currentUser.email === ADMIN_EMAIL) {
-    const btnAdmin = document.getElementById('btn-admin-header');
-    if (btnAdmin) btnAdmin.style.display = 'flex';
-    const adminConfig = document.getElementById('config-admin-item');
-    if (adminConfig) adminConfig.style.display = 'flex';
-  }
-  // Mostra email no config
-  const emailEl = document.getElementById('config-user-email');
-  if (emailEl && currentUser) emailEl.textContent = currentUser.email;
+  const loginEl = document.getElementById('screen-login');
+  if (loginEl) loginEl.style.display = 'none';
 
-  // loadDemo já foi chamado no INIT
+  // Admin
+  try {
+    if (currentUser && typeof ADMIN_EMAIL !== 'undefined' && currentUser.email === ADMIN_EMAIL) {
+      const btnAdmin = document.getElementById('btn-admin-header');
+      if (btnAdmin) btnAdmin.style.display = 'flex';
+      const adminConfig = document.getElementById('config-admin-item');
+      if (adminConfig) adminConfig.style.display = 'flex';
+    }
+    const emailEl = document.getElementById('config-user-email');
+    if (emailEl && currentUser) emailEl.textContent = currentUser.email;
+  } catch(e) { console.log('Config admin erro:', e); }
+
+  // Carrega clientes e inicia interface
+  loadDemo();
   carregarLembretesSupabase();
-  // Atualiza interface após login
-  if (window.innerWidth >= 768 && typeof renderDesktopList === "function") {
-    renderDesktopList();
-  } else {
-    renderList();
-  }
 }
 
 function mostrarLogin() {
-  document.getElementById('screen-login').style.display = 'flex';
+  const el = document.getElementById('screen-login');
+  if (el) el.style.display = 'flex';
 }
 
 // Inicia verificação de auth ao carregar
@@ -828,10 +827,7 @@ function mostrarLogin() {
 document.getElementById('date-chip').textContent =
   new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
 
-// Carrega clientes imediatamente (não espera Supabase)
-loadDemo();
-
-// Depois verifica autenticação em background
+// Inicia app (verifica sessão do Supabase)
 iniciarApp();
 
 // ── STATUS ─────────────────────────────────────────────
@@ -2789,7 +2785,7 @@ function renderDesktopReport() {
 
 function switchDesktopTab(tab, btn) {
   document.querySelectorAll('.desktop-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
 
   const sidebar = document.querySelector('.desktop-sidebar');
   const centro  = document.getElementById('desktop-center-mapa');
@@ -2797,15 +2793,15 @@ function switchDesktopTab(tab, btn) {
   const report  = document.getElementById('desktop-report');
 
   if (tab === 'mapa') {
-    sidebar.style.display = 'flex';
-    centro.style.display = 'flex';
-    detalhe.style.display = 'flex';
-    report.classList.remove('active');
+    if (sidebar) sidebar.style.display = 'flex';
+    if (centro)  centro.style.display  = 'flex';
+    if (detalhe) detalhe.style.display = 'flex';
+    if (report)  report.classList.remove('active');
   } else {
-    sidebar.style.display = 'none';
-    centro.style.display = 'none';
-    detalhe.style.display = 'none';
-    report.classList.add('active');
+    if (sidebar) sidebar.style.display = 'none';
+    if (centro)  centro.style.display  = 'none';
+    if (detalhe) detalhe.style.display = 'none';
+    if (report)  report.classList.add('active');
     renderDesktopReport();
   }
 }
