@@ -734,32 +734,59 @@ const PIN_COLOR    = { today:'#fbbf24', green:'#4ade80', blue:'#60a5fa', red:'#f
 
 // ── SUPABASE ─────────────────────────────────────────────
 const { createClient } = supabase;
-const sb = createClient('https://fiwpmhrjbovnazagjcjf.supabase.co', 'sb_publishable_p4H0AEGsNsElCV_5QC9qEQ_ZYAHxkkJ');
+const sb = createClient('https://fiwpmhrjbovnazagjcjf.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpd3BtaHJqYm92bmF6YWdqY2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNDI1MzAsImV4cCI6MjA4OTcxODUzMH0.pHgiICZzqoeLq5uez8_3WwfurHuouV_Cp9kz1ThRsFs');
 let currentUser = null;
 let currentRep   = null;
 
 // ── AUTH ─────────────────────────────────────────────────
 async function iniciarApp() {
-  // Verifica se já tem sessão ativa
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    await carregarRepresentante();
-    esconderLogin();
+  // Sempre carrega os clientes primeiro
+  loadDemo();
+
+  // Tenta autenticar com Supabase em background
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      await carregarRepresentante();
+      // Já logado - esconde login
+      const loginEl = document.getElementById('screen-login');
+      if (loginEl) loginEl.style.display = 'none';
+      // Configura admin
+      try {
+        if (currentUser.email === ADMIN_EMAIL) {
+          const btnAdmin = document.getElementById('btn-admin-header');
+          if (btnAdmin) btnAdmin.style.display = 'flex';
+          const adminConfig = document.getElementById('config-admin-item');
+          if (adminConfig) adminConfig.style.display = 'flex';
+        }
+        const emailEl = document.getElementById('config-user-email');
+        if (emailEl) emailEl.textContent = currentUser.email;
+      } catch(e) {}
+      carregarLembretesSupabase();
+    } else {
+      // Não logado - mostra login
+      mostrarLogin();
+    }
+  } catch(e) {
+    console.log('Supabase erro:', e.message);
+    // Se Supabase falhar, mostra login mesmo assim
+    mostrarLogin();
   }
 
   // Listener de mudança de auth
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-      currentUser = session.user;
-      await carregarRepresentante();
-      esconderLogin();
-    } else if (event === 'SIGNED_OUT') {
-      currentUser = null;
-      currentRep  = null;
-      mostrarLogin();
-    }
-  });
+  try {
+    sb.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        currentUser = session.user;
+        await carregarRepresentante();
+        esconderLogin();
+      } else if (event === 'SIGNED_OUT') {
+        currentUser = null;
+        mostrarLogin();
+      }
+    });
+  } catch(e) { console.log('Auth listener erro:', e); }
 }
 
 async function carregarRepresentante() {
@@ -802,8 +829,6 @@ function fazerLogout() {
 function esconderLogin() {
   const loginEl = document.getElementById('screen-login');
   if (loginEl) loginEl.style.display = 'none';
-
-  // Admin
   try {
     if (currentUser && typeof ADMIN_EMAIL !== 'undefined' && currentUser.email === ADMIN_EMAIL) {
       const btnAdmin = document.getElementById('btn-admin-header');
@@ -813,9 +838,7 @@ function esconderLogin() {
     }
     const emailEl = document.getElementById('config-user-email');
     if (emailEl && currentUser) emailEl.textContent = currentUser.email;
-  } catch(e) { console.log('Config admin erro:', e); }
-
-  // Carrega clientes e inicia interface
+  } catch(e) {}
   loadDemo();
   carregarLembretesSupabase();
 }
