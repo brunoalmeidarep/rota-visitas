@@ -831,7 +831,6 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <div class="header-title">Mundo do Rep</div>
       <div class="header-actions">
         <span id="date-chip" style="margin-left:8px"></span>
-        <button onclick="openCalendario()" class="header-btn" title="Calendário" style="background:var(--blue-bg);color:var(--blue)">📅</button>
         <button onclick="openConfig()" class="header-btn" title="Configurações">⚙</button>
       </div>
     </div>
@@ -887,7 +886,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       </div>
 
       <!-- PAINEL FILTRO (clique nos números do header) -->
-      <div id="filtro-panel" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:100;flex-direction:column;">
+      <div id="filtro-panel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:600;flex-direction:column;">
         <div id="filtro-header" style="background:var(--surface);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0">
           <div id="filtro-titulo" style="font-size:17px;font-weight:700;color:var(--text)"></div>
           <button onclick="fecharFiltro()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3)">✕</button>
@@ -3205,6 +3204,67 @@ function closeConfig(e) {
   }
 }
 
+
+// ── RELATÓRIO CIDADES POR DATA ───────────────────────
+function abrirRelCidades(mes, ano) {
+  // Busca todas as visitas do mês agrupadas por data e cidade
+  const nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const porData = {};
+  clientes.forEach(c => {
+    const hist = carregarHistoricoLocal(c.id);
+    hist.forEach(h => {
+      const d = new Date(h.data + 'T00:00:00');
+      if (d.getMonth() === mes && d.getFullYear() === ano) {
+        if (!porData[h.data]) porData[h.data] = new Set();
+        const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+        porData[h.data].add(cidade);
+      }
+    });
+    // Hoje
+    if (c.visitadoHoje) {
+      const hoje = new Date().toISOString().slice(0,10);
+      const d = new Date(hoje + 'T00:00:00');
+      if (d.getMonth() === mes && d.getFullYear() === ano) {
+        if (!porData[hoje]) porData[hoje] = new Set();
+        const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+        porData[hoje].add(cidade);
+      }
+    }
+  });
+
+  const datas = Object.keys(porData).sort();
+
+  if (!datas.length) {
+    showToast('Nenhuma visita registrada em ' + nomesMes[mes]);
+    return;
+  }
+
+  // Monta painel
+  const panel = document.getElementById('filtro-panel');
+  const header = document.getElementById('filtro-header');
+  const lista = document.getElementById('filtro-lista');
+  const titulo = document.getElementById('filtro-titulo');
+
+  titulo.textContent = '🏙 Cidades — ' + nomesMes[mes];
+  titulo.style.color = 'var(--blue)';
+  header.style.borderBottom = '2px solid var(--blue)';
+
+  let html = '';
+  datas.forEach(data => {
+    const d = new Date(data + 'T00:00:00');
+    const label = d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
+    const cidades = [...porData[data]].sort().join(' · ');
+    html += '<div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);gap:12px">' +
+      '<div style="font-size:14px;font-weight:700;color:var(--blue);flex-shrink:0;min-width:40px">' + label + '</div>' +
+      '<div style="font-size:14px;color:var(--text)">' + cidades + '</div>' +
+    '</div>';
+  });
+
+  lista.innerHTML = html;
+  panel.style.display = 'flex';
+}
+
 // ── CIDADES E FILTROS ────────────────────────────────
 function toggleCidade(id) {
   const el = document.getElementById(id);
@@ -4247,6 +4307,13 @@ if ('serviceWorker' in navigator) {
           <div class="config-item-left">
             <div class="config-item-icon">👥</div>
             <div><div class="config-item-nome">Painel Admin</div><div class="config-item-sub">Gerenciar representantes</div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </div>
+        <div class="config-item" onclick="closeConfig();openCalendario()">
+          <div class="config-item-left">
+            <div class="config-item-icon">📅</div>
+            <div><div class="config-item-nome">Calendário de visitas</div><div class="config-item-sub">Ver check-ins por dia</div></div>
           </div>
           <div class="config-item-right">›</div>
         </div>
