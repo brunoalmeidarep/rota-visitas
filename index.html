@@ -447,6 +447,210 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
   .rep-card-d-badge { font-size:12px; font-weight:700; padding:3px 9px; border-radius:12px; }
 }
 
+
+#dt-wrap { display: none; }
+
+/* ══════════════════════════════════════════════════════
+   LAYOUT DESKTOP  (≥ 768 px)
+   Estratégia: body vira flex-column, #app só é o header,
+   desktop-wrap preenche o resto
+════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+
+  /* Body e html ocupam tudo */
+  html, body { height: 100%; overflow: hidden; }
+
+  /* App vira apenas o cabeçalho */
+  #app {
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    flex-shrink: 0;
+  }
+
+  /* Esconde tudo mobile */
+  .search-bar,
+  .screens,
+  .navbar,
+  .fab,
+  .geo-bar      { display: none !important; }
+
+  /* Abas desktop */
+  #dt-wrap {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #dt-tabs {
+    display: flex !important;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    flex-shrink: 0;
+  }
+  .dt-tab {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text3);
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    font-family: inherit;
+  }
+  .dt-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+  /* Área de conteúdo */
+  #dt-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Sidebar */
+  #dt-sidebar {
+    width: 320px;
+    min-width: 280px;
+    flex-shrink: 0;
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #dt-search {
+    padding: 10px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #dt-search-box {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #dt-search-box input {
+    flex: 1; background: none; border: none; outline: none;
+    font-size: 14px; color: var(--text); font-family: inherit;
+  }
+  #dt-search-box input::placeholder { color: var(--text3); }
+  #dt-list { flex: 1; overflow-y: auto; }
+
+  /* Centro — mapa */
+  #dt-map-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+  #dt-map-wrap #map { flex: 1; min-height: 0; }
+
+  /* Painel detalhe */
+  #dt-detail {
+    width: 300px;
+    min-width: 260px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #dt-detail-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #dt-detail-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+
+  /* Relatório */
+  #dt-report {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: var(--bg);
+  }
+  #dt-report.active {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    align-content: start;
+  }
+
+  /* Botões */
+  .dt-btn-checkin {
+    flex: 1; background: var(--blue); color: #fff;
+    border: none; border-radius: 10px; padding: 10px;
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .dt-btn-checkin:disabled { opacity: .5; cursor: default; }
+  .dt-btn-maps {
+    background: var(--bg); border: none; border-radius: 10px;
+    padding: 10px 14px; font-size: 16px; cursor: pointer;
+  }
+}
+
+
+/* ── CALENDÁRIO ─────────────────────────────────────── */
+#screen-calendario { display:none; flex-direction:column; height:100%; background:var(--bg); position:absolute; top:0;left:0;right:0;bottom:0; z-index:200; animation:slideIn .22s ease; }
+.cal-header { background:var(--surface); padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.cal-back { background:none;border:none;color:var(--blue); font-family:inherit;font-size:15px;font-weight:500; cursor:pointer;display:flex;align-items:center;gap:4px; }
+.cal-mes-titulo { font-size:17px;font-weight:700;color:var(--text); }
+.cal-nav { display:flex;gap:4px; }
+.cal-nav-btn { width:32px;height:32px;border-radius:50%; background:var(--bg);border:none;font-size:16px; cursor:pointer;color:var(--text);display:flex; align-items:center;justify-content:center; }
+.cal-weekdays { display:grid;grid-template-columns:repeat(7,1fr); padding:8px 16px 0;gap:4px; background:var(--surface); flex-shrink:0; }
+.cal-wd { text-align:center;font-size:11px;font-weight:700; color:var(--text3);padding:4px 0; text-transform:uppercase;letter-spacing:.5px; }
+.cal-wd.dom { color:var(--red); }
+.cal-grid { display:grid;grid-template-columns:repeat(7,1fr); padding:8px 16px 12px;gap:4px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+.cal-d { aspect-ratio:1;display:flex;align-items:center; justify-content:center;border-radius:50%; font-size:15px;font-weight:500;color:var(--text); cursor:pointer;transition:background .1s; }
+.cal-d:hover { background:var(--bg); }
+.cal-d.outro { color:var(--text3);opacity:.4; }
+.cal-d.hoje { color:var(--blue);font-weight:800; }
+.cal-d.com-visita { background:var(--green);color:#fff;font-weight:700; }
+.cal-d.com-visita.muitas { background:var(--orange); }
+.cal-d.selecionado { background:var(--blue);color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,122,255,.4); }
+.cal-d.dom { color:var(--red); }
+.cal-d.com-visita { color:#fff !important; }
+.cal-legenda { display:flex;gap:16px;padding:8px 16px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+.cal-leg { display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2); }
+.cal-leg-dot { width:14px;height:14px;border-radius:50%; }
+.cal-body { flex:1;overflow-y:auto;padding:4px 0 80px; }
+.cal-dia-titulo { font-size:12px;font-weight:700;color:var(--text3); padding:12px 16px 6px;text-transform:uppercase;letter-spacing:.5px; }
+.cal-visita-card { background:var(--card);margin:0 12px 8px; border-radius:14px;padding:13px 14px; display:flex;gap:12px;align-items:flex-start; box-shadow:var(--shadow);cursor:pointer; }
+.cal-visita-dot { width:10px;height:10px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:5px; }
+.cal-visita-body { flex:1;min-width:0; }
+.cal-visita-nome { font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.cal-visita-sub { font-size:12px;color:var(--text3);margin-top:2px; }
+.cal-visita-obs { font-size:13px;color:var(--text2);margin-top:5px;background:var(--bg);padding:5px 8px;border-radius:7px;line-height:1.4; }
+.cal-visita-hora { font-size:13px;font-weight:700;color:var(--orange);flex-shrink:0; }
+.cal-vazio { text-align:center;padding:40px 20px;color:var(--text3);font-size:14px; }
+
+/* ── MENU DE CONFIGURAÇÕES ──────────────────────────── */
+.config-overlay { display:none;position:fixed;inset:0; background:rgba(0,0,0,.5);z-index:600; align-items:flex-end; backdrop-filter:blur(4px); }
+.config-overlay.open { display:flex; }
+.config-sheet { background:var(--surface); border-radius:20px 20px 0 0; padding:20px 0 40px; width:100%; }
+.config-handle { width:36px;height:4px;background:var(--border); border-radius:2px;margin:0 auto 16px; }
+.config-titulo { font-size:13px;font-weight:700;color:var(--text3); text-transform:uppercase;letter-spacing:.5px; padding:0 20px 10px;border-bottom:1px solid var(--border); }
+.config-item { display:flex;align-items:center;justify-content:space-between; padding:14px 20px;border-bottom:1px solid var(--border); cursor:pointer; }
+.config-item:last-child { border-bottom:none; }
+.config-item:active { background:var(--bg); }
+.config-item-left { display:flex;align-items:center;gap:12px; }
+.config-item-icon { font-size:20px;width:32px;text-align:center; }
+.config-item-nome { font-size:16px;font-weight:500;color:var(--text); }
+.config-item-sub { font-size:12px;color:var(--text3);margin-top:2px; }
+.config-item-right { color:var(--text3);font-size:16px; }
+.config-item.danger .config-item-nome { color:var(--red); }
+
 </style>
 </head>
 <body>
@@ -987,11 +1191,7 @@ function loadDemo() {
   renderList();
   geocodeAll();
   // Inicia desktop se estiver em tela grande
-  if (window.innerWidth >= 768) {
-    setTimeout(() => {
-      if (typeof initDesktop === 'function') initDesktop();
-    }, 50);
-  }
+  setTimeout(dtInit, 100);
 }
 
 // ── LOAD ───────────────────────────────────────────────
@@ -2376,6 +2576,161 @@ function abrirFiltroHeader(status) {
   }
 }
 
+
+// ══ DESKTOP JS ══════════════════════════════════════
+function dtInit() {
+  if (!isDesktop()) return;
+  console.log('dtInit ok, clientes:', clientes.length);
+  dtRenderList();
+  if (gmap) renderMapMarkers();
+}
+
+function dtRenderList() {
+  if (!isDesktop()) return;
+  const q = (document.getElementById('dt-search-input')?.value || '').toLowerCase();
+  const filtered = clientes.filter(c =>
+    c.nome.toLowerCase().includes(q) ||
+    c.cidade.toLowerCase().includes(q)
+  );
+  const order = {today:0,green:1,blue:2,red:3,purple:4};
+  filtered.sort((a,b) => order[getStatus(a)] - order[getStatus(b)] || a.nome.localeCompare(b.nome));
+
+  const grupos = [
+    {key:'today',label:'Hoje'},{key:'green',label:'Até 30 dias'},
+    {key:'blue',label:'31-60 dias'},{key:'red',label:'Mais de 60 dias'},{key:'purple',label:'Nunca'}
+  ];
+  const cores = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'};
+  const bgs = {today:'var(--orange-bg)',green:'var(--green-bg)',blue:'var(--blue-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
+
+  let out = '';
+  grupos.forEach(g => {
+    const items = filtered.filter(c => getStatus(c) === g.key);
+    if (!items.length) return;
+    out += '<div style="font-size:11px;font-weight:700;color:var(--text3);padding:10px 14px 4px;text-transform:uppercase;letter-spacing:.5px">' + g.label + ' (' + items.length + ')</div>';
+    items.forEach(c => {
+      const nome = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
+      const comp = (c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
+      const s = getStatus(c);
+      const lv = lastVisitText(c);
+      const tempo = c.visitadoHoje ? ('✓ '+c.horaHoje) : (s==='purple'?'Nunca':lv.text);
+      out += '<div style="background:var(--card);margin:0 10px 5px;border-radius:12px;padding:12px;display:flex;gap:10px;cursor:pointer;border:1.5px solid transparent;transition:.15s" '+
+        'onclick="dtSelectCliente('+c.id+')" id="dtc-'+c.id+'" '+
+        'onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'transparent\'">' +
+        '<div style="width:9px;height:9px;border-radius:50%;background:'+cores[s]+';flex-shrink:0;margin-top:5px"></div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nome+'</div>' +
+          (comp?'<div style="font-size:11px;color:var(--text2)">👤 '+comp+'</div>':'') +
+          '<div style="display:flex;justify-content:space-between;margin-top:4px">' +
+            '<div style="font-size:11px;color:var(--text3)">📍 '+c.cidade.replace(' - SC','').replace(' - PR','')+'</div>' +
+            '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;background:'+bgs[s]+';color:'+cores[s]+'">'+tempo+'</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    });
+  });
+
+  if (!out) out = '<div style="padding:40px;text-align:center;color:var(--text3)">Nenhum cliente</div>';
+  const el = document.getElementById('dt-list');
+  if (el) el.innerHTML = out;
+}
+
+function dtSelectCliente(id) {
+  document.querySelectorAll('[id^="dtc-"]').forEach(el => { el.style.borderColor='transparent'; el.style.background='var(--card)'; });
+  const sel = document.getElementById('dtc-'+id);
+  if (sel) { sel.style.borderColor='var(--blue)'; sel.style.background='var(--blue-bg)'; }
+
+  const c = clientes.find(x => x.id == id);
+  if (!c) return;
+
+  if (gmap && c.lat && c.lng) {
+    gmap.panTo({lat:c.lat, lng:c.lng});
+    gmap.setZoom(15);
+  }
+  dtMostrarDetalhe(c);
+}
+
+function dtMostrarDetalhe(c) {
+  const el = document.getElementById('dt-detail');
+  if (!el) return;
+  const nome = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
+  const comp = (c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
+  const s = getStatus(c);
+  const cores = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'};
+  const bgs = {today:'var(--orange-bg)',green:'var(--green-bg)',blue:'var(--blue-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
+  const labels = {today:'Hoje',green:'≤30 dias',blue:'31-60 dias',red:'>60 dias',purple:'Nunca'};
+  const lembretes = JSON.parse(localStorage.getItem('lembretes')||'{}');
+  const lembrete = lembretes[c.id]||'';
+
+  el.innerHTML =
+    '<div id="dt-detail-header">' +
+      '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;background:'+bgs[s]+';color:'+cores[s]+';display:inline-block;margin-bottom:8px">'+labels[s]+(c.visitadoHoje?' · '+c.horaHoje:'')+'</span>' +
+      '<div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:3px">'+nome+'</div>' +
+      (comp?'<div style="font-size:13px;color:var(--text2);margin-bottom:2px">👤 '+comp+'</div>':'') +
+      '<div style="font-size:12px;color:var(--text3);margin-bottom:10px">📍 '+c.cidade+'</div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="dt-btn-checkin" onclick="dtCheckin('+c.id+')" '+(c.visitadoHoje?'disabled':'')+'>'+
+          (c.visitadoHoje?'✓ Visitado às '+c.horaHoje:'✓ CHECK-IN')+
+        '</button>' +
+        '<button class="dt-btn-maps" onclick="openMapsFor('+c.id+')">↗</button>' +
+      '</div>' +
+    '</div>' +
+    '<div id="dt-detail-body">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📌 Lembrete</div>' +
+      '<div style="background:rgba(255,149,0,.07);border:1px solid rgba(255,149,0,.2);border-radius:10px;padding:10px 12px;margin-bottom:14px">' +
+        (lembrete?'<div style="font-size:13px;color:var(--orange)">'+lembrete+'</div>':'<div style="font-size:13px;color:rgba(255,149,0,.3);font-style:italic">Nenhum lembrete...</div>') +
+      '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Histórico</div>' +
+      (c.ultimaVisita?'<div style="background:var(--bg);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">'+c.ultimaVisita+'</div><div style="font-size:13px;color:var(--text)">'+(c.ultimaObs||'<span style="color:var(--text3);font-style:italic">Sem observações</span>')+'</div></div>':'<div style="font-size:13px;color:var(--text3);text-align:center;padding:16px">Nenhuma visita registrada</div>') +
+    '</div>';
+}
+
+async function dtCheckin(id) {
+  const c = clientes.find(x => x.id == id);
+  if (!c || c.visitadoHoje) return;
+  const agora = new Date();
+  const hora = agora.toTimeString().slice(0,5);
+  const data = agora.toISOString().slice(0,10);
+  c.visitadoHoje = true; c.horaHoje = hora;
+  dtMostrarDetalhe(c);
+  dtRenderList();
+  renderList();
+  if (gmap) renderMapMarkers();
+  await salvarCheckinSupabase(c, '', data, hora);
+  showToast('✓ Check-in ' + c.nome.split(' ')[0] + ' — ' + hora);
+}
+
+function dtTab(tab, btn) {
+  document.querySelectorAll('.dt-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const mapWrap = document.getElementById('dt-map-wrap');
+  const sidebar = document.getElementById('dt-sidebar');
+  const detail  = document.getElementById('dt-detail');
+  const report  = document.getElementById('dt-report');
+  if (tab === 'mapa') {
+    if (mapWrap) mapWrap.style.display = 'flex';
+    if (sidebar) sidebar.style.display = 'flex';
+    if (detail)  detail.style.display  = 'flex';
+    if (report)  report.classList.remove('active');
+  } else {
+    if (mapWrap) mapWrap.style.display = 'none';
+    if (sidebar) sidebar.style.display = 'none';
+    if (detail)  detail.style.display  = 'none';
+    if (report)  report.classList.add('active');
+    dtRenderReport();
+  }
+}
+
+function dtRenderReport() {
+  const el = document.getElementById('dt-report');
+  if (!el) return;
+  // Reutiliza a função de relatório mobile
+  renderDesktopReport && renderDesktopReport();
+}
+
+window.addEventListener('resize', () => {
+  if (isDesktop()) dtInit();
+});
+
 // ── NAVEGAÇÃO SEGURA ─────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -2820,36 +3175,39 @@ if ('serviceWorker' in navigator) {
     </button>
   </nav>
 
-  <!-- ABAS DESKTOP -->
-  <div class="desktop-tabs">
-    <button class="desktop-tab active" onclick="switchDesktopTab('mapa', this)">🗺 Mapa &amp; Lista</button>
-    <button class="desktop-tab" onclick="switchDesktopTab('relatorio', this)">📊 Relatório</button>
-  </div>
 
-  <!-- LAYOUT DESKTOP -->
-  <div class="desktop-main">
-    <div class="desktop-sidebar">
-      <div class="desktop-search">
-        <div class="desktop-search-box">
+
+
+
+
+<!-- ══ LAYOUT DESKTOP (visível só via CSS @media) ══ -->
+<div id="dt-wrap">
+  <div id="dt-tabs">
+    <button class="dt-tab active" onclick="dtTab('mapa',this)">🗺 Mapa &amp; Lista</button>
+    <button class="dt-tab" onclick="dtTab('relatorio',this)">📊 Relatório</button>
+  </div>
+  <div id="dt-content">
+    <div id="dt-sidebar">
+      <div id="dt-search">
+        <div id="dt-search-box">
           <span>🔍</span>
-          <input type="search" id="desktop-search-input" placeholder="Buscar..." oninput="renderDesktopList()">
+          <input type="search" id="dt-search-input" placeholder="Buscar cliente, cidade..." oninput="dtRenderList()">
         </div>
       </div>
-      <div class="desktop-list" id="desktop-client-list"></div>
+      <div id="dt-list"></div>
     </div>
-    <div class="desktop-center" id="desktop-center-mapa">
+    <div id="dt-map-wrap">
       <div id="map" style="flex:1;min-height:0"></div>
     </div>
-    <div class="desktop-report" id="desktop-report"></div>
-    <div class="desktop-detail" id="desktop-detail">
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px;flex-direction:column;gap:8px;padding:20px">
-        <div style="font-size:40px">👈</div>
-        <div>Selecione um cliente na lista</div>
+    <div id="dt-report"></div>
+    <div id="dt-detail">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--text3);padding:20px;text-align:center">
+        <div style="font-size:36px">👈</div>
+        <div style="font-size:14px">Selecione um cliente na lista</div>
       </div>
     </div>
   </div>
-
-
+</div>
 
 </body>
 </html>
