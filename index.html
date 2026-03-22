@@ -2516,26 +2516,26 @@ document.addEventListener('keydown', e => {
 const isDesktop = () => window.innerWidth >= 768;
 
 function initDesktop() {
-  if (!isDesktop()) return;
+  if (window.innerWidth < 768) return;
+  console.log('initDesktop chamado, clientes:', clientes.length);
 
-  // Mostra elementos desktop
-  const dtabs = document.querySelector('.desktop-tabs');
-  const dmain = document.querySelector('.desktop-main');
-  const search = document.querySelector('.search-bar');
-  const screens = document.querySelector('.screens');
-  const navbar = document.querySelector('.navbar');
+  // Força visibilidade dos elementos desktop
+  const els = {
+    '.desktop-tabs': 'flex',
+    '.desktop-main': 'flex',
+    '.search-bar':   'none',
+    '.screens':      'none',
+    '.navbar':       'none',
+    '.fab':          'none',
+  };
+  Object.entries(els).forEach(([sel, val]) => {
+    const el = document.querySelector(sel);
+    if (el) { el.style.setProperty('display', val, 'important'); }
+    else console.log('Elemento não encontrado:', sel);
+  });
 
-  if (dtabs) dtabs.style.display = 'flex';
-  if (dmain) dmain.style.display = 'flex';
-  if (search) search.style.display = 'none';
-  if (screens) screens.style.display = 'none';
-  if (navbar) navbar.style.display = 'none';
-
-  // Só renderiza se já tem clientes
-  if (clientes.length > 0) {
-    renderDesktopList();
-  }
-  initDesktopMap();
+  if (clientes.length > 0) renderDesktopList();
+  if (gmap) renderMapMarkers();
 }
 
 function renderDesktopList() {
