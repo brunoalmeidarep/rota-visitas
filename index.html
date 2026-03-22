@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2a2a2a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,6 @@
 <title>Rota de Visitas</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&loading=async" async defer></script>
 <style>
 
 
@@ -588,6 +587,7 @@ async function iniciarApp() {
 
   // Tenta autenticar com Supabase em background
   try {
+    if (!sb || !sb.auth) { mostrarLogin(); return; }
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       currentUser = session.user;
