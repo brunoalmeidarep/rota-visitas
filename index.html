@@ -255,6 +255,343 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .search-wrap { display:none; }
 .stats-bar-old { display:none; }
 
+
+/* ── RELATÓRIO ZEBRA ────────────────────────────────── */
+.rep-section { background:var(--card); border-radius:14px; overflow:hidden; margin-bottom:12px; box-shadow:var(--shadow); }
+.rep-section-header { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border); }
+.rep-section-titulo { font-size:13px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; }
+.rep-section-count { font-size:12px; font-weight:700; padding:2px 8px; border-radius:12px; }
+.rep-resumo-grid { display:grid; grid-template-columns:1fr 1fr; }
+.rep-resumo-item { padding:14px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
+.rep-resumo-item:nth-child(even) { border-right:none; }
+.rep-resumo-item:nth-last-child(-n+2) { border-bottom:none; }
+.rep-resumo-label { font-size:11px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:.3px; margin-bottom:4px; }
+.rep-resumo-valor { font-size:26px; font-weight:800; color:var(--text); }
+
+
+/* ── DESKTOP (telas > 768px) ────────────────────────── */
+@media (min-width: 768px) {
+
+  body { overflow:hidden; }
+
+  #app {
+    max-width:100%;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* Topbar desktop */
+  .app-header {
+    padding:0 24px;
+    height:56px;
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    gap:20px;
+  }
+  .header-top { margin-bottom:0; flex-shrink:0; }
+  .header-title { font-size:18px; }
+
+  /* Stats como pills horizontais */
+  .stats-bar {
+    flex:1;
+    border-top:none;
+    border-left:1px solid var(--border);
+    padding-left:20px;
+    gap:8px;
+    display:flex;
+    align-items:center;
+  }
+  .stat-item {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--bg);
+    border-radius:20px;
+    padding:5px 12px;
+    cursor:pointer;
+    white-space:nowrap;
+    text-align:left;
+  }
+  .stat-item:hover { background:var(--border); }
+  .stat-num { font-size:15px; font-weight:800; display:inline; }
+  .stat-num::after { content:''; }
+  .stat-lbl { font-size:11px; font-weight:600; color:var(--text3); display:inline; margin-top:0; }
+
+  /* Abas desktop */
+  .search-bar { display:none !important; }
+  .desktop-tabs {
+    display:flex !important;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    padding:0 24px;
+    gap:4px;
+    flex-shrink:0;
+  }
+  .desktop-tab {
+    padding:10px 16px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--text3);
+    border:none;
+    background:none;
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    font-family:inherit;
+    transition:color .15s;
+  }
+  .desktop-tab.active { color:var(--blue); border-bottom-color:var(--blue); }
+
+  /* Layout 3 colunas */
+  .desktop-main {
+    display:flex !important;
+    flex:1;
+    overflow:hidden;
+  }
+
+  /* Sidebar lista */
+  .desktop-sidebar {
+    width:340px;
+    min-width:300px;
+    background:var(--bg);
+    border-right:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    flex-shrink:0;
+    overflow:hidden;
+  }
+  .desktop-search {
+    padding:10px 12px;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .desktop-search-box {
+    background:var(--bg);
+    border-radius:10px;
+    padding:8px 12px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .desktop-search-box input {
+    flex:1; background:none; border:none; outline:none;
+    font-size:14px; color:var(--text); font-family:inherit;
+  }
+  .desktop-search-box input::placeholder { color:var(--text3); }
+  .desktop-list { flex:1; overflow-y:auto; }
+
+  /* Centro mapa */
+  .desktop-center {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  #map { flex:1; min-height:0; }
+
+  /* Painel direito detalhes */
+  .desktop-detail {
+    width:320px;
+    min-width:280px;
+    background:var(--surface);
+    border-left:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    flex-shrink:0;
+    overflow:hidden;
+  }
+  .desktop-detail-header {
+    padding:16px;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .desktop-detail-body {
+    flex:1;
+    overflow-y:auto;
+    padding:16px;
+  }
+  .desktop-detail-nome { font-size:18px; font-weight:800; color:var(--text); margin-bottom:3px; line-height:1.2; }
+  .desktop-detail-sub { font-size:13px; color:var(--text2); margin-bottom:3px; }
+  .desktop-detail-cidade { font-size:12px; color:var(--text3); margin-bottom:10px; }
+  .desktop-detail-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; }
+  .desktop-detail-tag { font-size:11px; background:var(--bg); border-radius:7px; padding:4px 9px; color:var(--text2); font-weight:500; }
+  .desktop-detail-btns { display:flex; gap:8px; }
+  .desktop-btn-checkin { flex:1; background:var(--blue); color:#fff; border:none; border-radius:10px; padding:10px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .desktop-btn-maps { background:var(--bg); border:none; border-radius:10px; padding:10px 14px; font-size:16px; cursor:pointer; }
+
+  /* Relatório desktop */
+  .desktop-report {
+    display:none;
+    flex:1;
+    overflow-y:auto;
+    padding:24px;
+    background:var(--bg);
+  }
+  .desktop-report.active {
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:16px;
+    align-content:start;
+  }
+  .rep-card-d {
+    background:var(--card);
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  .rep-card-d-header {
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .rep-card-d-title { font-size:14px; font-weight:700; color:var(--text); }
+  .rep-card-d-badge { font-size:12px; font-weight:700; padding:3px 10px; border-radius:12px; }
+
+  /* Navbar esconde no desktop */
+  .navbar { display:none !important; }
+  .fab { bottom:16px !important; }
+
+  /* Screens no desktop ficam no centro */
+  .screens { display:none !important; }
+  #screen-perfil, #screen-cadastro, #screen-admin { z-index:500; }
+}
+
+
+/* ── CALENDÁRIO ─────────────────────────────────────── */
+#screen-calendario {
+  display:none;
+  flex-direction:column;
+  height:100%;
+  background:var(--bg);
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  z-index:200;
+  animation:slideIn .22s ease;
+}
+.cal-header {
+  background:var(--surface);
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+}
+.cal-back {
+  background:none;border:none;color:var(--blue);
+  font-family:inherit;font-size:15px;font-weight:500;
+  cursor:pointer;display:flex;align-items:center;gap:4px;
+}
+.cal-mes-titulo { font-size:17px;font-weight:700;color:var(--text); }
+.cal-nav { display:flex;gap:4px; }
+.cal-nav-btn {
+  width:32px;height:32px;border-radius:50%;
+  background:var(--bg);border:none;font-size:16px;
+  cursor:pointer;color:var(--text);display:flex;
+  align-items:center;justify-content:center;
+}
+.cal-weekdays {
+  display:grid;grid-template-columns:repeat(7,1fr);
+  padding:8px 16px 0;gap:4px;
+  background:var(--surface);
+  flex-shrink:0;
+}
+.cal-wd {
+  text-align:center;font-size:11px;font-weight:700;
+  color:var(--text3);padding:4px 0;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.cal-wd.dom { color:var(--red); }
+.cal-grid {
+  display:grid;grid-template-columns:repeat(7,1fr);
+  padding:8px 16px 12px;gap:4px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.cal-d {
+  aspect-ratio:1;display:flex;align-items:center;
+  justify-content:center;border-radius:50%;
+  font-size:15px;font-weight:500;color:var(--text);
+  cursor:pointer;transition:background .1s;
+}
+.cal-d:hover { background:var(--bg); }
+.cal-d.outro { color:var(--text3);opacity:.4; }
+.cal-d.hoje { color:var(--blue);font-weight:800; }
+.cal-d.com-visita { background:var(--green);color:#fff;font-weight:700; }
+.cal-d.com-visita.muitas { background:var(--orange); }
+.cal-d.selecionado { background:var(--blue);color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,122,255,.4); }
+.cal-d.dom { color:var(--red); }
+.cal-d.com-visita { color:#fff !important; }
+.cal-legenda {
+  display:flex;gap:16px;padding:8px 16px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.cal-leg { display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2); }
+.cal-leg-dot { width:14px;height:14px;border-radius:50%; }
+.cal-body { flex:1;overflow-y:auto;padding:4px 0 80px; }
+.cal-dia-titulo {
+  font-size:12px;font-weight:700;color:var(--text3);
+  padding:12px 16px 6px;text-transform:uppercase;letter-spacing:.5px;
+}
+.cal-visita-card {
+  background:var(--card);margin:0 12px 8px;
+  border-radius:14px;padding:13px 14px;
+  display:flex;gap:12px;align-items:flex-start;
+  box-shadow:var(--shadow);cursor:pointer;
+}
+.cal-visita-card:active { opacity:.7; }
+.cal-visita-dot { width:10px;height:10px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:5px; }
+.cal-visita-body { flex:1;min-width:0; }
+.cal-visita-nome { font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.cal-visita-sub { font-size:12px;color:var(--text3);margin-top:2px; }
+.cal-visita-obs { font-size:13px;color:var(--text2);margin-top:5px;background:var(--bg);padding:5px 8px;border-radius:7px;line-height:1.4; }
+.cal-visita-hora { font-size:13px;font-weight:700;color:var(--orange);flex-shrink:0; }
+.cal-vazio { text-align:center;padding:40px 20px;color:var(--text3);font-size:14px; }
+
+/* ── MENU DE CONFIGURAÇÕES ──────────────────────────── */
+.config-overlay {
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.5);z-index:600;
+  align-items:flex-end;
+  backdrop-filter:blur(4px);
+}
+.config-overlay.open { display:flex; }
+.config-sheet {
+  background:var(--surface);
+  border-radius:20px 20px 0 0;
+  padding:20px 0 40px;
+  width:100%;
+}
+.config-handle {
+  width:36px;height:4px;background:var(--border);
+  border-radius:2px;margin:0 auto 16px;
+}
+.config-titulo {
+  font-size:13px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.5px;
+  padding:0 20px 10px;border-bottom:1px solid var(--border);
+}
+.config-item {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;border-bottom:1px solid var(--border);
+  cursor:pointer;
+}
+.config-item:last-child { border-bottom:none; }
+.config-item:active { background:var(--bg); }
+.config-item-left { display:flex;align-items:center;gap:12px; }
+.config-item-icon { font-size:20px;width:32px;text-align:center; }
+.config-item-nome { font-size:16px;font-weight:500;color:var(--text); }
+.config-item-sub { font-size:12px;color:var(--text3);margin-top:2px; }
+.config-item-right { color:var(--text3);font-size:16px; }
+.config-item.danger .config-item-nome { color:var(--red); }
+
 </style>
 </head>
 <body>
@@ -284,16 +621,16 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <div class="header-title">Mundo do Rep</div>
       <div class="header-actions">
         <span id="date-chip"></span>
-        <button id="btn-admin-header" onclick="openAdmin()" style="display:none" class="header-btn" title="Admin">⚙</button>
-        <button onclick="fazerLogout()" class="header-btn" title="Sair">⏻</button>
+        <button onclick="openCalendario()" class="header-btn" title="Calendário" style="background:var(--blue-bg);color:var(--blue)">📅</button>
+        <button onclick="openConfig()" class="header-btn" title="Configurações">⚙</button>
       </div>
     </div>
     <div class="stats-bar">
-      <div class="stat-item" onclick="filtrarStatus('today')"><div class="stat-num c-hoje" id="cnt-today">0</div><div class="stat-lbl">Hoje</div></div>
-      <div class="stat-item" onclick="filtrarStatus('green')"><div class="stat-num c-verde" id="cnt-green">0</div><div class="stat-lbl">≤30d</div></div>
-      <div class="stat-item" onclick="filtrarStatus('blue')"><div class="stat-num c-azul" id="cnt-blue">0</div><div class="stat-lbl">31-60d</div></div>
-      <div class="stat-item" onclick="filtrarStatus('red')"><div class="stat-num c-red" id="cnt-red">0</div><div class="stat-lbl">>60d</div></div>
-      <div class="stat-item" onclick="filtrarStatus('purple')"><div class="stat-num c-roxo" id="cnt-purple">0</div><div class="stat-lbl">Nunca</div></div>
+      <div class="stat-item" onclick="abrirFiltroHeader('today')"><div class="stat-num c-hoje" id="cnt-today">0</div><div class="stat-lbl">Hoje</div></div>
+      <div class="stat-item" onclick="abrirFiltroHeader('green')"><div class="stat-num c-verde" id="cnt-green">0</div><div class="stat-lbl">≤30d</div></div>
+      <div class="stat-item" onclick="abrirFiltroHeader('blue')"><div class="stat-num c-azul" id="cnt-blue">0</div><div class="stat-lbl">31-60d</div></div>
+      <div class="stat-item" onclick="abrirFiltroHeader('red')"><div class="stat-num c-red" id="cnt-red">0</div><div class="stat-lbl">>60d</div></div>
+      <div class="stat-item" onclick="abrirFiltroHeader('purple')"><div class="stat-num c-roxo" id="cnt-purple">0</div><div class="stat-lbl">Nunca</div></div>
     </div>
   </div>
 
@@ -315,208 +652,31 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     </div>
 
     <!-- MAPA -->
-    <div class="screen" id="screen-map">
-      <div id="map"></div>
-      <div class="map-legend">
-        <div class="leg"><div class="leg-dot" style="background:var(--gold)"></div>Hoje</div>
-        <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>≤30d</div>
-        <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div>31–60d</div>
-        <div class="leg"><div class="leg-dot" style="background:var(--red)"></div>&gt;60d</div>
-        <div class="leg"><div class="leg-dot" style="background:var(--purple)"></div>Nunca</div>
-        <span class="geo-status" id="geo-status"></span>
-      </div>
-    
-<div id="export-bar" style="display:none;background:var(--surface);border-top:1px solid var(--border);padding:8px 14px;flex-shrink:0;">
-  <button onclick="exportCoords()" style="width:100%;background:var(--blue);color:#000;border:none;padding:10px;border-radius:7px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px;">
-    ↓ EXPORTAR COORDENADAS
-  </button>
-</div>
-    
-
-    <!-- BOTÃO FLUTUANTE -->
-    <button class="fab" onclick="openCadastro()" title="Novo cliente">+</button>
-
-    <!-- TELA DE CADASTRO -->
-    <div id="screen-cadastro">
-      <div class="cadastro-header">
-        <div class="cadastro-titulo">Novo Cliente</div>
-        <div class="cadastro-sub">TODOS OS CAMPOS SÃO OPCIONAIS</div>
-      </div>
-
-      <div class="cadastro-body">
-
-        <div class="campo-grupo">
-          <label class="campo-label">Razão Social</label>
-          <input class="campo-input" id="c-razao" type="text" placeholder="Nome oficial da empresa">
-        </div>
-
-        <div class="campo-grupo">
-          <label class="campo-label">Nome Fantasia</label>
-          <input class="campo-input" id="c-fantasia" type="text" placeholder="Como aparece na lista">
-        </div>
-
-        <div class="campo-divider">identificação</div>
-
-        <div class="campo-grupo">
-          <label class="campo-label">CNPJ / CPF</label>
-          <input class="campo-input" id="c-cnpj" type="text" placeholder="00.000.000/0000-00">
-        </div>
-
-        <div class="campo-grupo">
-          <label class="campo-label">Inscrição Estadual</label>
-          <input class="campo-input" id="c-ie" type="text" placeholder="Ex: 123.456.789">
-        </div>
-
-        <div class="campo-grupo">
-          <label class="campo-label">Regime Fiscal</label>
-          <select class="campo-select" id="c-fiscal">
-            <option value="">Não informado</option>
-            <option value="Simples Nacional">Simples Nacional</option>
-            <option value="Lucro Presumido">Lucro Presumido</option>
-            <option value="Lucro Real">Lucro Real</option>
-          </select>
-        </div>
-
-        <div class="campo-divider">contato</div>
-
-        <div class="campo-grupo">
-          <label class="campo-label">Nome do Comprador</label>
-          <input class="campo-input" id="c-comprador" type="text" placeholder="Quem você fala">
-        </div>
-
-        <div class="campo-grupo">
-          <label class="campo-label">Telefone / WhatsApp</label>
-          <input class="campo-input" id="c-tel" type="tel" placeholder="(47) 99999-9999">
-        </div>
-
-        <div class="campo-grupo">
-          <label class="campo-label">E-mail</label>
-          <input class="campo-input" id="c-email" type="email" placeholder="compras@empresa.com.br">
-        </div>
-
-        <div class="campo-divider">localização</div>
-
-        <div class="campo-grupo">
-          <label class="campo-label">Endereço</label>
-          <input class="campo-input" id="c-endereco" type="text" placeholder="Rua, número, bairro">
-        </div>
-
-        <div class="campo-grupo">
-          <label class="campo-label">Cidade</label>
-          <input class="campo-input" id="c-cidade" type="text" placeholder="Ex: Joinville - SC">
-        </div>
-
-        <div class="campo-divider">localização no mapa</div>
-
-        <button class="btn-localizacao" id="btn-loc" onclick="usarLocalizacaoAtual()">
-          <span>📍</span> USAR MINHA LOCALIZAÇÃO ATUAL
-        </button>
-        <div class="loc-status" id="loc-status"></div>
-
-        <div style="height:8px"></div>
-      </div>
-
-      <div class="cadastro-footer">
-        <button class="btn-cancelar" onclick="closeCadastro()">CANCELAR</button>
-        <button class="btn-salvar-cliente" onclick="salvarCliente()">SALVAR CLIENTE</button>
-      </div>
-    </div>
-
-
-    <!-- PAINEL ADMIN -->
-    <div id="screen-admin">
-      <div class="admin-header">
-        <div class="admin-titulo">⚙ PAINEL ADMIN</div>
-        <button class="perfil-back" onclick="closeAdmin()" style="margin:0">✕ FECHAR</button>
-      </div>
-      <div class="admin-body">
-
-        <div class="admin-section">
-          <div class="admin-section-title">Representantes cadastrados</div>
-          <div class="admin-card" id="admin-lista-reps">
-            <div style="text-align:center;opacity:.4;font-size:13px;padding:10px">Carregando...</div>
-          </div>
-        </div>
-
-        <div class="admin-section">
-          <div class="admin-section-title">Adicionar novo representante</div>
-          <div class="admin-card">
-            <div class="novo-rep-form">
-              <div>
-                <label class="campo-label">Nome completo</label>
-                <input class="campo-input" id="admin-nome" type="text" placeholder="Ex: João Silva">
-              </div>
-              <div>
-                <label class="campo-label">E-mail</label>
-                <input class="campo-input" id="admin-email" type="email" placeholder="joao@email.com">
-              </div>
-              <div>
-                <label class="campo-label">Senha inicial</label>
-                <input class="campo-input" id="admin-senha" type="password" placeholder="Mínimo 6 caracteres">
-              </div>
-              <button class="btn-admin-salvar" id="btn-admin-criar" onclick="criarRepresentante()">
-                + CRIAR REPRESENTANTE
-              </button>
-              <div class="admin-msg" id="admin-msg"></div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- TELA DE PERFIL -->
- 
-  <!-- NAVBAR -->
-  <nav class="navbar">
-    <button class="nav-item active" id="nav-list" onclick="showScreen('list')"><span class="nav-icon">👥</span><span class="nav-label">Lista</span></button>
-    <button class="nav-item" id="nav-map" onclick="showScreen('map')"><span class="nav-icon">🗺</span><span class="nav-label">Mapa</span></button>
-    <button class="nav-item" id="nav-report" onclick="showScreen('report')"><span class="nav-icon">📊</span><span class="nav-label">Relatório</span></button>
-  </nav>
-
-   <div id="screen-perfil">
-      <div class="perfil-header">
-        <button class="perfil-back" onclick="closePerfil()">← VOLTAR</button>
-        <div class="perfil-nome" id="p-nome"></div>
-        <div class="perfil-comprador" id="p-comprador"></div>
-        <div class="perfil-cidade" id="p-cidade"></div>
-        <div class="perfil-meta" id="p-meta"></div>
-        <div class="perfil-acoes">
-          <button class="btn-checkin-perfil" id="p-btn-checkin" onclick="checkinPerfil()">✓ CHECK-IN</button>
-          <button class="btn-maps-perfil" id="p-btn-maps" onclick="openMapsPerfil()">↗</button>
+    <div class="screen" id="screen-map" style="flex-direction:column">
+      <div class="geo-bar">
+        <span id="geo-status"></span>
+        <div id="export-bar" style="display:none">
+          <button class="export-btn" onclick="exportCoords()">↓ Exportar coords</button>
         </div>
       </div>
-      <div class="perfil-body">
-        <div class="perfil-section-title">📌 Lembrete do cliente</div>
-        <div class="lembrete-box">
-          <div class="lembrete-icon">📌</div>
-          <textarea id="p-lembrete" rows="2" placeholder="Ex: prazo especial 28/56/84, bonificação R$1,00/saco produto Y..." onchange="salvarLembrete()"></textarea>
-        </div>
-        <div class="lembrete-salvo" id="p-lembrete-salvo"></div>
-
-        <div class="perfil-section-title">Observações da visita de hoje</div>
-        <div class="checkin-obs-box">
-          <textarea id="p-obs" placeholder="Anotações sobre esta visita..."></textarea>
-        </div>
-        <div class="perfil-section-title">Histórico de visitas</div>
-        <div id="p-historico"></div>
+      <div id="map" style="flex:1"></div>
       </div>
-    </div>
-
-    </div>
 
     <!-- RELATÓRIO -->
-    <div class="screen" id="screen-report">
-      <div class="report-card">
-        <div class="report-title">Resumo do dia</div>
-        <div class="report-grid">
-          <div class="rg-item"><div class="rv" id="r-vis" style="color:var(--gold)">0</div><div class="rl">Visitados hoje</div></div>
-          <div class="rg-item"><div class="rv" id="r-pct" style="color:var(--green)">0%</div><div class="rl">Concluído</div></div>
-          <div class="rg-item"><div class="rv" id="r-blue" style="color:var(--blue)">0</div><div class="rl">31–60 dias</div></div>
-          <div class="rg-item"><div class="rv" id="r-over" style="color:var(--red)">0</div><div class="rl">&gt;60 dias</div></div>
-        </div>
-        <div class="prog-bar"><div class="prog-fill" id="r-prog" style="width:0%"></div></div>
+    <div class="scr<div class="screen" id="screen-report">
+      <div class="rep-body" id="rep-body">
+        <!-- preenchido por renderReport() -->
       </div>
+
+      <!-- PAINEL FILTRO (clique nos números do header) -->
+      <div id="filtro-panel" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:100;flex-direction:column;">
+        <div id="filtro-header" style="background:var(--surface);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div id="filtro-titulo" style="font-size:17px;font-weight:700;color:var(--text)"></div>
+          <button onclick="fecharFiltro()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3)">✕</button>
+        </div>
+        <div id="filtro-lista" style="flex:1;overflow-y:auto;padding:8px 0"></div>
+      </div>
+    </div>
       <div class="rsec-title">Visitados hoje</div><div id="r-list-vis"></div>
       <div class="rsec-title">Mais de 60 dias</div><div id="r-list-over"></div>
       <div class="rsec-title">31 a 60 dias</div><div id="r-list-blue"></div>
@@ -999,7 +1159,10 @@ function showScreen(s) {
   currentScreen = s;
   if (s === 'map' && gmap) renderMapMarkers();
   if (s === 'list') renderList();
-  if (s === 'report') renderReport();
+  if (s === 'report') {
+    renderReport();
+    if (currentUser) carregarPeriodoRelatorio();
+  }
 }
 
 // ── MAPA ─────────────────────────────────────────────────
@@ -1153,36 +1316,227 @@ function cardHTML(c) {
 
 // ── RELATÓRIO ──────────────────────────────────────────
 function renderReport() {
-  const today  = clientes.filter(c => getStatus(c) === 'today');
-  const green  = clientes.filter(c => getStatus(c) === 'green');
-  const blue   = clientes.filter(c => getStatus(c) === 'blue');
-  const red    = clientes.filter(c => getStatus(c) === 'red');
-  const purple = clientes.filter(c => getStatus(c) === 'purple');
-  const pct    = clientes.length ? Math.round(today.length / clientes.length * 100) : 0;
+  const hoje = new Date();
+  const mesRef  = relMes;
+  const anoRef  = relAno;
+  const ehMesAtual = mesRef === hoje.getMonth() && anoRef === hoje.getFullYear();
+  const mesAtual = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
+  const nomeMes = hoje.toLocaleDateString('pt-BR', {month:'long'});
+  const nomeMesCap = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
 
-  document.getElementById('r-vis').textContent  = today.length;
-  document.getElementById('r-pct').textContent  = pct + '%';
-  document.getElementById('r-blue').textContent = blue.length;
-  document.getElementById('r-over').textContent = red.length;
-  document.getElementById('r-prog').style.width = pct + '%';
+  // Classifica clientes
+  const grpHoje   = clientes.filter(c => getStatus(c) === 'today');
+  const grpVerde  = clientes.filter(c => getStatus(c) === 'green');
+  const grpAzul   = clientes.filter(c => getStatus(c) === 'blue');
+  const grpVerm   = clientes.filter(c => getStatus(c) === 'red');
+  const grpNunca  = clientes.filter(c => getStatus(c) === 'purple');
 
-  const rr = (c, showHora) => {
-    const lv = lastVisitText(c);
-    return `<div class="report-row">
-      <div><div class="rr-name">${c.nome}</div><div class="rr-city">${c.cidade}</div></div>
-      <div class="rr-right">
-        <div class="rr-time" style="color:${STATUS_COLOR[getStatus(c)]}">${showHora ? c.horaHoje : lv.text}</div>
-        ${c.obs ? `<div class="rr-obs">${c.obs}</div>` : ''}
-      </div>
-    </div>`;
+  // Contagem da semana (dom-sab)
+  const diaSemana = hoje.getDay();
+  const iniciSem  = new Date(hoje); iniciSem.setDate(hoje.getDate() - diaSemana); iniciSem.setHours(0,0,0,0);
+  const fimSem    = new Date(iniciSem); fimSem.setDate(iniciSem.getDate() + 6); fimSem.setHours(23,59,59,999);
+  const visitSem  = clientes.filter(c => {
+    if (!c.ultimaVisita) return false;
+    const d = new Date(c.ultimaVisita + 'T00:00:00');
+    return d >= iniciSem && d <= fimSem;
+  }).length + grpHoje.length;
+
+  // Contagem do mês
+  const visitMes = clientes.filter(c => {
+    if (c.visitadoHoje) return true;
+    if (!c.ultimaVisita) return false;
+    const d = new Date(c.ultimaVisita + 'T00:00:00');
+    return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+  }).length;
+
+  const pctMes = clientes.length ? Math.round(visitMes / clientes.length * 100) : 0;
+
+  // Cidades visitadas no mês
+  const cidadesMap = {};
+  clientes.forEach(c => {
+    const visitouMes = c.visitadoHoje ||
+      (c.ultimaVisita && (() => { const d = new Date(c.ultimaVisita+'T00:00:00'); return d.getMonth()===mesAtual && d.getFullYear()===anoAtual; })());
+    if (!visitouMes) return;
+    const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+    if (!cidadesMap[cidade]) cidadesMap[cidade] = { visitados:[], totalCidade:0 };
+    cidadesMap[cidade].visitados.push(c);
+  });
+  // Total por cidade
+  clientes.forEach(c => {
+    const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+    if (cidadesMap[cidade]) cidadesMap[cidade].totalCidade++;
+  });
+
+  const cidadesOrdenadas = Object.entries(cidadesMap)
+    .sort((a,b) => b[1].visitados.length - a[1].visitados.length);
+
+  // Cores por % de cobertura
+  const corCidade = (vis, tot) => {
+    const p = tot ? vis/tot : 0;
+    if (p >= 0.4) return 'var(--green)';
+    if (p >= 0.2) return 'var(--blue)';
+    return 'var(--orange)';
   };
-  const empty = m => `<div class="empty" style="padding:8px 4px">${m}</div>`;
-  document.getElementById('r-list-vis').innerHTML   = today.length  ? today.map(c=>rr(c,true)).join('')   : empty('Nenhuma visita ainda');
-  document.getElementById('r-list-over').innerHTML  = red.length    ? red.map(c=>rr(c,false)).join('')    : empty('Nenhum 🎉');
-  document.getElementById('r-list-blue').innerHTML  = blue.length   ? blue.map(c=>rr(c,false)).join('')   : empty('Nenhum');
-  document.getElementById('r-list-green').innerHTML = green.length  ? green.map(c=>rr(c,false)).join('')  : empty('Nenhum');
-  document.getElementById('r-list-never').innerHTML = purple.length ? purple.map(c=>rr(c,false)).join('') : empty('Nenhum');
+
+  // Linha de cliente visitado
+  const rowCliente = (c, i) => {
+    const nomeBase = c.nome.replace(/\s*\([^)]*\)/, '').trim();
+    const comp = (c.nome.match(/\(([^)]+)\)/) || [])[1] || '';
+    const hora = c.visitadoHoje ? c.horaHoje :
+      (c.ultimaVisita ? new Date(c.ultimaVisita+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '');
+    const obs = c.visitadoHoje ? c.ultimaObs : c.ultimaObs;
+    const bg = i%2===0 ? 'var(--card)' : 'var(--bg)';
+    return '<div style="display:flex;align-items:flex-start;padding:11px 14px;background:'+bg+';border-bottom:1px solid var(--border);gap:10px">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nomeBase + '</div>' +
+        (comp ? '<div style="font-size:11px;color:var(--text3);margin-top:1px">👤 '+comp+'</div>' : '') +
+        (obs ? '<div style="font-size:12px;color:var(--text2);margin-top:5px;background:var(--bg);padding:5px 8px;border-radius:7px;line-height:1.4">'+obs+'</div>'
+             : '<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic">Sem observações</div>') +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:700;color:var(--orange);flex-shrink:0;padding-top:2px">'+hora+'</div>' +
+    '</div>';
+  };
+
+  // Linha de cliente no painel filtro (status)
+  const rowFiltro = (c, i) => {
+    const nomeBase = c.nome.replace(/\s*\([^)]*\)/, '').trim();
+    const s = getStatus(c);
+    const lv = lastVisitText(c);
+    const cor = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'}[s];
+    const tempo = c.visitadoHoje ? ('✓ '+c.horaHoje) : (s==='purple'?'Nunca':lv.text);
+    const bg = i%2===0 ? 'var(--card)' : 'var(--bg)';
+    return '<div style="display:flex;align-items:center;padding:12px 16px;background:'+bg+';border-bottom:1px solid var(--border);gap:12px" onclick="openPerfil('+c.id+')">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nomeBase+'</div>' +
+        '<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 '+c.cidade.replace(' - SC','').replace(' - PR','')+'</div>' +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:700;color:'+cor+';flex-shrink:0">'+tempo+'</div>' +
+      '<div style="color:var(--text3);font-size:16px">›</div>' +
+    '</div>';
+  };
+
+  // Seção de cidades
+  let cidadesHTML = '';
+  cidadesOrdenadas.forEach(([cidade, info], cidIdx) => {
+    const vis = info.visitados.length;
+    const tot = info.totalCidade || vis;
+    const pct = tot ? Math.round(vis/tot*100) : 0;
+    const cor = corCidade(vis, tot);
+    const id = 'cidade-' + cidIdx;
+
+    cidadesHTML += '<div>' +
+      '<div style="display:flex;align-items:center;padding:11px 14px;background:var(--card);border-bottom:1px solid var(--border);gap:12px;cursor:pointer" onclick="toggleCidade(''+id+'')">' +
+        '<div style="width:36px;height:36px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏙</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:14px;font-weight:600;color:var(--text)">'+cidade+'</div>' +
+          '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+vis+' visitados · '+pct+'% da cidade</div>' +
+          '<div style="height:4px;background:var(--border);border-radius:2px;margin-top:5px"><div style="height:100%;width:'+pct+'%;background:'+cor+';border-radius:2px"></div></div>' +
+        '</div>' +
+        '<div style="text-align:right;flex-shrink:0">' +
+          '<div style="font-size:18px;font-weight:800;color:'+cor+'">'+vis+'</div>' +
+          '<div style="font-size:10px;color:var(--text3)">de '+tot+'</div>' +
+        '</div>' +
+        '<div id="arr-'+id+'" style="color:var(--text3);font-size:16px;flex-shrink:0">›</div>' +
+      '</div>' +
+      '<div id="'+id+'" style="display:none">' +
+        info.visitados.map((c,i) => rowCliente(c,i)).join('') +
+      '</div>' +
+    '</div>';
+  });
+
+  if (!cidadesHTML) cidadesHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">Nenhuma visita registrada em '+nomeMesCap+'</div>';
+
+  // Mês de referência para o relatório
+  const nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const nomeMesRef = nomesMes[mesRef];
+  const nomeMesCap = nomeMesRef;
+
+  // Recontabiliza usando visatasDoRelatorio para períodos passados
+  let visitMesReal = visitMes;
+  let cidadesMapReal = cidadesMap;
+
+  if (!ehMesAtual && visatasDoRelatorio.length > 0) {
+    // Usa dados do Supabase para meses passados
+    visitMesReal = new Set(visatasDoRelatorio.map(v => v.id_cliente)).size;
+    const cidMapSup = {};
+    visatasDoRelatorio.forEach(v => {
+      const c = clientes.find(x => String(x.id) === String(v.id_cliente));
+      if (!c) return;
+      const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+      if (!cidMapSup[cidade]) cidMapSup[cidade] = { visitados:[], totalCidade:0 };
+      if (!cidMapSup[cidade].visitados.find(x => x.id == c.id)) cidMapSup[cidade].visitados.push(c);
+    });
+    clientes.forEach(c => {
+      const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+      if (cidMapSup[cidade]) cidMapSup[cidade].totalCidade++;
+    });
+    cidadesMapReal = cidMapSup;
+  }
+
+  const navegadorMes = '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)">' +
+    '<button onclick="navegarMes(-1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text);padding:4px 8px">‹</button>' +
+    '<div style="font-size:15px;font-weight:700;color:var(--text)">' + nomeMesCap + ' ' + anoRef + (ehMesAtual?' <span style=\'font-size:11px;color:var(--green)\'>● atual</span>':'') + '</div>' +
+    '<button onclick="navegarMes(1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text);padding:4px 8px' + (ehMesAtual?';opacity:.3;cursor:default':'') + '"' + (ehMesAtual?' disabled':'') + '>›</button>' +
+  '</div>';
+
+  document.getElementById('rep-body').innerHTML = navegadorMes +
+    // RESUMO
+    '<div class="card" style="background:var(--card);border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr">' +
+        '<div style="padding:14px 8px;border-right:1px solid var(--border);text-align:center">' +
+          '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Hoje</div>' +
+          '<div style="font-size:26px;font-weight:800;color:var(--orange)" id="r-hoje-num">'+grpHoje.length+'</div>' +
+          '<div style="font-size:10px;color:var(--text3);margin-top:2px">check-ins</div>' +
+        '</div>' +
+        '<div style="padding:14px 8px;border-right:1px solid var(--border);text-align:center">' +
+          '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Semana</div>' +
+          '<div style="font-size:26px;font-weight:800;color:var(--blue)">'+visitSem+'</div>' +
+          '<div style="font-size:10px;color:var(--text3);margin-top:2px">dom → sáb</div>' +
+        '</div>' +
+        '<div style="padding:14px 8px;text-align:center">' +
+          '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">'+nomeMesCap+'</div>' +
+          '<div style="font-size:26px;font-weight:800;color:var(--green)">'+visitMes+'</div>' +
+          '<div style="font-size:10px;color:var(--text3);margin-top:2px">visitas</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:12px 14px;border-top:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px">' +
+          '<div style="font-size:11px;font-weight:600;color:var(--text2)">Progresso de '+nomeMesCap+' — '+visitMes+' de '+clientes.length+' clientes</div>' +
+          '<div style="font-size:13px;font-weight:800;color:var(--green)">'+pctMes+'%</div>' +
+        '</div>' +
+        '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">' +
+          '<div style="height:100%;width:'+pctMes+'%;background:var(--green);border-radius:4px;transition:width .5s"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // VISITADOS HOJE
+    '<div class="card" style="background:var(--card);border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)">' +
+        '<div style="font-size:14px;font-weight:700;color:var(--text)">⭐ Visitados hoje</div>' +
+        '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:var(--orange-bg);color:var(--orange)">'+grpHoje.length+'</span>' +
+      '</div>' +
+      (grpHoje.length ? grpHoje.map((c,i)=>rowCliente(c,i)).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">Nenhuma visita hoje ainda</div>') +
+    '</div>' +
+
+    // CIDADES DO MÊS
+    '<div class="card" style="background:var(--card);border-radius:16px;overflow:hidden;margin-bottom:80px;box-shadow:var(--shadow)">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)">' +
+        '<div style="font-size:14px;font-weight:700;color:var(--text)">🏙 Cidades — '+nomeMesCap+'</div>' +
+        '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:var(--blue-bg);color:var(--blue)">'+cidadesOrdenadas.length+'</span>' +
+      '</div>' +
+      cidadesHTML +
+    '</div>';
 }
+
+
+
+// Painel filtro (clique nos números do header)
+
+
+
+
 
 // ── MODAL ──────────────────────────────────────────────
 function openModal(id) {
@@ -1545,10 +1899,21 @@ function openPerfil(id) {
   btn.disabled = c.visitadoHoje;
   btn.textContent = c.visitadoHoje ? `✓ Visitado às ${c.horaHoje}` : '✓ CHECK-IN';
 
-  // Histórico
+  // Histórico — carrega do Supabase em background
   renderHistorico(id, c);
+  buscarHistoricoSupabase(id).then(visitas => {
+    if (!visitas.length) return;
+    if (!historicoVisitas[id]) historicoVisitas[id] = [];
+    // Adiciona visitas do Supabase que não estão no cache local
+    visitas.forEach(v => {
+      const jaExiste = historicoVisitas[id].some(h => h.data === v.data && h.hora === v.hora);
+      if (!jaExiste) historicoVisitas[id].push({ data: v.data, hora: v.hora, obs: v.obs });
+    });
+    renderHistorico(id, c);
+  });
 
-  // Mostra tela
+  // Garante aba lista ativa antes de abrir perfil
+  showScreen('list');
   document.getElementById('screen-perfil').style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }
@@ -1564,13 +1929,8 @@ async function salvarLembrete() {
   localStorage.setItem('lembretes', JSON.stringify(lembretes));
   document.getElementById('p-lembrete-salvo').textContent = texto ? '✓ lembrete salvo' : '';
 
-  // Salva no Sheets
-  if (SCRIPT_URL) {
-    try {
-      const url = `${SCRIPT_URL}?action=salvarLembrete&id_cliente=${perfilId}&lembrete=${encodeURIComponent(texto)}`;
-      await fetch(url);
-    } catch(e) { /* silencioso */ }
-  }
+  // Salva no Supabase
+  await salvarLembreteSupabase(perfilId, texto);
 }
 
 function closePerfil() {
@@ -1589,39 +1949,26 @@ async function checkinPerfil() {
   const hora = agora.toTimeString().slice(0,5);
   const dataHoje = agora.toISOString().slice(0,10);
 
-  // Atualiza UI imediatamente
   c.visitadoHoje = true;
   c.horaHoje = hora;
   c.ultimaObs = obs;
 
   const btn = document.getElementById('p-btn-checkin');
   btn.disabled = true;
-  btn.textContent = `⏳ Salvando...`;
+  btn.textContent = '⏳ Salvando...';
 
-  // Salva no histórico local
   if (!historicoVisitas[perfilId]) historicoVisitas[perfilId] = [];
   historicoVisitas[perfilId].unshift({ data: dataHoje, hora, obs, hoje: true });
 
-  // Atualiza histórico e lista
   renderHistorico(perfilId, c);
   renderList();
-  if (map) updateMapPins();
+  if (gmap) renderMapMarkers();
 
-  // Salva no Google Sheets
-  if (SCRIPT_URL) {
-    try {
-      const url = `${SCRIPT_URL}?action=checkin&id_cliente=${c.id}&nome=${encodeURIComponent(c.nome)}&data=${dataHoje}&hora=${hora}&obs=${encodeURIComponent(obs)}`;
-      await fetch(url);
-      btn.textContent = `✓ Visitado às ${hora}`;
-      showToast(`✓ Check-in ${c.nome.split(' ')[0]} salvo — ${hora}`);
-    } catch(e) {
-      btn.textContent = `✓ Visitado às ${hora}`;
-      showToast(`✓ Check-in salvo localmente`);
-    }
-  } else {
-    btn.textContent = `✓ Visitado às ${hora}`;
-    showToast(`✓ Check-in ${c.nome.split(' ')[0]} — ${hora}`);
-  }
+  // Salva no Supabase (principal)
+  await salvarCheckinSupabase(c, obs, dataHoje, hora);
+
+  btn.textContent = '✓ Visitado às ' + hora;
+  showToast('✓ Check-in ' + c.nome.split(' ')[0] + ' salvo — ' + hora);
 }
 
 function openMapsPerfil() {
@@ -1702,6 +2049,7 @@ async function esqueceuSenha() {
 const ADMIN_EMAIL = 'brunoc.almeida.sc@gmail.com';
 
 function openAdmin() {
+  showScreen('list');
   document.getElementById('screen-admin').style.display = 'flex';
   carregarListaReps();
 }
@@ -1771,6 +2119,684 @@ async function criarRepresentante() {
   btn.textContent = '+ CRIAR REPRESENTANTE';
 }
 
+
+
+
+// ── PERSISTÊNCIA SUPABASE ────────────────────────────
+// Salva check-in no Supabase
+async function salvarCheckinSupabase(c, obs, data, hora) {
+  if (!currentUser) return;
+  try {
+    await sb.from('visitas').insert({
+      id_cliente: String(c.id),
+      nome_cliente: c.nome,
+      cidade: c.cidade,
+      data: data,
+      hora: hora,
+      obs: obs || '',
+      rep_id: currentUser.id
+    });
+  } catch(e) { console.log('Erro ao salvar visita:', e); }
+}
+
+// Busca histórico de um cliente no Supabase
+async function buscarHistoricoSupabase(clienteId) {
+  if (!currentUser) return [];
+  try {
+    const { data, error } = await sb
+      .from('visitas')
+      .select('*')
+      .eq('id_cliente', String(clienteId))
+      .eq('rep_id', currentUser.id)
+      .order('data', { ascending: false })
+      .order('hora', { ascending: false });
+    if (error) return [];
+    return data || [];
+  } catch(e) { return []; }
+}
+
+// Busca visitas de um período (mês/ano)
+async function buscarVisitasPeriodo(mes, ano) {
+  if (!currentUser) return [];
+  try {
+    const dataInicio = ano + '-' + String(mes+1).padStart(2,'0') + '-01';
+    const dataFim = new Date(ano, mes+1, 0).toISOString().slice(0,10);
+    const { data, error } = await sb
+      .from('visitas')
+      .select('*')
+      .eq('rep_id', currentUser.id)
+      .gte('data', dataInicio)
+      .lte('data', dataFim)
+      .order('data', { ascending: false });
+    if (error) return [];
+    return data || [];
+  } catch(e) { return []; }
+}
+
+// Salva lembrete no Supabase
+async function salvarLembreteSupabase(clienteId, texto) {
+  if (!currentUser) return;
+  try {
+    // Upsert — atualiza se já existe, insere se não
+    await sb.from('lembretes').upsert({
+      id_cliente: String(clienteId),
+      rep_id: currentUser.id,
+      texto: texto,
+      atualizado_em: new Date().toISOString()
+    }, { onConflict: 'id_cliente,rep_id' });
+  } catch(e) { console.log('Erro ao salvar lembrete:', e); }
+}
+
+// Carrega todos os lembretes do Supabase ao iniciar
+async function carregarLembretesSupabase() {
+  if (!currentUser) return;
+  try {
+    const { data } = await sb
+      .from('lembretes')
+      .select('*')
+      .eq('rep_id', currentUser.id);
+    if (!data) return;
+    const lembretes = JSON.parse(localStorage.getItem('lembretes') || '{}');
+    data.forEach(l => { lembretes[l.id_cliente] = l.texto; });
+    localStorage.setItem('lembretes', JSON.stringify(lembretes));
+  } catch(e) {}
+}
+
+// Variável de período do relatório
+let relMes = new Date().getMonth();
+let relAno = new Date().getFullYear();
+let visatasDoRelatorio = [];
+
+// Carrega visitas do período selecionado
+async function carregarPeriodoRelatorio() {
+  visatasDoRelatorio = await buscarVisitasPeriodo(relMes, relAno);
+  renderReport();
+  if (document.getElementById('desktop-report')?.classList.contains('active')) {
+    renderDesktopReport();
+  }
+}
+
+function navegarMes(delta) {
+  relMes += delta;
+  if (relMes > 11) { relMes = 0; relAno++; }
+  if (relMes < 0)  { relMes = 11; relAno--; }
+  carregarPeriodoRelatorio();
+}
+
+
+// ── CALENDÁRIO ────────────────────────────────────────
+let calMes = new Date().getMonth();
+let calAno = new Date().getFullYear();
+let calDiaSelecionado = null;
+let calVisitasCache = {};
+
+async function openCalendario() {
+  calMes = new Date().getMonth();
+  calAno = new Date().getFullYear();
+  calDiaSelecionado = new Date().getDate();
+  document.getElementById('screen-calendario').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  await carregarCalendario();
+}
+
+function closeCalendario() {
+  document.getElementById('screen-calendario').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function navegarCalMes(delta) {
+  calMes += delta;
+  if (calMes > 11) { calMes = 0; calAno++; }
+  if (calMes < 0)  { calMes = 11; calAno--; }
+  calDiaSelecionado = null;
+  await carregarCalendario();
+}
+
+async function carregarCalendario() {
+  const nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('cal-mes-titulo').textContent = nomesMes[calMes] + ' ' + calAno;
+
+  // Busca visitas do mês no Supabase
+  let visitas = [];
+  const chaveCache = calAno + '-' + calMes;
+  if (calVisitasCache[chaveCache]) {
+    visitas = calVisitasCache[chaveCache];
+  } else {
+    visitas = await buscarVisitasPeriodo(calMes, calAno);
+    // Também inclui visitas locais de hoje
+    clientes.filter(c => c.visitadoHoje).forEach(c => {
+      const hoje = new Date().toISOString().slice(0,10);
+      if (!visitas.find(v => v.id_cliente == c.id && v.data === hoje)) {
+        visitas.push({ id_cliente: String(c.id), nome_cliente: c.nome, cidade: c.cidade, data: hoje, hora: c.horaHoje, obs: c.ultimaObs || '' });
+      }
+    });
+    calVisitasCache[chaveCache] = visitas;
+  }
+
+  // Agrupa por dia
+  const porDia = {};
+  visitas.forEach(v => {
+    const dia = parseInt(v.data.split('-')[2]);
+    if (!porDia[dia]) porDia[dia] = [];
+    porDia[dia].push(v);
+  });
+
+  // Monta grid
+  const primeiroDia = new Date(calAno, calMes, 1).getDay();
+  const ultimoDia   = new Date(calAno, calMes+1, 0).getDate();
+  const hoje        = new Date();
+  const ehMesAtual  = calMes === hoje.getMonth() && calAno === hoje.getFullYear();
+
+  let gridHTML = '';
+
+  // Dias do mês anterior
+  const diasMesAnt = new Date(calAno, calMes, 0).getDate();
+  for (let i = primeiroDia - 1; i >= 0; i--) {
+    gridHTML += '<div class="cal-d outro">' + (diasMesAnt - i) + '</div>';
+  }
+
+  // Dias do mês atual
+  for (let d = 1; d <= ultimoDia; d++) {
+    const classes = ['cal-d'];
+    if (ehMesAtual && d === hoje.getDate()) classes.push('hoje');
+    if (porDia[d]) classes.push(porDia[d].length >= 4 ? 'com-visita muitas' : 'com-visita');
+    if (d === calDiaSelecionado) classes.push('selecionado');
+    // Domingo
+    const diaSemana = new Date(calAno, calMes, d).getDay();
+    if (diaSemana === 0) classes.push('dom');
+    gridHTML += '<div class="' + classes.join(' ') + '" onclick="selecionarDia(' + d + ')">' + d + '</div>';
+  }
+
+  // Completa com dias do próximo mês
+  const total = primeiroDia + ultimoDia;
+  const resto = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let d = 1; d <= resto; d++) {
+    gridHTML += '<div class="cal-d outro">' + d + '</div>';
+  }
+
+  document.getElementById('cal-grid').innerHTML = gridHTML;
+
+  // Mostra dia selecionado
+  if (calDiaSelecionado) {
+    renderDiaCal(calDiaSelecionado, porDia[calDiaSelecionado] || []);
+  } else {
+    document.getElementById('cal-body').innerHTML = '<div class="cal-vazio"><div style="font-size:40px;margin-bottom:12px">📅</div><div>Toque em um dia para ver as visitas</div></div>';
+  }
+}
+
+async function selecionarDia(dia) {
+  calDiaSelecionado = dia;
+  // Atualiza seleção visual
+  document.querySelectorAll('.cal-d').forEach(el => el.classList.remove('selecionado'));
+  const els = document.querySelectorAll('.cal-d:not(.outro)');
+  if (els[dia - 1]) els[dia - 1].classList.add('selecionado');
+
+  const chaveCache = calAno + '-' + calMes;
+  const visitas = calVisitasCache[chaveCache] || [];
+  const doDia = visitas.filter(v => parseInt(v.data.split('-')[2]) === dia);
+  renderDiaCal(dia, doDia);
+}
+
+function renderDiaCal(dia, visitas) {
+  const nomesDia = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const nomesMes = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const diaSemana = new Date(calAno, calMes, dia).getDay();
+  const titulo = nomesDia[diaSemana] + ', ' + dia + ' de ' + nomesMes[calMes];
+
+  let html = '<div class="cal-dia-titulo">' + titulo + (visitas.length ? ' · ' + visitas.length + ' visita' + (visitas.length>1?'s':'') : '') + '</div>';
+
+  if (!visitas.length) {
+    html += '<div class="cal-vazio"><div style="font-size:36px;margin-bottom:10px">📭</div><div>Nenhuma visita neste dia</div></div>';
+  } else {
+    visitas.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+    html += visitas.map(v => {
+      const c = clientes.find(x => String(x.id) === String(v.id_cliente));
+      const nomeBase = (c?.nome || v.nome_cliente || '').replace(/\s*\([^)]*\)/g,'').trim();
+      const comp = (c?.nome || '').match(/\(([^)]+)\)/);
+      const cidade = c?.cidade || v.cidade || '';
+      return '<div class="cal-visita-card" onclick="' + (c ? 'closeCalendario();openPerfil('+c.id+')' : '') + '">' +
+        '<div class="cal-visita-dot"></div>' +
+        '<div class="cal-visita-body">' +
+          '<div class="cal-visita-nome">' + nomeBase + '</div>' +
+          '<div class="cal-visita-sub">📍 ' + cidade.replace(' - SC','').replace(' - PR','') + (comp?' · 👤 '+comp[1]:'') + '</div>' +
+          (v.obs ? '<div class="cal-visita-obs">' + v.obs + '</div>' : '<div class="cal-visita-obs" style="color:var(--text3);font-style:italic">Sem observações</div>') +
+        '</div>' +
+        (v.hora ? '<div class="cal-visita-hora">' + v.hora + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  document.getElementById('cal-body').innerHTML = html;
+}
+
+// ── MENU CONFIGURAÇÕES ────────────────────────────────
+function openConfig() {
+  // Mostra item admin se for admin
+  const adminItem = document.getElementById('config-admin-item');
+  if (adminItem && currentUser?.email === ADMIN_EMAIL) {
+    adminItem.style.display = 'flex';
+  }
+  // Mostra email do usuário
+  const emailEl = document.getElementById('config-user-email');
+  if (emailEl && currentUser) emailEl.textContent = currentUser.email;
+
+  document.getElementById('config-overlay').classList.add('open');
+}
+
+function closeConfig(e) {
+  if (!e || e.target === document.getElementById('config-overlay')) {
+    document.getElementById('config-overlay').classList.remove('open');
+  }
+}
+
+// ── CIDADES E FILTROS ────────────────────────────────
+function toggleCidade(id) {
+  const el = document.getElementById(id);
+  const arr = document.getElementById('arr-' + id);
+  if (!el) return;
+  const aberto = el.style.display !== 'none';
+  el.style.display = aberto ? 'none' : 'block';
+  if (arr) arr.textContent = aberto ? '›' : '▾';
+}
+
+function abrirFiltro(status) {
+  const labels = { today:'Visitados hoje', green:'Clientes ≤ 30 dias', blue:'Clientes 31-60 dias', red:'Clientes > 60 dias', purple:'Nunca visitados' };
+  const cores  = { today:'var(--orange)', green:'var(--green)', blue:'var(--blue)', red:'var(--red)', purple:'var(--purple)' };
+
+  const grupo = clientes.filter(c => getStatus(c) === status);
+  const titulo = labels[status] + ' (' + grupo.length + ')';
+
+  document.getElementById('filtro-titulo').textContent = titulo;
+  document.getElementById('filtro-titulo').style.color = cores[status];
+  document.getElementById('filtro-header').style.borderBottom = '2px solid ' + cores[status];
+
+  const lista = grupo.map((c,i) => {
+    const nomeBase = c.nome.replace(/\s*\([^)]*\)/g, '').trim();
+    const s = getStatus(c);
+    const lv = lastVisitText(c);
+    const tempo = c.visitadoHoje ? ('✓ '+c.horaHoje) : (s==='purple'?'Nunca':lv.text);
+    const bg = i%2===0 ? 'var(--card)' : 'var(--bg)';
+    return '<div style="display:flex;align-items:center;padding:13px 16px;background:'+bg+';border-bottom:1px solid var(--border);gap:12px;cursor:pointer" onclick="fecharFiltro();openPerfil('+c.id+')">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nomeBase+'</div>' +
+        '<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 '+c.cidade.replace(' - SC','').replace(' - PR','')+'</div>' +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:700;color:'+cores[status]+';flex-shrink:0">'+tempo+'</div>' +
+      '<div style="color:var(--text3);font-size:16px">›</div>' +
+    '</div>';
+  }).join('') || '<div style="padding:20px;text-align:center;color:var(--text3)">Nenhum cliente</div>';
+
+  document.getElementById('filtro-lista').innerHTML = lista;
+  document.getElementById('filtro-panel').style.display = 'flex';
+}
+
+function fecharFiltro() {
+  const el = document.getElementById('filtro-panel');
+  if (el) el.style.display = 'none';
+}
+
+function abrirFiltroHeader(status) {
+  if (currentScreen === 'report') {
+    setTimeout(() => abrirFiltro(status), 50);
+  } else {
+    showScreen('list');
+    activeFilter = (activeFilter === status) ? null : status;
+    renderList();
+  }
+}
+
+// ── NAVEGAÇÃO SEGURA ─────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('filtro-panel')?.style.display === 'flex') { fecharFiltro(); return; }
+    if (document.getElementById('screen-perfil')?.style.display === 'flex') { closePerfil(); return; }
+    if (document.getElementById('screen-cadastro')?.style.display === 'flex') { closeCadastro(); return; }
+    if (document.getElementById('screen-admin')?.style.display === 'flex') { closeAdmin(); return; }
+  }
+});
+
+
+// ── DESKTOP ──────────────────────────────────────────
+const isDesktop = () => window.innerWidth >= 768;
+
+function initDesktop() {
+  if (!isDesktop()) return;
+
+  // Mostra elementos desktop
+  document.querySelector('.desktop-tabs').style.display = 'flex';
+  document.querySelector('.desktop-main').style.display = 'flex';
+
+  // Esconde elementos mobile
+  document.querySelector('.search-bar').style.display = 'none';
+  document.querySelector('.screens').style.display = 'none';
+  document.querySelector('.navbar').style.display = 'none';
+
+  renderDesktopList();
+  initDesktopMap();
+}
+
+function renderDesktopList() {
+  const q = (document.getElementById('desktop-search-input')?.value || '').toLowerCase();
+  const filtered = clientes.filter(c =>
+    c.nome.toLowerCase().includes(q) ||
+    c.cidade.toLowerCase().includes(q) ||
+    (c.cnpj||'').includes(q)
+  );
+
+  const order = {today:0,green:1,blue:2,red:3,purple:4};
+  filtered.sort((a,b) => {
+    const sa=getStatus(a), sb=getStatus(b);
+    if (order[sa]!==order[sb]) return order[sa]-order[sb];
+    return a.nome.localeCompare(b.nome);
+  });
+
+  const grupos = [
+    {key:'today', label:'Hoje'},
+    {key:'green', label:'Até 30 dias'},
+    {key:'blue',  label:'31 a 60 dias'},
+    {key:'red',   label:'Mais de 60 dias'},
+    {key:'purple',label:'Nunca visitados'},
+  ];
+
+  const cores = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'};
+  const bgCores = {today:'var(--orange-bg)',green:'var(--green-bg)',blue:'var(--blue-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
+
+  let out = '';
+  grupos.forEach(g => {
+    const items = filtered.filter(c => getStatus(c) === g.key);
+    if (!items.length) return;
+    out += '<div style="font-size:11px;font-weight:700;color:var(--text3);padding:10px 14px 4px;text-transform:uppercase;letter-spacing:.5px">'+g.label+' ('+items.length+')</div>';
+    items.forEach(c => {
+      const nomeBase = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
+      const comp = (c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
+      const s = getStatus(c);
+      const lv = lastVisitText(c);
+      const tempo = c.visitadoHoje?('✓ '+c.horaHoje):(s==='purple'?'Nunca':lv.text);
+      out += '<div class="client-card" style="margin:0 10px 6px;border-radius:12px;border:1.5px solid transparent" onclick="selecionarClienteDesktop('+c.id+')" id="dc-'+c.id+'">' +
+        '<div class="card-dot '+s+'"></div>' +
+        '<div class="card-content">' +
+          '<div class="card-name">'+nomeBase+'</div>' +
+          (comp?'<div class="card-contact">👤 '+comp+'</div>':'') +
+          '<div class="card-bottom">' +
+            '<div class="card-city">📍 '+c.cidade.replace(' - SC','').replace(' - PR','')+'</div>' +
+            '<span class="card-badge '+s+'">'+tempo+'</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="card-arrow">›</div>' +
+      '</div>';
+    });
+  });
+
+  if (!out) out = '<div style="padding:40px;text-align:center;color:var(--text3)">Nenhum cliente encontrado</div>';
+  const el = document.getElementById('desktop-client-list');
+  if (el) el.innerHTML = out;
+}
+
+function selecionarClienteDesktop(id) {
+  // Destaca na lista
+  document.querySelectorAll('[id^="dc-"]').forEach(el => {
+    el.style.borderColor = 'transparent';
+    el.style.background = 'var(--card)';
+  });
+  const sel = document.getElementById('dc-'+id);
+  if (sel) {
+    sel.style.borderColor = 'var(--blue)';
+    sel.style.background = 'var(--blue-bg)';
+  }
+
+  // Centraliza no mapa
+  const c = clientes.find(x => x.id == id);
+  if (c && gmap && c.lat && c.lng) {
+    gmap.panTo({lat:c.lat, lng:c.lng});
+    gmap.setZoom(15);
+    if (gmarkers[id]) {
+      if (openIW) openIW.close();
+      const iw = new google.maps.InfoWindow({
+        content: '<div style="font-family:sans-serif;padding:4px"><strong>'+c.nome.replace(/\s*\([^)]*\)/g,'').trim()+'</strong><br><small>'+c.cidade+'</small></div>'
+      });
+      iw.open(gmap, gmarkers[id]);
+      openIW = iw;
+    }
+  }
+
+  // Mostra detalhes
+  mostrarDetalheDesktop(c);
+}
+
+function mostrarDetalheDesktop(c) {
+  if (!c) return;
+  const detail = document.getElementById('desktop-detail');
+  const nomeBase = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
+  const comp = (c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
+  const s = getStatus(c);
+  const cores = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'};
+  const bgCores = {today:'var(--orange-bg)',green:'var(--green-bg)',blue:'var(--blue-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
+  const labels = {today:'Hoje',green:'≤ 30 dias',blue:'31-60 dias',red:'> 60 dias',purple:'Nunca'};
+  const lv = lastVisitText(c);
+  const lembretes = JSON.parse(localStorage.getItem('lembretes')||'{}');
+  const lembrete = lembretes[c.id] || '';
+  const visitas = historicoVisitas[c.id] || [];
+  let histHTML = '';
+  if (c.ultimaVisita || visitas.length) {
+    const items = [...visitas];
+    if (c.ultimaVisita) items.push({data:c.ultimaVisita, obs:c.ultimaObs||'', compra:true});
+    items.sort((a,b)=>(b.data+(b.hora||'')).localeCompare(a.data+(a.hora||'')));
+    histHTML = items.map((v,i)=>{
+      const emoji = v.hoje?'⭐':v.compra?'🛒':'📋';
+      const label = v.hoje?'Hoje':(v.data?formatDate(v.data):'');
+      const horaStr = v.hora?' · '+v.hora:'';
+      const tipo = v.compra?' · compra':'';
+      return '<div style="display:flex;gap:10px;margin-bottom:12px">' +
+        '<div style="width:28px;height:28px;border-radius:50%;background:var(--bg);border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px">'+emoji+'</div>' +
+        '<div style="flex:1;background:var(--bg);border-radius:10px;padding:8px 10px">' +
+          '<div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:3px">'+label+horaStr+tipo+'</div>' +
+          '<div style="font-size:13px;color:var(--text);line-height:1.4">'+(v.obs||'<span style="color:var(--text3);font-style:italic">Sem observações</span>')+'</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } else {
+    histHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">Nenhuma visita registrada</div>';
+  }
+
+  detail.innerHTML =
+    '<div class="desktop-detail-header">' +
+      '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;background:'+bgCores[s]+';color:'+cores[s]+';display:inline-block;margin-bottom:8px">'+labels[s]+(c.visitadoHoje?' · '+c.horaHoje:'')+'</span>' +
+      '<div class="desktop-detail-nome">'+nomeBase+'</div>' +
+      (comp?'<div class="desktop-detail-sub">👤 '+comp+'</div>':'') +
+      '<div class="desktop-detail-cidade">📍 '+c.endereco+' — '+c.cidade+'</div>' +
+      '<div class="desktop-detail-tags">' +
+        (c.cnpj?'<span class="desktop-detail-tag">🔢 '+c.cnpj+'</span>':'') +
+        (c.ultimaVisita?'<span class="desktop-detail-tag">🗓 '+formatDate(c.ultimaVisita)+'</span>':'') +
+      '</div>' +
+      '<div class="desktop-detail-btns">' +
+        '<button class="desktop-btn-checkin" onclick="checkinDesktop('+c.id+')" '+(c.visitadoHoje?'disabled':'')+'>'+
+          (c.visitadoHoje?'✓ Visitado às '+c.horaHoje:'✓ CHECK-IN')+
+        '</button>' +
+        '<button class="desktop-btn-maps" onclick="openMapsFor('+c.id+')">↗</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="desktop-detail-body">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📌 Lembrete</div>' +
+      '<div style="background:rgba(255,149,0,.07);border:1px solid rgba(255,149,0,.2);border-radius:10px;padding:10px 12px;margin-bottom:16px">' +
+        (lembrete?
+          '<div style="font-size:13px;color:var(--orange);line-height:1.4">'+lembrete+'</div>':
+          '<div style="font-size:13px;color:rgba(255,149,0,.35);font-style:italic">Nenhum lembrete...</div>') +
+      '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Observações</div>' +
+      '<div style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:16px">' +
+        '<textarea id="desktop-obs-'+c.id+'" style="width:100%;background:none;border:none;outline:none;font-size:13px;color:var(--text);font-family:inherit;resize:none;min-height:60px" placeholder="Anotações sobre esta visita..."></textarea>' +
+      '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Histórico</div>' +
+      histHTML +
+    '</div>';
+}
+
+async function checkinDesktop(id) {
+  const c = clientes.find(x => x.id == id);
+  if (!c || c.visitadoHoje) return;
+  const obs = document.getElementById('desktop-obs-'+id)?.value.trim() || '';
+  const agora = new Date();
+  const hora = agora.toTimeString().slice(0,5);
+  const dataHoje = agora.toISOString().slice(0,10);
+  c.visitadoHoje = true; c.horaHoje = hora; c.ultimaObs = obs;
+  if (!historicoVisitas[id]) historicoVisitas[id] = [];
+  historicoVisitas[id].unshift({data:dataHoje, hora, obs, hoje:true});
+  mostrarDetalheDesktop(c);
+  renderDesktopList();
+  if (gmap) renderMapMarkers();
+  showToast('✓ Check-in '+nomeBase+' — '+hora);
+  if (SCRIPT_URL) {
+    try {
+      await fetch(SCRIPT_URL+'?action=checkin&id_cliente='+id+'&nome='+encodeURIComponent(c.nome)+'&data='+dataHoje+'&hora='+hora+'&obs='+encodeURIComponent(obs));
+    } catch(e) {}
+  }
+}
+
+function initDesktopMap() {
+  // Usa o mesmo gmap mas aponta para div diferente
+  if (typeof google === 'undefined') return;
+  const mapDiv = document.getElementById('desktop-map');
+  if (!mapDiv || gmap) {
+    // Se gmap já existe, move para o div desktop
+    if (gmap && mapDiv) {
+      mapDiv.appendChild(document.getElementById('map'));
+    }
+    return;
+  }
+}
+
+function renderDesktopReport() {
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
+  const nomeMes = hoje.toLocaleDateString('pt-BR',{month:'long'});
+  const nomeMesCap = nomeMes.charAt(0).toUpperCase()+nomeMes.slice(1);
+
+  const grpHoje  = clientes.filter(c => getStatus(c)==='today');
+  const diaSem   = hoje.getDay();
+  const iniSem   = new Date(hoje); iniSem.setDate(hoje.getDate()-diaSem); iniSem.setHours(0,0,0,0);
+  const visitSem = clientes.filter(c => {
+    if (!c.ultimaVisita) return false;
+    const d = new Date(c.ultimaVisita+'T00:00:00');
+    return d >= iniSem;
+  }).length + grpHoje.length;
+  const visitMes = clientes.filter(c => {
+    if (c.visitadoHoje) return true;
+    if (!c.ultimaVisita) return false;
+    const d = new Date(c.ultimaVisita+'T00:00:00');
+    return d.getMonth()===mesAtual && d.getFullYear()===anoAtual;
+  }).length;
+  const pctMes = clientes.length ? Math.round(visitMes/clientes.length*100) : 0;
+
+  // Cidades
+  const cidMap = {};
+  clientes.forEach(c => {
+    const vis = c.visitadoHoje || (c.ultimaVisita && (() => {
+      const d = new Date(c.ultimaVisita+'T00:00:00');
+      return d.getMonth()===mesAtual && d.getFullYear()===anoAtual;
+    })());
+    const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+    if (!cidMap[cidade]) cidMap[cidade] = {vis:0, total:0};
+    cidMap[cidade].total++;
+    if (vis) cidMap[cidade].vis++;
+  });
+  const cidades = Object.entries(cidMap).filter(([,v])=>v.vis>0).sort((a,b)=>b[1].vis-a[1].vis);
+
+  const corCid = (v,t) => { const p=t?v/t:0; return p>=.4?'var(--green)':p>=.2?'var(--blue)':'var(--orange)'; };
+
+  const rep = document.getElementById('desktop-report');
+  if (!rep) return;
+
+  rep.innerHTML =
+    // Resumo
+    '<div class="rep-card-d" style="grid-column:1/-1">' +
+      '<div class="rep-card-d-header"><div class="rep-card-d-title">📊 Resumo — '+nomeMesCap+' '+anoAtual+'</div></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr)">' +
+        '<div style="padding:16px;border-right:1px solid var(--border);text-align:center"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Hoje</div><div style="font-size:30px;font-weight:800;color:var(--orange)">'+grpHoje.length+'</div><div style="font-size:11px;color:var(--text3)">check-ins</div></div>' +
+        '<div style="padding:16px;border-right:1px solid var(--border);text-align:center"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Semana</div><div style="font-size:30px;font-weight:800;color:var(--blue)">'+visitSem+'</div><div style="font-size:11px;color:var(--text3)">dom → sáb</div></div>' +
+        '<div style="padding:16px;border-right:1px solid var(--border);text-align:center"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:4px">'+nomeMesCap+'</div><div style="font-size:30px;font-weight:800;color:var(--green)">'+visitMes+'</div><div style="font-size:11px;color:var(--text3)">visitas</div></div>' +
+        '<div style="padding:16px;text-align:center"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Cobertura</div><div style="font-size:30px;font-weight:800;color:var(--purple)">'+pctMes+'%</div><div style="font-size:11px;color:var(--text3)">da carteira</div></div>' +
+      '</div>' +
+      '<div style="padding:14px 16px;border-top:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:600;color:var(--text2)">Progresso de '+nomeMesCap+' — '+visitMes+' de '+clientes.length+' clientes</span><span style="font-size:13px;font-weight:800;color:var(--green)">'+pctMes+'%</span></div>' +
+        '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pctMes+'%;background:var(--green);border-radius:4px"></div></div>' +
+      '</div>' +
+    '</div>' +
+
+    // Visitados hoje
+    '<div class="rep-card-d">' +
+      '<div class="rep-card-d-header"><div class="rep-card-d-title">⭐ Visitados hoje</div><span class="rep-card-d-badge" style="background:var(--orange-bg);color:var(--orange)">'+grpHoje.length+'</span></div>' +
+      (grpHoje.length ? grpHoje.map((c,i)=>{
+        const nome=c.nome.replace(/\s*\([^)]*\)/g,'').trim();
+        const comp=(c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
+        const bg=i%2===0?'var(--card)':'var(--bg)';
+        return '<div style="display:flex;align-items:flex-start;padding:11px 14px;background:'+bg+';border-bottom:1px solid var(--border);gap:10px;cursor:pointer" onclick="selecionarClienteDesktop('+c.id+')">' +
+          '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:var(--text)">'+nome+'</div>' +
+          (comp?'<div style="font-size:11px;color:var(--text3)">👤 '+comp+'</div>':'')+
+          (c.ultimaObs?'<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic">'+c.ultimaObs+'</div>':'')+'</div>' +
+          '<div style="font-size:13px;font-weight:700;color:var(--orange);flex-shrink:0">'+c.horaHoje+'</div>' +
+        '</div>';
+      }).join('') : '<div style="padding:20px;text-align:center;color:var(--text3)">Nenhuma visita hoje</div>') +
+    '</div>' +
+
+    // Cidades
+    '<div class="rep-card-d" style="grid-column:2/-1">' +
+      '<div class="rep-card-d-header"><div class="rep-card-d-title">🏙 Cidades — '+nomeMesCap+'</div><span class="rep-card-d-badge" style="background:var(--blue-bg);color:var(--blue)">'+cidades.length+'</span></div>' +
+      '<table style="width:100%;border-collapse:collapse">' +
+        '<tr><th style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;padding:10px 14px;border-bottom:2px solid var(--border);text-align:left">Cidade</th>' +
+        '<th style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;padding:10px 14px;border-bottom:2px solid var(--border)">Cobertura</th>' +
+        '<th style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;padding:10px 14px;border-bottom:2px solid var(--border);text-align:center">Visitados</th>' +
+        '<th style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;padding:10px 14px;border-bottom:2px solid var(--border);text-align:center">Total</th></tr>' +
+        cidades.map(([cidade,info],i)=>{
+          const pct=info.total?Math.round(info.vis/info.total*100):0;
+          const cor=corCid(info.vis,info.total);
+          const bg=i%2===0?'var(--card)':'var(--bg)';
+          return '<tr style="background:'+bg+'">' +
+            '<td style="padding:11px 14px;font-size:14px;font-weight:600;color:var(--text);border-bottom:1px solid var(--border)">'+cidade+'</td>' +
+            '<td style="padding:11px 14px;border-bottom:1px solid var(--border)"><div style="height:4px;background:var(--border);border-radius:2px;width:120px"><div style="height:100%;width:'+pct+'%;background:'+cor+';border-radius:2px"></div></div><div style="font-size:10px;color:var(--text3);margin-top:3px">'+pct+'%</div></td>' +
+            '<td style="padding:11px 14px;text-align:center;font-size:16px;font-weight:800;color:'+cor+';border-bottom:1px solid var(--border)">'+info.vis+'</td>' +
+            '<td style="padding:11px 14px;text-align:center;font-size:13px;color:var(--text3);border-bottom:1px solid var(--border)">'+info.total+'</td>' +
+          '</tr>';
+        }).join('') +
+      '</table>' +
+    '</div>';
+}
+
+function switchDesktopTab(tab, btn) {
+  document.querySelectorAll('.desktop-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const sidebar = document.querySelector('.desktop-sidebar');
+  const centro  = document.getElementById('desktop-center-mapa');
+  const detalhe = document.getElementById('desktop-detail');
+  const report  = document.getElementById('desktop-report');
+
+  if (tab === 'mapa') {
+    sidebar.style.display = 'flex';
+    centro.style.display = 'flex';
+    detalhe.style.display = 'flex';
+    report.classList.remove('active');
+  } else {
+    sidebar.style.display = 'none';
+    centro.style.display = 'none';
+    detalhe.style.display = 'none';
+    report.classList.add('active');
+    renderDesktopReport();
+  }
+}
+
+// Detecta resize para alternar mobile/desktop
+window.addEventListener('resize', () => {
+  if (isDesktop()) initDesktop();
+  else {
+    document.querySelector('.desktop-tabs').style.display = 'none';
+    document.querySelector('.desktop-main').style.display = 'none';
+    document.querySelector('.search-bar').style.display = 'block';
+    document.querySelector('.screens').style.display = 'block';
+    document.querySelector('.navbar').style.display = 'flex';
+  }
+});
+
 // ── TOAST ──────────────────────────────────────────────
 function showToast(msg, isErr = false) {
   const t = document.getElementById('toast');
@@ -1789,6 +2815,76 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+
+
+    <!-- TELA CALENDÁRIO -->
+    <div id="screen-calendario">
+      <div class="cal-header">
+        <button class="cal-back" onclick="closeCalendario()">← Voltar</button>
+        <div class="cal-mes-titulo" id="cal-mes-titulo"></div>
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="navegarCalMes(-1)">‹</button>
+          <button class="cal-nav-btn" onclick="navegarCalMes(1)">›</button>
+        </div>
+      </div>
+      <div class="cal-weekdays">
+        <div class="cal-wd dom">D</div>
+        <div class="cal-wd">S</div>
+        <div class="cal-wd">T</div>
+        <div class="cal-wd">Q</div>
+        <div class="cal-wd">Q</div>
+        <div class="cal-wd">S</div>
+        <div class="cal-wd">S</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-legenda">
+        <div class="cal-leg"><div class="cal-leg-dot" style="background:var(--green)"></div>1-3 visitas</div>
+        <div class="cal-leg"><div class="cal-leg-dot" style="background:var(--orange)"></div>4+ visitas</div>
+      </div>
+      <div class="cal-body" id="cal-body"></div>
+    </div>
+
+    <!-- MENU DE CONFIGURAÇÕES -->
+    <div class="config-overlay" id="config-overlay" onclick="closeConfig(event)">
+      <div class="config-sheet" onclick="event.stopPropagation()">
+        <div class="config-handle"></div>
+        <div class="config-titulo">Configurações</div>
+        <div class="config-item" id="config-admin-item" style="display:none" onclick="closeConfig();openAdmin()">
+          <div class="config-item-left">
+            <div class="config-item-icon">👥</div>
+            <div><div class="config-item-nome">Painel Admin</div><div class="config-item-sub">Gerenciar representantes</div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </div>
+        <div class="config-item" onclick="closeConfig();openCadastro()">
+          <div class="config-item-left">
+            <div class="config-item-icon">➕</div>
+            <div><div class="config-item-nome">Novo cliente</div><div class="config-item-sub">Adicionar à carteira</div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </div>
+        <div class="config-item" onclick="exportCoords();closeConfig()">
+          <div class="config-item-left">
+            <div class="config-item-icon">📍</div>
+            <div><div class="config-item-nome">Exportar coordenadas</div><div class="config-item-sub">Backup das localizações</div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </div>
+        <div class="config-item">
+          <div class="config-item-left">
+            <div class="config-item-icon">ℹ️</div>
+            <div><div class="config-item-nome">Versão do aplicativo</div><div class="config-item-sub">Mundo do Rep v1.0</div></div>
+          </div>
+        </div>
+        <div class="config-item danger" onclick="closeConfig();fazerLogout()">
+          <div class="config-item-left">
+            <div class="config-item-icon">⏻</div>
+            <div><div class="config-item-nome">Sair</div><div class="config-item-sub" id="config-user-email"></div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </div>
+      </div>
+    </div>
 
   <!-- NAVBAR -->
   <nav class="navbar">
