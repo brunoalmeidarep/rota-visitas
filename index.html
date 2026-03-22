@@ -798,9 +798,17 @@ function esconderLogin() {
   document.getElementById('screen-login').style.display = 'none';
   // Mostra botão admin só para o admin
   if (currentUser && currentUser.email === ADMIN_EMAIL) {
-    document.getElementById('btn-admin-header').style.display = 'block';
+    const btnAdmin = document.getElementById('btn-admin-header');
+    if (btnAdmin) btnAdmin.style.display = 'flex';
+    const adminConfig = document.getElementById('config-admin-item');
+    if (adminConfig) adminConfig.style.display = 'flex';
   }
+  // Mostra email no config
+  const emailEl = document.getElementById('config-user-email');
+  if (emailEl && currentUser) emailEl.textContent = currentUser.email;
+
   loadDemo();
+  carregarLembretesSupabase();
 }
 
 function mostrarLogin() {
@@ -1059,8 +1067,12 @@ function loadDemo() {
   ].map(c => ({...c, visitadoHoje:false, horaHoje:null, lat:c.lat||null, lng:c.lng||null}));
   renderList();
   geocodeAll();
-  // Atualiza lista desktop se necessário
-  if (typeof renderDesktopList === "function" && isDesktop && isDesktop()) renderDesktopList();
+  // Inicia desktop se estiver em tela grande
+  if (window.innerWidth >= 768) {
+    setTimeout(() => {
+      if (typeof initDesktop === 'function') initDesktop();
+    }, 50);
+  }
 }
 
 // ── LOAD ───────────────────────────────────────────────
