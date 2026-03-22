@@ -1426,7 +1426,7 @@ function renderReport() {
     const id = 'cidade-' + cidIdx;
 
     cidadesHTML += '<div>' +
-      '<div style="display:flex;align-items:center;padding:11px 14px;background:var(--card);border-bottom:1px solid var(--border);gap:12px;cursor:pointer" onclick="toggleCidade(''+id+'')">' +
+      '<div style="display:flex;align-items:center;padding:11px 14px;background:var(--card);border-bottom:1px solid var(--border);gap:12px;cursor:pointer" onclick="toggleCidade(\'' + id + '\')">' +
         '<div style="width:36px;height:36px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏙</div>' +
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:14px;font-weight:600;color:var(--text)">'+cidade+'</div>' +
@@ -1450,7 +1450,6 @@ function renderReport() {
   // Mês de referência para o relatório
   const nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const nomeMesRef = nomesMes[mesRef];
-  const nomeMesCap = nomeMesRef;
 
   // Recontabiliza usando visatasDoRelatorio para períodos passados
   let visitMesReal = visitMes;
