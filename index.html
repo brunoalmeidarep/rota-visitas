@@ -68,9 +68,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .stats-bar { display:flex; border-top:1px solid var(--border); }
 .stat-item { flex:1; text-align:center; padding:8px 2px 10px; cursor:pointer; }
 .stat-num { font-size:18px; font-weight:700; }
-.stat-num.c-hoje   { color:var(--orange); }
-.stat-num.c-verde  { color:var(--green); }
-.stat-num.c-azul   { color:var(--blue); }
+.stat-num.c-hoje   { color:var(--green); }
+.stat-num.c-verde  { color:var(--blue); }
+.stat-num.c-azul   { color:var(--orange); }
 .stat-num.c-red    { color:var(--red); }
 .stat-num.c-roxo   { color:var(--purple); }
 .stat-lbl { font-size:9px; font-weight:600; color:var(--text3); letter-spacing:.5px; text-transform:uppercase; margin-top:1px; }
@@ -95,9 +95,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .client-card { background:var(--card); margin:0 12px 6px; border-radius:14px; padding:14px; display:flex; gap:12px; align-items:flex-start; box-shadow:var(--shadow); cursor:pointer; border:none; transition:opacity .1s; }
 .client-card:active { opacity:.7; }
 .card-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:5px; }
-.card-dot.today  { background:var(--orange); }
-.card-dot.green  { background:var(--green); }
-.card-dot.blue   { background:var(--blue); }
+.card-dot.today  { background:var(--green); }
+.card-dot.green  { background:var(--blue); }
+.card-dot.blue   { background:var(--orange); }
 .card-dot.red    { background:var(--red); }
 .card-dot.purple { background:var(--purple); }
 .card-content { flex:1; min-width:0; }
@@ -106,9 +106,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .card-bottom { display:flex; align-items:center; justify-content:space-between; gap:6px; }
 .card-city { font-size:12px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .card-badge { font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; flex-shrink:0; }
-.card-badge.today  { background:var(--orange-bg); color:var(--orange); }
-.card-badge.green  { background:var(--green-bg);  color:var(--green); }
-.card-badge.blue   { background:var(--blue-bg);   color:var(--blue); }
+.card-badge.today  { background:var(--green-bg); color:var(--green); }
+.card-badge.green  { background:var(--blue-bg);   color:var(--blue); }
+.card-badge.blue   { background:var(--orange-bg); color:var(--orange); }
 .card-badge.red    { background:var(--red-bg);    color:var(--red); }
 .card-badge.purple { background:var(--purple-bg); color:var(--purple); }
 .card-arrow { color:var(--text3); font-size:18px; flex-shrink:0; margin-top:2px; }
@@ -122,7 +122,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .export-btn { font-size:12px; font-weight:600; color:var(--blue); background:none; border:none; cursor:pointer; }
 
 /* ── RELATÓRIO ──────────────────────────────────────── */
-.report-body, .rep-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:80px; }
+.report-body, #screen-report { display:none; flex-direction:column; height:100%; }
+#screen-report.active { display:flex; }
+.rep-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:100px; -webkit-overflow-scrolling:touch; }
 .rep-section { background:var(--card); border-radius:14px; padding:16px; margin-bottom:12px; box-shadow:var(--shadow); }
 .rep-section h3 { font-size:13px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; }
 .rep-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); }
@@ -133,15 +135,15 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .prog-fill { height:100%; background:var(--green); border-radius:3px; transition:width .5s; }
 
 /* ── NAVBAR ─────────────────────────────────────────── */
-.navbar { background:var(--surface); border-top:1px solid var(--border); padding:8px 0 22px; display:flex; flex-shrink:0; position:absolute; bottom:0; left:0; right:0; z-index:50; }
+.navbar { background:var(--surface); border-top:1px solid var(--border); padding:8px 0 22px; display:flex; flex-shrink:0; position:fixed; bottom:0; left:0; right:0; z-index:50; }
 .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; border:none; background:none; padding:4px 0; }
 .nav-icon { font-size:22px; }
 .nav-label { font-size:10px; font-weight:500; color:var(--text3); }
 .nav-item.active .nav-label { color:var(--blue); }
 
 /* ── FAB ────────────────────────────────────────────── */
-.fab { position:absolute; bottom:76px; right:16px; width:52px; height:52px; border-radius:50%; background:var(--blue); color:#fff; border:none; font-size:26px; cursor:pointer; box-shadow:0 4px 16px rgba(0,122,255,.4); display:flex; align-items:center; justify-content:center; z-index:51; transition:transform .15s; }
-.fab:active { transform:scale(.92); }
+
+
 
 /* ── LOGIN ──────────────────────────────────────────── */
 #screen-login { position:fixed; top:0;left:0;right:0;bottom:0; background:var(--surface); z-index:999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; }
@@ -615,7 +617,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .cal-d { aspect-ratio:1;display:flex;align-items:center; justify-content:center;border-radius:50%; font-size:15px;font-weight:500;color:var(--text); cursor:pointer;transition:background .1s; }
 .cal-d:hover { background:var(--bg); }
 .cal-d.outro { color:var(--text3);opacity:.4; }
-.cal-d.hoje { color:var(--blue);font-weight:800; }
+.cal-d.hoje { color:var(--green);font-weight:800; }
 .cal-d.com-visita { background:var(--green);color:#fff;font-weight:700; }
 .cal-d.com-visita.muitas { background:var(--orange); }
 .cal-d.selecionado { background:var(--blue);color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,122,255,.4); }
@@ -650,6 +652,156 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .config-item-sub { font-size:12px;color:var(--text3);margin-top:2px; }
 .config-item-right { color:var(--text3);font-size:16px; }
 .config-item.danger .config-item-nome { color:var(--red); }
+
+
+/* ── SEGMENTO PILLS ─────────────────────────────────── */
+.seg-filtro-bar { display:flex; gap:6px; padding:8px 12px; background:var(--surface); border-bottom:1px solid var(--border); overflow-x:auto; scrollbar-width:none; flex-shrink:0; }
+.seg-filtro-bar::-webkit-scrollbar { display:none; }
+.seg-pill-filtro { flex-shrink:0; padding:5px 12px; border-radius:20px; border:none; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; background:var(--bg); color:var(--text2); transition:.15s; }
+.seg-pill-filtro.active { background:var(--blue); color:#fff; }
+
+.seg-select-wrap { display:flex; flex-wrap:wrap; gap:8px; }
+.seg-pill-select { padding:7px 14px; border-radius:20px; border:1.5px solid var(--border); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; background:var(--surface); color:var(--text2); transition:.15s; }
+.seg-pill-select.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+.seg-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:10px; background:var(--bg); color:var(--text3); margin-top:3px; display:inline-block; }
+
+/* ── TAREFAS ─────────────────────────────────────────── */
+#screen-tarefas { display:none; flex-direction:column; height:100%; }
+#screen-tarefas.active { display:flex; }
+.tarefas-topo { background:var(--surface); padding:12px 14px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.tarefas-titulo { font-size:17px; font-weight:800; color:var(--text); }
+.tarefas-data { font-size:11px; color:var(--text3); margin-top:2px; }
+.tarefas-lista { flex:1; overflow-y:auto; padding:10px; padding-bottom:80px; -webkit-overflow-scrolling:touch; }
+.tarefa-input-box { background:var(--card); border-radius:14px; padding:11px 12px; margin-bottom:10px; display:flex; gap:8px; align-items:center; box-shadow:var(--shadow); }
+.tarefa-input-field { flex:1; background:none; border:none; outline:none; font-size:14px; color:var(--text); font-family:inherit; }
+.tarefa-input-field::placeholder { color:var(--text3); }
+.tarefa-add-btn { background:var(--blue); color:#fff; border:none; border-radius:10px; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; }
+.tarefa-secao { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; padding:8px 4px 5px; }
+.tarefa-item { background:var(--card); border-radius:12px; padding:12px 14px; margin-bottom:7px; display:flex; align-items:flex-start; gap:10px; box-shadow:var(--shadow); transition:.2s; }
+.tarefa-item.pendente-ontem { border-left:3px solid var(--orange); }
+.tarefa-check { width:22px; height:22px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; }
+.tarefa-check.done { background:var(--green); border-color:var(--green); color:#fff; font-size:11px; }
+.tarefa-texto { font-size:14px; color:var(--text); flex:1; line-height:1.4; }
+.tarefa-texto.done { color:var(--text3); text-decoration:line-through; }
+.tarefa-meta { font-size:10px; color:var(--text3); margin-top:2px; }
+.tarefa-del { font-size:18px; color:var(--text3); cursor:pointer; flex-shrink:0; padding:0 2px; }
+
+/* HISTÓRICO TAREFAS */
+.tarefa-hist-btn { width:100%; background:none; border:1.5px solid var(--border); border-radius:12px; padding:11px; font-family:inherit; font-size:13px; font-weight:600; color:var(--blue); cursor:pointer; margin-top:8px; }
+.tarefa-hist-item { background:var(--card); border-radius:12px; padding:12px 14px; margin-bottom:6px; box-shadow:var(--shadow); }
+.tarefa-hist-data { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.3px; margin-bottom:8px; display:flex; justify-content:space-between; }
+.tarefa-hist-row { display:flex; align-items:center; gap:8px; padding:4px 0; border-bottom:1px solid var(--border); }
+.tarefa-hist-row:last-child { border-bottom:none; }
+.tarefa-hist-icone { font-size:12px; flex-shrink:0; }
+.tarefa-hist-txt { font-size:13px; color:var(--text); }
+.tarefa-hist-txt.done { color:var(--text3); text-decoration:line-through; }
+
+
+/* ── FILTRO CIDADE NA BUSCA ─────────────────────────── */
+.cidade-filtro-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:600; align-items:flex-end; }
+.cidade-filtro-overlay.open { display:flex; }
+.cidade-filtro-sheet { background:var(--surface); border-radius:20px 20px 0 0; width:100%; max-height:80vh; display:flex; flex-direction:column; }
+.cidade-filtro-handle { width:32px; height:3px; background:var(--border); border-radius:2px; margin:14px auto 10px; flex-shrink:0; }
+.cidade-filtro-header { display:flex; align-items:center; justify-content:space-between; padding:0 16px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.cidade-filtro-titulo { font-size:16px; font-weight:700; color:var(--text); }
+.cidade-filtro-fechar { background:none; border:none; font-size:20px; color:var(--text3); cursor:pointer; }
+.cidade-filtro-search { padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.cidade-filtro-search-box { background:var(--bg); border-radius:10px; padding:7px 12px; display:flex; align-items:center; gap:7px; }
+.cidade-filtro-search-box input { flex:1; background:none; border:none; outline:none; font-size:14px; color:var(--text); font-family:inherit; }
+.cidade-filtro-search-box input::placeholder { color:var(--text3); }
+.cidade-filtro-lista { overflow-y:auto; flex:1; }
+.cidade-filtro-item { display:flex; align-items:center; justify-content:space-between; padding:13px 16px; border-bottom:1px solid var(--border); cursor:pointer; }
+.cidade-filtro-item:last-child { border-bottom:none; }
+.cidade-filtro-item:active { background:var(--bg); }
+.cidade-filtro-item.ativa { background:var(--blue-bg); }
+.cidade-filtro-nome { font-size:15px; font-weight:500; color:var(--text); }
+.cidade-filtro-qtd { font-size:12px; color:var(--text3); margin-top:2px; }
+.cidade-filtro-check { font-size:16px; color:var(--blue); }
+.cidade-ativa-tag { font-size:11px; font-weight:700; color:var(--blue); cursor:pointer; white-space:nowrap; }
+
+
+/* ── PLANNER ─────────────────────────────────────────── */
+#screen-planner { display:none; flex-direction:column; height:100%; }
+#screen-planner.active { display:flex; }
+
+.planner-nav { background:var(--surface); padding:10px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.planner-nav-btn { background:none; border:none; font-size:20px; color:var(--text); cursor:pointer; padding:2px 6px; }
+.planner-titulo { font-size:13px; font-weight:700; color:var(--text); text-align:center; }
+.planner-sub { font-size:10px; color:var(--text3); text-align:center; margin-top:1px; }
+.planner-hoje-btn { background:var(--blue); border:none; border-radius:8px; padding:4px 10px; font-size:11px; font-weight:700; color:#fff; cursor:pointer; font-family:inherit; }
+
+.planner-view-toggle { display:flex; background:var(--bg); border-radius:10px; padding:3px; margin:8px 14px; flex-shrink:0; }
+.planner-view-btn { flex:1; padding:5px; border-radius:8px; border:none; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; background:none; color:var(--text3); transition:.15s; }
+.planner-view-btn.active { background:var(--surface); color:var(--text); }
+
+.planner-dias-mini { display:flex; background:var(--surface); padding:4px 14px 10px; gap:4px; flex-shrink:0; border-bottom:1px solid var(--border); }
+.planner-dia-mini { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; }
+.planner-dia-mini-label { font-size:9px; font-weight:600; color:var(--text3); text-transform:uppercase; }
+.planner-dia-mini-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:var(--text); transition:.15s; }
+.planner-dia-mini-num.hoje { background:var(--blue); color:#fff; }
+.planner-dia-mini-num.selecionado { background:var(--surface); border:2px solid var(--blue); color:var(--blue); }
+.planner-dia-mini-num.fds { color:var(--text3); }
+.planner-dia-mini-dots { display:flex; gap:2px; }
+.planner-dia-mini-dot { width:4px; height:4px; border-radius:50%; }
+
+.planner-body { flex:1; overflow-y:auto; padding:10px 12px 80px; -webkit-overflow-scrolling:touch; }
+
+.planner-dia-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.planner-dia-titulo { font-size:17px; font-weight:800; color:var(--text); }
+.planner-dia-data { font-size:12px; color:var(--text3); margin-top:1px; }
+
+.planner-bloco { background:var(--card); border-radius:12px; padding:11px 13px; margin-bottom:8px; box-shadow:var(--shadow); }
+.planner-bloco-label { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; margin-bottom:7px; }
+.planner-bloco-textarea { width:100%; background:none; border:none; outline:none; font-size:13px; color:var(--text); font-family:inherit; resize:none; min-height:52px; line-height:1.6; }
+.planner-bloco-textarea::placeholder { color:var(--text3); }
+
+.planner-evento-item { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); }
+.planner-evento-item:last-child { border-bottom:none; }
+.planner-evento-cor { width:3px; height:28px; border-radius:2px; flex-shrink:0; }
+.planner-evento-txt { font-size:13px; color:var(--text); flex:1; }
+.planner-evento-hora { font-size:11px; color:var(--text3); }
+.planner-evento-del { font-size:16px; color:var(--text3); cursor:pointer; }
+.planner-add-btn { width:100%; background:none; border:1px dashed var(--border); border-radius:8px; padding:8px; font-size:12px; color:var(--text3); cursor:pointer; font-family:inherit; margin-top:6px; }
+
+.planner-checkin-cidade { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; padding:6px 0 3px; }
+.planner-checkin-item { display:flex; align-items:center; gap:7px; padding:5px 0; border-bottom:1px solid var(--border); }
+.planner-checkin-item:last-child { border-bottom:none; }
+.planner-checkin-dot { width:6px; height:6px; border-radius:50%; background:var(--green); flex-shrink:0; }
+.planner-checkin-nome { font-size:13px; color:var(--text); flex:1; }
+.planner-checkin-hora { font-size:11px; color:var(--text3); }
+
+/* GRADE MENSAL */
+.planner-cal-wrap { padding:8px 14px 4px; flex-shrink:0; background:var(--surface); border-bottom:1px solid var(--border); }
+.planner-cal-weekdays { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px; }
+.planner-cal-wd { text-align:center; font-size:9px; font-weight:700; color:var(--text3); text-transform:uppercase; padding:3px 0; }
+.planner-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.planner-cal-d { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; cursor:pointer; transition:.1s; }
+.planner-cal-d:active { opacity:.7; }
+.planner-cal-d-num { font-size:12px; font-weight:500; color:var(--text); line-height:1; }
+.planner-cal-d.outro .planner-cal-d-num { color:var(--text3); opacity:.4; }
+.planner-cal-d.hoje { background:var(--blue); }
+.planner-cal-d.hoje .planner-cal-d-num { color:#fff; font-weight:800; }
+.planner-cal-d.tem-algo { background:var(--card); }
+.planner-cal-d.selecionado { border:2px solid var(--blue); }
+.planner-cal-d-dots { display:flex; gap:2px; margin-top:2px; }
+.planner-cal-d-dot { width:3px; height:3px; border-radius:50%; }
+.planner-cal-legenda { display:flex; gap:12px; padding:6px 0 2px; }
+.planner-cal-leg { display:flex; align-items:center; gap:4px; font-size:9px; color:var(--text3); }
+.planner-cal-leg-dot { width:5px; height:5px; border-radius:50%; }
+
+/* MODAL COMPROMISSO */
+.planner-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:700; align-items:flex-end; backdrop-filter:blur(4px); }
+.planner-modal.open { display:flex; }
+.planner-modal-sheet { background:var(--surface); border-radius:20px 20px 0 0; padding:20px; width:100%; }
+.planner-modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 16px; }
+.planner-modal-titulo { font-size:17px; font-weight:700; color:var(--text); margin-bottom:14px; }
+.planner-modal-input { width:100%; background:var(--bg); border:none; border-radius:12px; padding:12px 14px; color:var(--text); font-family:inherit; font-size:15px; outline:none; margin-bottom:10px; }
+.planner-modal-row { display:flex; gap:8px; margin-bottom:10px; }
+.planner-modal-hora { flex:1; background:var(--bg); border:none; border-radius:12px; padding:12px 14px; color:var(--text); font-family:inherit; font-size:15px; outline:none; }
+.planner-modal-cor-wrap { display:flex; gap:8px; margin-bottom:14px; }
+.planner-modal-cor { width:32px; height:32px; border-radius:50%; border:2px solid transparent; cursor:pointer; }
+.planner-modal-cor.ativa { border-color:var(--text); }
+.planner-modal-salvar { width:100%; background:var(--blue); color:#fff; border:none; border-radius:12px; padding:14px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; }
 
 </style>
 </head>
@@ -686,18 +838,26 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     </div>
     <div class="stats-bar">
       <div class="stat-item" onclick="abrirFiltroHeader('today')"><div class="stat-num c-hoje" id="cnt-today">0</div><div class="stat-lbl">Hoje</div></div>
-      <div class="stat-item" onclick="abrirFiltroHeader('green')"><div class="stat-num c-verde" id="cnt-green">0</div><div class="stat-lbl">≤30d</div></div>
-      <div class="stat-item" onclick="abrirFiltroHeader('blue')"><div class="stat-num c-azul" id="cnt-blue">0</div><div class="stat-lbl">31-60d</div></div>
-      <div class="stat-item" onclick="abrirFiltroHeader('red')"><div class="stat-num c-red" id="cnt-red">0</div><div class="stat-lbl">>60d</div></div>
-      <div class="stat-item" onclick="abrirFiltroHeader('purple')"><div class="stat-num c-roxo" id="cnt-purple">0</div><div class="stat-lbl">Nunca</div></div>
+      <div class="stat-item" onclick="abrirFiltroHeader('green')"><div class="stat-num c-verde" id="cnt-green">0</div><div class="stat-lbl">1 mês</div></div>
+      <div class="stat-item" onclick="abrirFiltroHeader('blue')"><div class="stat-num c-azul" id="cnt-blue">0</div><div class="stat-lbl">2 meses</div></div>
+      <div class="stat-item" onclick="abrirFiltroHeader('red')"><div class="stat-num c-red" id="cnt-red">0</div><div class="stat-lbl">+2 meses</div></div>
+      <div class="stat-item" onclick="abrirFiltroHeader('purple')"><div class="stat-num c-roxo" id="cnt-purple">0</div><div class="stat-lbl">Novos</div></div>
     </div>
   </div>
 
   <!-- BUSCA -->
   <div class="search-bar" id="search-bar">
-    <div class="search-inner">
-      <span>🔍</span>
-      <input type="search" id="search-input" placeholder="Buscar cliente, cidade..." oninput="renderList()">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="search-inner" style="flex:1" id="search-inner-box">
+        <span>🔍</span>
+        <input type="search" id="search-input" placeholder="Buscar cliente..." oninput="renderList()" style="flex:1">
+        <div id="cidade-ativa-tag" style="display:none;align-items:center;gap:4px">
+          <div style="width:1px;height:16px;background:var(--border)"></div>
+          <span id="cidade-ativa-nome" class="cidade-ativa-tag" onclick="limparFiltroCidade()"></span>
+        </div>
+        <button onclick="abrirFiltroCidade()" style="background:none;border:none;font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0" title="Filtrar por cidade">📍</button>
+      </div>
+      <button onclick="openCadastro()" style="flex-shrink:0;background:var(--blue);border:none;border-radius:10px;height:36px;padding:0 14px;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap">＋ Novo</button>
     </div>
   </div>
 
@@ -783,8 +943,8 @@ const LABEL_ZOOM = 11;
 var activeFilter = null;
 let currentScreen = 'list';
 let searchQuery = '';
-const STATUS_LABEL = { today:'Hoje', green:'≤30d', blue:'31–60d', red:'>60d', purple:'Nunca' };
-const STATUS_COLOR = { today:'var(--gold)', green:'var(--green)', blue:'var(--blue)', red:'var(--red)', purple:'var(--purple)' };
+const STATUS_LABEL = { today:'Hoje', green:'1 mês', blue:'2 meses', red:'+2 meses', purple:'Novos' };
+const STATUS_COLOR = { today:'var(--green)', green:'var(--blue)', blue:'var(--orange)', red:'var(--red)', purple:'var(--purple)' };
 const PIN_COLOR    = { today:'#fbbf24', green:'#4ade80', blue:'#60a5fa', red:'#f87171', purple:'#c084fc' };
 
 
@@ -898,6 +1058,7 @@ function esconderLogin() {
   } catch(e) {}
   loadDemo();
   carregarLembretesSupabase();
+  iniciarTarefas();
 }
 
 function mostrarLogin() {
@@ -1188,6 +1349,7 @@ function loadDemo() {
   {id:1106,nome:"Julio Cesar Arndt 05704270964",cnpj:"46.654.781/0001-39",cidade:"Jaragua Do Sul - SC",endereco:"RUA ANTONIO J MACEDO, 324 - JARAGUA ESQUERDO - 89253424",ultimaVisita:null,ultimaObs:"",lat:-26.5030526,lng:-49.1062233},
   {id:1107,nome:"GMAD BRASIL ECOMMERCE",cnpj:"42.021.552/0001-26",cidade:"Joinville - SC",endereco:"R TENENTE ANTONIO JOAO, 4531 - JARDIM SOFIA - 89223395",ultimaVisita:null,ultimaObs:"",lat:-26.2395754,lng:-48.84981}
   ].map(c => ({...c, visitadoHoje:false, horaHoje:null, lat:c.lat||null, lng:c.lng||null}));
+  restaurarCheckinsDoDia();
   renderList();
   geocodeAll();
   // Inicia desktop se estiver em tela grande
@@ -1278,24 +1440,24 @@ function showScreen(s) {
   const el = document.getElementById('screen-' + s);
   if (el) el.classList.add('active');
 
-  // Atualiza navbar
   document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
   const navEl = document.getElementById('nav-' + s);
   if (navEl) navEl.classList.add('active');
 
-  // Mostra/esconde busca e FAB
   const searchBar = document.getElementById('search-bar');
-  if (searchBar) searchBar.style.display = s === 'list' ? 'block' : 'none';
+  const segBar = document.getElementById('seg-filtro-bar');
   const fab = document.querySelector('.fab');
+
+  if (searchBar) searchBar.style.display = s === 'list' ? 'block' : 'none';
+  if (segBar) segBar.style.display = s === 'list' ? 'flex' : 'none';
   if (fab) fab.style.display = s === 'list' ? 'flex' : 'none';
 
   currentScreen = s;
   if (s === 'map' && gmap) renderMapMarkers();
   if (s === 'list') renderList();
-  if (s === 'report') {
-    renderReport();
-    if (currentUser) carregarPeriodoRelatorio();
-  }
+  if (s === 'report') { renderReport(); if (currentUser) carregarPeriodoRelatorio(); }
+  if (s === 'tarefas') renderTarefas();
+  if (s === 'planner') { plannerRef = new Date(); plannerDiaSel = new Date(); renderPlanner(); }
 }
 
 // ── MAPA ─────────────────────────────────────────────────
@@ -1373,12 +1535,37 @@ function refreshMarkers() { renderMapMarkers(); }
 // ── LISTA ──────────────────────────────────────────────
 function renderList() {
   const q = ((document.getElementById('search-input') || {}).value || '').toLowerCase();
-  const filtered = clientes.filter(c =>
+  let filtered = clientes.filter(c =>
     c.nome.toLowerCase().includes(q) ||
     c.cidade.toLowerCase().includes(q) ||
     (c.cnpj || '').includes(q)
   );
+
+  // Filtro de segmento
+  if (segmentoFiltro) {
+    filtered = filtered.filter(c => c.segmento === segmentoFiltro);
+  }
+
+  // Filtro de cidade
+  if (cidadeFiltro) {
+    filtered = filtered.filter(c => c.cidade.replace(' - SC','').replace(' - PR','').trim() === cidadeFiltro);
+  }
+
   const toShow = activeFilter ? filtered.filter(c => getStatus(c) === activeFilter) : filtered;
+
+  // Mostra/esconde barra de filtro ativo
+  const filterBar = document.getElementById('active-filter-bar');
+  if (filterBar) {
+    if (activeFilter) {
+      const labels = {today:'Hoje',green:'1 mês',blue:'2 meses',red:'+2 meses',purple:'Novos'};
+      const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
+      filterBar.style.display = 'flex';
+      filterBar.innerHTML = '<span style="font-size:12px;color:var(--text2)">Filtrando: <strong style="color:' + cores[activeFilter] + '">' + labels[activeFilter] + '</strong></span>' +
+        '<button onclick="limparFiltro()" style="background:none;border:none;font-size:12px;font-weight:700;color:var(--blue);cursor:pointer;padding:0;font-family:inherit">✕ Ver todos</button>';
+    } else {
+      filterBar.style.display = 'none';
+    }
+  }
 
   // Contadores
   const counts = { today:0, green:0, blue:0, red:0, purple:0 };
@@ -1389,7 +1576,6 @@ function renderList() {
     if (el) el.textContent = counts[s];
   });
 
-  // Ordena e agrupa
   const order = { today:0, green:1, blue:2, red:3, purple:4 };
   toShow.sort((a,b) => {
     const sa = getStatus(a), sb = getStatus(b);
@@ -1399,10 +1585,10 @@ function renderList() {
 
   const grupos = [
     {key:'today', label:'Hoje'},
-    {key:'green', label:'Até 30 dias'},
-    {key:'blue',  label:'31 a 60 dias'},
-    {key:'red',   label:'Mais de 60 dias'},
-    {key:'purple',label:'Nunca visitados'},
+    {key:'green', label:'Até 1 mês'},
+    {key:'blue',  label:'1 a 2 meses'},
+    {key:'red',   label:'Mais de 2 meses'},
+    {key:'purple',label:'Novos'},
   ];
 
   let out = '';
@@ -1418,6 +1604,11 @@ function renderList() {
   if (el) el.innerHTML = out;
 }
 
+function limparFiltro() {
+  activeFilter = null;
+  renderList();
+}
+
 function filtrarStatus(status) {
   activeFilter = (activeFilter === status) ? null : status;
   renderList();
@@ -1431,14 +1622,14 @@ function cardHTML(c) {
   const compradorMatch = c.nome.match(/\(([^)]+)\)/);
   const comprador = compradorMatch ? compradorMatch[1] : '';
   const badgeTexto = c.visitadoHoje ? ('✓ ' + c.horaHoje) :
-    (s === 'today' ? 'Hoje' : s === 'purple' ? 'Nunca' : lv.text);
+    (s === 'today' ? 'Hoje' : s === 'purple' ? 'Novos' : lv.text);
   return '<div class="client-card" onclick="openPerfil(' + c.id + ')">' +
     '<div class="card-dot ' + (c.visitadoHoje ? 'today' : s) + '"></div>' +
     '<div class="card-content">' +
       '<div class="card-name">' + nomeBase + '</div>' +
       (comprador ? '<div class="card-contact">👤 ' + comprador + '</div>' : '') +
       '<div class="card-bottom">' +
-        '<div class="card-city">📍 ' + c.cidade.replace(' - SC','').replace(' - PR','') + '</div>' +
+        '<div style="display:flex;align-items:center;gap:5px">' +'<div class="card-city">📍 ' + c.cidade.replace(' - SC','').replace(' - PR','') + '</div>' +(c.segmento ? '<span class="seg-tag">' + (SEGMENTO_LABEL[c.segmento]||c.segmento) + '</span>' : '') +'</div>' +
         '<span class="card-badge ' + (c.visitadoHoje ? 'today' : s) + '">' + badgeTexto + '</span>' +
       '</div>' +
     '</div>' +
@@ -1454,7 +1645,7 @@ function renderReport() {
   const ehMesAtual = mesRef === hoje.getMonth() && anoRef === hoje.getFullYear();
   const mesAtual = hoje.getMonth();
   const anoAtual = hoje.getFullYear();
-  const nomeMes = hoje.toLocaleDateString('pt-BR', {month:'long'});
+  const nomeMes = new Date(anoRef, mesRef, 1).toLocaleDateString('pt-BR', {month:'long'});
   const nomeMesCap = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
 
   // Classifica clientes
@@ -1535,7 +1726,7 @@ function renderReport() {
     const nomeBase = c.nome.replace(/\s*\([^)]*\)/, '').trim();
     const s = getStatus(c);
     const lv = lastVisitText(c);
-    const cor = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'}[s];
+    const cor = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'}[s];
     const tempo = c.visitadoHoje ? ('✓ '+c.horaHoje) : (s==='purple'?'Nunca':lv.text);
     const bg = i%2===0 ? 'var(--card)' : 'var(--bg)';
     return '<div style="display:flex;align-items:center;padding:12px 16px;background:'+bg+';border-bottom:1px solid var(--border);gap:12px" onclick="openPerfil('+c.id+')">' +
@@ -2080,6 +2271,10 @@ async function checkinPerfil() {
   const hora = agora.toTimeString().slice(0,5);
   const dataHoje = agora.toISOString().slice(0,10);
 
+  // Guarda obs da visita anterior antes de sobrescrever
+  if (c.ultimaVisita && !c.obsUltimaCompra) {
+    c.obsUltimaCompra = c.ultimaObs || '';
+  }
   c.visitadoHoje = true;
   c.horaHoje = hora;
   c.ultimaObs = obs;
@@ -2095,11 +2290,21 @@ async function checkinPerfil() {
   renderList();
   if (gmap) renderMapMarkers();
 
-  // Salva no Supabase (principal)
+  // Salva no Supabase
   await salvarCheckinSupabase(c, obs, dataHoje, hora);
 
-  btn.textContent = '✓ Visitado às ' + hora;
-  showToast('✓ Check-in ' + c.nome.split(' ')[0] + ' salvo — ' + hora);
+  // Salva backup local do histórico
+  salvarHistoricoLocal(id, dataHoje, hora, obs);
+
+  // Limpa campo de observação
+  const obsEl = document.getElementById('p-obs');
+  if (obsEl) obsEl.value = '';
+
+  // Botão fica verde confirmando
+  btn.textContent = '✓ Salvo às ' + hora;
+  btn.style.background = 'var(--green)';
+
+  showToast('✓ Check-in salvo — ' + hora);
 }
 
 function openMapsPerfil() {
@@ -2121,7 +2326,7 @@ function renderHistorico(id, c) {
   if (c.ultimaVisita && !items.some(v => v.data === c.ultimaVisita && v.compra)) {
     items.push({
       data: c.ultimaVisita,
-      obs: c.ultimaObs || '',
+      obs: c.obsUltimaCompra || c.ultimaObs || '',
       compra: true,
       hoje: false
     });
@@ -2253,6 +2458,49 @@ async function criarRepresentante() {
 
 
 
+
+// ── BACKUP LOCAL DO HISTÓRICO ────────────────────────
+function salvarHistoricoLocal(clienteId, data, hora, obs) {
+  try {
+    const key = 'hist_' + clienteId;
+    const hist = JSON.parse(localStorage.getItem(key) || '[]');
+    // Remove duplicata do mesmo dia/hora
+    const semDup = hist.filter(h => !(h.data === data && h.hora === hora));
+    semDup.unshift({ data, hora, obs: obs || '' });
+    // Mantém últimos 30 registros por cliente
+    localStorage.setItem(key, JSON.stringify(semDup.slice(0, 30)));
+  } catch(e) {}
+}
+
+function carregarHistoricoLocal(clienteId) {
+  try {
+    return JSON.parse(localStorage.getItem('hist_' + clienteId) || '[]');
+  } catch(e) { return []; }
+}
+
+function restaurarCheckinsDoDia() {
+  // Ao abrir o app, restaura check-ins do dia atual do localStorage
+  const hoje = new Date().toISOString().slice(0,10);
+  clientes.forEach(c => {
+    const hist = carregarHistoricoLocal(c.id);
+    const checkinHoje = hist.find(h => h.data === hoje);
+    if (checkinHoje) {
+      c.visitadoHoje = true;
+      c.horaHoje = checkinHoje.hora;
+      c.ultimaObs = checkinHoje.obs;
+      if (!historicoVisitas[c.id]) historicoVisitas[c.id] = [];
+      const jaExiste = historicoVisitas[c.id].some(h => h.data === hoje && h.hoje);
+      if (!jaExiste) {
+        historicoVisitas[c.id].unshift({ data: hoje, hora: checkinHoje.hora, obs: checkinHoje.obs, hoje: true });
+      }
+    }
+    // Carrega histórico local completo
+    if (hist.length && !historicoVisitas[c.id]?.length) {
+      historicoVisitas[c.id] = hist.map(h => ({ data: h.data, hora: h.hora, obs: h.obs }));
+    }
+  });
+}
+
 // ── PERSISTÊNCIA SUPABASE ────────────────────────────
 // Salva check-in no Supabase
 async function salvarCheckinSupabase(c, obs, data, hora) {
@@ -2272,7 +2520,10 @@ async function salvarCheckinSupabase(c, obs, data, hora) {
 
 // Busca histórico de um cliente no Supabase
 async function buscarHistoricoSupabase(clienteId) {
-  if (!currentUser) return [];
+  // Primeiro carrega do backup local (instantâneo)
+  const local = carregarHistoricoLocal(clienteId);
+
+  if (!currentUser) return local;
   try {
     const { data, error } = await sb
       .from('visitas')
@@ -2281,9 +2532,12 @@ async function buscarHistoricoSupabase(clienteId) {
       .eq('rep_id', currentUser.id)
       .order('data', { ascending: false })
       .order('hora', { ascending: false });
-    if (error) return [];
-    return data || [];
-  } catch(e) { return []; }
+    if (error) return local;
+    // Combina Supabase + local (sem duplicatas)
+    const supaIds = new Set((data||[]).map(v => v.data + v.hora));
+    const somenteLocal = local.filter(h => !supaIds.has(h.data + h.hora));
+    return [...(data||[]), ...somenteLocal];
+  } catch(e) { return local; }
 }
 
 // Busca visitas de um período (mês/ano)
@@ -2354,6 +2608,381 @@ function navegarMes(delta) {
   carregarPeriodoRelatorio();
 }
 
+
+
+// ── PLANNER ──────────────────────────────────────────
+var plannerView = 'semana';
+var plannerRef = new Date(); // data de referência
+var plannerDiaSel = new Date(); // dia selecionado
+
+const NOMES_DIA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const NOMES_MES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const NOMES_MES_CURTO = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function getPlannerData() {
+  return JSON.parse(localStorage.getItem('planner_v1') || '{}');
+}
+function setPlannerData(obj) {
+  localStorage.setItem('planner_v1', JSON.stringify(obj));
+}
+function getPlannerDia(dataStr) {
+  const d = getPlannerData();
+  return d[dataStr] || { cidades:'', notas:'', eventos:[] };
+}
+function setPlannerDia(dataStr, obj) {
+  const d = getPlannerData();
+  d[dataStr] = obj;
+  setPlannerData(d);
+}
+
+function dataStr(d) {
+  return d.toISOString().slice(0,10);
+}
+
+function irParaHojePlanner() {
+  plannerRef = new Date();
+  plannerDiaSel = new Date();
+  renderPlanner();
+}
+
+function navegarPlanner(delta) {
+  if (plannerView === 'semana') {
+    plannerRef.setDate(plannerRef.getDate() + delta * 7);
+  } else {
+    plannerRef.setMonth(plannerRef.getMonth() + delta);
+  }
+  plannerDiaSel = new Date(plannerRef);
+  renderPlanner();
+}
+
+function setViewPlanner(view) {
+  plannerView = view;
+  document.getElementById('planner-btn-semana').classList.toggle('active', view === 'semana');
+  document.getElementById('planner-btn-mes').classList.toggle('active', view === 'mes');
+  document.getElementById('planner-semana-wrap').style.display = view === 'semana' ? 'flex' : 'none';
+  document.getElementById('planner-semana-wrap').style.flexDirection = 'column';
+  const mesWrap = document.getElementById('planner-mes-wrap');
+  mesWrap.style.display = view === 'mes' ? 'flex' : 'none';
+  renderPlanner();
+}
+
+function getCheckinsDia(dataStr) {
+  // Busca check-ins do dia no histórico local
+  const resultado = [];
+  clientes.forEach(c => {
+    const hist = carregarHistoricoLocal(c.id);
+    hist.forEach(h => {
+      if (h.data === dataStr) {
+        resultado.push({ cliente: c, hora: h.hora, obs: h.obs });
+      }
+    });
+    // Check-in de hoje
+    if (c.visitadoHoje && dataStr === new Date().toISOString().slice(0,10)) {
+      const jaExiste = resultado.some(r => r.cliente.id === c.id);
+      if (!jaExiste) resultado.push({ cliente: c, hora: c.horaHoje, obs: c.ultimaObs });
+    }
+  });
+  return resultado.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+}
+
+function getCidadesCheckins(checkins) {
+  const cidades = {};
+  checkins.forEach(ci => {
+    const cidade = ci.cliente.cidade.replace(' - SC','').replace(' - PR','').trim();
+    if (!cidades[cidade]) cidades[cidade] = [];
+    cidades[cidade].push(ci);
+  });
+  return cidades;
+}
+
+function renderPlanner() {
+  if (plannerView === 'semana') renderPlannerSemana();
+  else renderPlannerMes();
+}
+
+function renderPlannerSemana() {
+  const hoje = new Date();
+  const hoje0 = new Date(hoje); hoje0.setHours(0,0,0,0);
+
+  // Início da semana (domingo)
+  const ref = new Date(plannerRef);
+  const diaSem = ref.getDay();
+  const iniSem = new Date(ref); iniSem.setDate(ref.getDate() - diaSem); iniSem.setHours(0,0,0,0);
+  const fimSem = new Date(iniSem); fimSem.setDate(iniSem.getDate() + 6);
+
+  const iniStr = iniSem.getDate() + ' ' + NOMES_MES_CURTO[iniSem.getMonth()];
+  const fimStr = fimSem.getDate() + ' ' + NOMES_MES_CURTO[fimSem.getMonth()] + ' ' + fimSem.getFullYear();
+  document.getElementById('planner-titulo').textContent = iniStr + ' — ' + fimStr;
+  document.getElementById('planner-sub').textContent = 'Semana ' + getSemanaAno(iniSem);
+
+  // Mini dias
+  const miniEl = document.getElementById('planner-dias-mini');
+  const labels = ['D','S','T','Q','Q','S','S'];
+  miniEl.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(iniSem); d.setDate(iniSem.getDate() + i);
+    const ds = dataStr(d);
+    const planDia = getPlannerDia(ds);
+    const checkins = getCheckinsDia(ds);
+    const temPlano = planDia.cidades || planDia.notas || planDia.eventos?.length;
+    const temCheckin = checkins.length > 0;
+    const ehHoje = d.toDateString() === hoje.toDateString();
+    const ehSel = d.toDateString() === plannerDiaSel.toDateString();
+    const ehFds = i === 0 || i === 6;
+
+    const div = document.createElement('div');
+    div.className = 'planner-dia-mini';
+    div.onclick = () => { plannerDiaSel = new Date(d); renderPlannerSemana(); };
+
+    let numClass = 'planner-dia-mini-num';
+    if (ehHoje) numClass += ' hoje';
+    else if (ehSel) numClass += ' selecionado';
+    else if (ehFds) numClass += ' fds';
+
+    let dotsHTML = '';
+    if (temCheckin) dotsHTML += '<div class="planner-dia-mini-dot" style="background:var(--green)"></div>';
+    if (planDia.eventos?.length) dotsHTML += '<div class="planner-dia-mini-dot" style="background:var(--orange)"></div>';
+    if (temPlano && !temCheckin) dotsHTML += '<div class="planner-dia-mini-dot" style="background:var(--blue)"></div>';
+
+    div.innerHTML = '<div class="planner-dia-mini-label">' + labels[i] + '</div>' +
+      '<div class="' + numClass + '">' + d.getDate() + '</div>' +
+      (dotsHTML ? '<div class="planner-dia-mini-dots">' + dotsHTML + '</div>' : '');
+    miniEl.appendChild(div);
+  }
+
+  // Corpo — só o dia selecionado
+  const sel = plannerDiaSel;
+  const ds = dataStr(sel);
+  const planDia = getPlannerDia(ds);
+  const checkins = getCheckinsDia(ds);
+  const ehHoje = sel.toDateString() === hoje.toDateString();
+  const ehPassado = sel < hoje0;
+  const cidades = getCidadesCheckins(checkins);
+
+  let html = '<div class="planner-dia-header">' +
+    '<div><div class="planner-dia-titulo">' + NOMES_DIA[sel.getDay()] + '-feira</div>' +
+    '<div class="planner-dia-data">' + sel.getDate() + ' de ' + NOMES_MES[sel.getMonth()] + (ehHoje ? ' · Hoje' : '') + '</div></div>';
+  if (checkins.length) html += '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;background:var(--green-bg);color:var(--green)">' + checkins.length + ' visita' + (checkins.length>1?'s':'') + '</span>';
+  html += '</div>';
+
+  // Planejamento (cidades e notas)
+  html += '<div class="planner-bloco">' +
+    '<div class="planner-bloco-label">📍 Cidades planejadas</div>' +
+    '<textarea class="planner-bloco-textarea" id="plan-cidades" placeholder="Ex: Joinville — Assocom, Clock&#10;Garuva — Besen, Matriz" onblur="salvarPlannerDia(this.dataset.ds)" data-ds="' + ds + '">' + (planDia.cidades||'') + '</textarea>' +
+  '</div>';
+
+  // Eventos
+  html += '<div class="planner-bloco"><div class="planner-bloco-label">📌 Compromissos</div>';
+  if (planDia.eventos?.length) {
+    const COR_MAP = {blue:'var(--blue)',orange:'var(--orange)',green:'var(--green)',red:'var(--red)',purple:'var(--purple)'};
+    planDia.eventos.forEach((ev, idx) => {
+      html += '<div class="planner-evento-item">' +
+        '<div class="planner-evento-cor" style="background:' + (COR_MAP[ev.cor]||'var(--blue)') + '"></div>' +
+        '<div class="planner-evento-txt">' + ev.txt + '</div>' +
+        '<div class="planner-evento-hora">' + (ev.hora||'') + '</div>' +
+        '<div class="planner-evento-del" data-ds="' + ds + '" data-idx="' + idx + '" onclick="deletarEventoPlanner(this.dataset.ds,parseInt(this.dataset.idx))">×</div>' +
+      '</div>';
+    });
+  } else {
+    html += '<div style="font-size:13px;color:var(--text3);text-align:center;padding:8px 0">Nenhum compromisso</div>';
+  }
+  html += '<button class="planner-add-btn" data-ds="' + ds + '" onclick="abrirModalPlanner(this.dataset.ds)">+ Adicionar compromisso</button></div>';
+
+  // Check-ins reais
+  if (Object.keys(cidades).length) {
+    html += '<div class="planner-bloco"><div class="planner-bloco-label">✅ Visitados no dia</div>';
+    Object.entries(cidades).forEach(([cidade, items]) => {
+      html += '<div class="planner-checkin-cidade">📍 ' + cidade + '</div>';
+      items.forEach(ci => {
+        const nome = ci.cliente.nome.replace(/\s*\([^)]*\)/g,'').trim();
+        html += '<div class="planner-checkin-item">' +
+          '<div class="planner-checkin-dot"></div>' +
+          '<div class="planner-checkin-nome">' + nome + '</div>' +
+          '<div class="planner-checkin-hora">' + (ci.hora||'') + '</div>' +
+        '</div>';
+      });
+    });
+    html += '</div>';
+  }
+
+  // Notas
+  html += '<div class="planner-bloco">' +
+    '<div class="planner-bloco-label">📝 Notas</div>' +
+    '<textarea class="planner-bloco-textarea" id="plan-notas" placeholder="Anotações livres..." data-ds="' + ds + '" onblur="salvarPlannerDia(this.dataset.ds)">' + (planDia.notas||'') + '</textarea>' +
+  '</div>';
+
+  document.getElementById('planner-body-semana').innerHTML = html;
+}
+
+function renderPlannerMes() {
+  const hoje = new Date();
+  const mes = plannerRef.getMonth();
+  const ano = plannerRef.getFullYear();
+  document.getElementById('planner-titulo').textContent = NOMES_MES[mes] + ' ' + ano;
+  document.getElementById('planner-sub').textContent = '30 dias';
+
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const ultimoDia = new Date(ano, mes+1, 0).getDate();
+  const diasMesAnt = new Date(ano, mes, 0).getDate();
+
+  const grid = document.getElementById('planner-cal-grid');
+  grid.innerHTML = '';
+
+  // Dias do mês anterior
+  for (let i = primeiroDia-1; i >= 0; i--) {
+    const div = document.createElement('div');
+    div.className = 'planner-cal-d outro';
+    div.innerHTML = '<div class="planner-cal-d-num">' + (diasMesAnt-i) + '</div>';
+    grid.appendChild(div);
+  }
+
+  // Dias do mês atual
+  for (let d = 1; d <= ultimoDia; d++) {
+    const data = new Date(ano, mes, d);
+    const ds = dataStr(data);
+    const planDia = getPlannerDia(ds);
+    const checkins = getCheckinsDia(ds);
+    const ehHoje = data.toDateString() === hoje.toDateString();
+    const ehSel = data.toDateString() === plannerDiaSel.toDateString();
+    const temPlano = planDia.cidades || planDia.notas || planDia.eventos?.length;
+    const temCheckin = checkins.length > 0;
+    const temEvento = planDia.eventos?.length > 0;
+
+    const div = document.createElement('div');
+    let cls = 'planner-cal-d';
+    if (ehHoje) cls += ' hoje';
+    else if (temAlgo(planDia, checkins)) cls += ' tem-algo';
+    if (ehSel && !ehHoje) cls += ' selecionado';
+    div.className = cls;
+
+    let dotsHTML = '';
+    if (temCheckin) dotsHTML += '<div class="planner-cal-d-dot" style="background:var(--green)"></div>';
+    if (temEvento) dotsHTML += '<div class="planner-cal-d-dot" style="background:var(--orange)"></div>';
+    if (temPlano && !temCheckin && !temEvento) dotsHTML += '<div class="planner-cal-d-dot" style="background:var(--blue)"></div>';
+
+    div.innerHTML = '<div class="planner-cal-d-num">' + d + '</div>' +
+      (dotsHTML ? '<div class="planner-cal-d-dots">' + dotsHTML + '</div>' : '');
+    div.onclick = () => { plannerDiaSel = new Date(data); renderPlannerMes(); };
+    grid.appendChild(div);
+  }
+
+  // Completa
+  const total = primeiroDia + ultimoDia;
+  const resto = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let d = 1; d <= resto; d++) {
+    const div = document.createElement('div');
+    div.className = 'planner-cal-d outro';
+    div.innerHTML = '<div class="planner-cal-d-num">' + d + '</div>';
+    grid.appendChild(div);
+  }
+
+  // Detalhe do dia selecionado
+  const sel = plannerDiaSel;
+  const ds = dataStr(sel);
+  const planDia = getPlannerDia(ds);
+  const checkins = getCheckinsDia(ds);
+  const cidades = getCidadesCheckins(checkins);
+  const COR_MAP = {blue:'var(--blue)',orange:'var(--orange)',green:'var(--green)',red:'var(--red)',purple:'var(--purple)'};
+
+  let bodyHTML = '<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">' +
+    NOMES_DIA[sel.getDay()] + ', ' + sel.getDate() + ' de ' + NOMES_MES[sel.getMonth()] + '</div>';
+
+  if (checkins.length) {
+    bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">✅ Visitados</div>';
+    Object.entries(cidades).forEach(([cidade, items]) => {
+      bodyHTML += '<div class="planner-checkin-cidade">📍 ' + cidade + '</div>';
+      items.forEach(ci => {
+        const nome = ci.cliente.nome.replace(/\s*\([^)]*\)/g,'').trim();
+        bodyHTML += '<div class="planner-checkin-item"><div class="planner-checkin-dot"></div><div class="planner-checkin-nome">' + nome + '</div><div class="planner-checkin-hora">' + (ci.hora||'') + '</div></div>';
+      });
+    });
+    bodyHTML += '</div>';
+  }
+
+  if (planDia.eventos?.length) {
+    bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">📌 Compromissos</div>';
+    planDia.eventos.forEach(ev => {
+      bodyHTML += '<div class="planner-evento-item"><div class="planner-evento-cor" style="background:' + (COR_MAP[ev.cor]||'var(--blue)') + '"></div><div class="planner-evento-txt">' + ev.txt + '</div><div class="planner-evento-hora">' + (ev.hora||'') + '</div></div>';
+    });
+    bodyHTML += '</div>';
+  }
+
+  if (planDia.cidades) {
+    bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">📍 Planejado</div><div style="font-size:13px;color:var(--text);line-height:1.6">' + planDia.cidades.split(String.fromCharCode(10)).join('<br>') + '</div></div>';
+  }
+
+  if (planDia.notas) {
+    bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">📝 Notas</div><div style="font-size:13px;color:var(--text);line-height:1.6">' + planDia.notas.split(String.fromCharCode(10)).join('<br>') + '</div></div>';
+  }
+
+  if (!checkins.length && !planDia.cidades && !planDia.eventos?.length && !planDia.notas) {
+    bodyHTML += '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Nenhum registro neste dia</div>';
+  }
+
+  document.getElementById('planner-body-mes').innerHTML = bodyHTML;
+}
+
+function temAlgo(planDia, checkins) {
+  return checkins.length > 0 || planDia.cidades || planDia.notas || planDia.eventos?.length;
+}
+
+function getSemanaAno(d) {
+  const inicio = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d - inicio) / 86400000 + inicio.getDay() + 1) / 7);
+}
+
+function salvarPlannerDia(ds) {
+  const cidades = document.getElementById('plan-cidades')?.value || '';
+  const notas = document.getElementById('plan-notas')?.value || '';
+  const atual = getPlannerDia(ds);
+  setPlannerDia(ds, { ...atual, cidades, notas });
+}
+
+// Modal de compromisso
+var plannerModalDia = '';
+var plannerCorSel = 'blue';
+
+function abrirModalPlanner(ds) {
+  plannerModalDia = ds;
+  plannerCorSel = 'blue';
+  document.getElementById('planner-ev-txt').value = '';
+  document.getElementById('planner-ev-hora').value = '09:00';
+  document.querySelectorAll('.planner-modal-cor').forEach(el => {
+    el.classList.toggle('ativa', el.dataset.cor === 'blue');
+    el.onclick = () => {
+      plannerCorSel = el.dataset.cor;
+      document.querySelectorAll('.planner-modal-cor').forEach(e => e.classList.remove('ativa'));
+      el.classList.add('ativa');
+    };
+  });
+  document.getElementById('planner-modal').classList.add('open');
+}
+
+function fecharModalPlanner(e) {
+  if (!e || e.target === document.getElementById('planner-modal')) {
+    document.getElementById('planner-modal').classList.remove('open');
+  }
+}
+
+function salvarEventoPlanner() {
+  const txt = document.getElementById('planner-ev-txt').value.trim();
+  if (!txt) return;
+  const hora = document.getElementById('planner-ev-hora').value;
+  const atual = getPlannerDia(plannerModalDia);
+  const eventos = atual.eventos || [];
+  eventos.push({ txt, hora, cor: plannerCorSel });
+  eventos.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+  setPlannerDia(plannerModalDia, { ...atual, eventos });
+  fecharModalPlanner();
+  renderPlanner();
+}
+
+function deletarEventoPlanner(ds, idx) {
+  const atual = getPlannerDia(ds);
+  atual.eventos.splice(idx, 1);
+  setPlannerDia(ds, atual);
+  renderPlanner();
+}
 
 // ── CALENDÁRIO ────────────────────────────────────────
 let calMes = new Date().getMonth();
@@ -2531,34 +3160,62 @@ function toggleCidade(id) {
 }
 
 function abrirFiltro(status) {
-  const labels = { today:'Visitados hoje', green:'Clientes ≤ 30 dias', blue:'Clientes 31-60 dias', red:'Clientes > 60 dias', purple:'Nunca visitados' };
-  const cores  = { today:'var(--orange)', green:'var(--green)', blue:'var(--blue)', red:'var(--red)', purple:'var(--purple)' };
+  const labels = { today:'Visitados hoje', green:'Clientes — 1 mês', blue:'Clientes — 2 meses', red:'Clientes — +2 meses', purple:'Novos' };
+  const cores  = { today:'var(--green)', green:'var(--blue)', blue:'var(--orange)', red:'var(--red)', purple:'var(--purple)' };
 
   const grupo = clientes.filter(c => getStatus(c) === status);
-  const titulo = labels[status] + ' (' + grupo.length + ')';
 
-  document.getElementById('filtro-titulo').textContent = titulo;
+  // Monta lista de cidades únicas do grupo
+  const cidades = [...new Set(grupo.map(c => c.cidade.replace(' - SC','').replace(' - PR','').trim()))].sort();
+
+  document.getElementById('filtro-titulo').textContent = labels[status] + ' (' + grupo.length + ')';
   document.getElementById('filtro-titulo').style.color = cores[status];
   document.getElementById('filtro-header').style.borderBottom = '2px solid ' + cores[status];
 
-  const lista = grupo.map((c,i) => {
-    const nomeBase = c.nome.replace(/\s*\([^)]*\)/g, '').trim();
-    const s = getStatus(c);
-    const lv = lastVisitText(c);
-    const tempo = c.visitadoHoje ? ('✓ '+c.horaHoje) : (s==='purple'?'Nunca':lv.text);
-    const bg = i%2===0 ? 'var(--card)' : 'var(--bg)';
-    return '<div style="display:flex;align-items:center;padding:13px 16px;background:'+bg+';border-bottom:1px solid var(--border);gap:12px;cursor:pointer" onclick="fecharFiltro();openPerfil('+c.id+')">' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nomeBase+'</div>' +
-        '<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 '+c.cidade.replace(' - SC','').replace(' - PR','')+'</div>' +
-      '</div>' +
-      '<div style="font-size:13px;font-weight:700;color:'+cores[status]+';flex-shrink:0">'+tempo+'</div>' +
-      '<div style="color:var(--text3);font-size:16px">›</div>' +
-    '</div>';
-  }).join('') || '<div style="padding:20px;text-align:center;color:var(--text3)">Nenhum cliente</div>';
+  // Função para renderizar lista com filtro de cidade
+  function renderFiltroLista(cidadeFiltro) {
+    const filtrado = cidadeFiltro
+      ? grupo.filter(c => c.cidade.replace(' - SC','').replace(' - PR','').trim() === cidadeFiltro)
+      : grupo;
 
-  document.getElementById('filtro-lista').innerHTML = lista;
-  document.getElementById('filtro-panel').style.display = 'flex';
+    const lista = filtrado.map((c, i) => {
+      const nomeBase = c.nome.replace(/\s*\([^)]*\)/g, '').trim();
+      const lv = lastVisitText(c);
+      const tempo = c.visitadoHoje ? ('✓ ' + c.horaHoje) : (getStatus(c) === 'purple' ? 'Nunca' : lv.text);
+      const bg = i % 2 === 0 ? 'var(--card)' : 'var(--bg)';
+      return '<div style="display:flex;align-items:center;padding:13px 16px;background:' + bg + ';border-bottom:1px solid var(--border);gap:12px;cursor:pointer" onclick="fecharFiltro();openPerfil(' + c.id + ')">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nomeBase + '</div>' +
+          '<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 ' + c.cidade.replace(' - SC','').replace(' - PR','') + '</div>' +
+        '</div>' +
+        '<div style="font-size:13px;font-weight:700;color:' + cores[status] + ';flex-shrink:0">' + tempo + '</div>' +
+        '<div style="color:var(--text3);font-size:16px">›</div>' +
+      '</div>';
+    }).join('') || '<div style="padding:20px;text-align:center;color:var(--text3)">Nenhum cliente</div>';
+
+    document.getElementById('filtro-lista').innerHTML = lista;
+  }
+
+  // Monta seletor de cidades
+  const seletorHTML = cidades.length > 1
+    ? '<div id="filtro-cidades" style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">' +
+        '<button class="fcid-btn active" onclick="filtrarCidade(this,null)" style="flex-shrink:0;padding:5px 12px;border-radius:20px;border:none;background:var(--blue);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Todas</button>' +
+        cidades.map(c =>
+          '<button class="fcid-btn" onclick="filtrarCidade(this,\`' + c + '\`)" style="flex-shrink:0;padding:5px 12px;border-radius:20px;border:none;background:var(--bg);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">' + c + '</button>'
+        ).join('') +
+      '</div>'
+    : '';
+
+  window.renderFiltroListaAtual = renderFiltroLista;
+  window.filtrarCidade = function(btn, cidade) {
+    document.querySelectorAll('.fcid-btn').forEach(b => { b.style.background='var(--bg)'; b.style.color='var(--text)'; });
+    btn.style.background = 'var(--blue)'; btn.style.color = '#fff';
+    renderFiltroLista(cidade);
+  };
+
+  document.getElementById('filtro-lista').innerHTML = seletorHTML;
+  renderFiltroLista(null);
+  panel.style.display = 'flex';
 }
 
 function fecharFiltro() {
@@ -2596,11 +3253,11 @@ function dtRenderList() {
   filtered.sort((a,b) => order[getStatus(a)] - order[getStatus(b)] || a.nome.localeCompare(b.nome));
 
   const grupos = [
-    {key:'today',label:'Hoje'},{key:'green',label:'Até 30 dias'},
-    {key:'blue',label:'31-60 dias'},{key:'red',label:'Mais de 60 dias'},{key:'purple',label:'Nunca'}
+    {key:'today',label:'Hoje'},{key:'green',label:'Até 1 mês'},
+    {key:'blue',label:'31-60 dias'},{key:'red',label:'Mais de 2 meses'},{key:'purple',label:'Nunca'}
   ];
-  const cores = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'};
-  const bgs = {today:'var(--orange-bg)',green:'var(--green-bg)',blue:'var(--blue-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
+  const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
+  const bgs = {today:'var(--green-bg)',green:'var(--blue-bg)',blue:'var(--orange-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
 
   let out = '';
   grupos.forEach(g => {
@@ -2655,9 +3312,9 @@ function dtMostrarDetalhe(c) {
   const nome = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
   const comp = (c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
   const s = getStatus(c);
-  const cores = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'};
-  const bgs = {today:'var(--orange-bg)',green:'var(--green-bg)',blue:'var(--blue-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
-  const labels = {today:'Hoje',green:'≤30 dias',blue:'31-60 dias',red:'>60 dias',purple:'Nunca'};
+  const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
+  const bgs = {today:'var(--green-bg)',green:'var(--blue-bg)',blue:'var(--orange-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
+  const labels = {today:'Hoje',green:'≤30 dias',blue:'2 meses',red:'>60 dias',purple:'Novos'};
   const lembretes = JSON.parse(localStorage.getItem('lembretes')||'{}');
   const lembrete = lembretes[c.id]||'';
 
@@ -2731,6 +3388,254 @@ window.addEventListener('resize', () => {
   if (isDesktop()) dtInit();
 });
 
+
+
+// ── FILTRO DE CIDADE NA LISTA ────────────────────────
+var cidadeFiltro = '';
+
+function abrirFiltroCidade() {
+  renderFiltroCidades();
+  document.getElementById('cidade-filtro-overlay').classList.add('open');
+}
+
+function fecharFiltroCidade(e) {
+  if (!e || e.target === document.getElementById('cidade-filtro-overlay')) {
+    document.getElementById('cidade-filtro-overlay').classList.remove('open');
+    const inp = document.getElementById('cidade-filtro-input');
+    if (inp) inp.value = '';
+  }
+}
+
+function renderFiltroCidades() {
+  const q = (document.getElementById('cidade-filtro-input')?.value || '').toLowerCase();
+  const cidadesMap = {};
+  clientes.forEach(c => {
+    const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+    if (!cidadesMap[cidade]) cidadesMap[cidade] = 0;
+    cidadesMap[cidade]++;
+  });
+  const cidades = Object.entries(cidadesMap)
+    .sort((a,b) => a[0].localeCompare(b[0]))
+    .filter(([nome]) => nome.toLowerCase().includes(q));
+
+  const lista = document.getElementById('cidade-filtro-lista');
+  if (!lista) return;
+  lista.innerHTML = '';
+
+  // Item "Todas"
+  const divAll = document.createElement('div');
+  divAll.className = 'cidade-filtro-item' + (cidadeFiltro === '' ? ' ativa' : '');
+  divAll.innerHTML = '<div><div class="cidade-filtro-nome">Todas as cidades</div><div class="cidade-filtro-qtd">' + clientes.length + ' clientes</div></div>' +
+    (cidadeFiltro === '' ? '<span class="cidade-filtro-check">✓</span>' : '');
+  divAll.onclick = () => selecionarCidade('');
+  lista.appendChild(divAll);
+
+  // Cidades
+  cidades.forEach(([cidade, qtd]) => {
+    const ativa = cidadeFiltro === cidade;
+    const div = document.createElement('div');
+    div.className = 'cidade-filtro-item' + (ativa ? ' ativa' : '');
+    div.innerHTML = '<div><div class="cidade-filtro-nome">' + cidade + '</div><div class="cidade-filtro-qtd">' + qtd + ' clientes</div></div>' +
+      (ativa ? '<span class="cidade-filtro-check">✓</span>' : '');
+    div.onclick = () => selecionarCidade(cidade);
+    lista.appendChild(div);
+  });
+}
+
+function selecionarCidade(cidade) {
+  cidadeFiltro = cidade;
+  fecharFiltroCidade();
+  atualizarTagCidade();
+  renderList();
+}
+
+function limparFiltroCidade() {
+  cidadeFiltro = '';
+  atualizarTagCidade();
+  renderList();
+}
+
+function atualizarTagCidade() {
+  const tag = document.getElementById('cidade-ativa-tag');
+  const nome = document.getElementById('cidade-ativa-nome');
+  const box = document.getElementById('search-inner-box');
+  if (!tag) return;
+  if (cidadeFiltro) {
+    tag.style.display = 'flex';
+    if (nome) nome.textContent = cidadeFiltro + ' ✕';
+    if (box) box.style.border = '1px solid rgba(0,122,255,.4)';
+  } else {
+    tag.style.display = 'none';
+    if (box) box.style.border = 'none';
+  }
+}
+
+// ── SEGMENTO ─────────────────────────────────────────
+var segmentoFiltro = '';
+
+function toggleSeg(btn, valor) {
+  document.querySelectorAll('.seg-pill-select').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('c-segmento').value = valor;
+}
+
+function filtrarSegmento(btn, seg) {
+  document.querySelectorAll('.seg-pill-filtro').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  segmentoFiltro = seg;
+  renderList();
+}
+
+const SEGMENTO_LABEL = {
+  mat_construcao: '🏗 Mat. Construção',
+  construtora: '🏢 Construtora',
+  tintas: '🎨 Tintas',
+  distribuidora: '🚛 Distribuidora'
+};
+
+// ── TAREFAS ──────────────────────────────────────────
+function getTarefas() {
+  return JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+}
+function setTarefas(arr) {
+  localStorage.setItem('tarefas_v2', JSON.stringify(arr));
+}
+
+function iniciarTarefas() {
+  const hoje = new Date().toISOString().slice(0,10);
+  const tarefas = getTarefas();
+  const ontem = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+
+  // Arquiva concluídas de dias anteriores, mantém pendentes como "pendente_ontem"
+  const atualizadas = tarefas.map(t => {
+    if (t.data < hoje) {
+      if (t.feita) return null; // remove concluídas
+      return { ...t, data: hoje, pendente_ontem: true }; // move pendentes para hoje
+    }
+    return t;
+  }).filter(Boolean);
+
+  // Remove duplicatas
+  const ids = new Set();
+  const semDup = atualizadas.filter(t => {
+    if (ids.has(t.id)) return false;
+    ids.add(t.id);
+    return true;
+  });
+
+  setTarefas(semDup);
+}
+
+function renderTarefas() {
+  const hoje = new Date().toISOString().slice(0,10);
+  const nomesDia = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const nomesMes = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const d = new Date();
+  const dataEl = document.getElementById('tarefas-data');
+  if (dataEl) dataEl.textContent = nomesDia[d.getDay()] + ', ' + d.getDate() + ' de ' + nomesMes[d.getMonth()];
+
+  const tarefas = getTarefas().filter(t => t.data === hoje);
+  const pendentes = tarefas.filter(t => !t.feita);
+  const feitas   = tarefas.filter(t => t.feita);
+  const todas = getTarefas();
+  const diasHist = [...new Set(todas.filter(t => t.data < hoje).map(t => t.data))].sort().reverse().slice(0,5);
+
+  let out = '';
+
+  out += '<div class="tarefa-input-box">' +
+    '<span style="font-size:16px">✏️</span>' +
+    '<input class="tarefa-input-field" id="tarefa-nova" placeholder="Anotar tarefa...">' +
+    '<button class="tarefa-add-btn" onclick="adicionarTarefa()">+ Add</button>' +
+  '</div>';
+
+  if (pendentes.length) {
+    out += '<div class="tarefa-secao">⏳ Pendentes (' + pendentes.length + ')</div>';
+    pendentes.forEach(t => {
+      out += '<div class="tarefa-item' + (t.pendente_ontem ? ' pendente-ontem' : '') + '">' +
+        '<div class="tarefa-check" data-id="' + t.id + '" onclick="toggleTarefa(this.dataset.id)"></div>' +
+        '<div style="flex:1"><div class="tarefa-texto">' + t.texto + '</div>' +
+        '<div class="tarefa-meta">' + (t.pendente_ontem ? '⚠️ Pendente de ontem' : 'Às ' + t.hora) + '</div></div>' +
+        '<div class="tarefa-del" data-id="' + t.id + '" onclick="deletarTarefa(this.dataset.id)">×</div></div>';
+    });
+  }
+
+  if (feitas.length) {
+    out += '<div class="tarefa-secao">✅ Concluídas (' + feitas.length + ')</div>';
+    feitas.forEach(t => {
+      out += '<div class="tarefa-item" style="opacity:.6">' +
+        '<div class="tarefa-check done" data-id="' + t.id + '" onclick="toggleTarefa(this.dataset.id)">✓</div>' +
+        '<div style="flex:1"><div class="tarefa-texto done">' + t.texto + '</div>' +
+        '<div class="tarefa-meta">Concluído às ' + (t.hora_feita || t.hora) + '</div></div>' +
+        '<div class="tarefa-del" data-id="' + t.id + '" onclick="deletarTarefa(this.dataset.id)">×</div></div>';
+    });
+  }
+
+  if (!pendentes.length && !feitas.length) {
+    out += '<div style="text-align:center;padding:40px 20px;color:var(--text3)">' +
+      '<div style="font-size:40px;margin-bottom:10px">✅</div>' +
+      '<div style="font-size:14px">Nenhuma tarefa por hoje!</div></div>';
+  }
+
+  if (diasHist.length) {
+    out += '<div class="tarefa-secao" style="margin-top:8px">🗓 Histórico</div>';
+    diasHist.forEach(data => {
+      const itens = todas.filter(t => t.data === data);
+      const nFeitas = itens.filter(t => t.feita).length;
+      const dh = new Date(data + 'T12:00:00');
+      const lbl = dh.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'2-digit'});
+      out += '<div class="tarefa-hist-item">' +
+        '<div class="tarefa-hist-data"><span>' + lbl + '</span>' +
+        '<span style="color:var(--green)">' + nFeitas + '/' + itens.length + ' feitas</span></div>' +
+        itens.map(t =>
+          '<div class="tarefa-hist-row">' +
+          '<span class="tarefa-hist-icone">' + (t.feita ? '✅' : '⭕') + '</span>' +
+          '<span class="tarefa-hist-txt' + (t.feita ? ' done' : '') + '">' + t.texto + '</span></div>'
+        ).join('') + '</div>';
+    });
+  }
+
+  const lista = document.getElementById('tarefas-lista');
+  if (lista) {
+    lista.innerHTML = out;
+    // Enter no input
+    const inp = document.getElementById('tarefa-nova');
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') adicionarTarefa(); });
+  }
+}
+
+function adicionarTarefa() {
+  const input = document.getElementById('tarefa-nova');
+  const texto = input?.value.trim();
+  if (!texto) return;
+  const tarefas = getTarefas();
+  tarefas.unshift({
+    id: Date.now().toString(),
+    texto,
+    feita: false,
+    data: new Date().toISOString().slice(0,10),
+    hora: new Date().toTimeString().slice(0,5)
+  });
+  setTarefas(tarefas);
+  input.value = '';
+  renderTarefas();
+  showToast('✓ Tarefa adicionada');
+}
+
+function toggleTarefa(id) {
+  const tarefas = getTarefas();
+  const t = tarefas.find(x => x.id === id);
+  if (!t) return;
+  t.feita = !t.feita;
+  t.hora_feita = new Date().toTimeString().slice(0,5);
+  setTarefas(tarefas);
+  renderTarefas();
+}
+
+function deletarTarefa(id) {
+  setTarefas(getTarefas().filter(t => t.id !== id));
+  renderTarefas();
+}
+
 // ── NAVEGAÇÃO SEGURA ─────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -2769,14 +3674,14 @@ function renderDesktopList() {
 
   const grupos = [
     {key:'today', label:'Hoje'},
-    {key:'green', label:'Até 30 dias'},
-    {key:'blue',  label:'31 a 60 dias'},
-    {key:'red',   label:'Mais de 60 dias'},
-    {key:'purple',label:'Nunca visitados'},
+    {key:'green', label:'Até 1 mês'},
+    {key:'blue',  label:'1 a 2 meses'},
+    {key:'red',   label:'Mais de 2 meses'},
+    {key:'purple',label:'Novos'},
   ];
 
-  const cores = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'};
-  const bgCores = {today:'var(--orange-bg)',green:'var(--green-bg)',blue:'var(--blue-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
+  const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
+  const bgCores = {today:'var(--green-bg)',green:'var(--blue-bg)',blue:'var(--orange-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
 
   let out = '';
   grupos.forEach(g => {
@@ -2846,9 +3751,9 @@ function mostrarDetalheDesktop(c) {
   const nomeBase = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
   const comp = (c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
   const s = getStatus(c);
-  const cores = {today:'var(--orange)',green:'var(--green)',blue:'var(--blue)',red:'var(--red)',purple:'var(--purple)'};
-  const bgCores = {today:'var(--orange-bg)',green:'var(--green-bg)',blue:'var(--blue-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
-  const labels = {today:'Hoje',green:'≤ 30 dias',blue:'31-60 dias',red:'> 60 dias',purple:'Nunca'};
+  const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
+  const bgCores = {today:'var(--green-bg)',green:'var(--blue-bg)',blue:'var(--orange-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
+  const labels = {today:'Hoje',green:'1 mês',blue:'2 meses',red:'+2 meses',purple:'Novos'};
   const lv = lastVisitText(c);
   const lembretes = JSON.parse(localStorage.getItem('lembretes')||'{}');
   const lembrete = lembretes[c.id] || '';
@@ -3154,6 +4059,16 @@ if ('serviceWorker' in navigator) {
           <input class="campo-input" id="c-endereco" placeholder="Rua, número...">
         </div>
         <div class="campo-grupo">
+          <label class="campo-label">Segmento</label>
+          <div class="seg-select-wrap" id="c-seg-wrap">
+            <button class="seg-pill-select" onclick="toggleSeg(this,'mat_construcao')">🏗 Mat. Construção</button>
+            <button class="seg-pill-select" onclick="toggleSeg(this,'construtora')">🏢 Construtora</button>
+            <button class="seg-pill-select" onclick="toggleSeg(this,'tintas')">🎨 Loja de Tintas</button>
+            <button class="seg-pill-select" onclick="toggleSeg(this,'distribuidora')">🚛 Distribuidora</button>
+          </div>
+          <input type="hidden" id="c-segmento" value="">
+        </div>
+        <div class="campo-grupo">
           <label class="campo-label">CNPJ</label>
           <input class="campo-input" id="c-cnpj" placeholder="00.000.000/0001-00">
         </div>
@@ -3196,6 +4111,98 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
 
+
+    <!-- TELA DE TAREFAS -->
+    <div id="screen-tarefas">
+      <div class="tarefas-topo">
+        <div class="tarefas-titulo">📋 Tarefas do dia</div>
+        <div class="tarefas-data" id="tarefas-data"></div>
+      </div>
+      <div class="tarefas-lista" id="tarefas-lista">
+        <!-- preenchido por renderTarefas() -->
+      </div>
+    </div>
+
+    <!-- PAINEL FILTRO CIDADE -->
+    <div class="cidade-filtro-overlay" id="cidade-filtro-overlay" onclick="fecharFiltroCidade(event)">
+      <div class="cidade-filtro-sheet" onclick="event.stopPropagation()">
+        <div class="cidade-filtro-handle"></div>
+        <div class="cidade-filtro-header">
+          <div class="cidade-filtro-titulo">📍 Filtrar por cidade</div>
+          <button class="cidade-filtro-fechar" onclick="fecharFiltroCidade()">✕</button>
+        </div>
+        <div class="cidade-filtro-search">
+          <div class="cidade-filtro-search-box">
+            <span>🔍</span>
+            <input type="search" id="cidade-filtro-input" placeholder="Buscar cidade..." oninput="renderFiltroCidades()">
+          </div>
+        </div>
+        <div class="cidade-filtro-lista" id="cidade-filtro-lista"></div>
+      </div>
+    </div>
+
+    <!-- TELA DO PLANNER -->
+    <div id="screen-planner">
+      <div class="planner-nav">
+        <button class="planner-nav-btn" onclick="navegarPlanner(-1)">‹</button>
+        <div>
+          <div class="planner-titulo" id="planner-titulo"></div>
+          <div class="planner-sub" id="planner-sub"></div>
+        </div>
+        <button class="planner-hoje-btn" onclick="irParaHojePlanner()">Hoje</button>
+        <button class="planner-nav-btn" onclick="navegarPlanner(1)">›</button>
+      </div>
+
+      <div class="planner-view-toggle">
+        <button class="planner-view-btn active" id="planner-btn-semana" onclick="setViewPlanner('semana')">📅 Semana</button>
+        <button class="planner-view-btn" id="planner-btn-mes" onclick="setViewPlanner('mes')">🗓 Mês</button>
+      </div>
+
+      <!-- VISÃO SEMANAL -->
+      <div id="planner-semana-wrap">
+        <div class="planner-dias-mini" id="planner-dias-mini"></div>
+        <div class="planner-body" id="planner-body-semana"></div>
+      </div>
+
+      <!-- VISÃO MENSAL -->
+      <div id="planner-mes-wrap" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+        <div class="planner-cal-wrap">
+          <div class="planner-cal-weekdays">
+            <div class="planner-cal-wd" style="color:var(--red)">D</div>
+            <div class="planner-cal-wd">S</div><div class="planner-cal-wd">T</div>
+            <div class="planner-cal-wd">Q</div><div class="planner-cal-wd">Q</div>
+            <div class="planner-cal-wd">S</div><div class="planner-cal-wd">S</div>
+          </div>
+          <div class="planner-cal-grid" id="planner-cal-grid"></div>
+          <div class="planner-cal-legenda">
+            <div class="planner-cal-leg"><div class="planner-cal-leg-dot" style="background:var(--green)"></div>Visitas</div>
+            <div class="planner-cal-leg"><div class="planner-cal-leg-dot" style="background:var(--orange)"></div>Evento</div>
+            <div class="planner-cal-leg"><div class="planner-cal-leg-dot" style="background:var(--blue)"></div>Planejado</div>
+          </div>
+        </div>
+        <div class="planner-body" id="planner-body-mes" style="flex:1;overflow-y:auto;padding:10px 12px 80px"></div>
+      </div>
+    </div>
+
+    <!-- MODAL COMPROMISSO -->
+    <div class="planner-modal" id="planner-modal" onclick="fecharModalPlanner(event)">
+      <div class="planner-modal-sheet" onclick="event.stopPropagation()">
+        <div class="planner-modal-handle"></div>
+        <div class="planner-modal-titulo">Novo compromisso</div>
+        <input class="planner-modal-input" id="planner-ev-txt" placeholder="Ex: Reunião INKOR, Feira SC...">
+        <div class="planner-modal-row">
+          <input class="planner-modal-hora" id="planner-ev-hora" type="time" value="09:00">
+        </div>
+        <div class="planner-modal-cor-wrap" id="planner-ev-cores">
+          <div class="planner-modal-cor ativa" style="background:var(--blue)" data-cor="blue"></div>
+          <div class="planner-modal-cor" style="background:var(--orange)" data-cor="orange"></div>
+          <div class="planner-modal-cor" style="background:var(--green)" data-cor="green"></div>
+          <div class="planner-modal-cor" style="background:var(--red)" data-cor="red"></div>
+          <div class="planner-modal-cor" style="background:var(--purple)" data-cor="purple"></div>
+        </div>
+        <button class="planner-modal-salvar" onclick="salvarEventoPlanner()">Salvar</button>
+      </div>
+    </div>
     <!-- TELA CALENDÁRIO -->
     <div id="screen-calendario">
       <div class="cal-header">
