@@ -668,6 +668,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 /* ── TAREFAS ─────────────────────────────────────────── */
 #screen-tarefas { display:none; flex-direction:column; height:100%; }
 #screen-tarefas.active { display:flex; }
+#screen-tarefas.active { display:flex; }
 .tarefas-topo { background:var(--surface); padding:12px 14px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
 .tarefas-titulo { font-size:17px; font-weight:800; color:var(--text); }
 .tarefas-data { font-size:11px; color:var(--text3); margin-top:2px; }
@@ -1436,21 +1437,30 @@ async function geocodeCliente(c) {
 
 // ── SCREENS ────────────────────────────────────────────
 function showScreen(s) {
+  // Esconde TODAS as telas (dentro e fora de .screens)
   document.querySelectorAll('.screen').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('[id^="screen-"]').forEach(e => {
+    if (e.style.display !== 'none' && !e.classList.contains('screen')) return;
+    e.classList.remove('active');
+  });
+
+  // Ativa a tela correta
   const el = document.getElementById('screen-' + s);
   if (el) el.classList.add('active');
 
+  // Navbar
   document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
   const navEl = document.getElementById('nav-' + s);
   if (navEl) navEl.classList.add('active');
 
+  // Mostra/esconde busca, filtro e fab
   const searchBar = document.getElementById('search-bar');
   const segBar = document.getElementById('seg-filtro-bar');
-  const fab = document.querySelector('.fab');
+  const filterBar = document.getElementById('active-filter-bar');
 
   if (searchBar) searchBar.style.display = s === 'list' ? 'block' : 'none';
   if (segBar) segBar.style.display = s === 'list' ? 'flex' : 'none';
-  if (fab) fab.style.display = s === 'list' ? 'flex' : 'none';
+  if (filterBar) filterBar.style.display = 'none';
 
   currentScreen = s;
   if (s === 'map' && gmap) renderMapMarkers();
@@ -4113,7 +4123,7 @@ if ('serviceWorker' in navigator) {
 
 
     <!-- TELA DE TAREFAS -->
-    <div id="screen-tarefas">
+    <div id="screen-tarefas" class="screen">
       <div class="tarefas-topo">
         <div class="tarefas-titulo">📋 Tarefas do dia</div>
         <div class="tarefas-data" id="tarefas-data"></div>
@@ -4142,7 +4152,7 @@ if ('serviceWorker' in navigator) {
     </div>
 
     <!-- TELA DO PLANNER -->
-    <div id="screen-planner">
+    <div id="screen-planner" class="screen">
       <div class="planner-nav">
         <button class="planner-nav-btn" onclick="navegarPlanner(-1)">‹</button>
         <div>
