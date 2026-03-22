@@ -620,7 +620,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <div class="header-top">
       <div class="header-title">Mundo do Rep</div>
       <div class="header-actions">
-        <span id="date-chip"></span>
+        <span id="date-chip" style="margin-left:8px"></span>
         <button onclick="openCalendario()" class="header-btn" title="Calendário" style="background:var(--blue-bg);color:var(--blue)">📅</button>
         <button onclick="openConfig()" class="header-btn" title="Configurações">⚙</button>
       </div>
@@ -1059,6 +1059,8 @@ function loadDemo() {
   ].map(c => ({...c, visitadoHoje:false, horaHoje:null, lat:c.lat||null, lng:c.lng||null}));
   renderList();
   geocodeAll();
+  // Atualiza lista desktop se necessário
+  if (typeof renderDesktopList === "function" && isDesktop && isDesktop()) renderDesktopList();
 }
 
 // ── LOAD ───────────────────────────────────────────────
@@ -2462,15 +2464,22 @@ function initDesktop() {
   if (!isDesktop()) return;
 
   // Mostra elementos desktop
-  document.querySelector('.desktop-tabs').style.display = 'flex';
-  document.querySelector('.desktop-main').style.display = 'flex';
+  const dtabs = document.querySelector('.desktop-tabs');
+  const dmain = document.querySelector('.desktop-main');
+  const search = document.querySelector('.search-bar');
+  const screens = document.querySelector('.screens');
+  const navbar = document.querySelector('.navbar');
 
-  // Esconde elementos mobile
-  document.querySelector('.search-bar').style.display = 'none';
-  document.querySelector('.screens').style.display = 'none';
-  document.querySelector('.navbar').style.display = 'none';
+  if (dtabs) dtabs.style.display = 'flex';
+  if (dmain) dmain.style.display = 'flex';
+  if (search) search.style.display = 'none';
+  if (screens) screens.style.display = 'none';
+  if (navbar) navbar.style.display = 'none';
 
-  renderDesktopList();
+  // Só renderiza se já tem clientes
+  if (clientes.length > 0) {
+    renderDesktopList();
+  }
   initDesktopMap();
 }
 
