@@ -13,8 +13,13 @@
 <title>Rota de Visitas</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&callback=initMap&loading=async" async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&loading=async" async defer></script>
 <style>
+
+
+/* Esconde elementos desktop no mobile */
+.desktop-tabs { display:none; }
+.desktop-main { display:none; }
 
 /* ── RESET ──────────────────────────────────────────── */
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -826,6 +831,38 @@ function mostrarLogin() {
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('date-chip').textContent =
   new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
+
+// Carrega Google Maps manualmente quando estiver pronto
+window.initMap = function() {
+  if (typeof gmap === 'undefined' || !gmap) {
+    const center = { lat: -26.5, lng: -49.0 };
+    gmap = new google.maps.Map(document.getElementById('map'), {
+      center, zoom: 8,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      styles: [
+        { elementType: 'geometry', stylers: [{ color: '#1a1a1e' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a1e' }] },
+        { elementType: 'labels.text.fill', stylers: [{ color: '#888888' }] },
+        { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2d2d32' }] },
+        { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#666666' }] },
+        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#111118' }] },
+        { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+        { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+        { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#aaaaaa' }] }
+      ]
+    });
+    if (clientes.length > 0) renderMapMarkers();
+  }
+};
+
+// Adiciona callback ao script do Google Maps dinamicamente
+const gmScript = document.createElement('script');
+gmScript.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&callback=initMap&loading=async';
+gmScript.async = true;
+gmScript.defer = true;
+document.head.appendChild(gmScript);
 
 // Inicia app (verifica sessão do Supabase)
 iniciarApp();
@@ -2909,13 +2946,13 @@ if ('serviceWorker' in navigator) {
 
 
   <!-- ABAS DESKTOP -->
-  <div class="desktop-tabs" style="display:none">
+  <div class="desktop-tabs">
     <button class="desktop-tab active" onclick="switchDesktopTab('mapa', this)">🗺 Mapa &amp; Lista</button>
     <button class="desktop-tab" onclick="switchDesktopTab('relatorio', this)">📊 Relatório</button>
   </div>
 
   <!-- LAYOUT DESKTOP -->
-  <div class="desktop-main" style="display:none">
+  <div class="desktop-main">
 
     <!-- SIDEBAR LISTA -->
     <div class="desktop-sidebar">
