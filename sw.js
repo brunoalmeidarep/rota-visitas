@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mundo-rep-v3';
+const CACHE_NAME = 'mundo-rep-v5';
 const ASSETS = [
   '/rota-visitas/',
   '/rota-visitas/index.html',
