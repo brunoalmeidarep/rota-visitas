@@ -83,9 +83,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .search-inner input::placeholder { color:var(--text3); }
 
 /* ── TELAS ──────────────────────────────────────────── */
-.screens { flex:1; overflow:hidden; position:relative; }
-.screen { display:none; height:100%; flex-direction:column; overflow:hidden; }
-.screen.active { display:flex; }
+.screens { flex:1; overflow:hidden; position:relative; display:flex; flex-direction:column; }
+.screen { display:none !important; height:100%; flex-direction:column; overflow:hidden; }
+.screen.active { display:flex !important; }
 
 /* ── LISTA ──────────────────────────────────────────── */
 .client-list { flex:1; overflow-y:auto; padding:8px 0 80px; -webkit-overflow-scrolling:touch; }
@@ -122,7 +122,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .export-btn { font-size:12px; font-weight:600; color:var(--blue); background:none; border:none; cursor:pointer; }
 
 /* ── RELATÓRIO ──────────────────────────────────────── */
-.report-body, #screen-report { display:none; flex-direction:column; height:100%; }
+.report-body, 
 #screen-report.active { display:flex; }
 .rep-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:100px; -webkit-overflow-scrolling:touch; }
 .rep-section { background:var(--card); border-radius:14px; padding:16px; margin-bottom:12px; box-shadow:var(--shadow); }
@@ -902,7 +902,58 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <div class="rsec-title">Nunca visitados</div><div id="r-list-never"></div>
     </div>
 
-  </div>
+  
+<div id="screen-tarefas" class="screen">
+      <div class="tarefas-topo">
+        <div class="tarefas-titulo">📋 Tarefas do dia</div>
+        <div class="tarefas-data" id="tarefas-data"></div>
+      </div>
+      <div class="tarefas-lista" id="tarefas-lista">
+        <!-- preenchido por renderTarefas() -->
+      </div>
+    </div>
+<div id="screen-planner" class="screen">
+      <div class="planner-nav">
+        <button class="planner-nav-btn" onclick="navegarPlanner(-1)">‹</button>
+        <div>
+          <div class="planner-titulo" id="planner-titulo"></div>
+          <div class="planner-sub" id="planner-sub"></div>
+        </div>
+        <button class="planner-hoje-btn" onclick="irParaHojePlanner()">Hoje</button>
+        <button class="planner-nav-btn" onclick="navegarPlanner(1)">›</button>
+      </div>
+
+      <div class="planner-view-toggle">
+        <button class="planner-view-btn active" id="planner-btn-semana" onclick="setViewPlanner('semana')">📅 Semana</button>
+        <button class="planner-view-btn" id="planner-btn-mes" onclick="setViewPlanner('mes')">🗓 Mês</button>
+      </div>
+
+      <!-- VISÃO SEMANAL -->
+      <div id="planner-semana-wrap">
+        <div class="planner-dias-mini" id="planner-dias-mini"></div>
+        <div class="planner-body" id="planner-body-semana"></div>
+      </div>
+
+      <!-- VISÃO MENSAL -->
+      <div id="planner-mes-wrap" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+        <div class="planner-cal-wrap">
+          <div class="planner-cal-weekdays">
+            <div class="planner-cal-wd" style="color:var(--red)">D</div>
+            <div class="planner-cal-wd">S</div><div class="planner-cal-wd">T</div>
+            <div class="planner-cal-wd">Q</div><div class="planner-cal-wd">Q</div>
+            <div class="planner-cal-wd">S</div><div class="planner-cal-wd">S</div>
+          </div>
+          <div class="planner-cal-grid" id="planner-cal-grid"></div>
+          <div class="planner-cal-legenda">
+            <div class="planner-cal-leg"><div class="planner-cal-leg-dot" style="background:var(--green)"></div>Visitas</div>
+            <div class="planner-cal-leg"><div class="planner-cal-leg-dot" style="background:var(--orange)"></div>Evento</div>
+            <div class="planner-cal-leg"><div class="planner-cal-leg-dot" style="background:var(--blue)"></div>Planejado</div>
+          </div>
+        </div>
+        <div class="planner-body" id="planner-body-mes" style="flex:1;overflow-y:auto;padding:10px 12px 80px"></div>
+      </div>
+    </div>
+</div>
 </div>
 
 <!-- MODAL -->
@@ -1435,12 +1486,8 @@ async function geocodeCliente(c) {
 
 // ── SCREENS ────────────────────────────────────────────
 function showScreen(s) {
-  // Esconde TODAS as telas (dentro e fora de .screens)
+  // Esconde todas as telas
   document.querySelectorAll('.screen').forEach(e => e.classList.remove('active'));
-  document.querySelectorAll('[id^="screen-"]').forEach(e => {
-    if (e.style.display !== 'none' && !e.classList.contains('screen')) return;
-    e.classList.remove('active');
-  });
 
   // Ativa a tela correta
   const el = document.getElementById('screen-' + s);
@@ -1451,16 +1498,17 @@ function showScreen(s) {
   const navEl = document.getElementById('nav-' + s);
   if (navEl) navEl.classList.add('active');
 
-  // Mostra/esconde busca, filtro e fab
+  // Busca e FAB — só na lista
   const searchBar = document.getElementById('search-bar');
   const segBar = document.getElementById('seg-filtro-bar');
   const filterBar = document.getElementById('active-filter-bar');
-
   if (searchBar) searchBar.style.display = s === 'list' ? 'block' : 'none';
   if (segBar) segBar.style.display = s === 'list' ? 'flex' : 'none';
-  if (filterBar) filterBar.style.display = 'none';
+  if (filterBar && s !== 'list') filterBar.style.display = 'none';
 
   currentScreen = s;
+
+  // Renderiza a tela ativa
   if (s === 'map' && gmap) renderMapMarkers();
   if (s === 'list') renderList();
   if (s === 'report') { renderReport(); if (currentUser) carregarPeriodoRelatorio(); }
@@ -4121,15 +4169,7 @@ if ('serviceWorker' in navigator) {
 
 
     <!-- TELA DE TAREFAS -->
-    <div id="screen-tarefas" class="screen">
-      <div class="tarefas-topo">
-        <div class="tarefas-titulo">📋 Tarefas do dia</div>
-        <div class="tarefas-data" id="tarefas-data"></div>
-      </div>
-      <div class="tarefas-lista" id="tarefas-lista">
-        <!-- preenchido por renderTarefas() -->
-      </div>
-    </div>
+    
 
     <!-- PAINEL FILTRO CIDADE -->
     <div class="cidade-filtro-overlay" id="cidade-filtro-overlay" onclick="fecharFiltroCidade(event)">
@@ -4150,47 +4190,7 @@ if ('serviceWorker' in navigator) {
     </div>
 
     <!-- TELA DO PLANNER -->
-    <div id="screen-planner" class="screen">
-      <div class="planner-nav">
-        <button class="planner-nav-btn" onclick="navegarPlanner(-1)">‹</button>
-        <div>
-          <div class="planner-titulo" id="planner-titulo"></div>
-          <div class="planner-sub" id="planner-sub"></div>
-        </div>
-        <button class="planner-hoje-btn" onclick="irParaHojePlanner()">Hoje</button>
-        <button class="planner-nav-btn" onclick="navegarPlanner(1)">›</button>
-      </div>
-
-      <div class="planner-view-toggle">
-        <button class="planner-view-btn active" id="planner-btn-semana" onclick="setViewPlanner('semana')">📅 Semana</button>
-        <button class="planner-view-btn" id="planner-btn-mes" onclick="setViewPlanner('mes')">🗓 Mês</button>
-      </div>
-
-      <!-- VISÃO SEMANAL -->
-      <div id="planner-semana-wrap">
-        <div class="planner-dias-mini" id="planner-dias-mini"></div>
-        <div class="planner-body" id="planner-body-semana"></div>
-      </div>
-
-      <!-- VISÃO MENSAL -->
-      <div id="planner-mes-wrap" style="display:none;flex:1;overflow:hidden;flex-direction:column">
-        <div class="planner-cal-wrap">
-          <div class="planner-cal-weekdays">
-            <div class="planner-cal-wd" style="color:var(--red)">D</div>
-            <div class="planner-cal-wd">S</div><div class="planner-cal-wd">T</div>
-            <div class="planner-cal-wd">Q</div><div class="planner-cal-wd">Q</div>
-            <div class="planner-cal-wd">S</div><div class="planner-cal-wd">S</div>
-          </div>
-          <div class="planner-cal-grid" id="planner-cal-grid"></div>
-          <div class="planner-cal-legenda">
-            <div class="planner-cal-leg"><div class="planner-cal-leg-dot" style="background:var(--green)"></div>Visitas</div>
-            <div class="planner-cal-leg"><div class="planner-cal-leg-dot" style="background:var(--orange)"></div>Evento</div>
-            <div class="planner-cal-leg"><div class="planner-cal-leg-dot" style="background:var(--blue)"></div>Planejado</div>
-          </div>
-        </div>
-        <div class="planner-body" id="planner-body-mes" style="flex:1;overflow-y:auto;padding:10px 12px 80px"></div>
-      </div>
-    </div>
+    
 
     <!-- MODAL COMPROMISSO -->
     <div class="planner-modal" id="planner-modal" onclick="fecharModalPlanner(event)">
