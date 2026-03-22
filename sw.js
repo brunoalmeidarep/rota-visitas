@@ -1,4 +1,4 @@
-// Service worker desativado temporariamente
+// Service worker v7 — sem cache
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => {
   e.waitUntil(
@@ -7,6 +7,6 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 self.addEventListener('fetch', e => {
-  // Passa tudo direto, sem cache
-  e.respondWith(fetch(e.request));
+  if (e.request.method !== 'GET') return;
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
