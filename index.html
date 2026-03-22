@@ -556,6 +556,8 @@ let SCRIPT_URL  = 'https://script.google.com/macros/s/AKfycbyGXXcYVzmMjbJzYWLjVg
 let clientes    = [];
 let activeId    = null;
 let gmap        = null;
+let gmarkers    = {};
+let openIW      = null;
 let mapReady    = false;
 let currentZoom = 7;
 const LABEL_ZOOM = 11;
@@ -1001,9 +1003,6 @@ function showScreen(s) {
 }
 
 // ── MAPA ─────────────────────────────────────────────────
-let gmap = null;
-let gmarkers = {};
-let openIW = null;
 
 function initMap() {
   const center = { lat: -26.5, lng: -49.0 };
