@@ -568,7 +568,9 @@ let openIW      = null;
 let mapReady    = false;
 let currentZoom = 7;
 const LABEL_ZOOM = 11;
-
+let activeFilter = null;
+let currentScreen = 'list';
+let searchQuery = '';
 const STATUS_LABEL = { today:'Hoje', green:'≤30d', blue:'31–60d', red:'>60d', purple:'Nunca' };
 const STATUS_COLOR = { today:'var(--gold)', green:'var(--green)', blue:'var(--blue)', red:'var(--red)', purple:'var(--purple)' };
 const PIN_COLOR    = { today:'#fbbf24', green:'#4ade80', blue:'#60a5fa', red:'#f87171', purple:'#c084fc' };
@@ -1208,7 +1210,6 @@ function renderList() {
   if (el) el.innerHTML = out;
 }
 
-let activeFilter = null;
 function filtrarStatus(status) {
   activeFilter = (activeFilter === status) ? null : status;
   renderList();
