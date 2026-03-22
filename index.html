@@ -122,7 +122,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .export-btn { font-size:12px; font-weight:600; color:var(--blue); background:none; border:none; cursor:pointer; }
 
 /* ── RELATÓRIO ──────────────────────────────────────── */
-.report-body, 
+.report-body { display:flex; flex-direction:column; }
 #screen-report.active { display:flex; }
 .rep-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:100px; -webkit-overflow-scrolling:touch; }
 .rep-section { background:var(--card); border-radius:14px; padding:16px; margin-bottom:12px; box-shadow:var(--shadow); }
@@ -655,7 +655,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 
 
 /* ── SEGMENTO PILLS ─────────────────────────────────── */
-.seg-filtro-bar { display:flex; gap:6px; padding:8px 12px; background:var(--surface); border-bottom:1px solid var(--border); overflow-x:auto; scrollbar-width:none; flex-shrink:0; }
+.seg-filtro-bar { display:none; gap:6px; padding:8px 12px; background:var(--surface); border-bottom:1px solid var(--border); overflow-x:auto; scrollbar-width:none; flex-shrink:0; }
 .seg-filtro-bar::-webkit-scrollbar { display:none; }
 .seg-pill-filtro { flex-shrink:0; padding:5px 12px; border-radius:20px; border:none; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; background:var(--bg); color:var(--text2); transition:.15s; }
 .seg-pill-filtro.active { background:var(--blue); color:#fff; }
@@ -802,6 +802,10 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .planner-modal-cor.ativa { border-color:var(--text); }
 .planner-modal-salvar { width:100%; background:var(--blue); color:#fff; border:none; border-radius:12px; padding:14px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; }
 
+
+#screen-map { flex-direction:column; }
+#screen-map.active { display:flex; flex-direction:column; }
+
 </style>
 </head>
 <body>
@@ -869,7 +873,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     </div>
 
     <!-- MAPA -->
-    <div class="screen" id="screen-map" style="flex-direction:column">
+    <div class="screen" id="screen-map">
       <div class="geo-bar">
         <span id="geo-status"></span>
         <div id="export-bar" style="display:none">
@@ -1108,6 +1112,7 @@ function esconderLogin() {
   loadDemo();
   carregarLembretesSupabase();
   iniciarTarefas();
+  showScreen('list');
 }
 
 function mostrarLogin() {
@@ -3340,13 +3345,8 @@ function fecharFiltro() {
 }
 
 function abrirFiltroHeader(status) {
-  if (currentScreen === 'report') {
-    setTimeout(() => abrirFiltro(status), 50);
-  } else {
-    showScreen('list');
-    activeFilter = (activeFilter === status) ? null : status;
-    renderList();
-  }
+  if (currentScreen !== 'list') showScreen('list');
+  setTimeout(() => abrirFiltro(status), 80);
 }
 
 
