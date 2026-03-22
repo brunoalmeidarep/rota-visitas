@@ -48,6 +48,14 @@
 html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); }
 #app { height:100vh; display:flex; flex-direction:column; overflow:hidden; max-width:430px; margin:0 auto; position:relative; background:var(--bg); }
 
+@media (min-width: 768px) {
+  body { overflow:hidden; display:flex; flex-direction:column; height:100vh; }
+  #app { max-width:100% !important; height:auto !important; overflow:visible !important; flex-shrink:0; }
+  .desktop-tabs { flex-shrink:0; }
+  .desktop-main { flex:1; min-height:0; }
+}
+
+
 /* ── HEADER ─────────────────────────────────────────── */
 .app-header { background:var(--surface); padding:12px 16px 0; flex-shrink:0; box-shadow:0 1px 0 var(--border); }
 .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
@@ -2796,44 +2804,6 @@ if ('serviceWorker' in navigator) {
     </div>
 
 
-  <!-- ABAS DESKTOP -->
-  <div class="desktop-tabs">
-    <button class="desktop-tab active" onclick="switchDesktopTab('mapa', this)">🗺 Mapa &amp; Lista</button>
-    <button class="desktop-tab" onclick="switchDesktopTab('relatorio', this)">📊 Relatório</button>
-  </div>
-
-  <!-- LAYOUT DESKTOP -->
-  <div class="desktop-main">
-
-    <!-- SIDEBAR LISTA -->
-    <div class="desktop-sidebar">
-      <div class="desktop-search">
-        <div class="desktop-search-box">
-          <span>🔍</span>
-          <input type="search" id="desktop-search-input" placeholder="Buscar cliente, cidade..." oninput="renderDesktopList()">
-        </div>
-      </div>
-      <div class="desktop-list" id="desktop-client-list"></div>
-    </div>
-
-    <!-- CENTRO: MAPA -->
-    <div class="desktop-center" id="desktop-center-mapa">
-      <div id="map" style="flex:1;min-height:0"></div>
-    </div>
-
-    <!-- RELATÓRIO DESKTOP -->
-    <div class="desktop-report" id="desktop-report"></div>
-
-    <!-- PAINEL DETALHE -->
-    <div class="desktop-detail" id="desktop-detail">
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px;flex-direction:column;gap:8px;padding:20px">
-        <div style="font-size:40px">👈</div>
-        <div style="text-align:center">Selecione um cliente na lista</div>
-      </div>
-    </div>
-
-  </div>
-
   <!-- NAVBAR -->
   <nav class="navbar">
     <button class="nav-item active" id="nav-list" onclick="showScreen('list')">
@@ -2849,6 +2819,37 @@ if ('serviceWorker' in navigator) {
       <span class="nav-label">Relatório</span>
     </button>
   </nav>
+
+  <!-- ABAS DESKTOP -->
+  <div class="desktop-tabs">
+    <button class="desktop-tab active" onclick="switchDesktopTab('mapa', this)">🗺 Mapa &amp; Lista</button>
+    <button class="desktop-tab" onclick="switchDesktopTab('relatorio', this)">📊 Relatório</button>
+  </div>
+
+  <!-- LAYOUT DESKTOP -->
+  <div class="desktop-main">
+    <div class="desktop-sidebar">
+      <div class="desktop-search">
+        <div class="desktop-search-box">
+          <span>🔍</span>
+          <input type="search" id="desktop-search-input" placeholder="Buscar..." oninput="renderDesktopList()">
+        </div>
+      </div>
+      <div class="desktop-list" id="desktop-client-list"></div>
+    </div>
+    <div class="desktop-center" id="desktop-center-mapa">
+      <div id="map" style="flex:1;min-height:0"></div>
+    </div>
+    <div class="desktop-report" id="desktop-report"></div>
+    <div class="desktop-detail" id="desktop-detail">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px;flex-direction:column;gap:8px;padding:20px">
+        <div style="font-size:40px">👈</div>
+        <div>Selecione um cliente na lista</div>
+      </div>
+    </div>
+  </div>
+
+
 
 </body>
 </html>
