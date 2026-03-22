@@ -816,9 +816,13 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 
 
 /* ── SISTEMA DE TELAS ───────────────────────────────── */
-.screens { flex:1; overflow:hidden; position:relative; min-height:0; }
+.screens { flex:1; overflow:hidden; position:relative; min-height:0; isolation:isolate; }
 .screen { display:none; flex-direction:column; width:100%; height:100%; }
 .screen.active { display:flex; }
+
+
+#screen-map { overflow:hidden; }
+#screen-map #map { flex:1; min-height:0; }
 
 </style>
 </head>
@@ -894,7 +898,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
           <button class="export-btn" onclick="exportCoords()">↓ Exportar coords</button>
         </div>
       </div>
-      <div id="map" style="flex:1"></div>
+      <div id="map" style="flex:1;min-height:0;height:100%"></div>
       </div>
 
     <!-- RELATÓRIO -->
@@ -1513,12 +1517,25 @@ function showScreen(s) {
   if (sb) sb.style.display = s === 'list' ? 'block' : 'none';
   if (sf) sf.style.display = s === 'list' ? 'flex' : 'none';
   currentScreen = s;
+  // Esconde elementos fixos de outras telas
+  if (s !== 'report') {
+    const fp = document.getElementById('filtro-panel');
+    if (fp) fp.style.display = 'none';
+  }
   // Renderiza
-  if (s === 'map' && gmap) renderMapMarkers();
   if (s === 'list') renderList();
   if (s === 'report') { renderReport(); if (currentUser) carregarPeriodoRelatorio(); }
   if (s === 'tarefas') renderTarefas();
   if (s === 'planner') { plannerRef = new Date(); plannerDiaSel = new Date(); renderPlanner(); }
+  if (s === 'map') {
+    // Força o mapa a ocupar toda a tela e re-renderizar
+    setTimeout(() => {
+      if (gmap) {
+        google.maps.event.trigger(gmap, 'resize');
+        renderMapMarkers();
+      }
+    }, 50);
+  }
 }
 
 // ── MAPA ─────────────────────────────────────────────────
@@ -3347,7 +3364,12 @@ function fecharFiltro() {
 
 function abrirFiltroHeader(status) {
   if (currentScreen !== 'list') showScreen('list');
-  setTimeout(() => abrirFiltro(status), 80);
+  // Toggle do filtro — se já está ativo, desativa
+  activeFilter = (activeFilter === status) ? null : status;
+  renderList();
+  // Scroll para o topo da lista
+  const lista = document.getElementById('client-list');
+  if (lista) lista.scrollTop = 0;
 }
 
 
