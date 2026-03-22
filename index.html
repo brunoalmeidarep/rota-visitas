@@ -3089,6 +3089,113 @@ if ('serviceWorker' in navigator) {
 </script>
 
 
+    <!-- TELA DE PERFIL -->
+    <div id="screen-perfil">
+      <div class="perfil-header">
+        <button class="perfil-back" onclick="closePerfil()">← Voltar</button>
+        <div class="perfil-badge" id="p-badge"></div>
+        <div class="perfil-nome" id="p-nome"></div>
+        <div class="perfil-comprador" id="p-comprador"></div>
+        <div class="perfil-cidade" id="p-cidade"></div>
+        <div class="perfil-meta" id="p-meta"></div>
+        <div class="perfil-acoes">
+          <button class="btn-checkin-perfil" id="p-btn-checkin" onclick="checkinPerfil()">✓ CHECK-IN</button>
+          <button class="btn-maps-perfil" onclick="openMapsPerfil()">↗</button>
+        </div>
+      </div>
+      <div class="perfil-body">
+        <div class="perfil-section-title">📌 Lembrete</div>
+        <div class="lembrete-box">
+          <div class="lembrete-icon">📌</div>
+          <textarea id="p-lembrete" placeholder="Adicionar lembrete fixo..." onblur="salvarLembrete()"></textarea>
+        </div>
+        <div class="lembrete-salvo" id="p-lembrete-salvo"></div>
+        <div class="perfil-section-title">Observações desta visita</div>
+        <div class="checkin-obs-box">
+          <textarea id="p-obs" placeholder="Anotações sobre esta visita..."></textarea>
+        </div>
+        <div class="perfil-section-title">Histórico</div>
+        <div id="p-historico"></div>
+      </div>
+    </div>
+
+    <!-- TELA DE CADASTRO -->
+    <div id="screen-cadastro">
+      <div class="cadastro-header">
+        <div>
+          <div class="cadastro-titulo">Novo Cliente</div>
+          <div class="cadastro-sub">Todos os campos são opcionais</div>
+        </div>
+        <button class="perfil-back" onclick="closeCadastro()" style="margin:0">✕</button>
+      </div>
+      <div class="cadastro-body">
+        <div class="campo-grupo">
+          <label class="campo-label">Razão Social</label>
+          <input class="campo-input" id="c-razao" placeholder="Nome da empresa...">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Nome Fantasia</label>
+          <input class="campo-input" id="c-fantasia" placeholder="Como é conhecido...">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Comprador / Contato</label>
+          <input class="campo-input" id="c-comprador" placeholder="Nome do comprador...">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Telefone</label>
+          <input class="campo-input" id="c-tel" type="tel" placeholder="(47) 99999-9999">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Cidade</label>
+          <input class="campo-input" id="c-cidade" placeholder="Cidade - UF">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Endereço</label>
+          <input class="campo-input" id="c-endereco" placeholder="Rua, número...">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">CNPJ</label>
+          <input class="campo-input" id="c-cnpj" placeholder="00.000.000/0001-00">
+        </div>
+        <div class="campo-grupo">
+          <div class="loc-status" id="c-loc-status"></div>
+          <button class="btn-localizacao" id="c-loc-btn" onclick="capturarLocalizacao()">📍 USAR MINHA LOCALIZAÇÃO ATUAL</button>
+        </div>
+      </div>
+      <div class="cadastro-footer">
+        <button class="btn-cancelar" onclick="closeCadastro()">Cancelar</button>
+        <button class="btn-salvar-cliente" onclick="salvarNovoCliente()">Salvar Cliente</button>
+      </div>
+    </div>
+
+    <!-- TELA DE ADMIN -->
+    <div id="screen-admin">
+      <div class="admin-header">
+        <button class="perfil-back" onclick="closeAdmin()" style="margin:0">← Voltar</button>
+        <div class="admin-titulo">Painel Admin</div>
+      </div>
+      <div class="admin-body">
+        <div class="admin-section">
+          <div class="admin-section-title">Representantes</div>
+          <div class="admin-card" id="admin-lista-reps">
+            <div style="color:var(--text3);font-size:13px;text-align:center;padding:10px">Carregando...</div>
+          </div>
+        </div>
+        <div class="admin-section">
+          <div class="admin-section-title">Novo Representante</div>
+          <div class="admin-card">
+            <div class="novo-rep-form">
+              <input class="campo-input" id="admin-nome" placeholder="Nome completo">
+              <input class="campo-input" id="admin-email" type="email" placeholder="email@exemplo.com">
+              <input class="campo-input" id="admin-senha" type="password" placeholder="Senha (mín. 6 caracteres)">
+              <button class="btn-admin-salvar" onclick="criarRepresentante()">Criar Representante</button>
+              <div class="admin-msg" id="admin-msg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- TELA CALENDÁRIO -->
     <div id="screen-calendario">
       <div class="cal-header">
