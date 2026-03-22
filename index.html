@@ -2683,15 +2683,10 @@ async function checkinDesktop(id) {
 }
 
 function initDesktopMap() {
-  // Usa o mesmo gmap mas aponta para div diferente
-  if (typeof google === 'undefined') return;
-  const mapDiv = document.getElementById('desktop-map');
-  if (!mapDiv || gmap) {
-    // Se gmap já existe, move para o div desktop
-    if (gmap && mapDiv) {
-      mapDiv.appendChild(document.getElementById('map'));
-    }
-    return;
+  // No desktop o #map já está dentro do desktop-center-mapa
+  // O Google Maps usa o callback initMap automaticamente
+  if (gmap) {
+    renderMapMarkers();
   }
 }
 
@@ -2915,6 +2910,45 @@ if ('serviceWorker' in navigator) {
         </div>
       </div>
     </div>
+
+
+  <!-- ABAS DESKTOP -->
+  <div class="desktop-tabs" style="display:none">
+    <button class="desktop-tab active" onclick="switchDesktopTab('mapa', this)">🗺 Mapa &amp; Lista</button>
+    <button class="desktop-tab" onclick="switchDesktopTab('relatorio', this)">📊 Relatório</button>
+  </div>
+
+  <!-- LAYOUT DESKTOP -->
+  <div class="desktop-main" style="display:none">
+
+    <!-- SIDEBAR LISTA -->
+    <div class="desktop-sidebar">
+      <div class="desktop-search">
+        <div class="desktop-search-box">
+          <span>🔍</span>
+          <input type="search" id="desktop-search-input" placeholder="Buscar cliente, cidade..." oninput="renderDesktopList()">
+        </div>
+      </div>
+      <div class="desktop-list" id="desktop-client-list"></div>
+    </div>
+
+    <!-- CENTRO: MAPA -->
+    <div class="desktop-center" id="desktop-center-mapa">
+      <div id="map" style="flex:1;min-height:0"></div>
+    </div>
+
+    <!-- RELATÓRIO DESKTOP -->
+    <div class="desktop-report" id="desktop-report"></div>
+
+    <!-- PAINEL DETALHE -->
+    <div class="desktop-detail" id="desktop-detail">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px;flex-direction:column;gap:8px;padding:20px">
+        <div style="font-size:40px">👈</div>
+        <div style="text-align:center">Selecione um cliente na lista</div>
+      </div>
+    </div>
+
+  </div>
 
   <!-- NAVBAR -->
   <nav class="navbar">
