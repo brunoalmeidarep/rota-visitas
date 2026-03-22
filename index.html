@@ -807,8 +807,14 @@ function esconderLogin() {
   const emailEl = document.getElementById('config-user-email');
   if (emailEl && currentUser) emailEl.textContent = currentUser.email;
 
-  loadDemo();
+  // loadDemo já foi chamado no INIT
   carregarLembretesSupabase();
+  // Atualiza interface após login
+  if (window.innerWidth >= 768 && typeof renderDesktopList === "function") {
+    renderDesktopList();
+  } else {
+    renderList();
+  }
 }
 
 function mostrarLogin() {
@@ -816,13 +822,17 @@ function mostrarLogin() {
 }
 
 // Inicia verificação de auth ao carregar
-window.addEventListener('load', iniciarApp);
+// iniciarApp chamado no INIT
 
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('date-chip').textContent =
   new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
 
-if (SCRIPT_URL) { carregarLembretesSheets(); }
+// Carrega clientes imediatamente (não espera Supabase)
+loadDemo();
+
+// Depois verifica autenticação em background
+iniciarApp();
 
 // ── STATUS ─────────────────────────────────────────────
 function getStatus(c) {
