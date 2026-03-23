@@ -1,5 +1,7 @@
 # MUNDO DO REP — Contexto do Projeto
 
+Sempre responda em português brasileiro, independente do idioma usado na pergunta.
+
 ## O que é
 App de rota de visitas comerciais para representante Menegotti (Bruno Almeida, Pomerode/SC).
 - **URL:** https://brunoalmeidarep.github.io/rota-visitas

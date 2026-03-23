@@ -1,0 +1,19 @@
+name: Bump SW version
+on:
+  push:
+    branches: [main]
+jobs:
+  bump:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update CACHE_VERSION timestamp
+        run: |
+          TS=$(date -u +"%Y%m%dT%H%M%SZ")
+          sed -i "s/const CACHE_VERSION = '[^']*'/const CACHE_VERSION = '$TS'/" sw.js
+      - name: Commit if changed
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git diff --quiet sw.js || (git add sw.js && git commit -m "chore: bump sw version [skip ci]" && git push)

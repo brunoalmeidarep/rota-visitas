@@ -7,6 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <!-- v2.1 desktop -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2a2a2a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -605,6 +606,42 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 
 
 
+/* ── PEDIDO NO PERFIL ────────────────────────────────── */
+.pedido-valor-row { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+.pedido-valor-pre { font-size:13px; font-weight:600; color:var(--text2); white-space:nowrap; }
+.pedido-valor-inp { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--text); font-family:inherit; font-size:14px; outline:none; }
+.pedido-file-btn { display:flex; align-items:center; gap:8px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-family:inherit; font-size:13px; color:var(--text2); cursor:pointer; width:100%; text-align:left; }
+.pedido-file-btn:active { background:var(--blue-bg); }
+.pedido-file-nome { font-size:11px; color:var(--blue); margin-top:6px; padding-left:2px; }
+
+/* ── TELA PEDIDO REMOTO ──────────────────────────────── */
+#screen-pedido-remoto { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); z-index:200; display:none; flex-direction:column; overflow:hidden; }
+.remoto-header { padding:16px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; }
+.remoto-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:100px; -webkit-overflow-scrolling:touch; }
+.remoto-busca-res { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:12px; }
+.remoto-busca-item { padding:11px 14px; border-bottom:1px solid var(--border); cursor:pointer; font-size:14px; color:var(--text); }
+.remoto-busca-item:last-child { border-bottom:none; }
+.remoto-busca-item:active, .remoto-busca-item:hover { background:var(--blue-bg); }
+.remoto-cliente-sel { font-size:13px; color:var(--blue); margin-top:4px; font-weight:600; padding:8px 12px; background:var(--blue-bg); border-radius:8px; }
+
+/* ── RELATÓRIO TABELA ────────────────────────────────── */
+.rep-filtro-tabs { display:flex; gap:6px; padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5; }
+.rep-filtro-tab { flex:1; padding:7px 4px; border:none; border-radius:8px; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; background:var(--bg); color:var(--text2); }
+.rep-filtro-tab.active { background:var(--blue); color:#fff; }
+.rep-tabela-card { background:var(--card); border-radius:16px; overflow:hidden; margin-bottom:10px; box-shadow:var(--shadow); }
+.rep-tabela-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.rep-tabela { width:100%; border-collapse:collapse; min-width:580px; }
+.rep-tabela th { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.3px; padding:9px 10px; border-bottom:2px solid var(--border); text-align:left; white-space:nowrap; background:var(--bg); }
+.rep-tabela td { font-size:12px; color:var(--text); padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:top; max-width:140px; }
+.rep-tabela tr:last-child td { border-bottom:none; }
+.rep-tabela tr:nth-child(even) td { background:rgba(0,0,0,.02); }
+.rep-tipo-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; white-space:nowrap; display:inline-block; }
+.rep-tipo-visita { background:var(--blue-bg); color:var(--blue); }
+.rep-tipo-remoto { background:var(--orange-bg); color:var(--orange); }
+.rep-total-val { font-size:22px; font-weight:800; color:var(--green); }
+.rep-exportar-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px; background:var(--blue); color:#fff; border:none; border-radius:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:80px; }
+.rep-tabela-vazia { padding:24px; text-align:center; color:var(--text3); font-size:14px; }
+
 </style>
 </head>
 <body>
@@ -683,12 +720,14 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 
     <!-- RELATÓRIO -->
     <div class="screen" id="screen-report">
+      <div class="rep-filtro-tabs" id="rep-filtro-tabs">
+        <button class="rep-filtro-tab active" id="rep-tab-mes" onclick="setRepFiltro('mes',this)">📅 Mês</button>
+        <button class="rep-filtro-tab" id="rep-tab-semana" onclick="setRepFiltro('semana',this)">📆 Semana</button>
+        <button class="rep-filtro-tab" id="rep-tab-hoje" onclick="setRepFiltro('hoje',this)">📌 Hoje</button>
+      </div>
       <div class="rep-body" id="rep-body">
         <!-- preenchido por renderReport() -->
       </div>
-
-      <!-- PAINEL FILTRO (clique nos números do header) -->
-
     </div>
 
   
@@ -1719,10 +1758,157 @@ function renderReport() {
         '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:var(--blue-bg);color:var(--blue)">'+cidadesOrdenadas.length+'</span>' +
       '</div>' +
       cidadesHTML +
-    '</div>';
+    '</div>' +
+
+    // TABELA DE VISITAS
+    (() => {
+      // Filtra visatas de acordo com repFiltroAtual
+      let rows = [];
+      const hj = new Date();
+      if (repFiltroAtual === 'hoje') {
+        const hojStr = hj.toISOString().slice(0,10);
+        rows = visatasDoRelatorio.filter(v => v.data === hojStr);
+        // Complementa com check-ins do dia em memória
+        clientes.filter(c => c.visitadoHoje).forEach(c => {
+          if (!rows.find(r => String(r.id_cliente) === String(c.id))) {
+            rows.push({ id_cliente: String(c.id), nome_cliente: c.nome, cidade: c.cidade, data: hojStr, hora: c.horaHoje, obs: c.ultimaObs, tipo: 'visita', valor_pedido: null });
+          }
+        });
+      } else if (repFiltroAtual === 'semana') {
+        const dSem = hj.getDay();
+        const iniSemTs = new Date(hj); iniSemTs.setDate(hj.getDate() - dSem); iniSemTs.setHours(0,0,0,0);
+        const iniSemStr = iniSemTs.toISOString().slice(0,10);
+        const fimSemStr = hj.toISOString().slice(0,10);
+        rows = visatasDoRelatorio.filter(v => v.data >= iniSemStr && v.data <= fimSemStr);
+      } else {
+        rows = [...visatasDoRelatorio];
+      }
+
+      // Total R$
+      const totalR = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
+      const totalRStr = totalR > 0 ? 'R$ ' + totalR.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+
+      const tabelaHTML = rows.length ? rows.map((v, i) => {
+        const c = clientes.find(x => String(x.id) === String(v.id_cliente));
+        const nomeBase = (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim();
+        const seg = c ? (SEGMENTO_LABEL[c.segmento] || c.segmento || '—') : '—';
+        const tipo = v.tipo === 'remoto' ? 'remoto' : 'visita';
+        const tipoBadge = tipo === 'remoto'
+          ? '<span class="rep-tipo-badge rep-tipo-remoto">📦 Remoto</span>'
+          : '<span class="rep-tipo-badge rep-tipo-visita">🤝 Visita</span>';
+        const valorStr = v.valor_pedido ? 'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
+        const docLink = v.doc_url ? '<a href="' + v.doc_url + '" target="_blank" style="color:var(--blue);text-decoration:none">📄</a>' : '—';
+        const dataFmt = v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'}) : '';
+        const cidade = (v.cidade || '').replace(' - SC','').replace(' - PR','').trim();
+        const obs = v.obs ? '<span style="font-size:11px;color:var(--text2)">' + v.obs.slice(0,60) + (v.obs.length>60?'…':'') + '</span>' : '<span style="color:var(--text3);font-style:italic">—</span>';
+        return '<tr>' +
+          '<td style="font-weight:600;white-space:nowrap">' + nomeBase + '</td>' +
+          '<td style="white-space:nowrap">' + dataFmt + (v.hora && v.hora !== '00:00' ? ' ' + v.hora : '') + '</td>' +
+          '<td>' + tipoBadge + '</td>' +
+          '<td>' + cidade + '</td>' +
+          '<td>' + seg + '</td>' +
+          '<td>' + obs + '</td>' +
+          '<td style="font-weight:700;color:var(--green);white-space:nowrap">' + valorStr + '</td>' +
+          '<td style="text-align:center">' + docLink + '</td>' +
+        '</tr>';
+      }).join('') : '<tr><td colspan="8" class="rep-tabela-vazia">Nenhum registro neste período</td></tr>';
+
+      const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Esta Semana' : nomeMesCap + ' ' + anoRef;
+      return '<div class="rep-tabela-card">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)">' +
+          '<div style="font-size:14px;font-weight:700;color:var(--text)">📋 Registros — ' + filtroLabel + '</div>' +
+          (totalR > 0 ? '<div class="rep-total-val">' + totalRStr + '</div>' : '') +
+        '</div>' +
+        '<div class="rep-tabela-wrap">' +
+          '<table class="rep-tabela">' +
+            '<thead><tr>' +
+              '<th>Cliente</th><th>Data</th><th>Tipo</th><th>Cidade</th><th>Segmento</th><th>Obs.</th><th>Pedido</th><th>Doc</th>' +
+            '</tr></thead>' +
+            '<tbody>' + tabelaHTML + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>' +
+
+      '<button class="rep-exportar-btn" onclick="exportarPDF()">' +
+        '📄 Exportar PDF' +
+      '</button>';
+    })();
 }
 
 
+
+// Exportar relatório em PDF via jsPDF
+function exportarPDF() {
+  if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+    showToast('⚠️ jsPDF não carregado', true); return;
+  }
+  const { jsPDF } = window.jspdf || window;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  const hoje = new Date();
+  const nomeMes = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', {month:'long'});
+  const titulo = 'Relatório de Visitas — ' + nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1) + ' ' + relAno;
+
+  let rows = [];
+  if (repFiltroAtual === 'hoje') {
+    const hojStr = hoje.toISOString().slice(0,10);
+    rows = visatasDoRelatorio.filter(v => v.data === hojStr);
+    clientes.filter(c => c.visitadoHoje).forEach(c => {
+      if (!rows.find(r => String(r.id_cliente) === String(c.id))) {
+        rows.push({ id_cliente: String(c.id), nome_cliente: c.nome, cidade: c.cidade, data: hojStr, hora: c.horaHoje, obs: c.ultimaObs, tipo: 'visita', valor_pedido: null });
+      }
+    });
+  } else if (repFiltroAtual === 'semana') {
+    const dSem = hoje.getDay();
+    const iniSemTs = new Date(hoje); iniSemTs.setDate(hoje.getDate() - dSem); iniSemTs.setHours(0,0,0,0);
+    rows = visatasDoRelatorio.filter(v => v.data >= iniSemTs.toISOString().slice(0,10) && v.data <= hoje.toISOString().slice(0,10));
+  } else {
+    rows = [...visatasDoRelatorio];
+  }
+
+  const totalR = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(titulo, 14, 15);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Gerado em: ' + hoje.toLocaleDateString('pt-BR') + ' às ' + hoje.toTimeString().slice(0,5), 14, 21);
+  if (totalR > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total em pedidos: R$ ' + totalR.toLocaleString('pt-BR', {minimumFractionDigits:2}), 14, 27);
+  }
+
+  const headers = [['Cliente', 'Data', 'Tipo', 'Cidade', 'Segmento', 'Obs.', 'Pedido R$']];
+  const body = rows.map(v => {
+    const c = clientes.find(x => String(x.id) === String(v.id_cliente));
+    const nomeBase = (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim();
+    const seg = c ? (SEGMENTO_LABEL[c.segmento] || c.segmento || '') : '';
+    const dataFmt = v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+    const valorStr = v.valor_pedido ? 'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
+    const cidade = (v.cidade || '').replace(' - SC','').replace(' - PR','').trim();
+    return [nomeBase, dataFmt + (v.hora && v.hora !== '00:00' ? ' ' + v.hora : ''), v.tipo === 'remoto' ? 'Remoto' : 'Visita', cidade, seg, (v.obs || '').slice(0,60), valorStr];
+  });
+
+  if (typeof doc.autoTable === 'function') {
+    doc.autoTable({ head: headers, body: body, startY: totalR > 0 ? 33 : 27, styles: { fontSize: 8 }, headStyles: { fillColor: [41, 98, 255] } });
+  } else {
+    // Fallback manual sem autoTable
+    let y = totalR > 0 ? 33 : 27;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cliente | Data | Tipo | Cidade | Pedido', 14, y); y += 6;
+    doc.setFont('helvetica', 'normal');
+    body.forEach(row => {
+      doc.text(row[0].slice(0,30) + ' | ' + row[1] + ' | ' + row[2] + ' | ' + row[3].slice(0,15) + ' | ' + row[6], 14, y);
+      y += 5;
+      if (y > 185) { doc.addPage(); y = 14; }
+    });
+  }
+
+  const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Semana' : nomeMes.slice(0,3) + relAno;
+  doc.save('relatorio_' + filtroLabel + '.pdf');
+}
 
 // Painel filtro (clique nos números do header)
 
@@ -2163,15 +2349,30 @@ async function checkinPerfil() {
   renderList();
   if (gmap) renderMapMarkers();
 
+  // Captura valor e documento do pedido
+  const valorEl = document.getElementById('p-valor');
+  const valorPedido = valorEl && valorEl.value ? parseFloat(valorEl.value) : null;
+  const fileInput = document.getElementById('p-doc-input');
+  let docUrl = null;
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    docUrl = await uploadDocSupabase(fileInput.files[0], 'checkin_' + perfilId + '_' + dataHoje);
+  }
+
   // Salva no Supabase
-  await salvarCheckinSupabase(c, obs, dataHoje, hora);
+  await salvarCheckinSupabase(c, obs, dataHoje, hora, valorPedido, docUrl);
 
   // Salva backup local do histórico
   salvarHistoricoLocal(perfilId, dataHoje, hora, obs);
 
-  // Limpa campo de observação
+  // Limpa campos
   const obsEl = document.getElementById('p-obs');
   if (obsEl) obsEl.value = '';
+  if (valorEl) valorEl.value = '';
+  if (fileInput) fileInput.value = '';
+  const nomeEl = document.getElementById('p-doc-nome');
+  if (nomeEl) nomeEl.textContent = '';
+  const labelEl = document.getElementById('p-doc-label');
+  if (labelEl) labelEl.textContent = 'Anexar documento (PDF ou imagem)';
 
   // Botão fica verde confirmando
   btn.textContent = '✓ Salvo às ' + hora;
@@ -2430,19 +2631,150 @@ function restaurarCheckinsDoDia() {
 
 // ── PERSISTÊNCIA SUPABASE ────────────────────────────
 // Salva check-in no Supabase
-async function salvarCheckinSupabase(c, obs, data, hora) {
+async function salvarCheckinSupabase(c, obs, data, hora, valorPedido, docUrl) {
   if (!currentUser) return;
   try {
-    await sb.from('visitas').insert({
+    const payload = {
       id_cliente: String(c.id),
       nome_cliente: c.nome,
       cidade: c.cidade,
       data: data,
       hora: hora,
       obs: obs || '',
-      rep_id: currentUser.id
-    });
+      rep_id: currentUser.id,
+      tipo: 'visita'
+    };
+    if (valorPedido !== null && valorPedido !== undefined) payload.valor_pedido = valorPedido;
+    if (docUrl) payload.doc_url = docUrl;
+    await sb.from('visitas').insert(payload);
   } catch(e) { console.log('Erro ao salvar visita:', e); }
+}
+
+// Upload de documento ao Supabase Storage
+async function uploadDocSupabase(file, nomeBase) {
+  if (!currentUser || !file) return null;
+  try {
+    const ext = file.name.split('.').pop().toLowerCase();
+    const path = currentUser.id + '/' + nomeBase + '_' + Date.now() + '.' + ext;
+    const { data, error } = await sb.storage.from('pedidos').upload(path, file, { upsert: true });
+    if (error) { console.log('Erro upload:', error); return null; }
+    const { data: urlData } = sb.storage.from('pedidos').getPublicUrl(path);
+    return urlData?.publicUrl || null;
+  } catch(e) { console.log('Erro upload doc:', e); return null; }
+}
+
+// Pedido Remoto
+let remotoClienteSel = null;
+
+function openPedidoRemoto() {
+  const el = document.getElementById('screen-pedido-remoto');
+  if (el) el.style.display = 'flex';
+  // Data padrão = hoje
+  const dataEl = document.getElementById('rem-data');
+  if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
+  // Limpa campos anteriores
+  ['rem-busca','rem-valor','rem-obs'].forEach(id => {
+    const el2 = document.getElementById(id); if (el2) el2.value = '';
+  });
+  document.getElementById('rem-cliente-id').value = '';
+  const sel = document.getElementById('rem-cliente-sel');
+  if (sel) { sel.textContent = ''; sel.style.display = 'none'; }
+  const res = document.getElementById('rem-busca-res');
+  if (res) res.style.display = 'none';
+  const docInput = document.getElementById('rem-doc-input');
+  if (docInput) docInput.value = '';
+  document.getElementById('rem-doc-nome').textContent = '';
+  document.getElementById('rem-doc-label').textContent = 'Selecionar arquivo';
+  remotoClienteSel = null;
+}
+
+function closePedidoRemoto() {
+  const el = document.getElementById('screen-pedido-remoto');
+  if (el) el.style.display = 'none';
+}
+
+function pedidoDocSelecionado(input) {
+  const nome = input.files[0]?.name || '';
+  const labelEl = document.getElementById('p-doc-label');
+  const nomeEl = document.getElementById('p-doc-nome');
+  if (labelEl) labelEl.textContent = nome || 'Anexar documento (PDF ou imagem)';
+  if (nomeEl) nomeEl.textContent = nome ? '📄 ' + nome : '';
+}
+
+function remotoDocSelecionado(input) {
+  const nome = input.files[0]?.name || '';
+  const labelEl = document.getElementById('rem-doc-label');
+  const nomeEl = document.getElementById('rem-doc-nome');
+  if (labelEl) labelEl.textContent = nome || 'Selecionar arquivo';
+  if (nomeEl) nomeEl.textContent = nome ? '📄 ' + nome : '';
+}
+
+function buscarClienteRemoto(q) {
+  const res = document.getElementById('rem-busca-res');
+  if (!q || q.length < 2) { if (res) res.style.display = 'none'; return; }
+  const lista = clientes.filter(c => c.nome.toLowerCase().includes(q.toLowerCase()) || c.cidade.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
+  if (!lista.length) { if (res) res.style.display = 'none'; return; }
+  res.style.display = 'block';
+  res.innerHTML = lista.map(c =>
+    '<div class="remoto-busca-item" onclick="selecionarClienteRemoto(' + c.id + ')">' +
+      '<span style="font-weight:600">' + c.nome.replace(/\s*\([^)]*\)/,'').trim() + '</span>' +
+      ' <span style="font-size:11px;color:var(--text3)">📍 ' + c.cidade + '</span>' +
+    '</div>'
+  ).join('');
+}
+
+function selecionarClienteRemoto(id) {
+  const c = clientes.find(x => x.id == id);
+  if (!c) return;
+  remotoClienteSel = c;
+  document.getElementById('rem-cliente-id').value = id;
+  document.getElementById('rem-busca').value = c.nome.replace(/\s*\([^)]*\)/,'').trim();
+  const res = document.getElementById('rem-busca-res');
+  if (res) res.style.display = 'none';
+  const sel = document.getElementById('rem-cliente-sel');
+  if (sel) { sel.textContent = '✓ ' + c.nome.replace(/\s*\([^)]*\)/,'').trim() + ' — ' + c.cidade; sel.style.display = 'block'; }
+}
+
+async function salvarPedidoRemoto() {
+  const clienteId = document.getElementById('rem-cliente-id').value;
+  const data = document.getElementById('rem-data').value;
+  if (!clienteId || !data) { showToast('⚠️ Selecione o cliente e a data', true); return; }
+  if (!currentUser) { showToast('⚠️ Faça login primeiro', true); return; }
+
+  const btn = document.getElementById('rem-btn-salvar');
+  btn.disabled = true; btn.textContent = '⏳ Salvando...';
+
+  const obs = document.getElementById('rem-obs').value.trim();
+  const valorEl = document.getElementById('rem-valor');
+  const valorPedido = valorEl && valorEl.value ? parseFloat(valorEl.value) : null;
+  const fileInput = document.getElementById('rem-doc-input');
+  let docUrl = null;
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    docUrl = await uploadDocSupabase(fileInput.files[0], 'remoto_' + clienteId + '_' + data);
+  }
+
+  try {
+    const c = remotoClienteSel || clientes.find(x => x.id == clienteId);
+    const payload = {
+      id_cliente: String(clienteId),
+      nome_cliente: c ? c.nome : '',
+      cidade: c ? c.cidade : '',
+      data: data,
+      hora: '00:00',
+      obs: obs || '',
+      rep_id: currentUser.id,
+      tipo: 'remoto'
+    };
+    if (valorPedido !== null && valorPedido !== undefined) payload.valor_pedido = valorPedido;
+    if (docUrl) payload.doc_url = docUrl;
+    await sb.from('visitas').insert(payload);
+    showToast('✓ Pedido remoto salvo!');
+    closePedidoRemoto();
+  } catch(e) {
+    showToast('❌ Erro ao salvar pedido', true);
+    console.log('Erro pedido remoto:', e);
+  }
+  btn.disabled = false; btn.textContent = '✓ Salvar Pedido';
 }
 
 // Busca histórico de um cliente no Supabase
@@ -2518,6 +2850,14 @@ async function carregarLembretesSupabase() {
 let relMes = new Date().getMonth();
 let relAno = new Date().getFullYear();
 let visatasDoRelatorio = [];
+let repFiltroAtual = 'mes'; // 'mes' | 'semana' | 'hoje'
+
+function setRepFiltro(filtro, btn) {
+  repFiltroAtual = filtro;
+  document.querySelectorAll('.rep-filtro-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderReport();
+}
 
 // Carrega visitas do período selecionado
 async function carregarPeriodoRelatorio() {
@@ -3642,8 +3982,61 @@ if ('serviceWorker' in navigator) {
         <div class="checkin-obs-box">
           <textarea id="p-obs" placeholder="Anotações sobre esta visita..."></textarea>
         </div>
+        <div class="perfil-section-title">💰 Pedido (opcional)</div>
+        <div class="checkin-obs-box">
+          <div class="pedido-valor-row">
+            <span class="pedido-valor-pre">R$</span>
+            <input class="pedido-valor-inp" id="p-valor" type="number" step="0.01" min="0" placeholder="0,00">
+          </div>
+          <label class="pedido-file-btn" for="p-doc-input">
+            <span>📎</span><span id="p-doc-label">Anexar documento (PDF ou imagem)</span>
+          </label>
+          <input type="file" id="p-doc-input" accept=".pdf,image/*" style="display:none" onchange="pedidoDocSelecionado(this)">
+          <div class="pedido-file-nome" id="p-doc-nome"></div>
+        </div>
         <div class="perfil-section-title">Histórico</div>
         <div id="p-historico"></div>
+      </div>
+    </div>
+
+    <!-- PEDIDO REMOTO -->
+    <div id="screen-pedido-remoto">
+      <div class="remoto-header">
+        <button class="perfil-back" onclick="closePedidoRemoto()">← Voltar</button>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:800;color:var(--text)">📦 Pedido Remoto</div>
+          <div style="font-size:11px;color:var(--text3)">Pedido sem visita presencial</div>
+        </div>
+      </div>
+      <div class="remoto-body">
+        <div class="campo-grupo">
+          <label class="campo-label">Cliente *</label>
+          <input class="campo-input" id="rem-busca" placeholder="Buscar cliente..." oninput="buscarClienteRemoto(this.value)" autocomplete="off">
+          <div class="remoto-busca-res" id="rem-busca-res" style="display:none"></div>
+          <input type="hidden" id="rem-cliente-id">
+          <div class="remoto-cliente-sel" id="rem-cliente-sel" style="display:none"></div>
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Data *</label>
+          <input class="campo-input" id="rem-data" type="date">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Valor do Pedido (R$)</label>
+          <input class="campo-input pedido-valor-inp" id="rem-valor" type="number" step="0.01" min="0" placeholder="0,00">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Observações</label>
+          <textarea class="campo-input" id="rem-obs" rows="3" placeholder="Detalhes do pedido..." style="resize:none;min-height:80px"></textarea>
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Documento (PDF ou imagem)</label>
+          <label class="pedido-file-btn" for="rem-doc-input">
+            <span>📎</span><span id="rem-doc-label">Selecionar arquivo</span>
+          </label>
+          <input type="file" id="rem-doc-input" accept=".pdf,image/*" style="display:none" onchange="remotoDocSelecionado(this)">
+          <div class="pedido-file-nome" id="rem-doc-nome"></div>
+        </div>
+        <button class="btn-salvar-cadastro" id="rem-btn-salvar" onclick="salvarPedidoRemoto()">✓ Salvar Pedido</button>
       </div>
     </div>
 
@@ -3777,6 +4170,7 @@ if ('serviceWorker' in navigator) {
   <!-- NAVBAR -->
   <nav class="navbar">
     <button class="nav-item active" id="nav-list" onclick="showScreen('list')"><span class="nav-icon">👥</span><span class="nav-label">Lista</span></button>
+    <button class="nav-item" id="nav-remoto" onclick="openPedidoRemoto()"><span class="nav-icon">📦</span><span class="nav-label">Remoto</span></button>
     <button class="nav-item" id="nav-map" onclick="showScreen('map')"><span class="nav-icon">🗺</span><span class="nav-label">Mapa</span></button>
     <button class="nav-item" id="nav-planner" onclick="showScreen('planner')"><span class="nav-icon">📅</span><span class="nav-label">Planner</span></button>
     <button class="nav-item" id="nav-tarefas" onclick="showScreen('tarefas')"><span class="nav-icon">📋</span><span class="nav-label">Tarefas</span></button>
