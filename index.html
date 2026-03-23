@@ -945,6 +945,13 @@ gmScript.async = true;
 gmScript.defer = true;
 document.head.appendChild(gmScript);
 
+const SEGS_PADRAO = [
+  { valor: 'mat_construcao', label: '🏗 Mat. Construção' },
+  { valor: 'construtora',    label: '🏢 Construtora' },
+  { valor: 'tintas',         label: '🎨 Loja de Tintas' },
+  { valor: 'distribuidora',  label: '🚛 Distribuidora' },
+];
+
 // Inicia app (verifica sessão do Supabase)
 getTodosSegmentos(); // carrega segmentos custom no SEGMENTO_LABEL
 iniciarApp();
@@ -3350,13 +3357,6 @@ const SEGMENTO_LABEL = {
   tintas: '🎨 Tintas',
   distribuidora: '🚛 Distribuidora'
 };
-
-const SEGS_PADRAO = [
-  { valor: 'mat_construcao', label: '🏗 Mat. Construção' },
-  { valor: 'construtora',    label: '🏢 Construtora' },
-  { valor: 'tintas',         label: '🎨 Loja de Tintas' },
-  { valor: 'distribuidora',  label: '🚛 Distribuidora' },
-];
 
 function carregarSegmentosCustom() {
   try { return JSON.parse(localStorage.getItem('segmentos_custom_v1') || '[]'); }
