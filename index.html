@@ -808,6 +808,14 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     </div>
     <label>Observações</label>
     <textarea id="m-obs" placeholder="Ex: pedido feito, retornar em 15 dias..."></textarea>
+    <label style="margin-top:10px;display:block">💰 Valor do pedido (opcional)</label>
+    <div class="pedido-valor-row" style="margin-bottom:10px">
+      <span class="pedido-valor-pre">R$</span>
+      <input class="pedido-valor-inp" id="m-valor" type="number" step="0.01" min="0" placeholder="0,00">
+    </div>
+    <label class="pedido-file-btn" for="m-doc-input" id="m-doc-btn">📎 Anexar documento (PDF ou imagem)</label>
+    <input type="file" id="m-doc-input" accept=".pdf,image/*" style="display:none" onchange="modalDocSelecionado(this)">
+    <div class="pedido-file-nome" id="m-doc-nome"></div>
     <div class="modal-actions">
       <button class="btn-primary"    id="btn-checkin"    onclick="doCheckin()">✓ Registrar visita agora</button>
       <button class="btn-maps-modal" id="btn-maps-modal" onclick="openMaps()">↗ Abrir no Google Maps</button>
@@ -1962,29 +1970,48 @@ function closeModal(e) {
   }
 }
 
+function modalDocSelecionado(input) {
+  const nome = input.files[0]?.name || '';
+  document.getElementById('m-doc-btn').textContent = nome ? '📎 ' + nome : '📎 Anexar documento (PDF ou imagem)';
+  const el = document.getElementById('m-doc-nome');
+  if (el) el.textContent = nome ? '📄 ' + nome : '';
+}
+
 async function doCheckin() {
   const c   = clientes.find(x => x.id == activeId);
   const obs = document.getElementById('m-obs').value.trim();
   const btn = document.getElementById('btn-checkin');
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
 
+  const hora  = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  const data  = new Date().toISOString().split('T')[0];
+
+  // Captura valor e doc
+  const valorEl = document.getElementById('m-valor');
+  const valorPedido = valorEl && valorEl.value ? parseFloat(valorEl.value) : null;
+  const fileInput = document.getElementById('m-doc-input');
+  let docUrl = null;
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    docUrl = await uploadDocSupabase(fileInput.files[0], 'checkin_' + c.id + '_' + data);
+  }
+
   try {
-    if (SCRIPT_URL) {
-      const res  = await fetch(`${SCRIPT_URL}?action=checkin&id=${c.id}&nome=${encodeURIComponent(c.nome)}&obs=${encodeURIComponent(obs)}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      c.horaHoje = data.hora; c.ultimaVisita = data.data;
-    } else {
-      c.horaHoje     = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-      c.ultimaVisita = new Date().toISOString().split('T')[0];
-    }
+    c.horaHoje     = hora;
+    c.ultimaVisita = data;
     c.visitadoHoje = true; c.obs = obs;
     document.getElementById('overlay').classList.remove('open');
     renderList();
     if (mapReady) updateMarker(c);
+    // Limpa campos
+    if (valorEl) valorEl.value = '';
+    if (fileInput) fileInput.value = '';
+    document.getElementById('m-doc-btn').textContent = '📎 Anexar documento (PDF ou imagem)';
+    const nomeEl = document.getElementById('m-doc-nome'); if (nomeEl) nomeEl.textContent = '';
+    // Salva no Supabase
+    await salvarCheckinSupabase(c, obs, data, hora, valorPedido, docUrl);
     showToast('✓ Visita registrada!');
   } catch(e) {
-    showToast('❌ ' + e.message, true);
+    showToast('❌ Erro ao salvar', true);
     btn.disabled = false; btn.textContent = '✓ Registrar visita agora';
   }
 }
