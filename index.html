@@ -2438,17 +2438,11 @@ function renderHistorico(id, c) {
   const container = document.getElementById('p-historico');
   const visitas = historicoVisitas[id] || [];
 
-  // Monta lista: visitas de hoje + históricas salvas + última compra como referência
   let items = [...visitas];
 
-  // Adiciona última compra como referência se existir e não for hoje
+  // Adiciona última compra como referência se não vier do Supabase
   if (c.ultimaVisita && !items.some(v => v.data === c.ultimaVisita && v.compra)) {
-    items.push({
-      data: c.ultimaVisita,
-      obs: c.obsUltimaCompra || c.ultimaObs || '',
-      compra: true,
-      hoje: false
-    });
+    items.push({ data: c.ultimaVisita, obs: c.obsUltimaCompra || c.ultimaObs || '', compra: true, hoje: false });
   }
 
   if (items.length === 0) {
@@ -2456,28 +2450,51 @@ function renderHistorico(id, c) {
     return;
   }
 
-  // Ordena do mais recente ao mais antigo
-  items.sort((a, b) => (b.data + (b.hora||'')) .localeCompare(a.data + (a.hora||'')));
+  items.sort((a, b) => (b.data + (b.hora||'')).localeCompare(a.data + (a.hora||'')));
 
   container.innerHTML = items.map((v, i) => {
-    const dotClass = v.hoje ? 'hoje' : (i === 0 ? 'recente' : '');
-    const emoji = v.hoje ? '⭐' : v.compra ? '🛒' : '📋';
-    const label = v.hoje ? 'Hoje' : formatDate(v.data);
-    const horaStr = v.hora ? ` · ${v.hora}` : '';
-    const tipoStr = v.compra ? ' · última compra' : '';
+    const tipo = v.tipo || (v.compra ? 'compra' : 'visita');
+    const isHoje = !!v.hoje;
+    const dotClass = isHoje ? 'hoje' : (i === 0 ? 'recente' : '');
+
+    // Ícone e badge por tipo
+    let emoji, badge;
+    if (tipo === 'orcamento') {
+      const statusCor = {aberto:'var(--blue)',fechado:'var(--green)',perdido:'var(--red)'}[v.status_orcamento||'aberto'] || 'var(--blue)';
+      const statusLabel = {aberto:'Aberto',fechado:'Fechado',perdido:'Perdido'}[v.status_orcamento||'aberto'] || 'Aberto';
+      emoji = '📋';
+      badge = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${statusCor}22;color:${statusCor};margin-left:4px">${statusLabel}</span>`;
+    } else if (tipo === 'remoto' || tipo === 'pedido') {
+      emoji = '💰'; badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:4px">Pedido</span>';
+    } else if (v.compra) {
+      emoji = '🛒'; badge = '';
+    } else {
+      emoji = isHoje ? '⭐' : '📋'; badge = '';
+    }
+
+    const label = isHoje ? 'Hoje' : formatDate(v.data);
+    const horaStr = v.hora && v.hora !== '00:00' ? ` · ${v.hora}` : '';
+    const valorStr = v.valor_pedido ? ` · <strong style="color:var(--green)">R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>` : '';
+    const docBtn = v.doc_url
+      ? `<a href="${v.doc_url}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:6px;text-decoration:none" title="Abrir documento">📄</a>`
+      : '';
+    const editBtn = isHoje && tipo !== 'orcamento' && tipo !== 'remoto'
+      ? `<button onclick="editarObsHoje(${id},'${v.data}','${v.hora||''}')" style="background:none;border:none;font-size:13px;cursor:pointer;color:var(--text3);padding:0 2px">✏️</button>`
+      : '';
+    const converterBtn = tipo === 'orcamento' && (v.status_orcamento === 'aberto' || !v.status_orcamento) && v.id
+      ? `<button onclick="converterOrcamentoEmPedido(${v.id})" style="margin-top:6px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✓ Converter em Pedido</button>`
+      : '';
     const obsHtml = v.obs
       ? `<div class="hist-obs">${v.obs}</div>`
       : `<div class="hist-obs-vazia">Sem observações</div>`;
-    const editBtn = v.hoje && !v.compra
-      ? `<button onclick="editarObsHoje(${id}, '${v.data}', '${v.hora || ''}')" style="background:none;border:none;font-size:13px;cursor:pointer;color:var(--text3);padding:0 2px" title="Editar observação">✏️</button>`
-      : '';
 
     return `
     <div class="historico-item">
       <div class="hist-dot ${dotClass}">${emoji}</div>
       <div class="hist-content">
-        <div class="hist-data">${label}${horaStr}${tipoStr}${editBtn}</div>
+        <div class="hist-data">${label}${horaStr}${badge}${valorStr}${docBtn}${editBtn}</div>
         ${obsHtml}
+        ${converterBtn}
       </div>
     </div>`;
   }).join('');
