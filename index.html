@@ -698,6 +698,17 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     </div>
   </div>
 
+  <!-- FILTRO STATUS (pills "Última visita") -->
+  <div class="seg-filtro-bar" id="seg-filtro-bar" style="display:none">
+    <span style="font-size:10px;font-weight:600;color:var(--text3);white-space:nowrap;align-self:center;flex-shrink:0">Última visita:</span>
+    <button class="seg-pill-filtro active" id="pill-todos" onclick="filtrarStatus(this,'')">Todos</button>
+    <button class="seg-pill-filtro" id="pill-today" onclick="filtrarStatus(this,'today')">Hoje</button>
+    <button class="seg-pill-filtro" id="pill-green" onclick="filtrarStatus(this,'green')">≤1 mês</button>
+    <button class="seg-pill-filtro" id="pill-blue" onclick="filtrarStatus(this,'blue')">31-60d</button>
+    <button class="seg-pill-filtro" id="pill-red" onclick="filtrarStatus(this,'red')">+60d</button>
+    <button class="seg-pill-filtro" id="pill-purple" onclick="filtrarStatus(this,'purple')">Nunca</button>
+  </div>
+
   <div class="screens">
 
     <!-- LISTA -->
@@ -3591,10 +3602,27 @@ function abrirFiltroHeader(status) {
   if (currentScreen !== 'list') showScreen('list');
   // Toggle do filtro — se já está ativo, desativa
   activeFilter = (activeFilter === status) ? null : status;
+  sincronizarPillStatus();
   renderList();
   // Scroll para o topo da lista
   const lista = document.getElementById('client-list');
   if (lista) lista.scrollTop = 0;
+}
+
+function filtrarStatus(btn, status) {
+  activeFilter = status || null;
+  sincronizarPillStatus();
+  renderList();
+  const lista = document.getElementById('client-list');
+  if (lista) lista.scrollTop = 0;
+}
+
+function sincronizarPillStatus() {
+  const map = { '': 'pill-todos', today: 'pill-today', green: 'pill-green', blue: 'pill-blue', red: 'pill-red', purple: 'pill-purple' };
+  document.querySelectorAll('.seg-pill-filtro').forEach(b => b.classList.remove('active'));
+  const key = activeFilter || '';
+  const pillId = map[key];
+  if (pillId) { const p = document.getElementById(pillId); if (p) p.classList.add('active'); }
 }
 
 
