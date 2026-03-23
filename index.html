@@ -2416,7 +2416,7 @@ async function checkinPerfil() {
   await salvarCheckinSupabase(c, obs, dataHoje, hora);
 
   // Salva backup local do histórico
-  salvarHistoricoLocal(id, dataHoje, hora, obs);
+  salvarHistoricoLocal(perfilId, dataHoje, hora, obs);
 
   // Limpa campo de observação
   const obsEl = document.getElementById('p-obs');
