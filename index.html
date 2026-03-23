@@ -49,10 +49,23 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 #app { height:100vh; display:flex; flex-direction:column; overflow:hidden; max-width:430px; margin:0 auto; background:var(--bg); }
 
 @media (min-width: 768px) {
-  body { overflow:hidden; display:flex; flex-direction:column; height:100vh; }
-  #app { max-width:100% !important; height:auto !important; overflow:visible !important; flex-shrink:0; }
-  .desktop-tabs { flex-shrink:0; }
-  .desktop-main { flex:1; min-height:0; }
+  /* Esconde tudo mobile */
+  .navbar { display:none !important; }
+  .search-bar { display:none !important; }
+  .seg-filtro-bar { display:none !important; }
+  .active-filter-bar { display:none !important; }
+  #app { display:none !important; }
+
+  /* Mostra o desktop */
+  #dt-wrap { display:flex !important; flex-direction:column; height:100vh; width:100%; }
+
+  /* Layout principal */
+  #dt-content { flex:1; display:flex; min-height:0; overflow:hidden; }
+  #dt-sidebar { width:320px; flex-shrink:0; display:flex; flex-direction:column; border-right:1px solid var(--border); background:var(--surface); overflow:hidden; }
+  #dt-map-wrap { flex:1; min-width:0; position:relative; }
+  #dt-map-wrap #map { width:100%; height:100%; }
+  #dt-detail { width:340px; flex-shrink:0; display:flex; flex-direction:column; border-left:1px solid var(--border); background:var(--surface); overflow-y:auto; }
+  #dt-report { flex:1; overflow-y:auto; padding:20px; }
 }
 
 
@@ -479,13 +492,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
   .geo-bar      { display: none !important; }
 
   /* Abas desktop */
-  #dt-wrap {
-    display: flex !important;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
+  
   #dt-tabs {
     display: flex !important;
     background: var(--surface);
@@ -922,6 +929,117 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .login-esqueci { font-size:12px; color:rgba(255,255,255,.4); text-align:center; cursor:pointer; }
 .login-versao { font-size:10px; color:rgba(255,255,255,.25); text-align:center; margin-top:8px; }
 
+
+/* ── HEADER DESKTOP ─────────────────────────────── */
+#dt-header {
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:12px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+}
+#dt-tabs {
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;
+  display:flex;
+  gap:4px;
+  flex-shrink:0;
+}
+.dt-tab {
+  background:none;
+  border:none;
+  padding:12px 20px;
+  font-family:inherit;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text3);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:.2s;
+}
+.dt-tab.active { color:var(--blue); border-bottom-color:var(--blue); }
+.dt-tab:hover { color:var(--text); }
+
+#dt-content { flex:1; display:flex; min-height:0; overflow:hidden; }
+
+/* Sidebar */
+#dt-sidebar {
+  width:300px;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  border-right:1px solid var(--border);
+  overflow:hidden;
+}
+#dt-search { padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+#dt-search-box {
+  background:var(--bg);
+  border-radius:10px;
+  padding:7px 12px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+#dt-search-box input {
+  flex:1;
+  background:none;
+  border:none;
+  outline:none;
+  font-size:13px;
+  color:var(--text);
+  font-family:inherit;
+}
+#dt-list { flex:1; overflow-y:auto; }
+
+/* Mapa */
+#dt-map-wrap {
+  flex:1;
+  min-width:0;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+}
+#dt-map-wrap #map { flex:1; min-height:0; }
+
+/* Detalhe */
+#dt-detail {
+  width:340px;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  border-left:1px solid var(--border);
+  overflow-y:auto;
+}
+
+/* Relatório desktop */
+#dt-report { flex:1; overflow-y:auto; padding:20px; display:none; }
+
+/* Cards na lista desktop */
+.dt-card {
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  transition:.1s;
+}
+.dt-card:hover { background:var(--bg); }
+.dt-card.active { background:var(--blue-bg); }
+.dt-card-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.dt-card-nome { font-size:13px; font-weight:600; color:var(--text); }
+.dt-card-sub { font-size:11px; color:var(--text3); margin-top:2px; }
+.dt-card-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:8px; margin-left:auto; flex-shrink:0; }
+.dt-sep { font-size:10px; font-weight:700; color:var(--text3); padding:8px 16px 4px; text-transform:uppercase; letter-spacing:.5px; background:var(--bg); }
+
+
+#dt-map-wrap { flex:1; min-width:0; overflow:hidden; }
+#dt-map-wrap #map { width:100% !important; height:100% !important; }
+#dt-content { flex:1; display:flex; min-height:0; overflow:hidden; }
+
 </style>
 </head>
 <body>
@@ -1215,7 +1333,8 @@ function esconderLogin() {
   loadDemo();
   carregarLembretesSupabase();
   iniciarTarefas();
-  showScreen('list');
+  if (isDesktop()) initDesktop();
+  else showScreen('list');
 }
 
 function mostrarLogin() {
@@ -3509,6 +3628,146 @@ function abrirFiltroHeader(status) {
 }
 
 
+
+// ── PLANNER NO DESKTOP ───────────────────────────────
+function dtRenderPlanner() {
+  const wrap = document.getElementById('dt-planner-wrap');
+  if (!wrap) return;
+  // Reutiliza o mesmo renderPlanner mas injeta no wrap do desktop
+  wrap.innerHTML = '<div id="planner-nav" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
+    '<button onclick="navegarPlanner(-1);dtRenderPlanner()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:18px;color:var(--text)">‹</button>' +
+    '<div style="text-align:center"><div style="font-size:16px;font-weight:700;color:var(--text)" id="dt-planner-titulo"></div><div style="font-size:12px;color:var(--text3)" id="dt-planner-sub"></div></div>' +
+    '<button onclick="navegarPlanner(1);dtRenderPlanner()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:18px;color:var(--text)">›</button>' +
+  '</div>' +
+  '<div id="dt-planner-body"></div>';
+
+  const hoje = new Date();
+  const ref = new Date(plannerRef);
+  const diaSem = ref.getDay();
+  const iniSem = new Date(ref); iniSem.setDate(ref.getDate() - diaSem); iniSem.setHours(0,0,0,0);
+  const fimSem = new Date(iniSem); fimSem.setDate(iniSem.getDate() + 6);
+  const tit = document.getElementById('dt-planner-titulo');
+  const sub = document.getElementById('dt-planner-sub');
+  if (tit) tit.textContent = iniSem.getDate() + ' ' + NOMES_MES_CURTO[iniSem.getMonth()] + ' — ' + fimSem.getDate() + ' ' + NOMES_MES_CURTO[fimSem.getMonth()] + ' ' + fimSem.getFullYear();
+  if (sub) sub.textContent = 'Semana ' + getSemanaAno(iniSem);
+
+  const body = document.getElementById('dt-planner-body');
+  if (!body) return;
+  body.style.display = 'grid';
+  body.style.gridTemplateColumns = 'repeat(7, 1fr)';
+  body.style.gap = '12px';
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(iniSem); d.setDate(iniSem.getDate() + i);
+    const ds = dataStr(d);
+    const planDia = getPlannerDia(ds);
+    const checkins = getCheckinsDia(ds);
+    const ehHoje = d.toDateString() === hoje.toDateString();
+    const labels = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+    const col = document.createElement('div');
+    col.style.cssText = 'background:var(--card);border-radius:12px;padding:12px;border:' + (ehHoje ? '2px solid var(--blue)' : '1px solid var(--border)') + ';min-height:200px';
+
+    col.innerHTML = '<div style="font-size:11px;font-weight:700;color:' + (ehHoje ? 'var(--blue)' : 'var(--text3)') + ';margin-bottom:4px">' + labels[i] + '</div>' +
+      '<div style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:10px">' + d.getDate() + '</div>';
+
+    if (checkins.length) {
+      col.innerHTML += '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">✅ Visitas</div>';
+      checkins.forEach(ci => {
+        const nome = ci.cliente.nome.replace(/\s*\([^)]*\)/g,'').trim();
+        col.innerHTML += '<div style="font-size:11px;color:var(--text);padding:3px 6px;background:var(--green-bg);border-radius:6px;margin-bottom:3px">• ' + nome + '</div>';
+      });
+    }
+
+    if (planDia.cidades) {
+      col.innerHTML += '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin:8px 0 4px">📍 Planejado</div>' +
+        '<div style="font-size:11px;color:var(--text2)">' + planDia.cidades.split(String.fromCharCode(10)).join('<br>') + '</div>';
+    }
+
+    if (planDia.eventos?.length) {
+      planDia.eventos.forEach(ev => {
+        col.innerHTML += '<div style="font-size:11px;color:var(--text);padding:3px 6px;background:var(--blue-bg);border-radius:6px;margin-bottom:3px">📌 ' + ev.hora + ' ' + ev.txt + '</div>';
+      });
+    }
+
+    if (!checkins.length && !planDia.cidades && !planDia.eventos?.length) {
+      col.innerHTML += '<div style="font-size:11px;color:var(--text3);margin-top:8px">Sem registros</div>';
+    }
+
+    body.appendChild(col);
+  }
+}
+
+// ── TAREFAS NO DESKTOP ───────────────────────────────
+async function dtRenderTarefas() {
+  const wrap = document.getElementById('dt-tarefas-wrap');
+  if (!wrap) return;
+
+  const hoje = new Date().toISOString().slice(0,10);
+  const todas = await getTarefas();
+  const tarefas = todas.filter(t => t.data === hoje);
+  const pendentes = tarefas.filter(t => !t.feita);
+  const feitas = tarefas.filter(t => t.feita);
+
+  const _dt_inp_setup = () => { const _inp = document.getElementById('dt-tarefa-nova'); if (_inp) { _inp.removeEventListener('keydown', _inp._handler); _inp._handler = e => { if (e.key === 'Enter') dtAdicionarTarefa(); }; _inp.addEventListener('keydown', _inp._handler); } };
+  wrap.innerHTML = '<div style="max-width:600px;margin:0 auto">' +
+    '<div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px">📋 Tarefas do dia</div>' +
+    '<div style="font-size:13px;color:var(--text3);margin-bottom:20px">' + new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long'}) + '</div>' +
+    '<div style="display:flex;gap:10px;margin-bottom:20px">' +
+      '<input id="dt-tarefa-nova" placeholder="Nova tarefa..." style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none">' +
+      '<button onclick="dtAdicionarTarefa()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Add</button>' +
+    '</div>' +
+    (pendentes.length ? '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⏳ Pendentes (' + pendentes.length + ')</div>' +
+      pendentes.map(t => '<div style="display:flex;align-items:center;gap:12px;background:var(--card);border-radius:10px;padding:12px 16px;margin-bottom:8px;border:1px solid var(--border)">' +
+        '<div data-id="' + t.id + '" onclick="dtToggleTarefa(this.dataset.id)" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border);cursor:pointer;flex-shrink:0"></div>' +
+        '<div style="flex:1"><div style="font-size:14px;color:var(--text)">' + t.texto + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:2px">' + (t.pendente_ontem ? '⚠️ Pendente de ontem' : 'Às ' + t.hora) + '</div></div>' +
+        '<div data-id="' + t.id + '" data-data="' + t.data + '" onclick="dtDeletarTarefa(this.dataset.id, this.dataset.data)" style="cursor:pointer;color:var(--text3);font-size:18px;padding:0 4px">×</div>' +
+      '</div>').join('') : '<div style="text-align:center;padding:30px;color:var(--text3)">✅ Nenhuma tarefa pendente!</div>') +
+    (feitas.length ? '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">✅ Concluídas (' + feitas.length + ')</div>' +
+      feitas.map(t => '<div style="display:flex;align-items:center;gap:12px;background:var(--card);border-radius:10px;padding:12px 16px;margin-bottom:8px;opacity:.6;border:1px solid var(--border)">' +
+        '<div data-id="' + t.id + '" onclick="dtToggleTarefa(this.dataset.id)" style="width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:11px;color:#fff">✓</div>' +
+        '<div style="flex:1;text-decoration:line-through;font-size:14px;color:var(--text3)">' + t.texto + '</div>' +
+      '</div>').join('') : '') +
+  '</div>';
+}
+
+async function dtAdicionarTarefa() {
+  // Setup enter key
+
+  const input = document.getElementById('dt-tarefa-nova');
+  const texto = input?.value.trim();
+  if (!texto) return;
+  const tarefa = { id: Date.now().toString(), texto, feita: false, data: new Date().toISOString().slice(0,10), hora: new Date().toTimeString().slice(0,5) };
+  await salvarTarefaSupabase(tarefa);
+  const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+  local.unshift(tarefa);
+  localStorage.setItem('tarefas_v2', JSON.stringify(local));
+  if (input) input.value = '';
+  dtRenderTarefas();
+  showToast('✓ Tarefa adicionada');
+}
+
+async function dtToggleTarefa(id) {
+  const todas = await getTarefas();
+  const t = todas.find(x => x.id === id);
+  if (!t) return;
+  t.feita = !t.feita;
+  t.hora_feita = new Date().toTimeString().slice(0,5);
+  await salvarTarefaSupabase(t);
+  const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+  const idx = local.findIndex(x => x.id === id);
+  if (idx >= 0) { local[idx] = t; localStorage.setItem('tarefas_v2', JSON.stringify(local)); }
+  dtRenderTarefas();
+}
+
+async function dtDeletarTarefa(id, data) {
+  await deletarTarefaSupabase(id, data);
+  const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+  localStorage.setItem('tarefas_v2', JSON.stringify(local.filter(t => t.id !== id)));
+  dtRenderTarefas();
+}
+
 // ══ DESKTOP JS ══════════════════════════════════════
 function dtInit() {
   if (!isDesktop()) return;
@@ -3957,66 +4216,75 @@ const isDesktop = () => window.innerWidth >= 768;
 
 function initDesktop() {
   if (window.innerWidth < 768) return;
-  console.log('initDesktop ok, clientes:', clientes.length);
+
+  // Atualiza contadores no header
+  const counts = { today:0, green:0, blue:0, red:0, purple:0 };
+  clientes.forEach(c => { const s = getStatus(c); if (counts[s] !== undefined) counts[s]++; });
+  const d = document;
+  if (d.getElementById('dt-cnt-today')) d.getElementById('dt-cnt-today').textContent = counts.today + ' hoje';
+  if (d.getElementById('dt-cnt-green')) d.getElementById('dt-cnt-green').textContent = counts.green + ' · 1m';
+  if (d.getElementById('dt-cnt-blue')) d.getElementById('dt-cnt-blue').textContent = counts.blue + ' · 2m';
+  if (d.getElementById('dt-cnt-red')) d.getElementById('dt-cnt-red').textContent = counts.red + ' · +2m';
+  if (d.getElementById('dt-cnt-purple')) d.getElementById('dt-cnt-purple').textContent = counts.purple + ' novos';
+
   if (clientes.length > 0) renderDesktopList();
-  if (gmap) renderMapMarkers();
+
+  // Inicializa o mapa no desktop se ainda não foi feito
+  setTimeout(() => {
+    if (gmap) {
+      google.maps.event.trigger(gmap, 'resize');
+      renderMapMarkers();
+    }
+  }, 100);
 }
 
 function renderDesktopList() {
-  const q = (document.getElementById('desktop-search-input')?.value || '').toLowerCase();
-  const filtered = clientes.filter(c =>
+  const q = (document.getElementById('dt-search-input')?.value || '').toLowerCase();
+  const lista = document.getElementById('dt-list');
+  if (!lista) return;
+
+  let filtered = clientes.filter(c =>
     c.nome.toLowerCase().includes(q) ||
-    c.cidade.toLowerCase().includes(q) ||
-    (c.cnpj||'').includes(q)
+    c.cidade.toLowerCase().includes(q)
   );
 
-  const order = {today:0,green:1,blue:2,red:3,purple:4};
+  const order = { today:0, green:1, blue:2, red:3, purple:4 };
+  const STATUS_LABEL = { today:'Hoje', green:'Até 1 mês', blue:'1 a 2 meses', red:'Mais de 2 meses', purple:'Novos' };
+  const STATUS_COLOR = { today:'var(--green)', green:'var(--blue)', blue:'var(--orange)', red:'var(--red)', purple:'var(--purple)' };
+  const BADGE_BG = { today:'rgba(52,199,89,.12)', green:'rgba(0,122,255,.12)', blue:'rgba(255,149,0,.12)', red:'rgba(255,59,48,.12)', purple:'rgba(175,82,222,.12)' };
+
   filtered.sort((a,b) => {
-    const sa=getStatus(a), sb=getStatus(b);
-    if (order[sa]!==order[sb]) return order[sa]-order[sb];
-    return a.nome.localeCompare(b.nome);
+    const sa = getStatus(a), sb = getStatus(b);
+    if (order[sa] !== order[sb]) return order[sa] - order[sb];
+    const da = diasDesde(a.ultimaVisita), db = diasDesde(b.ultimaVisita);
+    if (da === null && db === null) return a.nome.localeCompare(b.nome);
+    if (da === null) return 1; if (db === null) return -1;
+    return da - db;
   });
-
-  const grupos = [
-    {key:'today', label:'Hoje'},
-    {key:'green', label:'Até 1 mês'},
-    {key:'blue',  label:'1 a 2 meses'},
-    {key:'red',   label:'Mais de 2 meses'},
-    {key:'purple',label:'Novos'},
-  ];
-
-  const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
-  const bgCores = {today:'var(--green-bg)',green:'var(--blue-bg)',blue:'var(--orange-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
 
   let out = '';
-  grupos.forEach(g => {
-    const items = filtered.filter(c => getStatus(c) === g.key);
-    if (!items.length) return;
-    out += '<div style="font-size:11px;font-weight:700;color:var(--text3);padding:10px 14px 4px;text-transform:uppercase;letter-spacing:.5px">'+g.label+' ('+items.length+')</div>';
-    items.forEach(c => {
-      const nomeBase = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
-      const comp = (c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
-      const s = getStatus(c);
-      const lv = lastVisitText(c);
-      const tempo = c.visitadoHoje?('✓ '+c.horaHoje):(s==='purple'?'Nunca':lv.text);
-      out += '<div class="client-card" style="margin:0 10px 6px;border-radius:12px;border:1.5px solid transparent" onclick="selecionarClienteDesktop('+c.id+')" id="dc-'+c.id+'">' +
-        '<div class="card-dot '+s+'"></div>' +
-        '<div class="card-content">' +
-          '<div class="card-name">'+nomeBase+'</div>' +
-          (comp?'<div class="card-contact">👤 '+comp+'</div>':'') +
-          '<div class="card-bottom">' +
-            '<div class="card-city">📍 '+c.cidade.replace(' - SC','').replace(' - PR','')+'</div>' +
-            '<span class="card-badge '+s+'">'+tempo+'</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card-arrow">›</div>' +
-      '</div>';
-    });
+  let lastStatus = null;
+  filtered.forEach(c => {
+    const s = getStatus(c);
+    if (s !== lastStatus) {
+      out += '<div class="dt-sep">' + STATUS_LABEL[s] + ' (' + filtered.filter(x => getStatus(x) === s).length + ')</div>';
+      lastStatus = s;
+    }
+    const nomeBase = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
+    const lv = lastVisitText(c);
+    const badge = c.visitadoHoje ? ('✓ ' + c.horaHoje) : (s === 'purple' ? 'Novos' : lv.text);
+    out += '<div class="dt-card" data-id="' + c.id + '" onclick="dtSelectCliente(' + c.id + ')">' +
+      '<div class="dt-card-dot" style="background:' + STATUS_COLOR[s] + '"></div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div class="dt-card-nome">' + nomeBase + '</div>' +
+        '<div class="dt-card-sub">📍 ' + c.cidade.replace(' - SC','').replace(' - PR','') + '</div>' +
+      '</div>' +
+      '<span class="dt-card-badge" style="background:' + BADGE_BG[s] + ';color:' + STATUS_COLOR[s] + '">' + badge + '</span>' +
+    '</div>';
   });
 
-  if (!out) out = '<div style="padding:40px;text-align:center;color:var(--text3)">Nenhum cliente encontrado</div>';
-  const el = document.getElementById('desktop-client-list');
-  if (el) el.innerHTML = out;
+  if (!out) out = '<div style="padding:20px;text-align:center;color:var(--text3)">Nenhum cliente</div>';
+  lista.innerHTML = out;
 }
 
 function selecionarClienteDesktop(id) {
@@ -4475,9 +4743,24 @@ if ('serviceWorker' in navigator) {
 
 <!-- ══ LAYOUT DESKTOP (visível só via CSS @media) ══ -->
 <div id="dt-wrap">
+  <div id="dt-header">
+    <div style="font-size:20px;font-weight:800;color:var(--text);font-family:Georgia,serif">Minha Rota <span style="color:var(--gold);font-style:italic">RP</span></div>
+    <div style="display:flex;gap:16px;align-items:center">
+      <div style="display:flex;gap:12px">
+        <span style="font-size:13px;font-weight:700;color:var(--green)" id="dt-cnt-today">0 hoje</span>
+        <span style="font-size:13px;font-weight:700;color:var(--blue)" id="dt-cnt-green">0 · 1m</span>
+        <span style="font-size:13px;font-weight:700;color:var(--orange)" id="dt-cnt-blue">0 · 2m</span>
+        <span style="font-size:13px;font-weight:700;color:var(--red)" id="dt-cnt-red">0 · +2m</span>
+        <span style="font-size:13px;font-weight:700;color:var(--purple)" id="dt-cnt-purple">0 novos</span>
+      </div>
+      <button onclick="fazerLogout()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit">Sair</button>
+    </div>
+  </div>
   <div id="dt-tabs">
-    <button class="dt-tab active" onclick="dtTab('mapa',this)">🗺 Mapa &amp; Lista</button>
-    <button class="dt-tab" onclick="dtTab('relatorio',this)">📊 Relatório</button>
+    <button class="dt-tab active" id="dt-tab-mapa" onclick="dtTab('mapa',this)">🗺 Mapa & Lista</button>
+    <button class="dt-tab" id="dt-tab-planner" onclick="dtTab('planner',this)">📅 Planner</button>
+    <button class="dt-tab" id="dt-tab-tarefas" onclick="dtTab('tarefas',this)">📋 Tarefas</button>
+    <button class="dt-tab" id="dt-tab-relatorio" onclick="dtTab('relatorio',this)">📊 Relatório</button>
   </div>
   <div id="dt-content">
     <div id="dt-sidebar">
@@ -4490,9 +4773,11 @@ if ('serviceWorker' in navigator) {
       <div id="dt-list"></div>
     </div>
     <div id="dt-map-wrap">
-      <div id="map" style="flex:1;min-height:0"></div>
+      <div id="map" style="width:100%;height:100%;min-height:0"></div>
     </div>
-    <div id="dt-report"></div>
+    <div id="dt-report" style="display:none"></div>
+    <div id="dt-planner-wrap" style="display:none;flex:1;overflow-y:auto;padding:20px"></div>
+    <div id="dt-tarefas-wrap" style="display:none;flex:1;overflow-y:auto;padding:20px"></div>
     <div id="dt-detail">
       <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--text3);padding:20px;text-align:center">
         <div style="font-size:36px">👈</div>
