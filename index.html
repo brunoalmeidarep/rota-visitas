@@ -991,6 +991,13 @@ const SEGS_PADRAO = [
   { valor: 'distribuidora',  label: '🚛 Distribuidora' },
 ];
 
+const SEGMENTO_LABEL = {
+  mat_construcao: '🏗 Mat. Construção',
+  construtora: '🏢 Construtora',
+  tintas: '🎨 Tintas',
+  distribuidora: '🚛 Distribuidora'
+};
+
 // Inicia app (verifica sessão do Supabase)
 getTodosSegmentos(); // carrega segmentos custom no SEGMENTO_LABEL
 iniciarApp();
@@ -3690,13 +3697,6 @@ function filtrarSegmento(btn, seg) {
   segmentoFiltro = seg;
   renderList();
 }
-
-const SEGMENTO_LABEL = {
-  mat_construcao: '🏗 Mat. Construção',
-  construtora: '🏢 Construtora',
-  tintas: '🎨 Tintas',
-  distribuidora: '🚛 Distribuidora'
-};
 
 function carregarSegmentosCustom() {
   try { return JSON.parse(localStorage.getItem('segmentos_custom_v1') || '[]'); }
