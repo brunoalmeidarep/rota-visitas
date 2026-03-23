@@ -2598,42 +2598,43 @@ async function criarRepresentante() {
   const btn   = document.getElementById('btn-admin-criar');
 
   if (!nome || !email || !senha) {
-    msg.className = 'admin-msg erro';
+    msg.style.color = 'var(--red)';
     msg.textContent = 'Preencha todos os campos.';
     return;
   }
   if (senha.length < 6) {
-    msg.className = 'admin-msg erro';
-    msg.textContent = 'Senha minima: 6 caracteres.';
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Senha mínima: 6 caracteres.';
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = 'CRIANDO...';
+  btn.textContent = 'Criando...';
   msg.textContent = '';
 
   try {
-    // Cria via signUp
-    const { error: signError } = await sb.auth.signUp({ email, password: senha });
-    if (signError && !signError.message.includes('already')) throw signError;
+    // Cria o usuário via signUp
+    const { data: signData, error: signError } = await sb.auth.signUp({ email, password: senha });
+    if (signError && !signError.message.includes('already registered')) throw signError;
 
     // Insere na tabela representantes
     const { error: repError } = await sb.from('representantes').insert({ nome, email, ativo: true });
     if (repError && !repError.message.includes('duplicate')) throw repError;
 
-    msg.className = 'admin-msg ok';
-    msg.textContent = nome + ' cadastrado! Ele recebeera email de confirmacao.';
+    msg.style.color = 'var(--green)';
+    msg.textContent = '✓ ' + nome + ' cadastrado com sucesso!';
     document.getElementById('admin-nome').value = '';
     document.getElementById('admin-email').value = '';
     document.getElementById('admin-senha').value = '';
-    carregarListaReps();
-  } catch(e) {
-    msg.className = 'admin-msg erro';
-    msg.textContent = 'Erro: ' + (e.message || 'tente novamente');
-  }
+    await carregarListaReps();
 
-  btn.disabled = false;
-  btn.textContent = '+ CRIAR REPRESENTANTE';
+  } catch(e) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Erro: ' + (e.message || 'tente novamente');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Criar Representante';
+  }
 }
 
 
@@ -4407,7 +4408,7 @@ if ('serviceWorker' in navigator) {
               <input class="campo-input" id="admin-nome" placeholder="Nome completo">
               <input class="campo-input" id="admin-email" type="email" placeholder="email@exemplo.com">
               <input class="campo-input" id="admin-senha" type="password" placeholder="Senha (mín. 6 caracteres)">
-              <button class="btn-admin-salvar" onclick="criarRepresentante()">Criar Representante</button>
+              <button class="btn-admin-salvar" id="btn-admin-criar" onclick="criarRepresentante()">Criar Representante</button>
               <div class="admin-msg" id="admin-msg"></div>
             </div>
           </div>
