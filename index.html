@@ -3576,11 +3576,13 @@ async function dtToggleTarefa(id) {
   if (!t) return;
   t.feita = !t.feita;
   t.hora_feita = new Date().toTimeString().slice(0,5);
-  await salvarTarefaSupabase(t);
+  // Atualiza cache local imediatamente (optimistic update)
   const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
   const idx = local.findIndex(x => x.id === id);
   if (idx >= 0) { local[idx] = t; localStorage.setItem('tarefas_v2', JSON.stringify(local)); }
   dtRenderTarefas();
+  // Salva no Supabase em background
+  salvarTarefaSupabase(t);
 }
 
 async function dtDeletarTarefa(id, data) {
@@ -4078,12 +4080,13 @@ async function toggleTarefa(id) {
   if (!t) return;
   t.feita = !t.feita;
   t.hora_feita = new Date().toTimeString().slice(0,5);
-  await salvarTarefaSupabase(t);
-  // Atualiza cache local
+  // Atualiza cache local imediatamente (optimistic update)
   const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
   const idx = local.findIndex(x => x.id === id);
   if (idx >= 0) { local[idx] = t; localStorage.setItem('tarefas_v2', JSON.stringify(local)); }
   renderTarefas();
+  // Salva no Supabase em background
+  salvarTarefaSupabase(t);
 }
 
 async function deletarTarefa(id, data) {
