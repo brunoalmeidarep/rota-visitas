@@ -41,15 +41,18 @@ CREATE POLICY "Leitura pública" ON storage.objects
 ALTER TABLE visitas ENABLE ROW LEVEL SECURITY;
 
 -- Rep lê apenas suas próprias visitas
-CREATE POLICY IF NOT EXISTS "Rep lê suas visitas" ON visitas
+DROP POLICY IF EXISTS "Rep lê suas visitas" ON visitas;
+CREATE POLICY "Rep lê suas visitas" ON visitas
   FOR SELECT TO authenticated USING (rep_id = auth.uid());
 
 -- Rep insere apenas suas visitas
-CREATE POLICY IF NOT EXISTS "Rep insere suas visitas" ON visitas
+DROP POLICY IF EXISTS "Rep insere suas visitas" ON visitas;
+CREATE POLICY "Rep insere suas visitas" ON visitas
   FOR INSERT TO authenticated WITH CHECK (rep_id = auth.uid());
 
 -- Rep atualiza apenas suas visitas
-CREATE POLICY IF NOT EXISTS "Rep atualiza suas visitas" ON visitas
+DROP POLICY IF EXISTS "Rep atualiza suas visitas" ON visitas;
+CREATE POLICY "Rep atualiza suas visitas" ON visitas
   FOR UPDATE TO authenticated USING (rep_id = auth.uid());
 
 -- ============================================================
