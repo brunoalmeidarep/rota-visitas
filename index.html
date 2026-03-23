@@ -2,6 +2,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <!-- v2.1 desktop -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2a2a2a">
@@ -48,25 +52,7 @@
 html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); }
 #app { height:100vh; display:flex; flex-direction:column; overflow:hidden; max-width:430px; margin:0 auto; background:var(--bg); }
 
-@media (min-width: 768px) {
-  /* Esconde tudo mobile */
-  .navbar { display:none !important; }
-  .search-bar { display:none !important; }
-  .seg-filtro-bar { display:none !important; }
-  .active-filter-bar { display:none !important; }
-  #app { display:none !important; }
-
-  /* Mostra o desktop */
-  #dt-wrap { display:flex !important; flex-direction:column; height:100vh; width:100%; }
-
-  /* Layout principal */
-  #dt-content { flex:1; display:flex; min-height:0; overflow:hidden; }
-  #dt-sidebar { width:320px; flex-shrink:0; display:flex; flex-direction:column; border-right:1px solid var(--border); background:var(--surface); overflow:hidden; }
-  #dt-map-wrap { flex:1; min-width:0; position:relative; }
-  #dt-map-wrap #map { width:100%; height:100%; }
-  #dt-detail { width:340px; flex-shrink:0; display:flex; flex-direction:column; border-left:1px solid var(--border); background:var(--surface); overflow-y:auto; }
-  #dt-report { flex:1; overflow-y:auto; padding:20px; }
-}
+/* Bloco media antigo removido — ver bloco unificado abaixo */
 
 
 /* ── HEADER ─────────────────────────────────────────── */
@@ -298,169 +284,8 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 
 
 /* ── DESKTOP ────────────────────────────────────────── */
-@media (min-width: 768px) {
-  /* Esconde elementos mobile */
-  .search-bar, .navbar, .fab, .screens { display:none !important; }
+/* Segundo bloco media removido — ver bloco unificado abaixo */
 
-  /* App vira coluna */
-  #app {
-    display:flex;
-    flex-direction:column;
-    height:100vh;
-    max-width:100%;
-  }
-
-  /* Header desktop — linha horizontal */
-  .app-header {
-    flex-direction:row;
-    align-items:center;
-    padding:0 20px;
-    height:56px;
-    gap:16px;
-    flex-shrink:0;
-  }
-  .header-top { margin-bottom:0; flex-shrink:0; }
-  .header-title { font-size:18px; }
-  .stats-bar {
-    flex:1;
-    border-top:none;
-    border-left:1px solid var(--border);
-    padding-left:16px;
-    display:flex;
-    align-items:center;
-    gap:6px;
-    flex-wrap:nowrap;
-  }
-  .stat-item {
-    flex:none;
-    display:flex;
-    align-items:center;
-    gap:5px;
-    background:var(--bg);
-    border-radius:20px;
-    padding:4px 10px;
-    text-align:left;
-  }
-  .stat-num { font-size:14px; display:inline; }
-  .stat-lbl { font-size:10px; display:inline; margin-top:0; }
-
-  /* Abas desktop */
-  .desktop-tabs {
-    display:flex !important;
-    background:var(--surface);
-    border-bottom:1px solid var(--border);
-    padding:0 20px;
-    flex-shrink:0;
-  }
-  .desktop-tab {
-    padding:10px 16px;
-    font-size:13px;
-    font-weight:600;
-    color:var(--text3);
-    border:none;
-    background:none;
-    cursor:pointer;
-    border-bottom:2px solid transparent;
-    font-family:inherit;
-  }
-  .desktop-tab.active { color:var(--blue); border-bottom-color:var(--blue); }
-
-  /* Layout 3 colunas */
-  .desktop-main {
-    display:flex !important;
-    flex:1;
-    overflow:hidden;
-    min-height:0;
-  }
-
-  /* Sidebar */
-  .desktop-sidebar {
-    width:320px;
-    min-width:280px;
-    background:var(--bg);
-    border-right:1px solid var(--border);
-    display:flex;
-    flex-direction:column;
-    flex-shrink:0;
-    overflow:hidden;
-  }
-  .desktop-search {
-    padding:10px 12px;
-    background:var(--surface);
-    border-bottom:1px solid var(--border);
-    flex-shrink:0;
-  }
-  .desktop-search-box {
-    background:var(--bg);
-    border-radius:10px;
-    padding:8px 12px;
-    display:flex;
-    align-items:center;
-    gap:8px;
-  }
-  .desktop-search-box input {
-    flex:1; background:none; border:none; outline:none;
-    font-size:14px; color:var(--text); font-family:inherit;
-  }
-  .desktop-search-box input::placeholder { color:var(--text3); }
-  .desktop-list { flex:1; overflow-y:auto; }
-
-  /* Centro mapa */
-  .desktop-center {
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
-    min-width:0;
-  }
-  #map { flex:1; min-height:0; }
-
-  /* Painel detalhe */
-  .desktop-detail {
-    width:300px;
-    min-width:260px;
-    background:var(--surface);
-    border-left:1px solid var(--border);
-    display:flex;
-    flex-direction:column;
-    flex-shrink:0;
-    overflow:hidden;
-  }
-  .desktop-detail-header {
-    padding:14px 16px;
-    border-bottom:1px solid var(--border);
-    flex-shrink:0;
-  }
-  .desktop-detail-body { flex:1; overflow-y:auto; padding:14px 16px; }
-  .desktop-detail-nome { font-size:17px; font-weight:800; color:var(--text); margin-bottom:3px; }
-  .desktop-detail-sub { font-size:13px; color:var(--text2); margin-bottom:2px; }
-  .desktop-detail-cidade { font-size:12px; color:var(--text3); margin-bottom:10px; }
-  .desktop-detail-tags { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px; }
-  .desktop-detail-tag { font-size:11px; background:var(--bg); border-radius:7px; padding:3px 8px; color:var(--text2); }
-  .desktop-detail-btns { display:flex; gap:8px; }
-  .desktop-btn-checkin { flex:1; background:var(--blue); color:#fff; border:none; border-radius:10px; padding:10px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
-  .desktop-btn-checkin:disabled { opacity:.5; cursor:default; }
-  .desktop-btn-maps { background:var(--bg); border:none; border-radius:10px; padding:10px 14px; font-size:16px; cursor:pointer; }
-
-  /* Relatório desktop */
-  .desktop-report {
-    display:none;
-    flex:1;
-    overflow-y:auto;
-    padding:20px;
-    background:var(--bg);
-  }
-  .desktop-report.active {
-    display:grid;
-    grid-template-columns:1fr 1fr 1fr;
-    gap:14px;
-    align-content:start;
-  }
-  .rep-card-d { background:var(--card); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); }
-  .rep-card-d-header { padding:12px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
-  .rep-card-d-title { font-size:14px; font-weight:700; color:var(--text); }
-  .rep-card-d-badge { font-size:12px; font-weight:700; padding:3px 9px; border-radius:12px; }
-}
 
 
 #dt-wrap { display: none; }
@@ -475,14 +300,8 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
   /* Body e html ocupam tudo */
   html, body { height: 100%; overflow: hidden; }
 
-  /* App vira apenas o cabeçalho */
-  #app {
-    max-width: 100% !important;
-    height: auto !important;
-    overflow: visible !important;
-    position: static !important;
-    flex-shrink: 0;
-  }
+  /* App mobile fica oculto — dt-wrap tem seu próprio header */
+  #app { display: none !important; }
 
   /* Esconde tudo mobile */
   .search-bar,
@@ -490,6 +309,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
   .navbar,
   .fab,
   .geo-bar      { display: none !important; }
+
+  /* Mostra o wrapper desktop */
+  #dt-wrap { display: flex !important; flex-direction: column; height: 100vh; width: 100%; overflow: hidden; }
 
   /* Abas desktop */
   
@@ -1333,7 +1155,7 @@ function esconderLogin() {
   loadDemo();
   carregarLembretesSupabase();
   iniciarTarefas();
-  if (isDesktop()) initDesktop();
+  if (isDesktop()) dtInit();
   else showScreen('list');
 }
 
@@ -2897,7 +2719,7 @@ let visatasDoRelatorio = [];
 async function carregarPeriodoRelatorio() {
   visatasDoRelatorio = await buscarVisitasPeriodo(relMes, relAno);
   renderReport();
-  if (document.getElementById('desktop-report')?.classList.contains('active')) {
+  if (document.getElementById('dt-report')?.classList.contains('active')) {
     renderDesktopReport();
   }
 }
@@ -3771,9 +3593,20 @@ async function dtDeletarTarefa(id, data) {
 // ══ DESKTOP JS ══════════════════════════════════════
 function dtInit() {
   if (!isDesktop()) return;
-  console.log('dtInit ok, clientes:', clientes.length);
+  // Atualiza contadores no header
+  const counts = { today:0, green:0, blue:0, red:0, purple:0 };
+  clientes.forEach(c => { const s = getStatus(c); if (counts[s] !== undefined) counts[s]++; });
+  const d = document;
+  if (d.getElementById('dt-cnt-today')) d.getElementById('dt-cnt-today').textContent = counts.today + ' hoje';
+  if (d.getElementById('dt-cnt-green')) d.getElementById('dt-cnt-green').textContent = counts.green + ' · 1m';
+  if (d.getElementById('dt-cnt-blue'))  d.getElementById('dt-cnt-blue').textContent  = counts.blue  + ' · 2m';
+  if (d.getElementById('dt-cnt-red'))   d.getElementById('dt-cnt-red').textContent   = counts.red   + ' · +2m';
+  if (d.getElementById('dt-cnt-purple'))d.getElementById('dt-cnt-purple').textContent= counts.purple+ ' novos';
   dtRenderList();
-  if (gmap) renderMapMarkers();
+  if (gmap) {
+    google.maps.event.trigger(gmap, 'resize');
+    renderMapMarkers();
+  }
 }
 
 function dtRenderList() {
@@ -3847,17 +3680,42 @@ function dtMostrarDetalhe(c) {
   const comp = (c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
   const s = getStatus(c);
   const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
-  const bgs = {today:'var(--green-bg)',green:'var(--blue-bg)',blue:'var(--orange-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
-  const labels = {today:'Hoje',green:'≤30 dias',blue:'2 meses',red:'>60 dias',purple:'Novos'};
-  const lembretes = JSON.parse(localStorage.getItem('lembretes')||'{}');
-  const lembrete = lembretes[c.id]||'';
+  const bgs   = {today:'var(--green-bg)',green:'var(--blue-bg)',blue:'var(--orange-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
+  const labels = {today:'Hoje',green:'≤30 dias',blue:'31-60 dias',red:'>60 dias',purple:'Nunca visitado'};
+  const lembretes = JSON.parse(localStorage.getItem('lembretes') || '{}');
+  const lembrete = lembretes[c.id] || '';
+  const visitas = historicoVisitas[c.id] || [];
+
+  // Histórico
+  let histHTML = '';
+  const items = [...visitas];
+  if (c.ultimaVisita && !items.find(v => v.data === c.ultimaVisita)) {
+    items.push({data:c.ultimaVisita, obs:c.ultimaObs||''});
+  }
+  items.sort((a,b) => (b.data+(b.hora||'')).localeCompare(a.data+(a.hora||'')));
+  if (items.length) {
+    histHTML = items.slice(0,10).map(v => {
+      const label = v.hoje ? 'Hoje' : (v.data ? formatDate(v.data) : '');
+      const horaStr = v.hora ? ' · ' + v.hora : '';
+      return '<div style="display:flex;gap:10px;margin-bottom:10px">' +
+        '<div style="width:26px;height:26px;border-radius:50%;background:var(--bg);border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px">📋</div>' +
+        '<div style="flex:1;background:var(--bg);border-radius:10px;padding:8px 10px">' +
+          '<div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:3px">'+label+horaStr+'</div>' +
+          '<div style="font-size:13px;color:var(--text);line-height:1.4">'+(v.obs||'<span style="color:var(--text3);font-style:italic">Sem obs.</span>')+'</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } else {
+    histHTML = '<div style="font-size:13px;color:var(--text3);text-align:center;padding:16px">Nenhuma visita registrada</div>';
+  }
 
   el.innerHTML =
-    '<div id="dt-detail-header">' +
+    '<div style="padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0">' +
       '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;background:'+bgs[s]+';color:'+cores[s]+';display:inline-block;margin-bottom:8px">'+labels[s]+(c.visitadoHoje?' · '+c.horaHoje:'')+'</span>' +
-      '<div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:3px">'+nome+'</div>' +
+      '<div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:2px">'+nome+'</div>' +
       (comp?'<div style="font-size:13px;color:var(--text2);margin-bottom:2px">👤 '+comp+'</div>':'') +
-      '<div style="font-size:12px;color:var(--text3);margin-bottom:10px">📍 '+c.cidade+'</div>' +
+      '<div style="font-size:12px;color:var(--text3);margin-bottom:6px">📍 '+c.cidade+'</div>' +
+      (c.cnpj?'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">🔢 '+c.cnpj+'</div>':'') +
       '<div style="display:flex;gap:8px">' +
         '<button class="dt-btn-checkin" onclick="dtCheckin('+c.id+')" '+(c.visitadoHoje?'disabled':'')+'>'+
           (c.visitadoHoje?'✓ Visitado às '+c.horaHoje:'✓ CHECK-IN')+
@@ -3865,57 +3723,92 @@ function dtMostrarDetalhe(c) {
         '<button class="dt-btn-maps" onclick="openMapsFor('+c.id+')">↗</button>' +
       '</div>' +
     '</div>' +
-    '<div id="dt-detail-body">' +
-      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📌 Lembrete</div>' +
-      '<div style="background:rgba(255,149,0,.07);border:1px solid rgba(255,149,0,.2);border-radius:10px;padding:10px 12px;margin-bottom:14px">' +
-        (lembrete?'<div style="font-size:13px;color:var(--orange)">'+lembrete+'</div>':'<div style="font-size:13px;color:rgba(255,149,0,.3);font-style:italic">Nenhum lembrete...</div>') +
+    '<div style="flex:1;overflow-y:auto;padding:14px 16px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">📌 Lembrete</div>' +
+      '<div style="background:rgba(255,149,0,.07);border:1px solid rgba(255,149,0,.2);border-radius:10px;padding:8px 12px;margin-bottom:14px;display:flex;gap:8px">' +
+        '<textarea id="dt-lembrete-'+c.id+'" onchange="dtSalvarLembrete('+c.id+')" style="flex:1;background:none;border:none;outline:none;font-family:inherit;font-size:13px;color:var(--orange);resize:none;min-height:36px" placeholder="Adicionar lembrete...">'+lembrete+'</textarea>' +
+      '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Obs. desta visita</div>' +
+      '<div style="background:var(--bg);border-radius:10px;padding:8px 12px;margin-bottom:14px">' +
+        '<textarea id="dt-obs-'+c.id+'" style="width:100%;background:none;border:none;outline:none;font-family:inherit;font-size:13px;color:var(--text);resize:none;min-height:52px" placeholder="Observações para o check-in..."></textarea>' +
       '</div>' +
       '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Histórico</div>' +
-      (c.ultimaVisita?'<div style="background:var(--bg);border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">'+c.ultimaVisita+'</div><div style="font-size:13px;color:var(--text)">'+(c.ultimaObs||'<span style="color:var(--text3);font-style:italic">Sem observações</span>')+'</div></div>':'<div style="font-size:13px;color:var(--text3);text-align:center;padding:16px">Nenhuma visita registrada</div>') +
+      histHTML +
     '</div>';
+
+  // Carrega histórico do Supabase em background se ainda não tiver
+  if (!historicoVisitas[c.id] || !historicoVisitas[c.id].length) {
+    buscarHistoricoSupabase(c.id).then(visitas => {
+      if (!visitas || !visitas.length) return;
+      historicoVisitas[c.id] = visitas;
+      // Re-renderiza o detalhe se ainda estiver aberto
+      const detEl = document.getElementById('dt-detail');
+      if (detEl && detEl.querySelector('[id^="dt-lembrete-'+c.id+'"]')) dtMostrarDetalhe(c);
+    }).catch(()=>{});
+  }
+}
+
+async function dtSalvarLembrete(id) {
+  const txt = document.getElementById('dt-lembrete-'+id)?.value || '';
+  const lembretes = JSON.parse(localStorage.getItem('lembretes') || '{}');
+  if (txt) { lembretes[id] = txt; } else { delete lembretes[id]; }
+  localStorage.setItem('lembretes', JSON.stringify(lembretes));
+  await salvarLembreteSupabase(id, txt);
 }
 
 async function dtCheckin(id) {
   const c = clientes.find(x => x.id == id);
   if (!c || c.visitadoHoje) return;
+  const obs = document.getElementById('dt-obs-'+id)?.value.trim() || '';
   const agora = new Date();
   const hora = agora.toTimeString().slice(0,5);
   const data = agora.toISOString().slice(0,10);
-  c.visitadoHoje = true; c.horaHoje = hora;
+  c.visitadoHoje = true; c.horaHoje = hora; c.ultimaObs = obs; c.ultimaVisita = data;
+  if (!historicoVisitas[id]) historicoVisitas[id] = [];
+  historicoVisitas[id].unshift({data, hora, obs, hoje:true});
   dtMostrarDetalhe(c);
   dtRenderList();
+  dtInit(); // atualiza contadores header
   renderList();
   if (gmap) renderMapMarkers();
-  await salvarCheckinSupabase(c, '', data, hora);
+  await salvarCheckinSupabase(c, obs, data, hora);
   showToast('✓ Check-in ' + c.nome.split(' ')[0] + ' — ' + hora);
 }
 
 function dtTab(tab, btn) {
   document.querySelectorAll('.dt-tab').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const mapWrap = document.getElementById('dt-map-wrap');
-  const sidebar = document.getElementById('dt-sidebar');
-  const detail  = document.getElementById('dt-detail');
-  const report  = document.getElementById('dt-report');
+
+  const mapWrap    = document.getElementById('dt-map-wrap');
+  const sidebar    = document.getElementById('dt-sidebar');
+  const detail     = document.getElementById('dt-detail');
+  const report     = document.getElementById('dt-report');
+  const plannerWrap= document.getElementById('dt-planner-wrap');
+  const tarefasWrap= document.getElementById('dt-tarefas-wrap');
+
+  // Esconde tudo
+  [mapWrap, sidebar, detail, plannerWrap, tarefasWrap].forEach(el => { if (el) el.style.display = 'none'; });
+  if (report) { report.style.display = 'none'; report.classList.remove('active'); }
+
   if (tab === 'mapa') {
-    if (mapWrap) mapWrap.style.display = 'flex';
-    if (sidebar) sidebar.style.display = 'flex';
-    if (detail)  detail.style.display  = 'flex';
-    if (report)  report.classList.remove('active');
-  } else {
-    if (mapWrap) mapWrap.style.display = 'none';
-    if (sidebar) sidebar.style.display = 'none';
-    if (detail)  detail.style.display  = 'none';
-    if (report)  report.classList.add('active');
-    dtRenderReport();
+    if (sidebar)  sidebar.style.display  = 'flex';
+    if (mapWrap)  mapWrap.style.display  = 'flex';
+    if (detail)   detail.style.display   = 'flex';
+    if (gmap) setTimeout(() => google.maps.event.trigger(gmap, 'resize'), 50);
+  } else if (tab === 'planner') {
+    if (plannerWrap) { plannerWrap.style.display = 'flex'; plannerWrap.style.flexDirection = 'column'; }
+    dtRenderPlanner();
+  } else if (tab === 'tarefas') {
+    if (tarefasWrap) { tarefasWrap.style.display = 'flex'; tarefasWrap.style.flexDirection = 'column'; }
+    dtRenderTarefas();
+  } else if (tab === 'relatorio') {
+    if (report) { report.style.display = 'grid'; report.classList.add('active'); }
+    renderDesktopReport();
   }
 }
 
 function dtRenderReport() {
-  const el = document.getElementById('dt-report');
-  if (!el) return;
-  // Reutiliza a função de relatório mobile
-  renderDesktopReport && renderDesktopReport();
+  renderDesktopReport();
 }
 
 window.addEventListener('resize', () => {
@@ -4214,207 +4107,6 @@ document.addEventListener('keydown', e => {
 // ── DESKTOP ──────────────────────────────────────────
 const isDesktop = () => window.innerWidth >= 768;
 
-function initDesktop() {
-  if (window.innerWidth < 768) return;
-
-  // Atualiza contadores no header
-  const counts = { today:0, green:0, blue:0, red:0, purple:0 };
-  clientes.forEach(c => { const s = getStatus(c); if (counts[s] !== undefined) counts[s]++; });
-  const d = document;
-  if (d.getElementById('dt-cnt-today')) d.getElementById('dt-cnt-today').textContent = counts.today + ' hoje';
-  if (d.getElementById('dt-cnt-green')) d.getElementById('dt-cnt-green').textContent = counts.green + ' · 1m';
-  if (d.getElementById('dt-cnt-blue')) d.getElementById('dt-cnt-blue').textContent = counts.blue + ' · 2m';
-  if (d.getElementById('dt-cnt-red')) d.getElementById('dt-cnt-red').textContent = counts.red + ' · +2m';
-  if (d.getElementById('dt-cnt-purple')) d.getElementById('dt-cnt-purple').textContent = counts.purple + ' novos';
-
-  if (clientes.length > 0) renderDesktopList();
-
-  // Inicializa o mapa no desktop se ainda não foi feito
-  setTimeout(() => {
-    if (gmap) {
-      google.maps.event.trigger(gmap, 'resize');
-      renderMapMarkers();
-    }
-  }, 100);
-}
-
-function renderDesktopList() {
-  const q = (document.getElementById('dt-search-input')?.value || '').toLowerCase();
-  const lista = document.getElementById('dt-list');
-  if (!lista) return;
-
-  let filtered = clientes.filter(c =>
-    c.nome.toLowerCase().includes(q) ||
-    c.cidade.toLowerCase().includes(q)
-  );
-
-  const order = { today:0, green:1, blue:2, red:3, purple:4 };
-  const STATUS_LABEL = { today:'Hoje', green:'Até 1 mês', blue:'1 a 2 meses', red:'Mais de 2 meses', purple:'Novos' };
-  const STATUS_COLOR = { today:'var(--green)', green:'var(--blue)', blue:'var(--orange)', red:'var(--red)', purple:'var(--purple)' };
-  const BADGE_BG = { today:'rgba(52,199,89,.12)', green:'rgba(0,122,255,.12)', blue:'rgba(255,149,0,.12)', red:'rgba(255,59,48,.12)', purple:'rgba(175,82,222,.12)' };
-
-  filtered.sort((a,b) => {
-    const sa = getStatus(a), sb = getStatus(b);
-    if (order[sa] !== order[sb]) return order[sa] - order[sb];
-    const da = diasDesde(a.ultimaVisita), db = diasDesde(b.ultimaVisita);
-    if (da === null && db === null) return a.nome.localeCompare(b.nome);
-    if (da === null) return 1; if (db === null) return -1;
-    return da - db;
-  });
-
-  let out = '';
-  let lastStatus = null;
-  filtered.forEach(c => {
-    const s = getStatus(c);
-    if (s !== lastStatus) {
-      out += '<div class="dt-sep">' + STATUS_LABEL[s] + ' (' + filtered.filter(x => getStatus(x) === s).length + ')</div>';
-      lastStatus = s;
-    }
-    const nomeBase = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
-    const lv = lastVisitText(c);
-    const badge = c.visitadoHoje ? ('✓ ' + c.horaHoje) : (s === 'purple' ? 'Novos' : lv.text);
-    out += '<div class="dt-card" data-id="' + c.id + '" onclick="dtSelectCliente(' + c.id + ')">' +
-      '<div class="dt-card-dot" style="background:' + STATUS_COLOR[s] + '"></div>' +
-      '<div style="flex:1;min-width:0">' +
-        '<div class="dt-card-nome">' + nomeBase + '</div>' +
-        '<div class="dt-card-sub">📍 ' + c.cidade.replace(' - SC','').replace(' - PR','') + '</div>' +
-      '</div>' +
-      '<span class="dt-card-badge" style="background:' + BADGE_BG[s] + ';color:' + STATUS_COLOR[s] + '">' + badge + '</span>' +
-    '</div>';
-  });
-
-  if (!out) out = '<div style="padding:20px;text-align:center;color:var(--text3)">Nenhum cliente</div>';
-  lista.innerHTML = out;
-}
-
-function selecionarClienteDesktop(id) {
-  // Destaca na lista
-  document.querySelectorAll('[id^="dc-"]').forEach(el => {
-    el.style.borderColor = 'transparent';
-    el.style.background = 'var(--card)';
-  });
-  const sel = document.getElementById('dc-'+id);
-  if (sel) {
-    sel.style.borderColor = 'var(--blue)';
-    sel.style.background = 'var(--blue-bg)';
-  }
-
-  // Centraliza no mapa
-  const c = clientes.find(x => x.id == id);
-  if (c && gmap && c.lat && c.lng) {
-    gmap.panTo({lat:c.lat, lng:c.lng});
-    gmap.setZoom(15);
-    if (gmarkers[id]) {
-      if (openIW) openIW.close();
-      const iw = new google.maps.InfoWindow({
-        content: '<div style="font-family:sans-serif;padding:4px"><strong>'+c.nome.replace(/\s*\([^)]*\)/g,'').trim()+'</strong><br><small>'+c.cidade+'</small></div>'
-      });
-      iw.open(gmap, gmarkers[id]);
-      openIW = iw;
-    }
-  }
-
-  // Mostra detalhes
-  mostrarDetalheDesktop(c);
-}
-
-function mostrarDetalheDesktop(c) {
-  if (!c) return;
-  const detail = document.getElementById('desktop-detail');
-  const nomeBase = c.nome.replace(/\s*\([^)]*\)/g,'').trim();
-  const comp = (c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
-  const s = getStatus(c);
-  const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
-  const bgCores = {today:'var(--green-bg)',green:'var(--blue-bg)',blue:'var(--orange-bg)',red:'var(--red-bg)',purple:'var(--purple-bg)'};
-  const labels = {today:'Hoje',green:'1 mês',blue:'2 meses',red:'+2 meses',purple:'Novos'};
-  const lv = lastVisitText(c);
-  const lembretes = JSON.parse(localStorage.getItem('lembretes')||'{}');
-  const lembrete = lembretes[c.id] || '';
-  const visitas = historicoVisitas[c.id] || [];
-  let histHTML = '';
-  if (c.ultimaVisita || visitas.length) {
-    const items = [...visitas];
-    if (c.ultimaVisita) items.push({data:c.ultimaVisita, obs:c.ultimaObs||'', compra:true});
-    items.sort((a,b)=>(b.data+(b.hora||'')).localeCompare(a.data+(a.hora||'')));
-    histHTML = items.map((v,i)=>{
-      const emoji = v.hoje?'⭐':v.compra?'🛒':'📋';
-      const label = v.hoje?'Hoje':(v.data?formatDate(v.data):'');
-      const horaStr = v.hora?' · '+v.hora:'';
-      const tipo = v.compra?' · compra':'';
-      return '<div style="display:flex;gap:10px;margin-bottom:12px">' +
-        '<div style="width:28px;height:28px;border-radius:50%;background:var(--bg);border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px">'+emoji+'</div>' +
-        '<div style="flex:1;background:var(--bg);border-radius:10px;padding:8px 10px">' +
-          '<div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:3px">'+label+horaStr+tipo+'</div>' +
-          '<div style="font-size:13px;color:var(--text);line-height:1.4">'+(v.obs||'<span style="color:var(--text3);font-style:italic">Sem observações</span>')+'</div>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-  } else {
-    histHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">Nenhuma visita registrada</div>';
-  }
-
-  detail.innerHTML =
-    '<div class="desktop-detail-header">' +
-      '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;background:'+bgCores[s]+';color:'+cores[s]+';display:inline-block;margin-bottom:8px">'+labels[s]+(c.visitadoHoje?' · '+c.horaHoje:'')+'</span>' +
-      '<div class="desktop-detail-nome">'+nomeBase+'</div>' +
-      (comp?'<div class="desktop-detail-sub">👤 '+comp+'</div>':'') +
-      '<div class="desktop-detail-cidade">📍 '+c.endereco+' — '+c.cidade+'</div>' +
-      '<div class="desktop-detail-tags">' +
-        (c.cnpj?'<span class="desktop-detail-tag">🔢 '+c.cnpj+'</span>':'') +
-        (c.ultimaVisita?'<span class="desktop-detail-tag">🗓 '+formatDate(c.ultimaVisita)+'</span>':'') +
-      '</div>' +
-      '<div class="desktop-detail-btns">' +
-        '<button class="desktop-btn-checkin" onclick="checkinDesktop('+c.id+')" '+(c.visitadoHoje?'disabled':'')+'>'+
-          (c.visitadoHoje?'✓ Visitado às '+c.horaHoje:'✓ CHECK-IN')+
-        '</button>' +
-        '<button class="desktop-btn-maps" onclick="openMapsFor('+c.id+')">↗</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="desktop-detail-body">' +
-      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📌 Lembrete</div>' +
-      '<div style="background:rgba(255,149,0,.07);border:1px solid rgba(255,149,0,.2);border-radius:10px;padding:10px 12px;margin-bottom:16px">' +
-        (lembrete?
-          '<div style="font-size:13px;color:var(--orange);line-height:1.4">'+lembrete+'</div>':
-          '<div style="font-size:13px;color:rgba(255,149,0,.35);font-style:italic">Nenhum lembrete...</div>') +
-      '</div>' +
-      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Observações</div>' +
-      '<div style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:16px">' +
-        '<textarea id="desktop-obs-'+c.id+'" style="width:100%;background:none;border:none;outline:none;font-size:13px;color:var(--text);font-family:inherit;resize:none;min-height:60px" placeholder="Anotações sobre esta visita..."></textarea>' +
-      '</div>' +
-      '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Histórico</div>' +
-      histHTML +
-    '</div>';
-}
-
-async function checkinDesktop(id) {
-  const c = clientes.find(x => x.id == id);
-  if (!c || c.visitadoHoje) return;
-  const obs = document.getElementById('desktop-obs-'+id)?.value.trim() || '';
-  const agora = new Date();
-  const hora = agora.toTimeString().slice(0,5);
-  const dataHoje = agora.toISOString().slice(0,10);
-  c.visitadoHoje = true; c.horaHoje = hora; c.ultimaObs = obs;
-  if (!historicoVisitas[id]) historicoVisitas[id] = [];
-  historicoVisitas[id].unshift({data:dataHoje, hora, obs, hoje:true});
-  mostrarDetalheDesktop(c);
-  renderDesktopList();
-  if (gmap) renderMapMarkers();
-  showToast('✓ Check-in '+nomeBase+' — '+hora);
-  if (SCRIPT_URL) {
-    try {
-      await fetch(SCRIPT_URL+'?action=checkin&id_cliente='+id+'&nome='+encodeURIComponent(c.nome)+'&data='+dataHoje+'&hora='+hora+'&obs='+encodeURIComponent(obs));
-    } catch(e) {}
-  }
-}
-
-function initDesktopMap() {
-  // No desktop o #map já está dentro do desktop-center-mapa
-  // O Google Maps usa o callback initMap automaticamente
-  if (gmap) {
-    renderMapMarkers();
-  }
-}
-
 function renderDesktopReport() {
   const hoje = new Date();
   const mesAtual = hoje.getMonth();
@@ -4438,7 +4130,6 @@ function renderDesktopReport() {
   }).length;
   const pctMes = clientes.length ? Math.round(visitMes/clientes.length*100) : 0;
 
-  // Cidades
   const cidMap = {};
   clientes.forEach(c => {
     const vis = c.visitadoHoje || (c.ultimaVisita && (() => {
@@ -4451,14 +4142,13 @@ function renderDesktopReport() {
     if (vis) cidMap[cidade].vis++;
   });
   const cidades = Object.entries(cidMap).filter(([,v])=>v.vis>0).sort((a,b)=>b[1].vis-a[1].vis);
-
   const corCid = (v,t) => { const p=t?v/t:0; return p>=.4?'var(--green)':p>=.2?'var(--blue)':'var(--orange)'; };
 
-  const rep = document.getElementById('desktop-report');
+  // Usa #dt-report (sistema novo)
+  const rep = document.getElementById('dt-report');
   if (!rep) return;
 
   rep.innerHTML =
-    // Resumo
     '<div class="rep-card-d" style="grid-column:1/-1">' +
       '<div class="rep-card-d-header"><div class="rep-card-d-title">📊 Resumo — '+nomeMesCap+' '+anoAtual+'</div></div>' +
       '<div style="display:grid;grid-template-columns:repeat(4,1fr)">' +
@@ -4473,14 +4163,13 @@ function renderDesktopReport() {
       '</div>' +
     '</div>' +
 
-    // Visitados hoje
     '<div class="rep-card-d">' +
       '<div class="rep-card-d-header"><div class="rep-card-d-title">⭐ Visitados hoje</div><span class="rep-card-d-badge" style="background:var(--orange-bg);color:var(--orange)">'+grpHoje.length+'</span></div>' +
       (grpHoje.length ? grpHoje.map((c,i)=>{
         const nome=c.nome.replace(/\s*\([^)]*\)/g,'').trim();
         const comp=(c.nome.match(/\(([^)]+)\)/)||[])[1]||'';
         const bg=i%2===0?'var(--card)':'var(--bg)';
-        return '<div style="display:flex;align-items:flex-start;padding:11px 14px;background:'+bg+';border-bottom:1px solid var(--border);gap:10px;cursor:pointer" onclick="selecionarClienteDesktop('+c.id+')">' +
+        return '<div style="display:flex;align-items:flex-start;padding:11px 14px;background:'+bg+';border-bottom:1px solid var(--border);gap:10px;cursor:pointer" onclick="dtSelectCliente('+c.id+')">' +
           '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:var(--text)">'+nome+'</div>' +
           (comp?'<div style="font-size:11px;color:var(--text3)">👤 '+comp+'</div>':'')+
           (c.ultimaObs?'<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic">'+c.ultimaObs+'</div>':'')+'</div>' +
@@ -4489,7 +4178,6 @@ function renderDesktopReport() {
       }).join('') : '<div style="padding:20px;text-align:center;color:var(--text3)">Nenhuma visita hoje</div>') +
     '</div>' +
 
-    // Cidades
     '<div class="rep-card-d" style="grid-column:2/-1">' +
       '<div class="rep-card-d-header"><div class="rep-card-d-title">🏙 Cidades — '+nomeMesCap+'</div><span class="rep-card-d-badge" style="background:var(--blue-bg);color:var(--blue)">'+cidades.length+'</span></div>' +
       '<table style="width:100%;border-collapse:collapse">' +
@@ -4512,39 +4200,10 @@ function renderDesktopReport() {
     '</div>';
 }
 
-function switchDesktopTab(tab, btn) {
-  document.querySelectorAll('.desktop-tab').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-
-  const sidebar = document.querySelector('.desktop-sidebar');
-  const centro  = document.getElementById('desktop-center-mapa');
-  const detalhe = document.getElementById('desktop-detail');
-  const report  = document.getElementById('desktop-report');
-
-  if (tab === 'mapa') {
-    if (sidebar) sidebar.style.display = 'flex';
-    if (centro)  centro.style.display  = 'flex';
-    if (detalhe) detalhe.style.display = 'flex';
-    if (report)  report.classList.remove('active');
-  } else {
-    if (sidebar) sidebar.style.display = 'none';
-    if (centro)  centro.style.display  = 'none';
-    if (detalhe) detalhe.style.display = 'none';
-    if (report)  report.classList.add('active');
-    renderDesktopReport();
-  }
-}
 
 // Detecta resize para alternar mobile/desktop
 window.addEventListener('resize', () => {
-  if (isDesktop()) initDesktop();
-  else {
-    document.querySelector('.desktop-tabs').style.display = 'none';
-    document.querySelector('.desktop-main').style.display = 'none';
-    document.querySelector('.search-bar').style.display = 'block';
-    document.querySelector('.screens').style.display = 'block';
-    document.querySelector('.navbar').style.display = 'flex';
-  }
+  if (isDesktop()) dtInit();
 });
 
 // ── TOAST ──────────────────────────────────────────────
