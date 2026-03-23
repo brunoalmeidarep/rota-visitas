@@ -1,5 +1,5 @@
 // Service worker v9 — sem cache — versão com timestamp para forçar reload após deploy
-const CACHE_VERSION = '20260323T000000Z';
+const CACHE_VERSION = '20260323T120000Z';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => {
   e.waitUntil(
