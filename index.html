@@ -492,6 +492,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .seg-select-wrap { display:flex; flex-wrap:wrap; gap:8px; }
 .seg-pill-select { padding:7px 14px; border-radius:20px; border:1.5px solid var(--border); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; background:var(--surface); color:var(--text2); transition:.15s; }
 .seg-pill-select.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+.seg-pill-novo { border-style:dashed; color:var(--blue); border-color:rgba(0,122,255,.4); }
+.seg-input-novo { padding:7px 14px; border-radius:20px; border:1.5px solid var(--blue); font-size:12px; font-weight:600; font-family:inherit; background:var(--surface); color:var(--text); outline:none; width:160px; }
+.seg-input-novo::placeholder { color:var(--text3); font-weight:400; }
 .seg-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:10px; background:var(--bg); color:var(--text3); margin-top:3px; display:inline-block; }
 
 /* ── TAREFAS ─────────────────────────────────────────── */
@@ -1204,6 +1207,7 @@ gmScript.defer = true;
 document.head.appendChild(gmScript);
 
 // Inicia app (verifica sessão do Supabase)
+getTodosSegmentos(); // carrega segmentos custom no SEGMENTO_LABEL
 iniciarApp();
 
 // ── STATUS ─────────────────────────────────────────────
@@ -2186,6 +2190,9 @@ function openCadastro() {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+  const segEl = document.getElementById('c-segmento');
+  if (segEl) segEl.value = '';
+  renderSegPills('');
   document.getElementById('screen-cadastro').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   // Foca no primeiro campo
@@ -3975,6 +3982,66 @@ const SEGMENTO_LABEL = {
   distribuidora: '🚛 Distribuidora'
 };
 
+const SEGS_PADRAO = [
+  { valor: 'mat_construcao', label: '🏗 Mat. Construção' },
+  { valor: 'construtora',    label: '🏢 Construtora' },
+  { valor: 'tintas',         label: '🎨 Loja de Tintas' },
+  { valor: 'distribuidora',  label: '🚛 Distribuidora' },
+];
+
+function carregarSegmentosCustom() {
+  try { return JSON.parse(localStorage.getItem('segmentos_custom_v1') || '[]'); }
+  catch(e) { return []; }
+}
+
+function salvarSegmentosCustom(segs) {
+  localStorage.setItem('segmentos_custom_v1', JSON.stringify(segs));
+}
+
+function getTodosSegmentos() {
+  const custom = carregarSegmentosCustom();
+  const todos = [...SEGS_PADRAO, ...custom];
+  todos.forEach(s => { SEGMENTO_LABEL[s.valor] = s.label; });
+  return todos;
+}
+
+function renderSegPills(valorAtual) {
+  const wrap = document.getElementById('c-seg-wrap');
+  if (!wrap) return;
+  const todos = getTodosSegmentos();
+  const atual = valorAtual ?? document.getElementById('c-segmento')?.value ?? '';
+  wrap.innerHTML = todos.map(s =>
+    `<button class="seg-pill-select${atual === s.valor ? ' active' : ''}" onclick="toggleSeg(this,'${s.valor}')">${s.label}</button>`
+  ).join('') +
+  `<button class="seg-pill-select seg-pill-novo" id="btn-novo-seg" onclick="mostrarInputNovoSeg()">＋ Criar</button>`;
+}
+
+function mostrarInputNovoSeg() {
+  const btn = document.getElementById('btn-novo-seg');
+  if (!btn) return;
+  btn.outerHTML = `<input class="seg-input-novo" id="seg-input-novo" placeholder="Escreva o segmento" maxlength="30" onblur="confirmarNovoSeg(false)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}">`;
+  document.getElementById('seg-input-novo')?.focus();
+}
+
+function confirmarNovoSeg(focusOut) {
+  const inp = document.getElementById('seg-input-novo');
+  if (!inp) return;
+  const label = inp.value.trim();
+  if (label) {
+    const valor = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'') || 'custom_' + Date.now();
+    const custom = carregarSegmentosCustom();
+    if (!custom.find(s => s.valor === valor)) {
+      custom.push({ valor, label });
+      salvarSegmentosCustom(custom);
+    }
+    SEGMENTO_LABEL[valor] = label;
+    renderSegPills(valor);
+    document.getElementById('c-segmento').value = valor;
+  } else {
+    renderSegPills();
+  }
+}
+
 // ── TAREFAS (Supabase) ──────────────────────────────
 
 async function getTarefas() {
@@ -4349,10 +4416,7 @@ if ('serviceWorker' in navigator) {
         <div class="campo-grupo">
           <label class="campo-label">Segmento</label>
           <div class="seg-select-wrap" id="c-seg-wrap">
-            <button class="seg-pill-select" onclick="toggleSeg(this,'mat_construcao')">🏗 Mat. Construção</button>
-            <button class="seg-pill-select" onclick="toggleSeg(this,'construtora')">🏢 Construtora</button>
-            <button class="seg-pill-select" onclick="toggleSeg(this,'tintas')">🎨 Loja de Tintas</button>
-            <button class="seg-pill-select" onclick="toggleSeg(this,'distribuidora')">🚛 Distribuidora</button>
+            <!-- preenchido por renderSegPills() -->
           </div>
           <input type="hidden" id="c-segmento" value="">
         </div>
