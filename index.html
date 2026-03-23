@@ -996,6 +996,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
         </div>
       </div>
       <div id="map" style="flex:1;min-height:0;height:100%"></div>
+    </div>
 
     <!-- RELATÓRIO -->
     <div class="screen" id="screen-report">
@@ -1616,7 +1617,7 @@ function showScreen(s) {
   if (s === 'list') renderList();
   if (s === 'report') { renderReport(); if (currentUser) carregarPeriodoRelatorio(); }
   if (s === 'tarefas') renderTarefas();
-  if (s === 'planner') { plannerRef = new Date(); plannerDiaSel = new Date(); renderPlanner(); }
+  if (s === 'planner') { plannerRef = new Date(); plannerDiaSel = new Date(); carregarTodoPlanner().then(() => renderPlanner()); }
   if (s === 'map') {
     // Força o mapa a ocupar toda a tela e re-renderizar
     setTimeout(() => {
@@ -1747,8 +1748,20 @@ function renderList() {
   const order = { today:0, green:1, blue:2, red:3, purple:4 };
   toShow.sort((a,b) => {
     const sa = getStatus(a), sb = getStatus(b);
+    // Primeiro ordena por grupo
     if (order[sa] !== order[sb]) return order[sa] - order[sb];
-    return a.nome.localeCompare(b.nome);
+    // Dentro do mesmo grupo, ordena por dias (menos dias = mais recente = primeiro)
+    const da = diasDesde(a.ultimaVisita), db = diasDesde(b.ultimaVisita);
+    // Nunca visitados (null) vão por nome
+    if (da === null && db === null) return a.nome.localeCompare(b.nome);
+    if (da === null) return 1;
+    if (db === null) return -1;
+    // Visitados hoje ordenam por hora (mais cedo primeiro)
+    if (sa === 'today' && sb === 'today') {
+      return (a.horaHoje || '').localeCompare(b.horaHoje || '');
+    }
+    // Demais grupos: menos dias primeiro (mais recente)
+    return da - db;
   });
 
   const grupos = [
@@ -2790,17 +2803,82 @@ const NOMES_MES_CURTO = ['jan','fev','mar','abr','mai','jun','jul','ago','set','
 function getPlannerData() {
   return JSON.parse(localStorage.getItem('planner_v1') || '{}');
 }
-function setPlannerData(obj) {
+function setPlannerDataLocal(obj) {
   localStorage.setItem('planner_v1', JSON.stringify(obj));
 }
 function getPlannerDia(dataStr) {
   const d = getPlannerData();
   return d[dataStr] || { cidades:'', notas:'', eventos:[] };
 }
-function setPlannerDia(dataStr, obj) {
-  const d = getPlannerData();
-  d[dataStr] = obj;
-  setPlannerData(d);
+
+async function carregarPlannerDia(dataStr) {
+  if (!currentUser) return getPlannerDia(dataStr);
+  try {
+    const { data } = await sb.from('planner')
+      .select('*').eq('rep_id', currentUser.id).eq('data', dataStr).single();
+    if (data) {
+      // Atualiza cache local
+      const local = getPlannerData();
+      local[dataStr] = { cidades: data.cidades || '', notas: data.notas || '', eventos: data.eventos || [] };
+      setPlannerDataLocal(local);
+      return local[dataStr];
+    }
+  } catch(e) {}
+  return getPlannerDia(dataStr);
+}
+
+async function salvarPlannerDia(ds) {
+  const cidades = document.getElementById('plan-cidades')?.value || '';
+  const notas = document.getElementById('plan-notas')?.value || '';
+  const atual = getPlannerDia(ds);
+  const novo = { ...atual, cidades, notas };
+  // Salva local
+  const local = getPlannerData();
+  local[ds] = novo;
+  setPlannerDataLocal(local);
+  // Salva Supabase
+  if (!currentUser) return;
+  try {
+    await sb.from('planner').upsert({
+      data: ds,
+      rep_id: currentUser.id,
+      cidades: novo.cidades,
+      notas: novo.notas,
+      eventos: novo.eventos || [],
+      atualizado_em: new Date().toISOString()
+    });
+  } catch(e) { console.log('Erro salvar planner:', e); }
+}
+
+async function salvarEventosPlanner(ds, eventos) {
+  const local = getPlannerData();
+  if (!local[ds]) local[ds] = { cidades:'', notas:'', eventos:[] };
+  local[ds].eventos = eventos;
+  setPlannerDataLocal(local);
+  if (!currentUser) return;
+  try {
+    await sb.from('planner').upsert({
+      data: ds,
+      rep_id: currentUser.id,
+      cidades: local[ds].cidades || '',
+      notas: local[ds].notas || '',
+      eventos: eventos,
+      atualizado_em: new Date().toISOString()
+    });
+  } catch(e) {}
+}
+
+async function carregarTodoPlanner() {
+  if (!currentUser) return;
+  try {
+    const { data } = await sb.from('planner').select('*').eq('rep_id', currentUser.id);
+    if (!data) return;
+    const local = {};
+    data.forEach(row => {
+      local[row.data] = { cidades: row.cidades || '', notas: row.notas || '', eventos: row.eventos || [] };
+    });
+    setPlannerDataLocal(local);
+  } catch(e) {}
 }
 
 function dataStr(d) {
@@ -2835,7 +2913,6 @@ function setViewPlanner(view) {
 }
 
 function getCheckinsDia(dataStr) {
-  // Busca check-ins do dia no histórico local
   const resultado = [];
   clientes.forEach(c => {
     const hist = carregarHistoricoLocal(c.id);
@@ -2844,7 +2921,6 @@ function getCheckinsDia(dataStr) {
         resultado.push({ cliente: c, hora: h.hora, obs: h.obs });
       }
     });
-    // Check-in de hoje
     if (c.visitadoHoje && dataStr === new Date().toISOString().slice(0,10)) {
       const jaExiste = resultado.some(r => r.cliente.id === c.id);
       if (!jaExiste) resultado.push({ cliente: c, hora: c.horaHoje, obs: c.ultimaObs });
@@ -2871,19 +2947,15 @@ function renderPlanner() {
 function renderPlannerSemana() {
   const hoje = new Date();
   const hoje0 = new Date(hoje); hoje0.setHours(0,0,0,0);
-
-  // Início da semana (domingo)
   const ref = new Date(plannerRef);
   const diaSem = ref.getDay();
   const iniSem = new Date(ref); iniSem.setDate(ref.getDate() - diaSem); iniSem.setHours(0,0,0,0);
   const fimSem = new Date(iniSem); fimSem.setDate(iniSem.getDate() + 6);
-
   const iniStr = iniSem.getDate() + ' ' + NOMES_MES_CURTO[iniSem.getMonth()];
   const fimStr = fimSem.getDate() + ' ' + NOMES_MES_CURTO[fimSem.getMonth()] + ' ' + fimSem.getFullYear();
   document.getElementById('planner-titulo').textContent = iniStr + ' — ' + fimStr;
   document.getElementById('planner-sub').textContent = 'Semana ' + getSemanaAno(iniSem);
 
-  // Mini dias
   const miniEl = document.getElementById('planner-dias-mini');
   const labels = ['D','S','T','Q','Q','S','S'];
   miniEl.innerHTML = '';
@@ -2897,54 +2969,46 @@ function renderPlannerSemana() {
     const ehHoje = d.toDateString() === hoje.toDateString();
     const ehSel = d.toDateString() === plannerDiaSel.toDateString();
     const ehFds = i === 0 || i === 6;
-
     const div = document.createElement('div');
     div.className = 'planner-dia-mini';
     div.onclick = () => { plannerDiaSel = new Date(d); renderPlannerSemana(); };
-
     let numClass = 'planner-dia-mini-num';
     if (ehHoje) numClass += ' hoje';
     else if (ehSel) numClass += ' selecionado';
     else if (ehFds) numClass += ' fds';
-
     let dotsHTML = '';
     if (temCheckin) dotsHTML += '<div class="planner-dia-mini-dot" style="background:var(--green)"></div>';
     if (planDia.eventos?.length) dotsHTML += '<div class="planner-dia-mini-dot" style="background:var(--orange)"></div>';
     if (temPlano && !temCheckin) dotsHTML += '<div class="planner-dia-mini-dot" style="background:var(--blue)"></div>';
-
     div.innerHTML = '<div class="planner-dia-mini-label">' + labels[i] + '</div>' +
       '<div class="' + numClass + '">' + d.getDate() + '</div>' +
       (dotsHTML ? '<div class="planner-dia-mini-dots">' + dotsHTML + '</div>' : '');
     miniEl.appendChild(div);
   }
 
-  // Corpo — só o dia selecionado
   const sel = plannerDiaSel;
   const ds = dataStr(sel);
   const planDia = getPlannerDia(ds);
   const checkins = getCheckinsDia(ds);
   const ehHoje = sel.toDateString() === hoje.toDateString();
-  const ehPassado = sel < hoje0;
   const cidades = getCidadesCheckins(checkins);
+  const COR_MAP = {blue:'var(--blue)',orange:'var(--orange)',green:'var(--green)',red:'var(--red)',purple:'var(--purple)'};
 
-  let html = '<div class="planner-dia-header">' +
+  let out = '<div class="planner-dia-header">' +
     '<div><div class="planner-dia-titulo">' + NOMES_DIA[sel.getDay()] + '-feira</div>' +
     '<div class="planner-dia-data">' + sel.getDate() + ' de ' + NOMES_MES[sel.getMonth()] + (ehHoje ? ' · Hoje' : '') + '</div></div>';
-  if (checkins.length) html += '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;background:var(--green-bg);color:var(--green)">' + checkins.length + ' visita' + (checkins.length>1?'s':'') + '</span>';
-  html += '</div>';
+  if (checkins.length) out += '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;background:var(--green-bg);color:var(--green)">' + checkins.length + ' visita' + (checkins.length>1?'s':'') + '</span>';
+  out += '</div>';
 
-  // Planejamento (cidades e notas)
-  html += '<div class="planner-bloco">' +
+  out += '<div class="planner-bloco">' +
     '<div class="planner-bloco-label">📍 Cidades planejadas</div>' +
-    '<textarea class="planner-bloco-textarea" id="plan-cidades" placeholder="Ex: Joinville — Assocom, Clock&#10;Garuva — Besen, Matriz" onblur="salvarPlannerDia(this.dataset.ds)" data-ds="' + ds + '">' + (planDia.cidades||'') + '</textarea>' +
+    '<textarea class="planner-bloco-textarea" id="plan-cidades" data-ds="' + ds + '" placeholder="Ex: Joinville — Assocom, Clock" onblur="salvarPlannerDia(this.dataset.ds)">' + (planDia.cidades||'') + '</textarea>' +
   '</div>';
 
-  // Eventos
-  html += '<div class="planner-bloco"><div class="planner-bloco-label">📌 Compromissos</div>';
+  out += '<div class="planner-bloco"><div class="planner-bloco-label">📌 Compromissos</div>';
   if (planDia.eventos?.length) {
-    const COR_MAP = {blue:'var(--blue)',orange:'var(--orange)',green:'var(--green)',red:'var(--red)',purple:'var(--purple)'};
     planDia.eventos.forEach((ev, idx) => {
-      html += '<div class="planner-evento-item">' +
+      out += '<div class="planner-evento-item">' +
         '<div class="planner-evento-cor" style="background:' + (COR_MAP[ev.cor]||'var(--blue)') + '"></div>' +
         '<div class="planner-evento-txt">' + ev.txt + '</div>' +
         '<div class="planner-evento-hora">' + (ev.hora||'') + '</div>' +
@@ -2952,34 +3016,36 @@ function renderPlannerSemana() {
       '</div>';
     });
   } else {
-    html += '<div style="font-size:13px;color:var(--text3);text-align:center;padding:8px 0">Nenhum compromisso</div>';
+    out += '<div style="font-size:13px;color:var(--text3);text-align:center;padding:8px 0">Nenhum compromisso</div>';
   }
-  html += '<button class="planner-add-btn" data-ds="' + ds + '" onclick="abrirModalPlanner(this.dataset.ds)">+ Adicionar compromisso</button></div>';
+  out += '<button class="planner-add-btn" data-ds="' + ds + '" onclick="abrirModalPlanner(this.dataset.ds)">+ Adicionar compromisso</button></div>';
 
-  // Check-ins reais
   if (Object.keys(cidades).length) {
-    html += '<div class="planner-bloco"><div class="planner-bloco-label">✅ Visitados no dia</div>';
+    out += '<div class="planner-bloco"><div class="planner-bloco-label">✅ Visitados no dia</div>';
     Object.entries(cidades).forEach(([cidade, items]) => {
-      html += '<div class="planner-checkin-cidade">📍 ' + cidade + '</div>';
+      out += '<div class="planner-checkin-cidade">📍 ' + cidade + '</div>';
       items.forEach(ci => {
         const nome = ci.cliente.nome.replace(/\s*\([^)]*\)/g,'').trim();
-        html += '<div class="planner-checkin-item">' +
-          '<div class="planner-checkin-dot"></div>' +
-          '<div class="planner-checkin-nome">' + nome + '</div>' +
-          '<div class="planner-checkin-hora">' + (ci.hora||'') + '</div>' +
-        '</div>';
+        out += '<div class="planner-checkin-item"><div class="planner-checkin-dot"></div><div class="planner-checkin-nome">' + nome + '</div><div class="planner-checkin-hora">' + (ci.hora||'') + '</div></div>';
       });
     });
-    html += '</div>';
+    out += '</div>';
   }
 
-  // Notas
-  html += '<div class="planner-bloco">' +
-    '<div class="planner-bloco-label">📝 Notas</div>' +
-    '<textarea class="planner-bloco-textarea" id="plan-notas" placeholder="Anotações livres..." data-ds="' + ds + '" onblur="salvarPlannerDia(this.dataset.ds)">' + (planDia.notas||'') + '</textarea>' +
-  '</div>';
+  out += '<div class="planner-bloco"><div class="planner-bloco-label">📝 Notas</div>' +
+    '<textarea class="planner-bloco-textarea" id="plan-notas" data-ds="' + ds + '" placeholder="Anotações livres..." onblur="salvarPlannerDia(this.dataset.ds)">' + (planDia.notas||'') + '</textarea></div>';
 
-  document.getElementById('planner-body-semana').innerHTML = html;
+  const body = document.getElementById('planner-body-semana');
+  if (body) {
+    body.innerHTML = out;
+    // Carrega dados do Supabase em background e atualiza se necessário
+    carregarPlannerDia(ds).then(dadosNuvem => {
+      const cidadesEl = document.getElementById('plan-cidades');
+      const notasEl = document.getElementById('plan-notas');
+      if (cidadesEl && !cidadesEl.value && dadosNuvem.cidades) cidadesEl.value = dadosNuvem.cidades;
+      if (notasEl && !notasEl.value && dadosNuvem.notas) notasEl.value = dadosNuvem.notas;
+    });
+  }
 }
 
 function renderPlannerMes() {
@@ -2992,11 +3058,9 @@ function renderPlannerMes() {
   const primeiroDia = new Date(ano, mes, 1).getDay();
   const ultimoDia = new Date(ano, mes+1, 0).getDate();
   const diasMesAnt = new Date(ano, mes, 0).getDate();
-
   const grid = document.getElementById('planner-cal-grid');
   grid.innerHTML = '';
 
-  // Dias do mês anterior
   for (let i = primeiroDia-1; i >= 0; i--) {
     const div = document.createElement('div');
     div.className = 'planner-cal-d outro';
@@ -3004,7 +3068,6 @@ function renderPlannerMes() {
     grid.appendChild(div);
   }
 
-  // Dias do mês atual
   for (let d = 1; d <= ultimoDia; d++) {
     const data = new Date(ano, mes, d);
     const ds = dataStr(data);
@@ -3015,26 +3078,22 @@ function renderPlannerMes() {
     const temPlano = planDia.cidades || planDia.notas || planDia.eventos?.length;
     const temCheckin = checkins.length > 0;
     const temEvento = planDia.eventos?.length > 0;
-
     const div = document.createElement('div');
     let cls = 'planner-cal-d';
     if (ehHoje) cls += ' hoje';
     else if (temAlgo(planDia, checkins)) cls += ' tem-algo';
     if (ehSel && !ehHoje) cls += ' selecionado';
     div.className = cls;
-
     let dotsHTML = '';
     if (temCheckin) dotsHTML += '<div class="planner-cal-d-dot" style="background:var(--green)"></div>';
     if (temEvento) dotsHTML += '<div class="planner-cal-d-dot" style="background:var(--orange)"></div>';
     if (temPlano && !temCheckin && !temEvento) dotsHTML += '<div class="planner-cal-d-dot" style="background:var(--blue)"></div>';
-
     div.innerHTML = '<div class="planner-cal-d-num">' + d + '</div>' +
       (dotsHTML ? '<div class="planner-cal-d-dots">' + dotsHTML + '</div>' : '');
     div.onclick = () => { plannerDiaSel = new Date(data); renderPlannerMes(); };
     grid.appendChild(div);
   }
 
-  // Completa
   const total = primeiroDia + ultimoDia;
   const resto = total % 7 === 0 ? 0 : 7 - (total % 7);
   for (let d = 1; d <= resto; d++) {
@@ -3044,7 +3103,6 @@ function renderPlannerMes() {
     grid.appendChild(div);
   }
 
-  // Detalhe do dia selecionado
   const sel = plannerDiaSel;
   const ds = dataStr(sel);
   const planDia = getPlannerDia(ds);
@@ -3075,13 +3133,8 @@ function renderPlannerMes() {
     bodyHTML += '</div>';
   }
 
-  if (planDia.cidades) {
-    bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">📍 Planejado</div><div style="font-size:13px;color:var(--text);line-height:1.6">' + planDia.cidades.split(String.fromCharCode(10)).join('<br>') + '</div></div>';
-  }
-
-  if (planDia.notas) {
-    bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">📝 Notas</div><div style="font-size:13px;color:var(--text);line-height:1.6">' + planDia.notas.split(String.fromCharCode(10)).join('<br>') + '</div></div>';
-  }
+  if (planDia.cidades) bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">📍 Planejado</div><div style="font-size:13px;color:var(--text);line-height:1.6">' + planDia.cidades.split(String.fromCharCode(10)).join('<br>') + '</div></div>';
+  if (planDia.notas) bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">📝 Notas</div><div style="font-size:13px;color:var(--text);line-height:1.6">' + planDia.notas.split(String.fromCharCode(10)).join('<br>') + '</div></div>';
 
   if (!checkins.length && !planDia.cidades && !planDia.eventos?.length && !planDia.notas) {
     bodyHTML += '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Nenhum registro neste dia</div>';
@@ -3099,14 +3152,6 @@ function getSemanaAno(d) {
   return Math.ceil(((d - inicio) / 86400000 + inicio.getDay() + 1) / 7);
 }
 
-function salvarPlannerDia(ds) {
-  const cidades = document.getElementById('plan-cidades')?.value || '';
-  const notas = document.getElementById('plan-notas')?.value || '';
-  const atual = getPlannerDia(ds);
-  setPlannerDia(ds, { ...atual, cidades, notas });
-}
-
-// Modal de compromisso
 var plannerModalDia = '';
 var plannerCorSel = 'blue';
 
@@ -3132,7 +3177,7 @@ function fecharModalPlanner(e) {
   }
 }
 
-function salvarEventoPlanner() {
+async function salvarEventoPlanner() {
   const txt = document.getElementById('planner-ev-txt').value.trim();
   if (!txt) return;
   const hora = document.getElementById('planner-ev-hora').value;
@@ -3140,15 +3185,15 @@ function salvarEventoPlanner() {
   const eventos = atual.eventos || [];
   eventos.push({ txt, hora, cor: plannerCorSel });
   eventos.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
-  setPlannerDia(plannerModalDia, { ...atual, eventos });
+  await salvarEventosPlanner(plannerModalDia, eventos);
   fecharModalPlanner();
   renderPlanner();
 }
 
-function deletarEventoPlanner(ds, idx) {
+async function deletarEventoPlanner(ds, idx) {
   const atual = getPlannerDia(ds);
   atual.eventos.splice(idx, 1);
-  setPlannerDia(ds, atual);
+  await salvarEventosPlanner(ds, atual.eventos);
   renderPlanner();
 }
 
@@ -3722,40 +3767,62 @@ const SEGMENTO_LABEL = {
   distribuidora: '🚛 Distribuidora'
 };
 
-// ── TAREFAS ──────────────────────────────────────────
-function getTarefas() {
-  return JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
-}
-function setTarefas(arr) {
-  localStorage.setItem('tarefas_v2', JSON.stringify(arr));
+// ── TAREFAS (Supabase) ──────────────────────────────
+
+async function getTarefas() {
+  if (!currentUser) return JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+  try {
+    const { data } = await sb.from('tarefas').select('*').eq('rep_id', currentUser.id);
+    return data || [];
+  } catch(e) { return JSON.parse(localStorage.getItem('tarefas_v2') || '[]'); }
 }
 
-function iniciarTarefas() {
+async function iniciarTarefas() {
   const hoje = new Date().toISOString().slice(0,10);
-  const tarefas = getTarefas();
-  const ontem = new Date(Date.now() - 86400000).toISOString().slice(0,10);
-
-  // Arquiva concluídas de dias anteriores, mantém pendentes como "pendente_ontem"
-  const atualizadas = tarefas.map(t => {
-    if (t.data < hoje) {
-      if (t.feita) return null; // remove concluídas
-      return { ...t, data: hoje, pendente_ontem: true }; // move pendentes para hoje
+  const tarefas = await getTarefas();
+  // Move pendentes de dias anteriores para hoje
+  const atualizadas = [];
+  for (const t of tarefas) {
+    if (t.data < hoje && !t.feita) {
+      const nova = { ...t, data: hoje, pendente_ontem: true };
+      await salvarTarefaSupabase(nova);
+      await deletarTarefaSupabase(t.id, t.data);
+      atualizadas.push(nova);
+    } else if (t.data < hoje && t.feita) {
+      // Concluídas de outros dias — mantém no histórico, não mostra hoje
+    } else {
+      atualizadas.push(t);
     }
-    return t;
-  }).filter(Boolean);
-
-  // Remove duplicatas
-  const ids = new Set();
-  const semDup = atualizadas.filter(t => {
-    if (ids.has(t.id)) return false;
-    ids.add(t.id);
-    return true;
-  });
-
-  setTarefas(semDup);
+  }
+  // Backup local
+  localStorage.setItem('tarefas_v2', JSON.stringify(atualizadas));
 }
 
-function renderTarefas() {
+async function salvarTarefaSupabase(tarefa) {
+  if (!currentUser) return;
+  try {
+    await sb.from('tarefas').upsert({
+      id: tarefa.id,
+      rep_id: currentUser.id,
+      texto: tarefa.texto,
+      feita: tarefa.feita || false,
+      data: tarefa.data,
+      hora: tarefa.hora || null,
+      hora_feita: tarefa.hora_feita || null,
+      pendente_ontem: tarefa.pendente_ontem || false,
+      atualizado_em: new Date().toISOString()
+    });
+  } catch(e) { console.log('Erro salvar tarefa:', e); }
+}
+
+async function deletarTarefaSupabase(id, data) {
+  if (!currentUser) return;
+  try {
+    await sb.from('tarefas').delete().eq('id', id).eq('rep_id', currentUser.id);
+  } catch(e) {}
+}
+
+async function renderTarefas() {
   const hoje = new Date().toISOString().slice(0,10);
   const nomesDia = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   const nomesMes = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -3763,14 +3830,13 @@ function renderTarefas() {
   const dataEl = document.getElementById('tarefas-data');
   if (dataEl) dataEl.textContent = nomesDia[d.getDay()] + ', ' + d.getDate() + ' de ' + nomesMes[d.getMonth()];
 
-  const tarefas = getTarefas().filter(t => t.data === hoje);
+  const todas = await getTarefas();
+  const tarefas = todas.filter(t => t.data === hoje);
   const pendentes = tarefas.filter(t => !t.feita);
   const feitas   = tarefas.filter(t => t.feita);
-  const todas = getTarefas();
   const diasHist = [...new Set(todas.filter(t => t.data < hoje).map(t => t.data))].sort().reverse().slice(0,5);
 
   let out = '';
-
   out += '<div class="tarefa-input-box">' +
     '<span style="font-size:16px">✏️</span>' +
     '<input class="tarefa-input-field" id="tarefa-nova" placeholder="Anotar tarefa...">' +
@@ -3784,7 +3850,7 @@ function renderTarefas() {
         '<div class="tarefa-check" data-id="' + t.id + '" onclick="toggleTarefa(this.dataset.id)"></div>' +
         '<div style="flex:1"><div class="tarefa-texto">' + t.texto + '</div>' +
         '<div class="tarefa-meta">' + (t.pendente_ontem ? '⚠️ Pendente de ontem' : 'Às ' + t.hora) + '</div></div>' +
-        '<div class="tarefa-del" data-id="' + t.id + '" onclick="deletarTarefa(this.dataset.id)">×</div></div>';
+        '<div class="tarefa-del" data-id="' + t.id + '" data-data="' + t.data + '" onclick="deletarTarefa(this.dataset.id, this.dataset.data)">×</div></div>';
     });
   }
 
@@ -3795,7 +3861,7 @@ function renderTarefas() {
         '<div class="tarefa-check done" data-id="' + t.id + '" onclick="toggleTarefa(this.dataset.id)">✓</div>' +
         '<div style="flex:1"><div class="tarefa-texto done">' + t.texto + '</div>' +
         '<div class="tarefa-meta">Concluído às ' + (t.hora_feita || t.hora) + '</div></div>' +
-        '<div class="tarefa-del" data-id="' + t.id + '" onclick="deletarTarefa(this.dataset.id)">×</div></div>';
+        '<div class="tarefa-del" data-id="' + t.id + '" data-data="' + t.data + '" onclick="deletarTarefa(this.dataset.id, this.dataset.data)">×</div></div>';
     });
   }
 
@@ -3826,42 +3892,51 @@ function renderTarefas() {
   const lista = document.getElementById('tarefas-lista');
   if (lista) {
     lista.innerHTML = out;
-    // Enter no input
     const inp = document.getElementById('tarefa-nova');
     if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') adicionarTarefa(); });
   }
 }
 
-function adicionarTarefa() {
+async function adicionarTarefa() {
   const input = document.getElementById('tarefa-nova');
   const texto = input?.value.trim();
   if (!texto) return;
-  const tarefas = getTarefas();
-  tarefas.unshift({
+  const tarefa = {
     id: Date.now().toString(),
     texto,
     feita: false,
     data: new Date().toISOString().slice(0,10),
-    hora: new Date().toTimeString().slice(0,5)
-  });
-  setTarefas(tarefas);
-  input.value = '';
+    hora: new Date().toTimeString().slice(0,5),
+    rep_id: currentUser?.id
+  };
+  await salvarTarefaSupabase(tarefa);
+  // Atualiza cache local
+  const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+  local.unshift(tarefa);
+  localStorage.setItem('tarefas_v2', JSON.stringify(local));
+  if (input) input.value = '';
   renderTarefas();
   showToast('✓ Tarefa adicionada');
 }
 
-function toggleTarefa(id) {
-  const tarefas = getTarefas();
-  const t = tarefas.find(x => x.id === id);
+async function toggleTarefa(id) {
+  const todas = await getTarefas();
+  const t = todas.find(x => x.id === id);
   if (!t) return;
   t.feita = !t.feita;
   t.hora_feita = new Date().toTimeString().slice(0,5);
-  setTarefas(tarefas);
+  await salvarTarefaSupabase(t);
+  // Atualiza cache local
+  const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+  const idx = local.findIndex(x => x.id === id);
+  if (idx >= 0) { local[idx] = t; localStorage.setItem('tarefas_v2', JSON.stringify(local)); }
   renderTarefas();
 }
 
-function deletarTarefa(id) {
-  setTarefas(getTarefas().filter(t => t.id !== id));
+async function deletarTarefa(id, data) {
+  await deletarTarefaSupabase(id, data);
+  const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+  localStorage.setItem('tarefas_v2', JSON.stringify(local.filter(t => t.id !== id)));
   renderTarefas();
 }
 
