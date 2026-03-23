@@ -2471,18 +2471,71 @@ function renderHistorico(id, c) {
     const obsHtml = v.obs
       ? `<div class="hist-obs">${v.obs}</div>`
       : `<div class="hist-obs-vazia">Sem observações</div>`;
+    const editBtn = v.hoje && !v.compra
+      ? `<button onclick="editarObsHoje(${id}, '${v.data}', '${v.hora || ''}')" style="background:none;border:none;font-size:13px;cursor:pointer;color:var(--text3);padding:0 2px" title="Editar observação">✏️</button>`
+      : '';
 
     return `
     <div class="historico-item">
       <div class="hist-dot ${dotClass}">${emoji}</div>
       <div class="hist-content">
-        <div class="hist-data">${label}${horaStr}${tipoStr}</div>
+        <div class="hist-data">${label}${horaStr}${tipoStr}${editBtn}</div>
         ${obsHtml}
       </div>
     </div>`;
   }).join('');
 }
 
+
+// ── EDITAR OBS DO CHECK-IN DE HOJE ───────────────────────
+function editarObsHoje(clienteId, data, hora) {
+  const container = document.getElementById('p-historico');
+  const items = container.querySelectorAll('.historico-item');
+  const item = Array.from(items).find(el => el.querySelector('.hist-dot.hoje'));
+  if (!item) return;
+
+  const content = item.querySelector('.hist-content');
+  const obsEl = content.querySelector('.hist-obs, .hist-obs-vazia');
+  const obsAtual = obsEl?.classList.contains('hist-obs') ? obsEl.textContent : '';
+
+  // Substitui obs por textarea inline
+  obsEl.outerHTML = `
+    <textarea id="edit-obs-input" style="width:100%;background:var(--bg);border:1px solid var(--blue);border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:14px;resize:none;outline:none;min-height:70px;margin-top:4px">${obsAtual}</textarea>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button onclick="salvarObsHoje(${clienteId},'${data}','${hora}')" style="flex:1;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Salvar</button>
+      <button onclick="renderHistorico(${clienteId}, clientes.find(x=>x.id==${clienteId}))" style="background:var(--bg);border:none;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;cursor:pointer;color:var(--text2)">Cancelar</button>
+    </div>`;
+
+  document.getElementById('edit-obs-input')?.focus();
+}
+
+async function salvarObsHoje(clienteId, data, hora) {
+  const novaObs = document.getElementById('edit-obs-input')?.value.trim() ?? '';
+  const c = clientes.find(x => x.id == clienteId);
+  if (!c) return;
+
+  // Atualiza cache local
+  if (historicoVisitas[clienteId]) {
+    const v = historicoVisitas[clienteId].find(x => x.hoje && x.data === data);
+    if (v) v.obs = novaObs;
+  }
+  c.ultimaObs = novaObs;
+
+  renderHistorico(clienteId, c);
+  showToast('✓ Observação atualizada!');
+
+  // Salva no Supabase em background
+  if (currentUser) {
+    try {
+      await sb.from('visitas')
+        .update({ obs: novaObs })
+        .eq('rep_id', currentUser.id)
+        .eq('id_cliente', String(clienteId))
+        .eq('data', data)
+        .eq('hora', hora);
+    } catch(e) { console.log('Erro ao atualizar obs:', e); }
+  }
+}
 
 // ── RECUPERAÇÃO DE SENHA ─────────────────────────────────
 async function esqueceuSenha() {
