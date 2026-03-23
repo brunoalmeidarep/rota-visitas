@@ -2711,13 +2711,24 @@ async function uploadDocSupabase(file, nomeBase) {
 // Pedido Remoto
 let remotoClienteSel = null;
 
-function openPedidoRemoto() {
+function setRemTipo(tipo, btn) {
+  document.getElementById('rem-tipo').value = tipo;
+  document.querySelectorAll('#rem-tipo-pedido,#rem-tipo-orcamento').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('rem-status-grupo').style.display = tipo === 'orcamento' ? 'block' : 'none';
+}
+
+function setRemStatus(status, btn) {
+  document.getElementById('rem-status').value = status;
+  document.querySelectorAll('#rem-status-aberto,#rem-status-fechado,#rem-status-perdido').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function openPedidoRemoto(tipo) {
   const el = document.getElementById('screen-pedido-remoto');
   if (el) el.style.display = 'flex';
-  // Data padrão = hoje
   const dataEl = document.getElementById('rem-data');
   if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
-  // Limpa campos anteriores
   ['rem-busca','rem-valor','rem-obs'].forEach(id => {
     const el2 = document.getElementById(id); if (el2) el2.value = '';
   });
@@ -2731,6 +2742,16 @@ function openPedidoRemoto() {
   document.getElementById('rem-doc-nome').textContent = '';
   document.getElementById('rem-doc-label').textContent = 'Selecionar arquivo';
   remotoClienteSel = null;
+  // Tipo inicial
+  const tipoInicial = tipo || 'pedido';
+  document.getElementById('rem-tipo').value = tipoInicial;
+  document.querySelectorAll('#rem-tipo-pedido,#rem-tipo-orcamento').forEach(b => b.classList.remove('active'));
+  document.getElementById(tipoInicial === 'orcamento' ? 'rem-tipo-orcamento' : 'rem-tipo-pedido').classList.add('active');
+  document.getElementById('rem-status-grupo').style.display = tipoInicial === 'orcamento' ? 'block' : 'none';
+  // Reset status para Aberto
+  document.getElementById('rem-status').value = 'aberto';
+  document.querySelectorAll('#rem-status-aberto,#rem-status-fechado,#rem-status-perdido').forEach(b => b.classList.remove('active'));
+  document.getElementById('rem-status-aberto').classList.add('active');
 }
 
 function closePedidoRemoto() {
@@ -2792,10 +2813,12 @@ async function salvarPedidoRemoto() {
   const obs = document.getElementById('rem-obs').value.trim();
   const valorEl = document.getElementById('rem-valor');
   const valorPedido = valorEl && valorEl.value ? parseFloat(valorEl.value) : null;
+  const tipo = document.getElementById('rem-tipo').value || 'pedido';
+  const status = document.getElementById('rem-status')?.value || 'aberto';
   const fileInput = document.getElementById('rem-doc-input');
   let docUrl = null;
   if (fileInput && fileInput.files && fileInput.files[0]) {
-    docUrl = await uploadDocSupabase(fileInput.files[0], 'remoto_' + clienteId + '_' + data);
+    docUrl = await uploadDocSupabase(fileInput.files[0], tipo + '_' + clienteId + '_' + data);
   }
 
   try {
@@ -2808,18 +2831,38 @@ async function salvarPedidoRemoto() {
       hora: '00:00',
       obs: obs || '',
       rep_id: currentUser.id,
-      tipo: 'remoto'
+      tipo: tipo === 'orcamento' ? 'orcamento' : 'remoto',
+      status_orcamento: tipo === 'orcamento' ? status : null
     };
     if (valorPedido !== null && valorPedido !== undefined) payload.valor_pedido = valorPedido;
     if (docUrl) payload.doc_url = docUrl;
     await sb.from('visitas').insert(payload);
-    showToast('✓ Pedido remoto salvo!');
+    const msg = tipo === 'orcamento' ? '✓ Orçamento salvo!' : '✓ Pedido remoto salvo!';
+    showToast(msg);
     closePedidoRemoto();
+    // Recarrega relatório se estiver na tela
+    if (currentScreen === 'report') carregarPeriodoRelatorio();
   } catch(e) {
-    showToast('❌ Erro ao salvar pedido', true);
-    console.log('Erro pedido remoto:', e);
+    showToast('❌ Erro ao salvar', true);
+    console.log('Erro pedido/orçamento:', e);
   }
-  btn.disabled = false; btn.textContent = '✓ Salvar Pedido';
+  btn.disabled = false; btn.textContent = '✓ Salvar';
+}
+
+// Converter orçamento em pedido
+async function converterOrcamentoEmPedido(visitaId) {
+  if (!currentUser) return;
+  try {
+    await sb.from('visitas').update({ tipo: 'remoto', status_orcamento: 'fechado' }).eq('id', visitaId).eq('rep_id', currentUser.id);
+    showToast('✓ Orçamento convertido em pedido!');
+    // Recarrega histórico do cliente atual
+    if (perfilId) {
+      const c = clientes.find(x => x.id == perfilId);
+      const visitas = await buscarHistoricoSupabase(perfilId);
+      historicoVisitas[perfilId] = visitas;
+      renderHistorico(perfilId, c);
+    }
+  } catch(e) { showToast('❌ Erro ao converter', true); }
 }
 
 // Busca histórico de um cliente no Supabase
@@ -4059,11 +4102,31 @@ if ('serviceWorker' in navigator) {
       <div class="remoto-header">
         <button class="perfil-back" onclick="closePedidoRemoto()">← Voltar</button>
         <div style="flex:1">
-          <div style="font-size:16px;font-weight:800;color:var(--text)">📦 Pedido Remoto</div>
-          <div style="font-size:11px;color:var(--text3)">Pedido sem visita presencial</div>
+          <div style="font-size:16px;font-weight:800;color:var(--text)" id="rem-titulo">📦 Pedido / Orçamento</div>
+          <div style="font-size:11px;color:var(--text3)">Registrar sem visita presencial</div>
         </div>
       </div>
       <div class="remoto-body">
+        <!-- Tipo -->
+        <div class="campo-grupo">
+          <label class="campo-label">Tipo *</label>
+          <div style="display:flex;gap:8px">
+            <button class="seg-pill-select active" id="rem-tipo-pedido" onclick="setRemTipo('pedido',this)">💰 Pedido</button>
+            <button class="seg-pill-select" id="rem-tipo-orcamento" onclick="setRemTipo('orcamento',this)">📋 Orçamento</button>
+          </div>
+          <input type="hidden" id="rem-tipo" value="pedido">
+        </div>
+        <!-- Status do orçamento (só visível se tipo=orcamento) -->
+        <div class="campo-grupo" id="rem-status-grupo" style="display:none">
+          <label class="campo-label">Status do Orçamento</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="seg-pill-select active" id="rem-status-aberto" onclick="setRemStatus('aberto',this)">🔵 Aberto</button>
+            <button class="seg-pill-select" id="rem-status-fechado" onclick="setRemStatus('fechado',this)">✅ Fechado</button>
+            <button class="seg-pill-select" id="rem-status-perdido" onclick="setRemStatus('perdido',this)">❌ Perdido</button>
+          </div>
+          <input type="hidden" id="rem-status" value="aberto">
+        </div>
+        <!-- Cliente -->
         <div class="campo-grupo">
           <label class="campo-label">Cliente *</label>
           <input class="campo-input" id="rem-busca" placeholder="Buscar cliente..." oninput="buscarClienteRemoto(this.value)" autocomplete="off">
@@ -4076,12 +4139,12 @@ if ('serviceWorker' in navigator) {
           <input class="campo-input" id="rem-data" type="date">
         </div>
         <div class="campo-grupo">
-          <label class="campo-label">Valor do Pedido (R$)</label>
+          <label class="campo-label">Valor (R$)</label>
           <input class="campo-input pedido-valor-inp" id="rem-valor" type="number" step="0.01" min="0" placeholder="0,00">
         </div>
         <div class="campo-grupo">
           <label class="campo-label">Observações</label>
-          <textarea class="campo-input" id="rem-obs" rows="3" placeholder="Detalhes do pedido..." style="resize:none;min-height:80px"></textarea>
+          <textarea class="campo-input" id="rem-obs" rows="3" placeholder="Detalhes..." style="resize:none;min-height:80px"></textarea>
         </div>
         <div class="campo-grupo">
           <label class="campo-label">Documento (PDF ou imagem)</label>
@@ -4091,7 +4154,7 @@ if ('serviceWorker' in navigator) {
           <input type="file" id="rem-doc-input" accept=".pdf,image/*" style="display:none" onchange="remotoDocSelecionado(this)">
           <div class="pedido-file-nome" id="rem-doc-nome"></div>
         </div>
-        <button class="btn-salvar-cadastro" id="rem-btn-salvar" onclick="salvarPedidoRemoto()">✓ Salvar Pedido</button>
+        <button class="btn-salvar-cadastro" id="rem-btn-salvar" onclick="salvarPedidoRemoto()">✓ Salvar</button>
       </div>
     </div>
 
