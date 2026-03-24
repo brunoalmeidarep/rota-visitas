@@ -897,9 +897,12 @@ async function iniciarApp() {
   try {
     sb.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        currentUser = session.user;
-        await carregarRepresentante();
-        esconderLogin();
+        // Só age se ainda não processado diretamente pelo fazerLogin()
+        if (!currentUser) {
+          currentUser = session.user;
+          await carregarRepresentante();
+          esconderLogin();
+        }
       } else if (event === 'SIGNED_OUT') {
         currentUser = null;
         mostrarLogin();
@@ -909,12 +912,16 @@ async function iniciarApp() {
 }
 
 async function carregarRepresentante() {
-  const { data } = await sb
-    .from('representantes')
-    .select('*')
-    .eq('email', currentUser.email)
-    .single();
-  currentRep = data;
+  try {
+    const { data } = await sb
+      .from('representantes')
+      .select('*')
+      .eq('email', currentUser.email)
+      .maybeSingle();
+    currentRep = data || null;
+  } catch(e) {
+    currentRep = null;
+  }
 }
 
 async function fazerLogin() {
@@ -932,12 +939,17 @@ async function fazerLogin() {
   btn.textContent = 'ENTRANDO...';
   erro.textContent = '';
 
-  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
 
   if (error) {
     erro.textContent = 'E-mail ou senha incorretos.';
     btn.disabled = false;
     btn.textContent = 'ENTRAR';
+  } else {
+    // Trata sucesso diretamente (não depende de onAuthStateChange, que pode não disparar no Safari)
+    currentUser = data.user;
+    await carregarRepresentante();
+    esconderLogin();
   }
 }
 
