@@ -636,6 +636,29 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .pf-btn-registrar { width:100%; background:var(--blue); color:#fff; border:none; border-radius:12px; padding:13px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; margin-top:4px; }
 .pf-btn-registrar:disabled { opacity:.6; cursor:default; }
 .pf-feedback { font-size:13px; font-weight:600; color:var(--green); text-align:center; margin-top:8px; min-height:18px; }
+.pf-select { width:100%; background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--text2); font-family:inherit; font-size:14px; outline:none; -webkit-appearance:none; }
+.pf-select:focus { border-color:var(--blue); }
+
+/* ── TELAS GESTÃO (Empresas / Segmentos) ─────────────── */
+#screen-empresas,#screen-segmentos { display:none; flex-direction:column; height:100%; background:var(--bg); position:fixed; top:0;left:0;right:0;bottom:0; z-index:500; animation:slideIn .22s ease; }
+.gestao-header { background:var(--surface); padding:12px 16px 14px; flex-shrink:0; box-shadow:0 1px 0 var(--border); display:flex; align-items:center; justify-content:space-between; }
+.gestao-titulo { font-size:17px; font-weight:700; flex:1; text-align:center; }
+.gestao-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:90px; -webkit-overflow-scrolling:touch; }
+.gestao-card { background:var(--card); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:var(--shadow); }
+.gestao-card-nome { font-size:15px; font-weight:700; margin-bottom:3px; }
+.gestao-card-sub { font-size:12px; color:var(--text3); margin-bottom:2px; }
+.gestao-card-acoes { display:flex; gap:8px; margin-top:10px; }
+.gestao-btn-sm { background:none; border:1.5px solid var(--border); border-radius:8px; padding:5px 14px; font-family:inherit; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; }
+.gestao-btn-sm.danger { color:var(--red); border-color:var(--red); }
+.gestao-empty { text-align:center; color:var(--text3); padding:48px 16px; font-size:14px; line-height:1.6; }
+.gestao-fab { position:fixed; bottom:24px; right:20px; background:var(--blue); color:#fff; border:none; border-radius:50px; padding:13px 22px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(0,122,255,.35); z-index:10; }
+.gestao-form-card { background:var(--card); border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:var(--shadow); }
+.gestao-form-titulo { font-size:12px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:14px; }
+.gestao-sep { font-size:10px; font-weight:700; color:var(--text3); letter-spacing:2px; text-transform:uppercase; margin:16px 0 10px; display:flex; align-items:center; gap:10px; }
+.gestao-sep::before,.gestao-sep::after { content:''; flex:1; height:1px; background:var(--border); }
+.gestao-form-footer { display:flex; gap:8px; margin-top:16px; }
+.gestao-form-footer .btn-salvar { flex:2; padding:12px; background:var(--blue); color:#fff; border:none; border-radius:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+.gestao-form-footer .btn-cancelar { flex:1; padding:12px; background:var(--bg); color:var(--text2); border:1.5px solid var(--border); border-radius:12px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; }
 
 /* ── RELATÓRIO TABELA ────────────────────────────────── */
 .rep-filtro-tabs { display:flex; gap:6px; padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5; }
@@ -836,6 +859,8 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 // ── CONFIG ─────────────────────────────────────────────
 let SCRIPT_URL  = 'https://script.google.com/macros/s/AKfycbyGXXcYVzmMjbJzYWLjVg9nDIiCurp2jmU37jqJh_f6w1HtNoHrs9_5W4pAlrqH7f0pXg/exec';
 let clientes    = [];
+let representadasCache = [];
+let segmentosCache = [];
 let activeId    = null;
 let gmap        = null;
 let gmarkers    = {};
@@ -977,6 +1002,8 @@ function esconderLogin() {
   loadDemo();
   carregarLembretesSupabase();
   iniciarTarefas();
+  carregarRepresentadas();
+  carregarSegmentos();
   showScreen('list');
 }
 
@@ -3085,6 +3112,9 @@ function pfResetForm() {
   document.querySelectorAll('#pf-status-aberto,#pf-status-fechado,#pf-status-perdido').forEach(b => b.classList.remove('active'));
   document.getElementById('pf-status-aberto')?.classList.add('active');
   document.getElementById('pf-status').value = 'aberto';
+  // Reset representada
+  const repSel = document.getElementById('pf-representada');
+  if (repSel) repSel.value = '';
   // Reset WA
   const waBtn = document.getElementById('pf-wa-btn');
   const waLbl = document.getElementById('pf-wa-label');
@@ -3105,6 +3135,7 @@ async function pfRegistrar() {
   const valorEl  = document.getElementById('pf-valor');
   const valor    = valorEl?.value ? parseFloat(valorEl.value) : null;
   const waAtivo  = document.getElementById('pf-wa-btn')?.classList.contains('ativo');
+  const representadaId = document.getElementById('pf-representada')?.value || null;
   const fileInput = document.getElementById('pf-doc-input');
 
   if (!data) { showToast('⚠️ Informe a data', true); return; }
@@ -3134,6 +3165,7 @@ async function pfRegistrar() {
     };
     if (valor !== null) payload.valor_pedido = valor;
     if (docUrl) payload.doc_url = docUrl;
+    if (representadaId) payload.representada_id = representadaId;
 
     await sb.from('visitas').insert(payload);
 
@@ -4154,14 +4186,20 @@ function getTodosSegmentos() {
 }
 
 function renderSegPills(valorAtual) {
-  const wrap = document.getElementById('c-seg-wrap');
-  if (!wrap) return;
-  const todos = getTodosSegmentos();
-  const atual = valorAtual ?? document.getElementById('c-segmento')?.value ?? '';
-  wrap.innerHTML = todos.map(s =>
-    `<button class="seg-pill-select${atual === s.valor ? ' active' : ''}" onclick="toggleSeg(this,'${s.valor}')">${s.label}</button>`
-  ).join('') +
-  `<button class="seg-pill-select seg-pill-novo" id="btn-novo-seg" onclick="mostrarInputNovoSeg()">＋ Criar</button>`;
+  preencherSegmentosSelect(valorAtual ?? '');
+}
+
+function preencherSegmentosSelect(valorAtual) {
+  const sel = document.getElementById('c-segmento');
+  if (!sel) return;
+  const atual = valorAtual !== undefined ? valorAtual : sel.value;
+  sel.innerHTML = '<option value="">— Selecionar —</option>' +
+    segmentosCache.map(s => `<option value="${s.nome}"${s.nome === atual ? ' selected' : ''}>${s.nome}</option>`).join('');
+  // compatibilidade com valores antigos (ex: 'mat_construcao')
+  if (atual && !segmentosCache.find(s => s.nome === atual)) {
+    const label = SEGMENTO_LABEL[atual] || atual;
+    sel.innerHTML += `<option value="${atual}" selected>${label}</option>`;
+  }
 }
 
 function mostrarInputNovoSeg() {
@@ -4188,6 +4226,285 @@ function confirmarNovoSeg(focusOut) {
   } else {
     renderSegPills();
   }
+}
+
+// ── REPRESENTADAS (Empresas) ─────────────────────────
+
+async function carregarRepresentadas() {
+  if (!currentUser) return;
+  try {
+    const { data } = await sb.from('representadas').select('*').eq('rep_id', currentUser.id).order('nome');
+    representadasCache = data || [];
+  } catch(e) { representadasCache = []; }
+  preencherSelectRepresentadas();
+}
+
+function preencherSelectRepresentadas() {
+  const sel = document.getElementById('pf-representada');
+  if (!sel) return;
+  const val = sel.value;
+  sel.innerHTML = '<option value="">🏢 Representada (opcional)</option>' +
+    representadasCache.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+  if (val) sel.value = val;
+}
+
+function openEmpresas() {
+  document.getElementById('screen-empresas').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  fecharFormEmpresa();
+  renderEmpresas();
+}
+
+function closeEmpresas() {
+  document.getElementById('screen-empresas').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function renderEmpresas() {
+  const lista = document.getElementById('empresas-lista');
+  if (!lista) return;
+  if (!representadasCache.length) {
+    lista.innerHTML = '<div class="gestao-empty">Nenhuma empresa cadastrada.<br>Clique em + Nova Empresa.</div>';
+    return;
+  }
+  lista.innerHTML = representadasCache.map(r => `
+    <div class="gestao-card">
+      <div class="gestao-card-nome">${r.nome}</div>
+      ${r.cnpj ? `<div class="gestao-card-sub">CNPJ: ${r.cnpj}</div>` : ''}
+      ${r.cidade ? `<div class="gestao-card-sub">📍 ${r.cidade}</div>` : ''}
+      ${r.banco ? `<div class="gestao-card-sub">🏦 ${r.banco}${r.agencia ? ' Ag. '+r.agencia : ''}${r.conta ? ' C/C '+r.conta : ''}</div>` : ''}
+      ${r.pix ? `<div class="gestao-card-sub">PIX: ${r.pix}</div>` : ''}
+      <div class="gestao-card-acoes">
+        <button class="gestao-btn-sm" onclick="abrirFormEmpresa('${r.id}')">✏️ Editar</button>
+        <button class="gestao-btn-sm danger" onclick="deletarEmpresa('${r.id}')">🗑 Excluir</button>
+      </div>
+    </div>`).join('');
+}
+
+function abrirFormEmpresa(id) {
+  const form = document.getElementById('empresa-form');
+  const fab  = document.getElementById('empresas-fab');
+  if (!form) return;
+  form.style.display = 'block';
+  if (fab) fab.style.display = 'none';
+
+  const campos = ['emp-id','emp-nome','emp-cnpj','emp-cep','emp-endereco','emp-cidade',
+    'emp-banco','emp-agencia','emp-conta','emp-pix',
+    'emp-fin-nome','emp-fin-tel','emp-com-nome','emp-com-tel',
+    'emp-fis-nome','emp-fis-tel','emp-fat-nome','emp-fat-tel'];
+
+  if (id) {
+    const r = representadasCache.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('empresa-form-titulo').textContent = 'Editar Empresa';
+    document.getElementById('emp-id').value       = r.id;
+    document.getElementById('emp-nome').value     = r.nome || '';
+    document.getElementById('emp-cnpj').value     = r.cnpj || '';
+    document.getElementById('emp-cep').value      = r.cep  || '';
+    document.getElementById('emp-endereco').value = r.endereco || '';
+    const cidEl = document.getElementById('emp-cidade');
+    cidEl.value    = r.cidade || '';
+    cidEl.disabled = !!r.cidade;
+    document.getElementById('emp-banco').value    = r.banco    || '';
+    document.getElementById('emp-agencia').value  = r.agencia  || '';
+    document.getElementById('emp-conta').value    = r.conta    || '';
+    document.getElementById('emp-pix').value      = r.pix      || '';
+    document.getElementById('emp-fin-nome').value = r.fin_nome || '';
+    document.getElementById('emp-fin-tel').value  = r.fin_tel  || '';
+    document.getElementById('emp-com-nome').value = r.com_nome || '';
+    document.getElementById('emp-com-tel').value  = r.com_tel  || '';
+    document.getElementById('emp-fis-nome').value = r.fis_nome || '';
+    document.getElementById('emp-fis-tel').value  = r.fis_tel  || '';
+    document.getElementById('emp-fat-nome').value = r.fat_nome || '';
+    document.getElementById('emp-fat-tel').value  = r.fat_tel  || '';
+    document.getElementById('emp-cep-status').textContent = '';
+  } else {
+    document.getElementById('empresa-form-titulo').textContent = 'Nova Empresa';
+    campos.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const cidEl = document.getElementById('emp-cidade');
+    if (cidEl) cidEl.disabled = true;
+    document.getElementById('emp-cep-status').textContent = '';
+  }
+  form.scrollIntoView({ behavior: 'smooth' });
+}
+
+function fecharFormEmpresa() {
+  const form = document.getElementById('empresa-form');
+  const fab  = document.getElementById('empresas-fab');
+  if (form) form.style.display = 'none';
+  if (fab)  fab.style.display  = '';
+}
+
+async function buscarCEPEmpresa() {
+  const cepEl    = document.getElementById('emp-cep');
+  const statusEl = document.getElementById('emp-cep-status');
+  const cidEl    = document.getElementById('emp-cidade');
+  const endEl    = document.getElementById('emp-endereco');
+  if (!cepEl) return;
+  const cep = cepEl.value.replace(/\D/g,'');
+  if (cep.length < 8) return;
+  statusEl.textContent = 'Buscando...'; statusEl.style.color = 'var(--text3)';
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d   = await res.json();
+    if (d.erro) { statusEl.textContent = 'CEP não encontrado'; statusEl.style.color = 'var(--red)'; cidEl.disabled = false; return; }
+    const cidade = normalizarCidadeTexto((d.localidade || '') + (d.uf ? ' - ' + d.uf.toUpperCase() : ''));
+    cidEl.value = cidade; cidEl.disabled = true;
+    if (!endEl.value) endEl.value = [d.logradouro, d.bairro].filter(Boolean).join(', ');
+    statusEl.textContent = '✓ CEP encontrado'; statusEl.style.color = 'var(--green)';
+  } catch(e) {
+    statusEl.textContent = 'Erro ao buscar CEP'; statusEl.style.color = 'var(--red)';
+    cidEl.disabled = false;
+  }
+}
+
+async function salvarEmpresa() {
+  if (!currentUser) return;
+  const nome = document.getElementById('emp-nome').value.trim();
+  if (!nome) { showToast('⚠️ Nome obrigatório', true); return; }
+  const id = document.getElementById('emp-id').value;
+  const payload = {
+    rep_id:   currentUser.id,
+    nome,
+    cnpj:     document.getElementById('emp-cnpj').value.trim(),
+    cep:      document.getElementById('emp-cep').value.replace(/\D/g,''),
+    endereco: document.getElementById('emp-endereco').value.trim(),
+    cidade:   document.getElementById('emp-cidade').value.trim(),
+    banco:    document.getElementById('emp-banco').value.trim(),
+    agencia:  document.getElementById('emp-agencia').value.trim(),
+    conta:    document.getElementById('emp-conta').value.trim(),
+    pix:      document.getElementById('emp-pix').value.trim(),
+    fin_nome: document.getElementById('emp-fin-nome').value.trim(),
+    fin_tel:  document.getElementById('emp-fin-tel').value.trim(),
+    com_nome: document.getElementById('emp-com-nome').value.trim(),
+    com_tel:  document.getElementById('emp-com-tel').value.trim(),
+    fis_nome: document.getElementById('emp-fis-nome').value.trim(),
+    fis_tel:  document.getElementById('emp-fis-tel').value.trim(),
+    fat_nome: document.getElementById('emp-fat-nome').value.trim(),
+    fat_tel:  document.getElementById('emp-fat-tel').value.trim(),
+  };
+  try {
+    if (id) {
+      await sb.from('representadas').update(payload).eq('id', id).eq('rep_id', currentUser.id);
+    } else {
+      await sb.from('representadas').insert(payload);
+    }
+    await carregarRepresentadas();
+    fecharFormEmpresa();
+    renderEmpresas();
+    showToast('✓ Empresa salva!');
+  } catch(e) {
+    showToast('❌ Erro ao salvar empresa', true);
+    console.log('salvarEmpresa erro:', e);
+  }
+}
+
+async function deletarEmpresa(id) {
+  const r = representadasCache.find(x => x.id === id);
+  if (!r || !confirm(`Excluir "${r.nome}"?`)) return;
+  try {
+    await sb.from('representadas').delete().eq('id', id).eq('rep_id', currentUser.id);
+    await carregarRepresentadas();
+    renderEmpresas();
+    showToast('Empresa excluída');
+  } catch(e) { showToast('❌ Erro ao excluir', true); }
+}
+
+// ── SEGMENTOS ─────────────────────────────────────────
+
+async function carregarSegmentos() {
+  if (!currentUser) return;
+  try {
+    const { data } = await sb.from('segmentos').select('*').eq('rep_id', currentUser.id).order('nome');
+    segmentosCache = data || [];
+    if (!segmentosCache.length) {
+      const defaults = ['Mat. Construção', 'Construtora', 'Tintas', 'Distribuidora'];
+      await sb.from('segmentos').insert(defaults.map(nome => ({ nome, rep_id: currentUser.id })));
+      const { data: d2 } = await sb.from('segmentos').select('*').eq('rep_id', currentUser.id).order('nome');
+      segmentosCache = d2 || [];
+    }
+  } catch(e) { segmentosCache = []; }
+  preencherSegmentosSelect('');
+}
+
+function openSegmentos() {
+  document.getElementById('screen-segmentos').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  fecharFormSegmento();
+  renderSegmentos();
+}
+
+function closeSegmentos() {
+  document.getElementById('screen-segmentos').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function renderSegmentos() {
+  const lista = document.getElementById('segmentos-lista');
+  if (!lista) return;
+  if (!segmentosCache.length) {
+    lista.innerHTML = '<div class="gestao-empty">Nenhum segmento cadastrado.</div>';
+    return;
+  }
+  lista.innerHTML = segmentosCache.map(s => `
+    <div class="gestao-card">
+      <div class="gestao-card-nome">${s.nome}</div>
+      <div class="gestao-card-acoes">
+        <button class="gestao-btn-sm" onclick="abrirFormSegmento('${s.id}')">✏️ Editar</button>
+        <button class="gestao-btn-sm danger" onclick="deletarSegmento('${s.id}')">🗑 Excluir</button>
+      </div>
+    </div>`).join('');
+}
+
+function abrirFormSegmento(id) {
+  const form = document.getElementById('segmento-form');
+  if (!form) return;
+  form.style.display = 'block';
+  if (id) {
+    const s = segmentosCache.find(x => String(x.id) === String(id));
+    document.getElementById('segmento-form-titulo').textContent = 'Editar Segmento';
+    document.getElementById('seg-mgmt-id').value   = id;
+    document.getElementById('seg-mgmt-nome').value = s ? s.nome : '';
+  } else {
+    document.getElementById('segmento-form-titulo').textContent = 'Novo Segmento';
+    document.getElementById('seg-mgmt-id').value   = '';
+    document.getElementById('seg-mgmt-nome').value = '';
+  }
+  setTimeout(() => document.getElementById('seg-mgmt-nome').focus(), 100);
+}
+
+function fecharFormSegmento() {
+  const form = document.getElementById('segmento-form');
+  if (form) form.style.display = 'none';
+}
+
+async function salvarSegmento() {
+  if (!currentUser) return;
+  const nome = document.getElementById('seg-mgmt-nome').value.trim();
+  if (!nome) { showToast('⚠️ Nome obrigatório', true); return; }
+  const id = document.getElementById('seg-mgmt-id').value;
+  try {
+    if (id) {
+      await sb.from('segmentos').update({ nome }).eq('id', id).eq('rep_id', currentUser.id);
+    } else {
+      await sb.from('segmentos').insert({ nome, rep_id: currentUser.id });
+    }
+    await carregarSegmentos();
+    fecharFormSegmento();
+    renderSegmentos();
+    showToast(id ? '✓ Segmento atualizado' : '✓ Segmento criado');
+  } catch(e) { showToast('❌ Erro ao salvar', true); console.log('salvarSegmento:', e); }
+}
+
+async function deletarSegmento(id) {
+  const s = segmentosCache.find(x => String(x.id) === String(id));
+  if (!s || !confirm(`Excluir "${s.nome}"?`)) return;
+  try {
+    await sb.from('segmentos').delete().eq('id', id).eq('rep_id', currentUser.id);
+    await carregarSegmentos();
+    renderSegmentos();
+    showToast('Segmento excluído');
+  } catch(e) { showToast('❌ Erro ao excluir', true); }
 }
 
 // ── TAREFAS (Supabase) ──────────────────────────────
@@ -4381,6 +4698,8 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('screen-perfil')?.style.display === 'flex') { closePerfil(); return; }
     if (document.getElementById('screen-cadastro')?.style.display === 'flex') { closeCadastro(); return; }
     if (document.getElementById('screen-admin')?.style.display === 'flex') { closeAdmin(); return; }
+    if (document.getElementById('screen-empresas')?.style.display === 'flex') { closeEmpresas(); return; }
+    if (document.getElementById('screen-segmentos')?.style.display === 'flex') { closeSegmentos(); return; }
   }
 });
 
@@ -4463,6 +4782,11 @@ if ('serviceWorker' in navigator) {
             <input type="hidden" id="pf-status" value="aberto">
           </div>
           <div class="pf-row">
+            <select class="pf-select" id="pf-representada">
+              <option value="">🏢 Representada (opcional)</option>
+            </select>
+          </div>
+          <div class="pf-row">
             <input class="pf-data-input" id="pf-data" type="date">
           </div>
           <div class="pf-row">
@@ -4492,6 +4816,129 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
 
+
+    <!-- TELA EMPRESAS -->
+    <div id="screen-empresas">
+      <div class="gestao-header">
+        <button class="perfil-back" onclick="closeEmpresas()" style="flex-shrink:0">← Voltar</button>
+        <div class="gestao-titulo">🏢 Empresas</div>
+        <div style="width:70px"></div>
+      </div>
+      <div class="gestao-body">
+        <div class="gestao-form-card" id="empresa-form" style="display:none">
+          <div class="gestao-form-titulo" id="empresa-form-titulo">Nova Empresa</div>
+          <input type="hidden" id="emp-id">
+          <div class="campo-grupo">
+            <label class="campo-label">Nome da Empresa *</label>
+            <input class="campo-input" id="emp-nome" placeholder="Razão social...">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">CNPJ</label>
+            <input class="campo-input" id="emp-cnpj" placeholder="00.000.000/0000-00">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">CEP</label>
+            <div class="cep-row">
+              <input class="campo-input" id="emp-cep" type="tel" placeholder="00000-000" maxlength="9" oninput="mascaraCEP(this)" onblur="buscarCEPEmpresa()">
+              <button class="btn-buscar-cep" onclick="buscarCEPEmpresa()">Buscar</button>
+            </div>
+            <div class="cep-status" id="emp-cep-status"></div>
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Endereço</label>
+            <input class="campo-input" id="emp-endereco" placeholder="Rua, número, complemento...">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Cidade</label>
+            <input class="campo-input" id="emp-cidade" placeholder="Preenchida pelo CEP..." disabled>
+          </div>
+          <div class="gestao-sep">Dados Bancários</div>
+          <div class="campo-grupo">
+            <label class="campo-label">Banco</label>
+            <input class="campo-input" id="emp-banco" placeholder="Nome do banco...">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Agência</label>
+            <input class="campo-input" id="emp-agencia" placeholder="0000">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Conta</label>
+            <input class="campo-input" id="emp-conta" placeholder="00000-0">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">PIX</label>
+            <input class="campo-input" id="emp-pix" placeholder="CPF, CNPJ, e-mail ou telefone...">
+          </div>
+          <div class="gestao-sep">Contato Financeiro</div>
+          <div class="campo-grupo">
+            <label class="campo-label">Nome</label>
+            <input class="campo-input" id="emp-fin-nome" placeholder="Nome...">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Telefone</label>
+            <input class="campo-input" id="emp-fin-tel" type="tel" placeholder="(47) 9...">
+          </div>
+          <div class="gestao-sep">Contato Comercial</div>
+          <div class="campo-grupo">
+            <label class="campo-label">Nome</label>
+            <input class="campo-input" id="emp-com-nome" placeholder="Nome...">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Telefone</label>
+            <input class="campo-input" id="emp-com-tel" type="tel" placeholder="(47) 9...">
+          </div>
+          <div class="gestao-sep">Contato Fiscal</div>
+          <div class="campo-grupo">
+            <label class="campo-label">Nome</label>
+            <input class="campo-input" id="emp-fis-nome" placeholder="Nome...">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Telefone</label>
+            <input class="campo-input" id="emp-fis-tel" type="tel" placeholder="(47) 9...">
+          </div>
+          <div class="gestao-sep">Contato Faturamento</div>
+          <div class="campo-grupo">
+            <label class="campo-label">Nome</label>
+            <input class="campo-input" id="emp-fat-nome" placeholder="Nome...">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Telefone</label>
+            <input class="campo-input" id="emp-fat-tel" type="tel" placeholder="(47) 9...">
+          </div>
+          <div class="gestao-form-footer">
+            <button class="btn-cancelar" onclick="fecharFormEmpresa()">Cancelar</button>
+            <button class="btn-salvar" onclick="salvarEmpresa()">Salvar</button>
+          </div>
+        </div>
+        <div id="empresas-lista"></div>
+      </div>
+      <button class="gestao-fab" id="empresas-fab" onclick="abrirFormEmpresa()">+ Nova Empresa</button>
+    </div>
+
+    <!-- TELA SEGMENTOS -->
+    <div id="screen-segmentos">
+      <div class="gestao-header">
+        <button class="perfil-back" onclick="closeSegmentos()" style="flex-shrink:0">← Voltar</button>
+        <div class="gestao-titulo">🏷️ Segmentos</div>
+        <div style="width:70px"></div>
+      </div>
+      <div class="gestao-body">
+        <div class="gestao-form-card" id="segmento-form" style="display:none">
+          <div class="gestao-form-titulo" id="segmento-form-titulo">Novo Segmento</div>
+          <input type="hidden" id="seg-mgmt-id">
+          <div class="campo-grupo">
+            <label class="campo-label">Nome do Segmento *</label>
+            <input class="campo-input" id="seg-mgmt-nome" placeholder="Ex: Ferragem, Vidraçaria..." onkeydown="if(event.key==='Enter'){event.preventDefault();salvarSegmento()}">
+          </div>
+          <div class="gestao-form-footer">
+            <button class="btn-cancelar" onclick="fecharFormSegmento()">Cancelar</button>
+            <button class="btn-salvar" onclick="salvarSegmento()">Salvar</button>
+          </div>
+        </div>
+        <div id="segmentos-lista"></div>
+      </div>
+      <button class="gestao-fab" onclick="abrirFormSegmento()">+ Novo Segmento</button>
+    </div>
 
     <!-- TELA DE CADASTRO -->
     <div id="screen-cadastro">
@@ -4537,10 +4984,9 @@ if ('serviceWorker' in navigator) {
         </div>
         <div class="campo-grupo">
           <label class="campo-label">Segmento</label>
-          <div class="seg-select-wrap" id="c-seg-wrap">
-            <!-- preenchido por renderSegPills() -->
-          </div>
-          <input type="hidden" id="c-segmento" value="">
+          <select class="campo-select" id="c-segmento">
+            <option value="">— Selecionar —</option>
+          </select>
         </div>
         <div class="campo-grupo">
           <label class="campo-label">CNPJ</label>
@@ -4670,6 +5116,20 @@ if ('serviceWorker' in navigator) {
           <div class="config-item-left">
             <div class="config-item-icon">📅</div>
             <div><div class="config-item-nome">Calendário de visitas</div><div class="config-item-sub">Ver check-ins por dia</div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </div>
+        <div class="config-item" onclick="closeConfig();openEmpresas()">
+          <div class="config-item-left">
+            <div class="config-item-icon">🏢</div>
+            <div><div class="config-item-nome">Empresas</div><div class="config-item-sub">Representadas e dados bancários</div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </div>
+        <div class="config-item" onclick="closeConfig();openSegmentos()">
+          <div class="config-item-left">
+            <div class="config-item-icon">🏷️</div>
+            <div><div class="config-item-nome">Segmentação</div><div class="config-item-sub">Tipos de cliente</div></div>
           </div>
           <div class="config-item-right">›</div>
         </div>
