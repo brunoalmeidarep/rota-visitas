@@ -22,18 +22,18 @@ CREATE INDEX IF NOT EXISTS idx_visitas_status_orc ON visitas(status_orcamento) W
 -- Execute via SQL (usando a extensão storage):
 
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('documentos', 'documentos', true)
+VALUES ('pedidos', 'pedidos', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Política: representante autenticado pode fazer upload
 CREATE POLICY "Rep pode upload" ON storage.objects
   FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'documentos' AND auth.uid()::text = (storage.foldername(name))[1]);
+  WITH CHECK (bucket_id = 'pedidos' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 -- Política: leitura pública dos documentos
 CREATE POLICY "Leitura pública" ON storage.objects
   FOR SELECT TO public
-  USING (bucket_id = 'documentos');
+  USING (bucket_id = 'pedidos');
 
 -- ============================================================
 -- 3. RLS na tabela visitas (caso ainda não tenha)
