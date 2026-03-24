@@ -2084,9 +2084,11 @@ async function carregarHistoricoSheets(idCliente) {
 // ── GEOLOCALIZAÇÃO ──────────────────────────────────────
 let coordsCapturadas = null;
 
+function capturarLocalizacao() { usarLocalizacaoAtual(); }
+
 function usarLocalizacaoAtual() {
-  const btn = document.getElementById('btn-loc');
-  const status = document.getElementById('loc-status');
+  const btn = document.getElementById('c-loc-btn');
+  const status = document.getElementById('c-loc-status');
 
   if (!navigator.geolocation) {
     status.style.color = '#f87171';
@@ -2157,17 +2159,22 @@ function usarLocalizacaoAtual() {
 }
 
 // Limpa coords capturadas ao fechar cadastro
+let editandoClienteId = null;
 const _origCloseCadastro = closeCadastro;
 closeCadastro = function() {
   coordsCapturadas = null;
-  const btn = document.getElementById('btn-loc');
-  const status = document.getElementById('loc-status');
+  editandoClienteId = null;
+  const btn = document.getElementById('c-loc-btn');
+  const status = document.getElementById('c-loc-status');
   if (btn) {
     btn.classList.remove('loading', 'sucesso');
     btn.innerHTML = '<span>📍</span> USAR MINHA LOCALIZAÇÃO ATUAL';
   }
   if (status) status.textContent = '';
   if (window._tmpMarker) { window._tmpMarker.setMap(null); window._tmpMarker = null; }
+  // Restaura título
+  const titulo = document.querySelector('.cadastro-titulo');
+  if (titulo) titulo.textContent = 'Novo Cliente';
   _origCloseCadastro();
 };
 
@@ -2270,6 +2277,116 @@ async function salvarCliente() {
       await fetch(`${SCRIPT_URL}?${params.toString()}`);
     } catch(e) { /* salvo localmente */ }
   }
+}
+
+// Wrapper: novo ou edição
+async function salvarNovoCliente() {
+  if (editandoClienteId) {
+    await salvarEdicaoCliente();
+  } else {
+    await salvarCliente();
+  }
+}
+
+// Salva edição de cliente existente
+async function salvarEdicaoCliente() {
+  const c = clientes.find(x => x.id == editandoClienteId);
+  if (!c) return;
+
+  const razao     = document.getElementById('c-razao').value.trim();
+  const fantasia  = document.getElementById('c-fantasia').value.trim();
+  const comprador = document.getElementById('c-comprador').value.trim();
+  const tel       = document.getElementById('c-tel').value.trim();
+  const cidade    = document.getElementById('c-cidade').value.trim();
+  const endereco  = document.getElementById('c-endereco').value.trim();
+  const cnpj      = document.getElementById('c-cnpj').value.trim();
+  const segmento  = document.getElementById('c-segmento').value;
+
+  const nomeExibir = fantasia || razao || c.nome;
+  c.nome        = comprador ? `${nomeExibir} (${comprador})` : nomeExibir;
+  c.razaoSocial = razao;
+  c.fantasia    = fantasia;
+  c.comprador   = comprador;
+  c.tel         = tel;
+  if (cidade)   c.cidade   = cidade;
+  c.endereco    = endereco;
+  c.cnpj        = cnpj;
+  c.segmento    = segmento;
+
+  if (coordsCapturadas) {
+    c.lat = coordsCapturadas.lat;
+    c.lng = coordsCapturadas.lng;
+  }
+
+  const idSalvo = editandoClienteId;
+  closeCadastro();
+  renderList();
+  if (gmap) renderMapMarkers();
+  showToast(`✓ ${nomeExibir} atualizado!`);
+
+  // Tenta salvar no Supabase se tabela clientes existir
+  if (sb) {
+    try {
+      await sb.from('clientes').upsert({
+        id: idSalvo,
+        nome: c.nome,
+        razao_social: razao,
+        fantasia,
+        comprador,
+        tel,
+        cidade: c.cidade,
+        endereco,
+        cnpj,
+        segmento,
+        lat: c.lat,
+        lng: c.lng
+      }, { onConflict: 'id' });
+    } catch(e) { /* tabela pode não existir ainda */ }
+  }
+}
+
+// Abre cadastro no modo edição
+function editarCliente() {
+  if (!perfilId) return;
+  const c = clientes.find(x => x.id == perfilId);
+  if (!c) return;
+
+  editandoClienteId = perfilId;
+
+  // Parse nome para separar empresa e comprador
+  const matchComp   = c.nome.match(/^(.*?)\s*\(([^)]+)\)(.*)$/);
+  const nomeEmpresa = matchComp ? (matchComp[1] + matchComp[3]).trim() : c.nome;
+  const compradorStr = matchComp ? matchComp[2] : (c.comprador || '');
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('c-razao',     c.razaoSocial || nomeEmpresa);
+  set('c-fantasia',  c.fantasia || '');
+  set('c-comprador', compradorStr);
+  set('c-tel',       c.tel || '');
+  set('c-cidade',    c.cidade || '');
+  set('c-endereco',  c.endereco || '');
+  set('c-cnpj',      c.cnpj || '');
+
+  const seg = c.segmento || '';
+  renderSegPills(seg);
+  document.getElementById('c-segmento').value = seg;
+
+  // Pré-carrega coords se o cliente já tem localização
+  coordsCapturadas = (c.lat && c.lng) ? { lat: c.lat, lng: c.lng } : null;
+  const locStatus = document.getElementById('c-loc-status');
+  const locBtn    = document.getElementById('c-loc-btn');
+  if (coordsCapturadas && locStatus && locBtn) {
+    locStatus.textContent = `📍 ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`;
+    locBtn.classList.add('sucesso');
+    locBtn.innerHTML = '<span>✓</span> LOCALIZAÇÃO DEFINIDA';
+  }
+
+  // Atualiza título da tela
+  const titulo = document.querySelector('.cadastro-titulo');
+  if (titulo) titulo.textContent = 'Editar Cliente';
+
+  document.getElementById('screen-cadastro').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 }
 
 async function geocodeCliente(c) {
@@ -4096,9 +4213,27 @@ function showToast(msg, isErr = false) {
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('SW registrado:', reg.scope))
-      .catch(err => console.log('SW erro:', err));
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // Detecta nova versão do SW
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Nova versão pronta: pede ao SW para ativar imediatamente
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+    }).catch(err => console.log('SW erro:', err));
+
+    // Quando o SW novo assumir o controle, recarrega o app
+    let _swRefreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (_swRefreshing) return;
+      _swRefreshing = true;
+      if (typeof showToast === 'function') showToast('🔄 Atualizando...');
+      setTimeout(() => window.location.reload(), 1500);
+    });
   });
 }
 </script>
@@ -4115,6 +4250,7 @@ if ('serviceWorker' in navigator) {
         <div class="perfil-meta" id="p-meta"></div>
         <div class="perfil-acoes">
           <button class="btn-checkin-perfil" id="p-btn-checkin" onclick="checkinPerfil()">✓ CHECK-IN</button>
+          <button class="btn-maps-perfil" onclick="editarCliente()" title="Editar cliente" style="font-size:14px">✏️</button>
           <button class="btn-maps-perfil" onclick="openMapsPerfil()">↗</button>
         </div>
       </div>
