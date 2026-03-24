@@ -226,6 +226,12 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .campo-input,.campo-select { width:100%; background:var(--card); border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; color:var(--text); font-family:inherit; font-size:15px; outline:none; -webkit-appearance:none; transition:border-color .15s; }
 .campo-input:focus { border-color:var(--blue); }
 .campo-input::placeholder { color:var(--text3); }
+.campo-input:disabled { opacity:.55; cursor:not-allowed; background:var(--bg); }
+.cep-row { display:flex; gap:8px; }
+.cep-row .campo-input { flex:1; }
+.btn-buscar-cep { background:var(--blue); color:#fff; border:none; border-radius:12px; padding:0 16px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; }
+.btn-buscar-cep:disabled { opacity:.5; cursor:default; }
+.cep-status { font-size:12px; margin-top:5px; min-height:16px; }
 .campo-divider { font-size:10px; font-weight:700; color:var(--text3); letter-spacing:2px; text-transform:uppercase; margin:18px 0 14px; display:flex; align-items:center; gap:10px; }
 .campo-divider::before,.campo-divider::after { content:''; flex:1; height:1px; background:var(--border); }
 .cadastro-footer { padding:12px 16px 28px; background:var(--surface); border-top:1px solid var(--border); display:flex; gap:10px; flex-shrink:0; }
@@ -2172,20 +2178,29 @@ closeCadastro = function() {
   }
   if (status) status.textContent = '';
   if (window._tmpMarker) { window._tmpMarker.setMap(null); window._tmpMarker = null; }
-  // Restaura título
+  // Restaura título e reseta CEP
   const titulo = document.querySelector('.cadastro-titulo');
   if (titulo) titulo.textContent = 'Novo Cliente';
+  _resetCEPStatus();
+  const cidadeEl = document.getElementById('c-cidade');
+  if (cidadeEl) { cidadeEl.disabled = true; cidadeEl.value = ''; }
+  const cepEl = document.getElementById('c-cep');
+  if (cepEl) cepEl.value = '';
   _origCloseCadastro();
 };
 
 // ── CADASTRO DE CLIENTE ─────────────────────────────────
 function openCadastro() {
   // Limpa campos
-  ['c-razao','c-fantasia','c-cnpj','c-ie','c-fiscal','c-comprador','c-tel','c-email','c-endereco','c-cidade']
+  ['c-razao','c-fantasia','c-cnpj','c-ie','c-fiscal','c-comprador','c-tel','c-email','c-endereco','c-cidade','c-cep']
     .forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+  // Reseta CEP status e cidade
+  _resetCEPStatus();
+  const cidadeEl = document.getElementById('c-cidade');
+  if (cidadeEl) cidadeEl.disabled = true;
   const segEl = document.getElementById('c-segmento');
   if (segEl) segEl.value = '';
   renderSegPills('');
@@ -2195,22 +2210,34 @@ function openCadastro() {
   setTimeout(() => document.getElementById('c-razao').focus(), 300);
 }
 
+function _resetCEPStatus() {
+  const st = document.getElementById('c-cep-status');
+  if (st) { st.textContent = ''; st.style.color = ''; }
+}
+
 function closeCadastro() {
   document.getElementById('screen-cadastro').style.display = 'none';
   document.body.style.overflow = '';
 }
 
 async function salvarCliente() {
+  const cep       = (document.getElementById('c-cep').value || '').replace(/\D/g,'');
+  if (!cep || cep.length < 8) {
+    const st = document.getElementById('c-cep-status');
+    if (st) { st.textContent = '⚠️ CEP obrigatório'; st.style.color = 'var(--red)'; }
+    document.getElementById('c-cep')?.focus();
+    return;
+  }
   const razao     = document.getElementById('c-razao').value.trim();
   const fantasia  = document.getElementById('c-fantasia').value.trim();
   const cnpj      = document.getElementById('c-cnpj').value.trim();
-  const ie        = document.getElementById('c-ie').value.trim();
-  const fiscal    = document.getElementById('c-fiscal').value;
+  const ie        = document.getElementById('c-ie')?.value.trim() || '';
+  const fiscal    = document.getElementById('c-fiscal')?.value || '';
   const comprador = document.getElementById('c-comprador').value.trim();
   const tel       = document.getElementById('c-tel').value.trim();
-  const email     = document.getElementById('c-email').value.trim();
+  const email     = document.getElementById('c-email')?.value.trim() || '';
   const endereco  = document.getElementById('c-endereco').value.trim();
-  const cidade    = document.getElementById('c-cidade').value.trim();
+  const cidade    = normalizarCidadeTexto(document.getElementById('c-cidade').value.trim());
 
   // Nome que aparece na lista: fantasia > razao > "Sem nome"
   const nomeExibir = fantasia || razao || 'Novo Cliente';
@@ -2234,6 +2261,7 @@ async function salvarCliente() {
     email:       email,
     endereco:    endereco,
     cidade:      cidade || 'SC',
+    cep,
     ultimaVisita: null,
     ultimaObs:   '',
     visitadoHoje: false,
@@ -2293,11 +2321,19 @@ async function salvarEdicaoCliente() {
   const c = clientes.find(x => x.id == editandoClienteId);
   if (!c) return;
 
+  const cep = (document.getElementById('c-cep').value || '').replace(/\D/g,'');
+  if (!cep || cep.length < 8) {
+    const st = document.getElementById('c-cep-status');
+    if (st) { st.textContent = '⚠️ CEP obrigatório'; st.style.color = 'var(--red)'; }
+    document.getElementById('c-cep')?.focus();
+    return;
+  }
+
   const razao     = document.getElementById('c-razao').value.trim();
   const fantasia  = document.getElementById('c-fantasia').value.trim();
   const comprador = document.getElementById('c-comprador').value.trim();
   const tel       = document.getElementById('c-tel').value.trim();
-  const cidade    = document.getElementById('c-cidade').value.trim();
+  const cidade    = normalizarCidadeTexto(document.getElementById('c-cidade').value.trim());
   const endereco  = document.getElementById('c-endereco').value.trim();
   const cnpj      = document.getElementById('c-cnpj').value.trim();
   const segmento  = document.getElementById('c-segmento').value;
@@ -2312,6 +2348,7 @@ async function salvarEdicaoCliente() {
   c.endereco    = endereco;
   c.cnpj        = cnpj;
   c.segmento    = segmento;
+  c.cep         = cep;
 
   if (coordsCapturadas) {
     c.lat = coordsCapturadas.lat;
@@ -2363,9 +2400,24 @@ function editarCliente() {
   set('c-fantasia',  c.fantasia || '');
   set('c-comprador', compradorStr);
   set('c-tel',       c.tel || '');
-  set('c-cidade',    c.cidade || '');
   set('c-endereco',  c.endereco || '');
   set('c-cnpj',      c.cnpj || '');
+
+  // CEP e cidade
+  _resetCEPStatus();
+  const cidadeEl = document.getElementById('c-cidade');
+  const cepEl    = document.getElementById('c-cep');
+  if (c.cep) {
+    // Cliente já tem CEP: pré-preenche e mantém cidade disabled
+    if (cepEl) cepEl.value = formatarCEP(c.cep);
+    if (cidadeEl) { cidadeEl.value = c.cidade || ''; cidadeEl.disabled = true; }
+  } else {
+    // Sem CEP cadastrado: libera cidade para edição manual
+    if (cepEl) cepEl.value = '';
+    if (cidadeEl) { cidadeEl.value = c.cidade || ''; cidadeEl.disabled = false; }
+    const st = document.getElementById('c-cep-status');
+    if (st && c.cidade) { st.textContent = 'Sem CEP cadastrado — cidade editável manualmente'; st.style.color = 'var(--text3)'; }
+  }
 
   const seg = c.segmento || '';
   renderSegPills(seg);
@@ -2408,6 +2460,73 @@ async function geocodeCliente(c) {
       }
     }
   } catch(e) { /* sem geocoding */ }
+}
+
+// ── CEP / VIACEP ────────────────────────────────────────
+function mascaraCEP(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,8);
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
+  el.value = v;
+}
+
+function formatarCEP(cep) {
+  const c = String(cep).replace(/\D/g,'').padStart(8,'0');
+  return c.slice(0,5) + '-' + c.slice(5);
+}
+
+// Preposições que ficam em minúsculo
+const _PREP_MINUSC = new Set(['da','de','do','das','dos','e','o','a','os','as','em','na','no','nas','nos']);
+
+function normalizarCidadeTexto(texto) {
+  if (!texto) return '';
+  return texto.trim().split(/\s+/).map((w, i) => {
+    const low = w.toLowerCase();
+    // Sigla UF (depois de " - "): mantém maiúsculo
+    if (/^[A-Z]{2}$/.test(w)) return w.toUpperCase();
+    if (i > 0 && _PREP_MINUSC.has(low)) return low;
+    return low.charAt(0).toUpperCase() + low.slice(1);
+  }).join(' ');
+}
+
+async function buscarCEP() {
+  const cepEl  = document.getElementById('c-cep');
+  const status = document.getElementById('c-cep-status');
+  const cidade = document.getElementById('c-cidade');
+  const end    = document.getElementById('c-endereco');
+  const btn    = document.getElementById('c-cep-btn');
+  if (!cepEl) return;
+
+  const cep = cepEl.value.replace(/\D/g,'');
+  if (cep.length < 8) return;
+
+  // Feedback de carregamento
+  if (status) { status.textContent = 'Buscando...'; status.style.color = 'var(--text3)'; }
+  if (btn) btn.disabled = true;
+
+  try {
+    const res  = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const data = await res.json();
+
+    if (data.erro) {
+      // CEP não encontrado
+      if (status) { status.textContent = '⚠️ CEP não encontrado — preencha a cidade manualmente'; status.style.color = 'var(--orange)'; }
+      if (cidade) { cidade.disabled = false; cidade.value = ''; cidade.focus(); }
+    } else {
+      // Sucesso
+      const nomeCidade = normalizarCidadeTexto(data.localidade) + ' - ' + data.uf.toUpperCase();
+      if (cidade) { cidade.value = nomeCidade; cidade.disabled = true; }
+      // Pré-preenche endereço apenas se estiver vazio
+      if (end && !end.value.trim() && data.logradouro) {
+        end.value = data.logradouro + (data.bairro ? ', ' + data.bairro : '');
+      }
+      if (status) { status.textContent = '✓ ' + nomeCidade; status.style.color = 'var(--green)'; }
+    }
+  } catch(e) {
+    if (status) { status.textContent = '⚠️ Erro ao consultar CEP — preencha a cidade manualmente'; status.style.color = 'var(--orange)'; }
+    if (cidade) { cidade.disabled = false; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ── PERFIL DO CLIENTE ───────────────────────────────────
@@ -4348,7 +4467,7 @@ if ('serviceWorker' in navigator) {
       <div class="cadastro-header">
         <div>
           <div class="cadastro-titulo">Novo Cliente</div>
-          <div class="cadastro-sub">Todos os campos são opcionais</div>
+          <div class="cadastro-sub">CEP obrigatório</div>
         </div>
         <button class="perfil-back" onclick="closeCadastro()" style="margin:0">✕</button>
       </div>
@@ -4370,8 +4489,16 @@ if ('serviceWorker' in navigator) {
           <input class="campo-input" id="c-tel" type="tel" placeholder="(47) 99999-9999">
         </div>
         <div class="campo-grupo">
+          <label class="campo-label">CEP *</label>
+          <div class="cep-row">
+            <input class="campo-input" id="c-cep" type="tel" placeholder="00000-000" maxlength="9" oninput="mascaraCEP(this)" onblur="buscarCEP()">
+            <button class="btn-buscar-cep" id="c-cep-btn" onclick="buscarCEP()">Buscar</button>
+          </div>
+          <div class="cep-status" id="c-cep-status"></div>
+        </div>
+        <div class="campo-grupo">
           <label class="campo-label">Cidade</label>
-          <input class="campo-input" id="c-cidade" placeholder="Cidade - UF">
+          <input class="campo-input" id="c-cidade" placeholder="Preenchido pelo CEP..." disabled>
         </div>
         <div class="campo-grupo">
           <label class="campo-label">Endereço</label>
