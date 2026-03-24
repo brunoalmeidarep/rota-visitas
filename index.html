@@ -200,7 +200,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .lembrete-icon { font-size:14px; flex-shrink:0; }
 .lembrete-box textarea { flex:1; background:none; border:none; color:var(--orange); font-family:inherit; font-size:14px; resize:none; outline:none; min-height:36px; }
 .lembrete-box textarea::placeholder { color:rgba(255,149,0,.35); }
-.lembrete-salvo { font-size:11px; color:var(--orange); opacity:.6; text-align:right; margin-bottom:12px; }
+.lembrete-salvo { font-size:11px; color:var(--green); text-align:right; margin-bottom:12px; transition:opacity .4s; }
 .checkin-obs-box { background:var(--card); border-radius:12px; padding:12px 14px; margin-bottom:14px; box-shadow:var(--shadow); }
 .checkin-obs-box textarea { width:100%; background:none; border:none; color:var(--text); font-family:inherit; font-size:14px; resize:none; outline:none; min-height:60px; }
 .checkin-obs-box textarea::placeholder { color:var(--text3); }
@@ -941,6 +941,7 @@ async function fazerLogin() {
 }
 
 function fazerLogout() {
+  plannerCarregado = false;
   sb.auth.signOut();
 }
 
@@ -1375,7 +1376,15 @@ function showScreen(s) {
   if (s === 'list') renderList();
   if (s === 'report') { renderReport(); if (currentUser) carregarPeriodoRelatorio(); }
   if (s === 'tarefas') renderTarefas();
-  if (s === 'planner') { plannerRef = new Date(); plannerDiaSel = new Date(); carregarTodoPlanner().then(() => renderPlanner()); }
+  if (s === 'planner') {
+    if (!plannerCarregado) {
+      plannerRef = new Date(); plannerDiaSel = new Date();
+      plannerCarregado = true;
+      carregarTodoPlanner().then(() => renderPlanner());
+    } else {
+      renderPlanner();
+    }
+  }
   if (s === 'map') {
     // Força o mapa a ocupar toda a tela e re-renderizar
     setTimeout(() => {
@@ -2184,6 +2193,8 @@ closeCadastro = function() {
   if (cidadeEl) { cidadeEl.disabled = true; cidadeEl.value = ''; }
   const cepEl = document.getElementById('c-cep');
   if (cepEl) cepEl.value = '';
+  const fbEl = document.getElementById('cadastro-feedback');
+  if (fbEl) { fbEl.textContent = ''; fbEl.style.display = 'none'; }
   _origCloseCadastro();
 };
 
@@ -2278,10 +2289,13 @@ async function salvarCliente() {
     renderMapMarkers();
   }
 
-  // Fecha tela e atualiza lista
-  closeCadastro();
+  // Feedback e fecha após 1.5s
   renderList();
-  showToast(`✓ ${nomeExibir} cadastrado!`);
+  const fbEl = document.getElementById('cadastro-feedback');
+  const btnSalvar = document.getElementById('btn-salvar-cliente');
+  if (fbEl) { fbEl.textContent = '✓ Cliente cadastrado'; fbEl.style.display = 'block'; }
+  if (btnSalvar) btnSalvar.disabled = true;
+  setTimeout(() => { closeCadastro(); if (btnSalvar) btnSalvar.disabled = false; }, 1500);
 
   // Salva no Google Sheets
   if (SCRIPT_URL) {
@@ -2354,10 +2368,14 @@ async function salvarEdicaoCliente() {
   }
 
   const idSalvo = editandoClienteId;
-  closeCadastro();
   renderList();
   if (gmap) renderMapMarkers();
-  showToast(`✓ ${nomeExibir} atualizado!`);
+  // Feedback e fecha após 1.5s
+  const fbEl2 = document.getElementById('cadastro-feedback');
+  const btnSalvar2 = document.getElementById('btn-salvar-cliente');
+  if (fbEl2) { fbEl2.textContent = '✓ Dados atualizados'; fbEl2.style.display = 'block'; }
+  if (btnSalvar2) btnSalvar2.disabled = true;
+  setTimeout(() => { closeCadastro(); if (btnSalvar2) btnSalvar2.disabled = false; }, 1500);
 
   // Tenta salvar no Supabase se tabela clientes existir
   if (sb) {
@@ -2602,10 +2620,20 @@ async function salvarLembrete() {
   const lembretes = JSON.parse(localStorage.getItem('lembretes') || '{}');
   if (texto) { lembretes[perfilId] = texto; } else { delete lembretes[perfilId]; }
   localStorage.setItem('lembretes', JSON.stringify(lembretes));
-  document.getElementById('p-lembrete-salvo').textContent = texto ? '✓ lembrete salvo' : '';
 
-  // Salva no Supabase
-  await salvarLembreteSupabase(perfilId, texto);
+  // Feedback visual imediato
+  const salvoEl = document.getElementById('p-lembrete-salvo');
+  if (salvoEl && texto) {
+    salvoEl.textContent = '✓ Salvo';
+    salvoEl.style.opacity = '1';
+    clearTimeout(salvoEl._fadeTimer);
+    salvoEl._fadeTimer = setTimeout(() => { salvoEl.style.opacity = '0'; }, 2000);
+  } else if (salvoEl) {
+    salvoEl.textContent = '';
+  }
+
+  // Salva no Supabase em background
+  salvarLembreteSupabase(perfilId, texto);
 }
 
 function closePerfil() {
@@ -2669,7 +2697,7 @@ async function checkinPerfil() {
   if (labelEl) labelEl.textContent = 'Anexar documento (PDF ou imagem)';
 
   // Botão fica verde confirmando
-  btn.textContent = '✓ Salvo às ' + hora;
+  btn.textContent = '✓ Visitado às ' + hora;
   btn.style.background = 'var(--green)';
 
   showToast('✓ Check-in salvo — ' + hora);
@@ -3243,6 +3271,7 @@ function navegarMes(delta) {
 var plannerView = 'semana';
 var plannerRef = new Date(); // data de referência
 var plannerDiaSel = new Date(); // dia selecionado
+var plannerCarregado = false; // evita reload do Supabase a cada visita
 
 const NOMES_DIA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const NOMES_MES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -4128,32 +4157,46 @@ function confirmarNovoSeg(focusOut) {
 
 // ── TAREFAS (Supabase) ──────────────────────────────
 
-async function getTarefas() {
-  if (!currentUser) return JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+// Lê tarefas do cache local (síncrono — sem rede)
+function getTarefas() {
+  return JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+}
+// Sincroniza tarefas do Supabase em background e atualiza o cache
+async function sincronizarTarefasSupabase() {
+  if (!currentUser) return;
   try {
     const { data } = await sb.from('tarefas').select('*').eq('rep_id', currentUser.id);
-    return data || [];
-  } catch(e) { return JSON.parse(localStorage.getItem('tarefas_v2') || '[]'); }
+    if (data) {
+      localStorage.setItem('tarefas_v2', JSON.stringify(data));
+      if (currentScreen === 'tarefas') renderTarefas();
+    }
+  } catch(e) {}
 }
 
 async function iniciarTarefas() {
   const hoje = new Date().toISOString().slice(0,10);
-  const tarefas = await getTarefas();
+  // Carrega do Supabase primeiro para ter dados frescos
+  if (currentUser) {
+    try {
+      const { data } = await sb.from('tarefas').select('*').eq('rep_id', currentUser.id);
+      if (data) localStorage.setItem('tarefas_v2', JSON.stringify(data));
+    } catch(e) {}
+  }
+  const tarefas = getTarefas();
   // Move pendentes de dias anteriores para hoje
   const atualizadas = [];
   for (const t of tarefas) {
     if (t.data < hoje && !t.feita) {
       const nova = { ...t, data: hoje, pendente_ontem: true };
-      await salvarTarefaSupabase(nova);
-      await deletarTarefaSupabase(t.id, t.data);
+      salvarTarefaSupabase(nova);
+      deletarTarefaSupabase(t.id, t.data);
       atualizadas.push(nova);
     } else if (t.data < hoje && t.feita) {
-      // Concluídas de outros dias — mantém no histórico, não mostra hoje
+      // Concluídas de outros dias — mantém no histórico
     } else {
       atualizadas.push(t);
     }
   }
-  // Backup local
   localStorage.setItem('tarefas_v2', JSON.stringify(atualizadas));
 }
 
@@ -4181,7 +4224,7 @@ async function deletarTarefaSupabase(id, data) {
   } catch(e) {}
 }
 
-async function renderTarefas() {
+function renderTarefas() {
   const hoje = new Date().toISOString().slice(0,10);
   const nomesDia = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   const nomesMes = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -4189,7 +4232,7 @@ async function renderTarefas() {
   const dataEl = document.getElementById('tarefas-data');
   if (dataEl) dataEl.textContent = nomesDia[d.getDay()] + ', ' + d.getDate() + ' de ' + nomesMes[d.getMonth()];
 
-  const todas = await getTarefas();
+  const todas = getTarefas();
   const tarefas = todas.filter(t => t.data === hoje);
   const pendentes = tarefas.filter(t => !t.feita);
   const feitas   = tarefas.filter(t => t.feita);
@@ -4256,7 +4299,7 @@ async function renderTarefas() {
   }
 }
 
-async function adicionarTarefa() {
+function adicionarTarefa() {
   const input = document.getElementById('tarefa-nova');
   const texto = input?.value.trim();
   if (!texto) return;
@@ -4268,36 +4311,32 @@ async function adicionarTarefa() {
     hora: new Date().toTimeString().slice(0,5),
     rep_id: currentUser?.id
   };
-  await salvarTarefaSupabase(tarefa);
-  // Atualiza cache local
-  const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
+  // Adiciona ao cache local imediatamente
+  const local = getTarefas();
   local.unshift(tarefa);
   localStorage.setItem('tarefas_v2', JSON.stringify(local));
   if (input) input.value = '';
-  renderTarefas();
+  renderTarefas(); // instantâneo
   showToast('✓ Tarefa adicionada');
+  salvarTarefaSupabase(tarefa); // background, sem await
 }
 
-async function toggleTarefa(id) {
-  const todas = await getTarefas();
-  const t = todas.find(x => x.id === id);
+function toggleTarefa(id) {
+  const local = getTarefas();
+  const t = local.find(x => x.id === id);
   if (!t) return;
   t.feita = !t.feita;
-  t.hora_feita = new Date().toTimeString().slice(0,5);
-  // Atualiza cache local imediatamente (optimistic update)
-  const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
-  const idx = local.findIndex(x => x.id === id);
-  if (idx >= 0) { local[idx] = t; localStorage.setItem('tarefas_v2', JSON.stringify(local)); }
-  renderTarefas();
-  // Salva no Supabase em background
-  salvarTarefaSupabase(t);
+  t.hora_feita = t.feita ? new Date().toTimeString().slice(0,5) : null;
+  localStorage.setItem('tarefas_v2', JSON.stringify(local));
+  renderTarefas(); // instantâneo — sem esperar rede
+  salvarTarefaSupabase(t); // background, sem await
 }
 
-async function deletarTarefa(id, data) {
-  await deletarTarefaSupabase(id, data);
-  const local = JSON.parse(localStorage.getItem('tarefas_v2') || '[]');
-  localStorage.setItem('tarefas_v2', JSON.stringify(local.filter(t => t.id !== id)));
-  renderTarefas();
+function deletarTarefa(id, data) {
+  const local = getTarefas().filter(t => t.id !== id);
+  localStorage.setItem('tarefas_v2', JSON.stringify(local));
+  renderTarefas(); // instantâneo
+  deletarTarefaSupabase(id, data); // background
 }
 
 // ── NAVEGAÇÃO SEGURA ─────────────────────────────────
@@ -4492,8 +4531,9 @@ if ('serviceWorker' in navigator) {
       </div>
       <div class="cadastro-footer">
         <button class="btn-cancelar" onclick="closeCadastro()">Cancelar</button>
-        <button class="btn-salvar-cliente" onclick="salvarNovoCliente()">Salvar Cliente</button>
+        <button class="btn-salvar-cliente" id="btn-salvar-cliente" onclick="salvarNovoCliente()">Salvar Cliente</button>
       </div>
+      <div id="cadastro-feedback" style="text-align:center;font-size:14px;font-weight:700;color:var(--green);padding:0 16px 16px;display:none"></div>
     </div>
 
     <!-- TELA DE ADMIN -->
