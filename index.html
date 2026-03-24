@@ -628,7 +628,10 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .pf-row { margin-bottom:12px; }
 .pf-data-input { background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--text); font-family:inherit; font-size:14px; outline:none; width:100%; -webkit-appearance:none; }
 .pf-data-input:focus { border-color:var(--blue); }
-.pf-wa-btn { display:flex; align-items:center; gap:8px; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:10px 14px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; color:var(--text2); width:100%; }
+.pf-valor-wrap { display:flex; align-items:center; background:var(--card); border:1.5px solid var(--border); border-radius:10px; overflow:hidden; }
+.pf-valor-wrap .pf-valor-pre { padding:10px 6px 10px 12px; font-size:13px; font-weight:600; color:var(--text2); white-space:nowrap; flex-shrink:0; }
+.pf-valor-wrap input { flex:1; background:none; border:none; padding:10px 12px 10px 2px; color:var(--text); font-family:inherit; font-size:14px; outline:none; min-width:0; }
+.pf-wa-btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; color:var(--text2); width:100%; }
 .pf-wa-btn.ativo { background:#e7f9ef; border-color:#25D366; color:#128C7E; }
 .pf-btn-registrar { width:100%; background:var(--blue); color:#fff; border:none; border-radius:12px; padding:13px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; margin-top:4px; }
 .pf-btn-registrar:disabled { opacity:.6; cursor:default; }
@@ -3086,7 +3089,7 @@ function pfResetForm() {
   const waBtn = document.getElementById('pf-wa-btn');
   const waLbl = document.getElementById('pf-wa-label');
   if (waBtn) waBtn.classList.remove('ativo');
-  if (waLbl) waLbl.textContent = 'sem visita';
+  if (waLbl) waLbl.textContent = 'Sem visita';
 }
 
 async function pfRegistrar() {
@@ -4463,9 +4466,9 @@ if ('serviceWorker' in navigator) {
             <input class="pf-data-input" id="pf-data" type="date">
           </div>
           <div class="pf-row">
-            <div class="pedido-valor-row" style="margin-bottom:0">
-              <span class="pedido-valor-pre">R$</span>
-              <input class="pedido-valor-inp" id="pf-valor" type="number" step="0.01" min="0" placeholder="0,00">
+            <div class="pf-valor-wrap">
+              <span class="pf-valor-pre">R$</span>
+              <input id="pf-valor" type="number" step="0.01" min="0" placeholder="0,00">
             </div>
           </div>
           <div class="pf-row">
