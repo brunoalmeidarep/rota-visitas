@@ -620,15 +620,18 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .pedido-file-btn:active { background:var(--blue-bg); }
 .pedido-file-nome { font-size:11px; color:var(--blue); margin-top:6px; padding-left:2px; }
 
-/* ── TELA PEDIDO REMOTO ──────────────────────────────── */
-#screen-pedido-remoto { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); z-index:200; display:none; flex-direction:column; overflow:hidden; }
-.remoto-header { padding:16px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; }
-.remoto-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:100px; -webkit-overflow-scrolling:touch; }
-.remoto-busca-res { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:12px; }
-.remoto-busca-item { padding:11px 14px; border-bottom:1px solid var(--border); cursor:pointer; font-size:14px; color:var(--text); }
-.remoto-busca-item:last-child { border-bottom:none; }
-.remoto-busca-item:active, .remoto-busca-item:hover { background:var(--blue-bg); }
-.remoto-cliente-sel { font-size:13px; color:var(--blue); margin-top:4px; font-weight:600; padding:8px 12px; background:var(--blue-bg); border-radius:8px; }
+/* ── FORM PEDIDO NO PERFIL ───────────────────────────── */
+.pf-form-box { background:var(--bg); border-radius:14px; padding:14px; margin-bottom:4px; }
+.pf-tipo-row { display:flex; gap:8px; margin-bottom:12px; }
+.pf-status-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.pf-row { margin-bottom:12px; }
+.pf-data-input { background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--text); font-family:inherit; font-size:14px; outline:none; width:100%; -webkit-appearance:none; }
+.pf-data-input:focus { border-color:var(--blue); }
+.pf-wa-btn { display:flex; align-items:center; gap:8px; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:10px 14px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; color:var(--text2); width:100%; }
+.pf-wa-btn.ativo { background:rgba(37,211,102,.1); border-color:#25D366; color:#1a7a44; }
+.pf-btn-registrar { width:100%; background:var(--blue); color:#fff; border:none; border-radius:12px; padding:13px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; margin-top:4px; }
+.pf-btn-registrar:disabled { opacity:.6; cursor:default; }
+.pf-feedback { font-size:13px; font-weight:600; color:var(--green); text-align:center; margin-top:8px; min-height:18px; }
 
 /* ── RELATÓRIO TABELA ────────────────────────────────── */
 .rep-filtro-tabs { display:flex; gap:6px; padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5; }
@@ -2550,6 +2553,7 @@ function openPerfil(id) {
 
   document.getElementById('p-cidade').textContent = c.cidade;
   document.getElementById('p-obs').value = '';
+  pfResetForm();
 
   // Carrega lembrete salvo
   const lembretes = JSON.parse(localStorage.getItem('lembretes') || '{}');
@@ -2701,18 +2705,25 @@ function renderHistorico(id, c) {
     const dotClass = isHoje ? 'hoje' : (i === 0 ? 'recente' : '');
 
     // Ícone e badge por tipo
-    let emoji, badge;
+    let emoji, badge, tipoLabel;
     if (tipo === 'orcamento') {
       const statusCor = {aberto:'var(--blue)',fechado:'var(--green)',perdido:'var(--red)'}[v.status_orcamento||'aberto'] || 'var(--blue)';
       const statusLabel = {aberto:'Aberto',fechado:'Fechado',perdido:'Perdido'}[v.status_orcamento||'aberto'] || 'Aberto';
-      emoji = '📋';
+      emoji = '💰'; tipoLabel = 'Orçamento';
       badge = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${statusCor}22;color:${statusCor};margin-left:4px">${statusLabel}</span>`;
-    } else if (tipo === 'remoto' || tipo === 'pedido') {
-      emoji = '💰'; badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:4px">Pedido</span>';
+    } else if (tipo === 'whatsapp') {
+      emoji = '💬'; tipoLabel = 'Pedido via WhatsApp';
+      badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(37,211,102,.12);color:#1a7a44;margin-left:4px">WhatsApp</span>';
+    } else if (tipo === 'pedido') {
+      emoji = '✅'; tipoLabel = 'Pedido';
+      badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:4px">Presencial</span>';
+    } else if (tipo === 'remoto') {
+      emoji = '✅'; tipoLabel = 'Pedido';
+      badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:4px">Pedido</span>';
     } else if (v.compra) {
-      emoji = '🛒'; badge = '';
+      emoji = '🛒'; tipoLabel = 'Compra'; badge = '';
     } else {
-      emoji = isHoje ? '⭐' : '📋'; badge = '';
+      emoji = isHoje ? '⭐' : '📋'; tipoLabel = 'Visita'; badge = '';
     }
 
     const label = isHoje ? 'Hoje' : formatDate(v.data);
@@ -2968,57 +2979,6 @@ async function uploadDocSupabase(file, nomeBase) {
   } catch(e) { console.log('Erro upload doc:', e); return null; }
 }
 
-// Pedido Remoto
-let remotoClienteSel = null;
-
-function setRemTipo(tipo, btn) {
-  document.getElementById('rem-tipo').value = tipo;
-  document.querySelectorAll('#rem-tipo-pedido,#rem-tipo-orcamento').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('rem-status-grupo').style.display = tipo === 'orcamento' ? 'block' : 'none';
-}
-
-function setRemStatus(status, btn) {
-  document.getElementById('rem-status').value = status;
-  document.querySelectorAll('#rem-status-aberto,#rem-status-fechado,#rem-status-perdido').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-}
-
-function openPedidoRemoto(tipo) {
-  const el = document.getElementById('screen-pedido-remoto');
-  if (el) el.style.display = 'flex';
-  const dataEl = document.getElementById('rem-data');
-  if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
-  ['rem-busca','rem-valor','rem-obs'].forEach(id => {
-    const el2 = document.getElementById(id); if (el2) el2.value = '';
-  });
-  document.getElementById('rem-cliente-id').value = '';
-  const sel = document.getElementById('rem-cliente-sel');
-  if (sel) { sel.textContent = ''; sel.style.display = 'none'; }
-  const res = document.getElementById('rem-busca-res');
-  if (res) res.style.display = 'none';
-  const docInput = document.getElementById('rem-doc-input');
-  if (docInput) docInput.value = '';
-  document.getElementById('rem-doc-nome').textContent = '';
-  document.getElementById('rem-doc-label').textContent = 'Selecionar arquivo';
-  remotoClienteSel = null;
-  // Tipo inicial
-  const tipoInicial = tipo || 'pedido';
-  document.getElementById('rem-tipo').value = tipoInicial;
-  document.querySelectorAll('#rem-tipo-pedido,#rem-tipo-orcamento').forEach(b => b.classList.remove('active'));
-  document.getElementById(tipoInicial === 'orcamento' ? 'rem-tipo-orcamento' : 'rem-tipo-pedido').classList.add('active');
-  document.getElementById('rem-status-grupo').style.display = tipoInicial === 'orcamento' ? 'block' : 'none';
-  // Reset status para Aberto
-  document.getElementById('rem-status').value = 'aberto';
-  document.querySelectorAll('#rem-status-aberto,#rem-status-fechado,#rem-status-perdido').forEach(b => b.classList.remove('active'));
-  document.getElementById('rem-status-aberto').classList.add('active');
-}
-
-function closePedidoRemoto() {
-  const el = document.getElementById('screen-pedido-remoto');
-  if (el) el.style.display = 'none';
-}
-
 function pedidoDocSelecionado(input) {
   const nome = input.files[0]?.name || '';
   const labelEl = document.getElementById('p-doc-label');
@@ -3027,86 +2987,123 @@ function pedidoDocSelecionado(input) {
   if (nomeEl) nomeEl.textContent = nome ? '📄 ' + nome : '';
 }
 
-function remotoDocSelecionado(input) {
+// ── FORM DE PEDIDO/ORÇAMENTO NO PERFIL ─────────────────
+function pfSetTipo(tipo, btn) {
+  document.getElementById('pf-tipo').value = tipo;
+  document.querySelectorAll('#pf-tipo-pedido,#pf-tipo-orcamento').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const sg = document.getElementById('pf-status-grupo');
+  if (sg) sg.style.display = tipo === 'orcamento' ? 'flex' : 'none';
+}
+
+function pfSetStatus(status, btn) {
+  document.getElementById('pf-status').value = status;
+  document.querySelectorAll('#pf-status-aberto,#pf-status-fechado,#pf-status-perdido').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function pfToggleWA() {
+  const btn = document.getElementById('pf-wa-btn');
+  const lbl = document.getElementById('pf-wa-label');
+  if (!btn) return;
+  const ativo = btn.classList.toggle('ativo');
+  if (lbl) lbl.textContent = ativo ? 'via WhatsApp (sem visita)' : 'sem visita';
+}
+
+function pfDocSelecionado(input) {
   const nome = input.files[0]?.name || '';
-  const labelEl = document.getElementById('rem-doc-label');
-  const nomeEl = document.getElementById('rem-doc-nome');
-  if (labelEl) labelEl.textContent = nome || 'Selecionar arquivo';
-  if (nomeEl) nomeEl.textContent = nome ? '📄 ' + nome : '';
+  const lbl = document.getElementById('pf-doc-label');
+  const nm  = document.getElementById('pf-doc-nome');
+  if (lbl) lbl.textContent = nome || 'Anexar documento (PDF ou imagem)';
+  if (nm)  nm.textContent  = nome ? '📄 ' + nome : '';
 }
 
-function buscarClienteRemoto(q) {
-  const res = document.getElementById('rem-busca-res');
-  if (!q || q.length < 2) { if (res) res.style.display = 'none'; return; }
-  const lista = clientes.filter(c => c.nome.toLowerCase().includes(q.toLowerCase()) || c.cidade.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
-  if (!lista.length) { if (res) res.style.display = 'none'; return; }
-  res.style.display = 'block';
-  res.innerHTML = lista.map(c =>
-    '<div class="remoto-busca-item" onclick="selecionarClienteRemoto(' + c.id + ')">' +
-      '<span style="font-weight:600">' + c.nome.replace(/\s*\([^)]*\)/,'').trim() + '</span>' +
-      ' <span style="font-size:11px;color:var(--text3)">📍 ' + c.cidade + '</span>' +
-    '</div>'
-  ).join('');
+function pfResetForm() {
+  document.getElementById('pf-tipo').value = 'pedido';
+  document.getElementById('pf-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pf-valor').value = '';
+  const docInput = document.getElementById('pf-doc-input');
+  if (docInput) docInput.value = '';
+  document.getElementById('pf-doc-label').textContent = 'Anexar documento (PDF ou imagem)';
+  document.getElementById('pf-doc-nome').textContent = '';
+  document.getElementById('pf-feedback').textContent = '';
+  // Reset tipo pills
+  document.querySelectorAll('#pf-tipo-pedido,#pf-tipo-orcamento').forEach(b => b.classList.remove('active'));
+  document.getElementById('pf-tipo-pedido')?.classList.add('active');
+  document.getElementById('pf-status-grupo').style.display = 'none';
+  // Reset status pills
+  document.querySelectorAll('#pf-status-aberto,#pf-status-fechado,#pf-status-perdido').forEach(b => b.classList.remove('active'));
+  document.getElementById('pf-status-aberto')?.classList.add('active');
+  document.getElementById('pf-status').value = 'aberto';
+  // Reset WA
+  const waBtn = document.getElementById('pf-wa-btn');
+  const waLbl = document.getElementById('pf-wa-label');
+  if (waBtn) waBtn.classList.remove('ativo');
+  if (waLbl) waLbl.textContent = 'sem visita';
 }
 
-function selecionarClienteRemoto(id) {
-  const c = clientes.find(x => x.id == id);
+async function pfRegistrar() {
+  if (!perfilId || !currentUser) return;
+  const c = clientes.find(x => x.id == perfilId);
   if (!c) return;
-  remotoClienteSel = c;
-  document.getElementById('rem-cliente-id').value = id;
-  document.getElementById('rem-busca').value = c.nome.replace(/\s*\([^)]*\)/,'').trim();
-  const res = document.getElementById('rem-busca-res');
-  if (res) res.style.display = 'none';
-  const sel = document.getElementById('rem-cliente-sel');
-  if (sel) { sel.textContent = '✓ ' + c.nome.replace(/\s*\([^)]*\)/,'').trim() + ' — ' + c.cidade; sel.style.display = 'block'; }
-}
 
-async function salvarPedidoRemoto() {
-  const clienteId = document.getElementById('rem-cliente-id').value;
-  const data = document.getElementById('rem-data').value;
-  if (!clienteId || !data) { showToast('⚠️ Selecione o cliente e a data', true); return; }
-  if (!currentUser) { showToast('⚠️ Faça login primeiro', true); return; }
+  const btn      = document.getElementById('pf-btn-registrar');
+  const feedback = document.getElementById('pf-feedback');
+  const tipo     = document.getElementById('pf-tipo').value || 'pedido';
+  const status   = document.getElementById('pf-status')?.value || 'aberto';
+  const data     = document.getElementById('pf-data').value;
+  const valorEl  = document.getElementById('pf-valor');
+  const valor    = valorEl?.value ? parseFloat(valorEl.value) : null;
+  const waAtivo  = document.getElementById('pf-wa-btn')?.classList.contains('ativo');
+  const fileInput = document.getElementById('pf-doc-input');
 
-  const btn = document.getElementById('rem-btn-salvar');
-  btn.disabled = true; btn.textContent = '⏳ Salvando...';
+  if (!data) { showToast('⚠️ Informe a data', true); return; }
 
-  const obs = document.getElementById('rem-obs').value.trim();
-  const valorEl = document.getElementById('rem-valor');
-  const valorPedido = valorEl && valorEl.value ? parseFloat(valorEl.value) : null;
-  const tipo = document.getElementById('rem-tipo').value || 'pedido';
-  const status = document.getElementById('rem-status')?.value || 'aberto';
-  const fileInput = document.getElementById('rem-doc-input');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  if (feedback) feedback.textContent = '';
+
   let docUrl = null;
-  if (fileInput && fileInput.files && fileInput.files[0]) {
-    docUrl = await uploadDocSupabase(fileInput.files[0], tipo + '_' + clienteId + '_' + data);
+  if (fileInput?.files?.[0]) {
+    docUrl = await uploadDocSupabase(fileInput.files[0], tipo + '_' + perfilId + '_' + data);
   }
+
+  // tipo final: 'orcamento', 'whatsapp' (wa sem visita), 'pedido' (presencial sem check-in)
+  const tipoFinal = tipo === 'orcamento' ? 'orcamento' : (waAtivo ? 'whatsapp' : 'pedido');
 
   try {
-    const c = remotoClienteSel || clientes.find(x => x.id == clienteId);
     const payload = {
-      id_cliente: String(clienteId),
-      nome_cliente: c ? c.nome : '',
-      cidade: c ? c.cidade : '',
+      id_cliente: String(perfilId),
+      nome_cliente: c.nome,
+      cidade: c.cidade,
       data: data,
-      hora: '00:00',
-      obs: obs || '',
+      hora: new Date().toTimeString().slice(0,5),
+      obs: '',
       rep_id: currentUser.id,
-      tipo: tipo === 'orcamento' ? 'orcamento' : 'remoto',
+      tipo: tipoFinal,
       status_orcamento: tipo === 'orcamento' ? status : null
     };
-    if (valorPedido !== null && valorPedido !== undefined) payload.valor_pedido = valorPedido;
+    if (valor !== null) payload.valor_pedido = valor;
     if (docUrl) payload.doc_url = docUrl;
+
     await sb.from('visitas').insert(payload);
-    const msg = tipo === 'orcamento' ? '✓ Orçamento salvo!' : '✓ Pedido remoto salvo!';
-    showToast(msg);
-    closePedidoRemoto();
-    // Recarrega relatório se estiver na tela
+
+    // Feedback visual
+    btn.textContent = 'Registrar';
+    btn.disabled = false;
+    if (feedback) { feedback.textContent = '✓ Registrado'; setTimeout(() => { if(feedback) feedback.textContent = ''; }, 2000); }
+    pfResetForm();
+
+    // Atualiza histórico
+    const visitas = await buscarHistoricoSupabase(perfilId);
+    historicoVisitas[perfilId] = visitas;
+    renderHistorico(perfilId, c);
+
     if (currentScreen === 'report') carregarPeriodoRelatorio();
   } catch(e) {
-    showToast('❌ Erro ao salvar', true);
-    console.log('Erro pedido/orçamento:', e);
+    showToast('❌ Erro ao registrar', true);
+    console.log('Erro pfRegistrar:', e);
+    btn.disabled = false; btn.textContent = 'Registrar';
   }
-  btn.disabled = false; btn.textContent = '✓ Salvar';
 }
 
 // Converter orçamento em pedido
@@ -4389,71 +4386,49 @@ if ('serviceWorker' in navigator) {
           <input type="file" id="p-doc-input" accept=".pdf,image/*" style="display:none" onchange="pedidoDocSelecionado(this)">
           <div class="pedido-file-nome" id="p-doc-nome"></div>
         </div>
+        <div class="perfil-section-title">📦 Registrar pedido / orçamento</div>
+        <div class="pf-form-box">
+          <div class="pf-tipo-row">
+            <button class="seg-pill-select active" id="pf-tipo-pedido" onclick="pfSetTipo('pedido',this)">💰 Pedido</button>
+            <button class="seg-pill-select" id="pf-tipo-orcamento" onclick="pfSetTipo('orcamento',this)">📋 Orçamento</button>
+          </div>
+          <input type="hidden" id="pf-tipo" value="pedido">
+          <div class="pf-status-row" id="pf-status-grupo" style="display:none">
+            <button class="seg-pill-select active" id="pf-status-aberto" onclick="pfSetStatus('aberto',this)">🔵 Aberto</button>
+            <button class="seg-pill-select" id="pf-status-fechado" onclick="pfSetStatus('fechado',this)">✅ Fechado</button>
+            <button class="seg-pill-select" id="pf-status-perdido" onclick="pfSetStatus('perdido',this)">❌ Perdido</button>
+            <input type="hidden" id="pf-status" value="aberto">
+          </div>
+          <div class="pf-row">
+            <input class="pf-data-input" id="pf-data" type="date">
+          </div>
+          <div class="pf-row">
+            <div class="pedido-valor-row" style="margin-bottom:0">
+              <span class="pedido-valor-pre">R$</span>
+              <input class="pedido-valor-inp" id="pf-valor" type="number" step="0.01" min="0" placeholder="0,00">
+            </div>
+          </div>
+          <div class="pf-row">
+            <label class="pedido-file-btn" for="pf-doc-input">
+              <span>📎</span><span id="pf-doc-label">Anexar documento (PDF ou imagem)</span>
+            </label>
+            <input type="file" id="pf-doc-input" accept=".pdf,image/*" style="display:none" onchange="pfDocSelecionado(this)">
+            <div class="pedido-file-nome" id="pf-doc-nome"></div>
+          </div>
+          <div class="pf-row">
+            <button class="pf-wa-btn" id="pf-wa-btn" onclick="pfToggleWA()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              <span id="pf-wa-label">sem visita</span>
+            </button>
+          </div>
+          <button class="pf-btn-registrar" id="pf-btn-registrar" onclick="pfRegistrar()">Registrar</button>
+          <div class="pf-feedback" id="pf-feedback"></div>
+        </div>
         <div class="perfil-section-title">Histórico</div>
         <div id="p-historico"></div>
       </div>
     </div>
 
-    <!-- PEDIDO REMOTO -->
-    <div id="screen-pedido-remoto">
-      <div class="remoto-header">
-        <button class="perfil-back" onclick="closePedidoRemoto()">← Voltar</button>
-        <div style="flex:1">
-          <div style="font-size:16px;font-weight:800;color:var(--text)" id="rem-titulo">📦 Pedido / Orçamento</div>
-          <div style="font-size:11px;color:var(--text3)">Registrar sem visita presencial</div>
-        </div>
-      </div>
-      <div class="remoto-body">
-        <!-- Tipo -->
-        <div class="campo-grupo">
-          <label class="campo-label">Tipo *</label>
-          <div style="display:flex;gap:8px">
-            <button class="seg-pill-select active" id="rem-tipo-pedido" onclick="setRemTipo('pedido',this)">💰 Pedido</button>
-            <button class="seg-pill-select" id="rem-tipo-orcamento" onclick="setRemTipo('orcamento',this)">📋 Orçamento</button>
-          </div>
-          <input type="hidden" id="rem-tipo" value="pedido">
-        </div>
-        <!-- Status do orçamento (só visível se tipo=orcamento) -->
-        <div class="campo-grupo" id="rem-status-grupo" style="display:none">
-          <label class="campo-label">Status do Orçamento</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="seg-pill-select active" id="rem-status-aberto" onclick="setRemStatus('aberto',this)">🔵 Aberto</button>
-            <button class="seg-pill-select" id="rem-status-fechado" onclick="setRemStatus('fechado',this)">✅ Fechado</button>
-            <button class="seg-pill-select" id="rem-status-perdido" onclick="setRemStatus('perdido',this)">❌ Perdido</button>
-          </div>
-          <input type="hidden" id="rem-status" value="aberto">
-        </div>
-        <!-- Cliente -->
-        <div class="campo-grupo">
-          <label class="campo-label">Cliente *</label>
-          <input class="campo-input" id="rem-busca" placeholder="Buscar cliente..." oninput="buscarClienteRemoto(this.value)" autocomplete="off">
-          <div class="remoto-busca-res" id="rem-busca-res" style="display:none"></div>
-          <input type="hidden" id="rem-cliente-id">
-          <div class="remoto-cliente-sel" id="rem-cliente-sel" style="display:none"></div>
-        </div>
-        <div class="campo-grupo">
-          <label class="campo-label">Data *</label>
-          <input class="campo-input" id="rem-data" type="date">
-        </div>
-        <div class="campo-grupo">
-          <label class="campo-label">Valor (R$)</label>
-          <input class="campo-input pedido-valor-inp" id="rem-valor" type="number" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="campo-grupo">
-          <label class="campo-label">Observações</label>
-          <textarea class="campo-input" id="rem-obs" rows="3" placeholder="Detalhes..." style="resize:none;min-height:80px"></textarea>
-        </div>
-        <div class="campo-grupo">
-          <label class="campo-label">Documento (PDF ou imagem)</label>
-          <label class="pedido-file-btn" for="rem-doc-input">
-            <span>📎</span><span id="rem-doc-label">Selecionar arquivo</span>
-          </label>
-          <input type="file" id="rem-doc-input" accept=".pdf,image/*" style="display:none" onchange="remotoDocSelecionado(this)">
-          <div class="pedido-file-nome" id="rem-doc-nome"></div>
-        </div>
-        <button class="btn-salvar-cadastro" id="rem-btn-salvar" onclick="salvarPedidoRemoto()">✓ Salvar</button>
-      </div>
-    </div>
 
     <!-- TELA DE CADASTRO -->
     <div id="screen-cadastro">
@@ -4593,7 +4568,6 @@ if ('serviceWorker' in navigator) {
   <!-- NAVBAR -->
   <nav class="navbar">
     <button class="nav-item active" id="nav-list" onclick="showScreen('list')"><span class="nav-icon">💼</span><span class="nav-label">Carteira</span></button>
-    <button class="nav-item" id="nav-remoto" onclick="openPedidoRemoto()"><span class="nav-icon">📦</span><span class="nav-label">Remoto</span></button>
     <button class="nav-item" id="nav-map" onclick="showScreen('map')"><span class="nav-icon">🗺</span><span class="nav-label">Mapa</span></button>
     <button class="nav-item" id="nav-planner" onclick="showScreen('planner')"><span class="nav-icon">📅</span><span class="nav-label">Planner</span></button>
     <button class="nav-item" id="nav-tarefas" onclick="showScreen('tarefas')"><span class="nav-icon">📋</span><span class="nav-label">Tarefas</span></button>
