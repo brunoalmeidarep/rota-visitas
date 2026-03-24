@@ -679,13 +679,6 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
         <button onclick="openConfig()" class="header-btn" title="Configurações">⚙</button>
       </div>
     </div>
-    <div class="stats-bar">
-      <div class="stat-item" onclick="abrirFiltroHeader('today')"><div class="stat-num c-hoje" id="cnt-today">0</div><div class="stat-lbl">Hoje</div></div>
-      <div class="stat-item" onclick="abrirFiltroHeader('green')"><div class="stat-num c-verde" id="cnt-green">0</div><div class="stat-lbl">1 mês</div></div>
-      <div class="stat-item" onclick="abrirFiltroHeader('blue')"><div class="stat-num c-azul" id="cnt-blue">0</div><div class="stat-lbl">2 meses</div></div>
-      <div class="stat-item" onclick="abrirFiltroHeader('red')"><div class="stat-num c-red" id="cnt-red">0</div><div class="stat-lbl">+2 meses</div></div>
-      <div class="stat-item" onclick="abrirFiltroHeader('purple')"><div class="stat-num c-roxo" id="cnt-purple">0</div><div class="stat-lbl">Novos</div></div>
-    </div>
   </div>
 
   <!-- BUSCA -->
@@ -709,10 +702,10 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <span style="font-size:10px;font-weight:600;color:var(--text3);white-space:nowrap;align-self:center;flex-shrink:0">Última visita:</span>
     <button class="seg-pill-filtro active" id="pill-todos" onclick="filtrarStatus(this,'')">Todos</button>
     <button class="seg-pill-filtro" id="pill-today" onclick="filtrarStatus(this,'today')">Hoje</button>
-    <button class="seg-pill-filtro" id="pill-green" onclick="filtrarStatus(this,'green')">≤1 mês</button>
-    <button class="seg-pill-filtro" id="pill-blue" onclick="filtrarStatus(this,'blue')">31-60d</button>
-    <button class="seg-pill-filtro" id="pill-red" onclick="filtrarStatus(this,'red')">+60d</button>
-    <button class="seg-pill-filtro" id="pill-purple" onclick="filtrarStatus(this,'purple')">Nunca</button>
+    <button class="seg-pill-filtro" id="pill-green" onclick="filtrarStatus(this,'green')">30 dias</button>
+    <button class="seg-pill-filtro" id="pill-blue" onclick="filtrarStatus(this,'blue')">60 dias</button>
+    <button class="seg-pill-filtro" id="pill-red" onclick="filtrarStatus(this,'red')">90 dias</button>
+    <button class="seg-pill-filtro" id="pill-purple" onclick="filtrarStatus(this,'purple')">Prospect</button>
   </div>
 
   <div class="screens">
@@ -846,7 +839,7 @@ const LABEL_ZOOM = 11;
 var activeFilter = null;
 let currentScreen = 'list';
 let searchQuery = '';
-const STATUS_LABEL = { today:'Hoje', green:'1 mês', blue:'2 meses', red:'+2 meses', purple:'Novos' };
+const STATUS_LABEL = { today:'Hoje', green:'30 dias', blue:'60 dias', red:'90 dias', purple:'Prospect' };
 const STATUS_COLOR = { today:'var(--green)', green:'var(--blue)', blue:'var(--orange)', red:'var(--red)', purple:'var(--purple)' };
 const PIN_COLOR    = { today:'#fbbf24', green:'#4ade80', blue:'#60a5fa', red:'#f87171', purple:'#c084fc' };
 
@@ -1486,7 +1479,7 @@ function renderList() {
   const filterBar = document.getElementById('active-filter-bar');
   if (filterBar) {
     if (activeFilter) {
-      const labels = {today:'Hoje',green:'1 mês',blue:'2 meses',red:'+2 meses',purple:'Novos'};
+      const labels = {today:'Hoje',green:'30 dias',blue:'60 dias',red:'90 dias',purple:'Prospect'};
       const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
       filterBar.style.display = 'flex';
       filterBar.innerHTML = '<span style="font-size:12px;color:var(--text2)">Filtrando: <strong style="color:' + cores[activeFilter] + '">' + labels[activeFilter] + '</strong></span>' +
@@ -1526,10 +1519,10 @@ function renderList() {
 
   const grupos = [
     {key:'today', label:'Hoje'},
-    {key:'green', label:'Até 1 mês'},
-    {key:'blue',  label:'1 a 2 meses'},
-    {key:'red',   label:'Mais de 2 meses'},
-    {key:'purple',label:'Novos'},
+    {key:'green', label:'Últimos 30 dias'},
+    {key:'blue',  label:'31 a 60 dias'},
+    {key:'red',   label:'61 dias ou mais'},
+    {key:'purple',label:'Prospect'},
   ];
 
   let out = '';
@@ -1563,7 +1556,7 @@ function cardHTML(c) {
   const compradorMatch = c.nome.match(/\(([^)]+)\)/);
   const comprador = compradorMatch ? compradorMatch[1] : '';
   const badgeTexto = c.visitadoHoje ? ('✓ ' + c.horaHoje) :
-    (s === 'today' ? 'Hoje' : s === 'purple' ? 'Novos' : lv.text);
+    (s === 'today' ? 'Hoje' : s === 'purple' ? 'Prospect' : lv.text);
   return '<div class="client-card" onclick="openPerfil(' + c.id + ')">' +
     '<div class="card-dot ' + (c.visitadoHoje ? 'today' : s) + '"></div>' +
     '<div class="card-content">' +
@@ -1668,7 +1661,7 @@ function renderReport() {
     const s = getStatus(c);
     const lv = lastVisitText(c);
     const cor = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'}[s];
-    const tempo = c.visitadoHoje ? ('✓ '+c.horaHoje) : (s==='purple'?'Nunca':lv.text);
+    const tempo = c.visitadoHoje ? ('✓ '+c.horaHoje) : (s==='purple'?'Prospect':lv.text);
     const bg = i%2===0 ? 'var(--card)' : 'var(--bg)';
     return '<div style="display:flex;align-items:center;padding:12px 16px;background:'+bg+';border-bottom:1px solid var(--border);gap:12px" onclick="openPerfil('+c.id+')">' +
       '<div style="flex:1;min-width:0">' +
@@ -3890,7 +3883,7 @@ function toggleCidade(id) {
 }
 
 function abrirFiltro(status) {
-  const labels = { today:'Visitados hoje', green:'Clientes — 1 mês', blue:'Clientes — 2 meses', red:'Clientes — +2 meses', purple:'Novos' };
+  const labels = { today:'Visitados hoje', green:'Clientes — 30 dias', blue:'Clientes — 60 dias', red:'Clientes — 90 dias', purple:'Prospect' };
   const cores  = { today:'var(--green)', green:'var(--blue)', blue:'var(--orange)', red:'var(--red)', purple:'var(--purple)' };
 
   const grupo = clientes.filter(c => getStatus(c) === status);
@@ -3911,7 +3904,7 @@ function abrirFiltro(status) {
     const lista = filtrado.map((c, i) => {
       const nomeBase = c.nome.replace(/\s*\([^)]*\)/g, '').trim();
       const lv = lastVisitText(c);
-      const tempo = c.visitadoHoje ? ('✓ ' + c.horaHoje) : (getStatus(c) === 'purple' ? 'Nunca' : lv.text);
+      const tempo = c.visitadoHoje ? ('✓ ' + c.horaHoje) : (getStatus(c) === 'purple' ? 'Prospect' : lv.text);
       const bg = i % 2 === 0 ? 'var(--card)' : 'var(--bg)';
       return '<div style="display:flex;align-items:center;padding:13px 16px;background:' + bg + ';border-bottom:1px solid var(--border);gap:12px;cursor:pointer" onclick="fecharFiltro();openPerfil(' + c.id + ')">' +
         '<div style="flex:1;min-width:0">' +
@@ -4599,7 +4592,7 @@ if ('serviceWorker' in navigator) {
 
   <!-- NAVBAR -->
   <nav class="navbar">
-    <button class="nav-item active" id="nav-list" onclick="showScreen('list')"><span class="nav-icon">👥</span><span class="nav-label">Lista</span></button>
+    <button class="nav-item active" id="nav-list" onclick="showScreen('list')"><span class="nav-icon">👥</span><span class="nav-label">Carteira</span></button>
     <button class="nav-item" id="nav-remoto" onclick="openPedidoRemoto()"><span class="nav-icon">📦</span><span class="nav-label">Remoto</span></button>
     <button class="nav-item" id="nav-map" onclick="showScreen('map')"><span class="nav-icon">🗺</span><span class="nav-label">Mapa</span></button>
     <button class="nav-item" id="nav-planner" onclick="showScreen('planner')"><span class="nav-icon">📅</span><span class="nav-label">Planner</span></button>
