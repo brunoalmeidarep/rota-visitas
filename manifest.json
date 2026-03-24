@@ -1,6 +1,6 @@
 {
-  "name": "O Mundo do Representante",
-  "short_name": "Mundo do Rep",
+  "name": "Minha Rota RP",
+  "short_name": "Minha Rota RP",
   "description": "App de rota de visitas para representantes comerciais",
   "start_url": "/rota-visitas/",
   "scope": "/rota-visitas/",

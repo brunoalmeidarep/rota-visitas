@@ -12,10 +12,10 @@
   <meta name="theme-color" content="#2a2a2a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Mundo do Rep">
+  <meta name="apple-mobile-web-app-title" content="Minha Rota RP">
   <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Rota de Visitas</title>
+<title>Minha Rota RP</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
 <style>
@@ -668,7 +668,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <button class="login-btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
       <div class="login-esqueci" onclick="esqueceuSenha()">Esqueci minha senha</div>
     </div>
-    <div class="login-versao">Mundo do Rep v1.0</div>
+    <div class="login-versao">Minha Rota RP v1.0</div>
   </div>
 </div>
 
@@ -676,7 +676,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 
   <div class="app-header">
     <div class="header-top">
-      <div class="header-title">Mundo do Rep</div>
+      <div class="header-title">Minha Rota RP</div>
       <div class="header-actions">
         <span id="date-chip" style="margin-left:8px"></span>
         <button onclick="openConfig()" class="header-btn" title="Configurações">⚙</button>
@@ -880,6 +880,8 @@ async function iniciarApp() {
         if (emailEl) emailEl.textContent = currentUser.email;
       } catch(e) {}
       carregarLembretesSupabase();
+      iniciarTarefas();
+      showScreen('list');
     } else {
       // Não logado - mostra login
       mostrarLogin();
@@ -4626,7 +4628,7 @@ if ('serviceWorker' in navigator) {
         <div class="config-item">
           <div class="config-item-left">
             <div class="config-item-icon">ℹ️</div>
-            <div><div class="config-item-nome">Versão do aplicativo</div><div class="config-item-sub">Mundo do Rep v1.0</div></div>
+            <div><div class="config-item-nome">Versão do aplicativo</div><div class="config-item-sub">Minha Rota RP v1.0</div></div>
           </div>
         </div>
         <div class="config-item danger" onclick="closeConfig();fazerLogout()">
