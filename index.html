@@ -57,6 +57,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .header-title { font-size:22px; font-weight:800; color:var(--text); letter-spacing:-.5px; }
 .header-actions { display:flex; gap:6px; align-items:center; }
+.online-indicator { font-size:11px; font-weight:700; display:flex; align-items:center; gap:4px; padding:3px 8px; border-radius:20px; }
+.online-indicator.online  { color:var(--green); background:var(--green-bg); }
+.online-indicator.offline { color:var(--red);   background:var(--red-bg); }
 .header-btn { width:34px; height:34px; border-radius:50%; background:var(--bg); border:none; cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; color:var(--text); }
 #date-chip { font-size:12px; font-weight:600; color:var(--text3); }
 
@@ -705,6 +708,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <div class="header-top">
       <div class="header-title">Minha Rota RP</div>
       <div class="header-actions">
+        <span id="online-indicator" class="online-indicator" style="display:none"></span>
         <span id="date-chip" style="margin-left:8px"></span>
         <button onclick="openConfig()" class="header-btn" title="Configurações">⚙</button>
       </div>
@@ -1001,6 +1005,7 @@ function esconderLogin() {
   iniciarTarefas();
   carregarRepresentadas();
   carregarSegmentos();
+  updateOnlineStatus();
   showScreen('list');
 }
 
@@ -2827,21 +2832,30 @@ function restaurarCheckinsDoDia() {
 // Salva check-in no Supabase
 async function salvarCheckinSupabase(c, obs, data, hora, valorPedido, docUrl) {
   if (!currentUser) return;
+  const payload = {
+    id_cliente: String(c.id),
+    nome_cliente: c.nome,
+    cidade: c.cidade,
+    data: data,
+    hora: hora,
+    obs: obs || '',
+    rep_id: currentUser.id,
+    tipo: 'visita'
+  };
+  if (valorPedido !== null && valorPedido !== undefined) payload.valor_pedido = valorPedido;
+  if (docUrl) payload.doc_url = docUrl;
+
+  if (!navigator.onLine) {
+    await enqueueOffline('checkin', payload);
+    showToast('📴 Offline — check-in salvo localmente');
+    return;
+  }
   try {
-    const payload = {
-      id_cliente: String(c.id),
-      nome_cliente: c.nome,
-      cidade: c.cidade,
-      data: data,
-      hora: hora,
-      obs: obs || '',
-      rep_id: currentUser.id,
-      tipo: 'visita'
-    };
-    if (valorPedido !== null && valorPedido !== undefined) payload.valor_pedido = valorPedido;
-    if (docUrl) payload.doc_url = docUrl;
     await sb.from('visitas').insert(payload);
-  } catch(e) { console.log('Erro ao salvar visita:', e); }
+  } catch(e) {
+    await enqueueOffline('checkin', payload);
+    console.log('Erro ao salvar visita (enfileirado):', e);
+  }
 }
 
 // Upload de documento ao Supabase Storage
@@ -2968,7 +2982,12 @@ async function pfRegistrar() {
     if (docUrl) payload.doc_url = docUrl;
     if (representadaId) payload.representada_id = representadaId;
 
-    await sb.from('visitas').insert(payload);
+    if (!navigator.onLine) {
+      await enqueueOffline('visita', payload);
+      showToast('📴 Offline — registrado localmente');
+    } else {
+      await sb.from('visitas').insert(payload);
+    }
 
     // Feedback visual
     btn.textContent = 'Registrar';
@@ -4028,6 +4047,103 @@ function confirmarNovoSeg(focusOut) {
     renderSegPills();
   }
 }
+
+// ── MODO OFFLINE ─────────────────────────────────────
+let _offlineDB = null;
+
+function initOfflineDB() {
+  return new Promise((resolve, reject) => {
+    if (_offlineDB) { resolve(_offlineDB); return; }
+    const req = indexedDB.open('rotaVisitasOffline', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('fila')) {
+        const store = db.createObjectStore('fila', { keyPath: 'id', autoIncrement: true });
+        store.createIndex('criado_em', 'criado_em', { unique: false });
+      }
+    };
+    req.onsuccess = e => { _offlineDB = e.target.result; resolve(_offlineDB); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function enqueueOffline(tipo, payload) {
+  try {
+    const db = await initOfflineDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('fila', 'readwrite');
+      tx.objectStore('fila').add({ tipo, payload, criado_em: Date.now() });
+      tx.oncomplete = resolve;
+      tx.onerror    = e => reject(e.target.error);
+    });
+  } catch(e) { console.log('enqueueOffline erro:', e); }
+}
+
+async function getFilaOffline() {
+  const db = await initOfflineDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('fila', 'readonly');
+    const req = tx.objectStore('fila').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function removeFilaItem(id) {
+  const db = await initOfflineDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('fila', 'readwrite');
+    tx.objectStore('fila').delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror    = e => reject(e.target.error);
+  });
+}
+
+async function syncOfflineFila() {
+  if (!currentUser || !navigator.onLine) return;
+  let fila;
+  try { fila = await getFilaOffline(); } catch(e) { return; }
+  if (!fila.length) return;
+
+  let ok = 0;
+  for (const item of fila) {
+    try {
+      if (item.tipo === 'visita' || item.tipo === 'checkin') {
+        await sb.from('visitas').insert(item.payload);
+      } else if (item.tipo === 'upsert_cliente') {
+        await sb.from('clientes').upsert(item.payload, { onConflict: 'id' });
+      }
+      await removeFilaItem(item.id);
+      ok++;
+    } catch(e) { console.log('sync item erro:', e); }
+  }
+  if (ok > 0) showToast(`✓ ${ok} registro${ok > 1 ? 's' : ''} sincronizado${ok > 1 ? 's' : ''}`);
+}
+
+function updateOnlineStatus() {
+  const el = document.getElementById('online-indicator');
+  if (!el) return;
+  if (navigator.onLine) {
+    el.className = 'online-indicator online';
+    el.textContent = '● Online';
+    el.style.display = '';
+    // Esconde após 4s se online
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(() => { el.style.display = 'none'; }, 4000);
+    syncOfflineFila();
+  } else {
+    el.className = 'online-indicator offline';
+    el.textContent = '● Offline';
+    el.style.display = '';
+    clearTimeout(el._hideTimer);
+  }
+}
+
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+// Inicializa DB offline ao carregar
+initOfflineDB().catch(() => {});
 
 // ── REPRESENTADAS (Empresas) ─────────────────────────
 
