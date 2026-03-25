@@ -1321,6 +1321,7 @@ function esconderLogin() {
   updateOnlineStatus();
   showScreen('list');
   verificarOnboarding();
+  if (currentRep) carregarImpostos().then(verificarLembretes);
 }
 
 function mostrarLogin() {
@@ -5204,6 +5205,65 @@ function verificarSetupImpostos() {
   }
 }
 
+// ── LEMBRETES / POP-UPS ────────────────────────────────
+let popupDetalhesAction = null;
+
+function mostrarPopup(icon, titulo, conteudo, acaoDetalhes) {
+  document.getElementById('popup-icon').textContent = icon;
+  document.getElementById('popup-titulo').textContent = titulo;
+  document.getElementById('popup-conteudo').innerHTML = conteudo;
+  popupDetalhesAction = acaoDetalhes || null;
+  document.getElementById('popup-btn-detalhes').style.display = acaoDetalhes ? 'block' : 'none';
+  document.getElementById('popup-lembrete').style.display = 'flex';
+}
+
+function fecharPopupLembrete() {
+  document.getElementById('popup-lembrete').style.display = 'none';
+}
+
+function verDetalhesPopup() {
+  fecharPopupLembrete();
+  if (popupDetalhesAction) popupDetalhesAction();
+}
+
+async function verificarLembretes() {
+  const hoje = new Date();
+  const diaSemana = hoje.getDay();
+  const chaveHoje = hoje.toISOString().split('T')[0];
+  const chaveSemanaSeg = `lembrete_semana_${chaveHoje}`;
+
+  if (diaSemana === 1 && !localStorage.getItem(chaveSemanaSeg)) {
+    localStorage.setItem(chaveSemanaSeg, '1');
+    const impostosVencendo = impostosCache.filter(imp => {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth(), imp.dia_vencimento);
+      const diff = (d - hoje) / 86400000;
+      return diff >= 0 && diff <= 7;
+    });
+    let msg = 'Boa semana! ';
+    if (impostosVencendo.length) {
+      msg += `⚠️ <b>Impostos vencendo essa semana:</b><br>${impostosVencendo.map(i=>`${i.nome} (dia ${i.dia_vencimento})`).join('<br>')}`;
+    } else {
+      msg += 'Nenhum imposto vencendo essa semana.';
+    }
+    setTimeout(() => mostrarPopup('📅', 'Resumo da semana', msg, () => showScreen('financas')), 1500);
+    return;
+  }
+
+  const chaveImpostos = `lembrete_imp_${chaveHoje}`;
+  if (!localStorage.getItem(chaveImpostos)) {
+    const vencendo = impostosCache.filter(imp => {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth(), imp.dia_vencimento);
+      const diff = (d - hoje) / 86400000;
+      return diff >= 0 && diff <= 7;
+    });
+    if (vencendo.length) {
+      localStorage.setItem(chaveImpostos, '1');
+      const nomes = vencendo.map(i=>`${i.nome} (dia ${i.dia_vencimento})`).join(', ');
+      setTimeout(() => mostrarPopup('⚠️', 'Imposto vencendo!', `Lembre de lançar o pagamento:<br><b>${nomes}</b>`, () => showScreen('financas')), 2000);
+    }
+  }
+}
+
 // ── ROTAS ─────────────────────────────────────────────
 let rotasCache = [];
 let novaRotaCidadesSel = [];
@@ -6108,6 +6168,19 @@ if ('serviceWorker' in navigator) {
         <div class="cidade-filtro-lista" id="cidade-filtro-lista"></div>
       </div>
     </div>
+<!-- POP-UP LEMBRETES -->
+<div id="popup-lembrete" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px);">
+  <div style="background:var(--surface);border-radius:20px;padding:24px;width:100%;max-width:360px;max-height:70vh;overflow-y:auto;">
+    <div style="font-size:32px;text-align:center;margin-bottom:12px;" id="popup-icon">📅</div>
+    <div style="font-size:18px;font-weight:800;color:var(--text);text-align:center;margin-bottom:8px;" id="popup-titulo"></div>
+    <div style="font-size:14px;color:var(--text2);text-align:center;line-height:1.5;margin-bottom:20px;" id="popup-conteudo"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="fecharPopupLembrete()" style="flex:1;padding:12px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;">OK, fechar</button>
+      <button onclick="verDetalhesPopup()" id="popup-btn-detalhes" style="flex:1;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Ver detalhes</button>
+    </div>
+  </div>
+</div>
+
 <div class="planner-modal" id="planner-modal" onclick="fecharModalPlanner(event)">
       <div class="planner-modal-sheet" onclick="event.stopPropagation()">
         <div class="planner-modal-handle"></div>
