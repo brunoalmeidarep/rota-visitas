@@ -820,9 +820,14 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <div class="header-actions">
         <span id="online-indicator" class="online-indicator" style="display:none"></span>
         <span id="date-chip" style="margin-left:8px"></span>
-        <button class="header-btn" onclick="showScreen('tarefas')" title="Tarefas" id="btn-tarefas-header">✅</button>
         <button onclick="openConfig()" class="header-btn" title="Configurações">⚙</button>
       </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;padding:2px 16px 8px;">
+      <button id="btn-tarefas-header" onclick="showScreen('tarefas')" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:0;">
+        <span style="font-size:20px;">📋</span>
+        <span style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Tarefas</span>
+      </button>
     </div>
   </div>
 
