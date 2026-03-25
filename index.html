@@ -1261,23 +1261,7 @@ async function iniciarApp() {
     if (session) {
       currentUser = session.user;
       await carregarRepresentante();
-      // Já logado - esconde login
-      const loginEl = document.getElementById('screen-login');
-      if (loginEl) loginEl.style.display = 'none';
-      // Configura admin
-      try {
-        if (currentUser.email === ADMIN_EMAIL) {
-          const btnAdmin = document.getElementById('btn-admin-header');
-          if (btnAdmin) btnAdmin.style.display = 'flex';
-          const adminConfig = document.getElementById('config-admin-item');
-          if (adminConfig) adminConfig.style.display = 'flex';
-        }
-        const emailEl = document.getElementById('config-user-email');
-        if (emailEl) emailEl.textContent = currentUser.email;
-      } catch(e) {}
-      carregarLembretesSupabase();
-      iniciarTarefas();
-      showScreen('list');
+      esconderLogin();
     } else {
       // Não logado - mostra login
       mostrarLogin();
