@@ -863,6 +863,41 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 </div>
 </div>
 
+<!-- ONBOARDING -->
+<div id="screen-onboarding" style="display:none;position:fixed;inset:0;background:var(--surface);z-index:1000;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;">
+  <div style="font-size:48px;margin-bottom:16px;">🏠</div>
+  <div style="font-size:24px;font-weight:800;color:var(--text);text-align:center;margin-bottom:8px;">Bem-vindo ao Mundo do Rep!</div>
+  <div style="font-size:14px;color:var(--text3);text-align:center;margin-bottom:32px;line-height:1.5;">Qual seu endereço base?<br>Usaremos para calcular suas rotas.</div>
+  <div style="width:100%;max-width:360px;">
+    <div style="margin-bottom:12px;">
+      <label class="campo-label">CEP</label>
+      <div class="cep-row">
+        <input class="campo-input" id="ob-cep" type="text" placeholder="00000-000" maxlength="9" oninput="obMascaraCep(this)">
+        <button class="btn-buscar-cep" onclick="obBuscarCep()">Buscar</button>
+      </div>
+      <div class="cep-status" id="ob-cep-status"></div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label class="campo-label">Endereço completo</label>
+      <input class="campo-input" id="ob-endereco" type="text" placeholder="Rua, número, bairro, cidade - UF">
+    </div>
+    <div style="margin-bottom:20px;display:flex;gap:12px;">
+      <div style="flex:1;">
+        <label class="campo-label">Km/litro do carro</label>
+        <input class="campo-input" id="ob-media" type="number" step="0.1" placeholder="10.0" value="10">
+      </div>
+      <div style="flex:1;">
+        <label class="campo-label">Preço gasolina R$</label>
+        <input class="campo-input" id="ob-gasolina" type="number" step="0.01" placeholder="6.00" value="6.00">
+      </div>
+    </div>
+    <button onclick="obSalvar()" style="width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:15px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;" id="ob-btn-salvar">Salvar e começar →</button>
+    <div style="text-align:center;margin-top:12px;">
+      <button onclick="obPular()" style="background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;font-family:inherit;">Pular por agora</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div class="overlay" id="overlay" onclick="closeModal(event)">
   <div class="modal">
@@ -1042,11 +1077,71 @@ function esconderLogin() {
   carregarSegmentos();
   updateOnlineStatus();
   showScreen('list');
+  verificarOnboarding();
 }
 
 function mostrarLogin() {
   const el = document.getElementById('screen-login');
   if (el) el.style.display = 'flex';
+}
+
+// ── ONBOARDING ────────────────────────────────────────
+function verificarOnboarding() {
+  if (!currentRep) return;
+  if (!currentRep.onboarding_ok) {
+    document.getElementById('screen-onboarding').style.display = 'flex';
+  }
+}
+
+function obMascaraCep(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5,8);
+  el.value = v;
+}
+
+async function obBuscarCep() {
+  const cep = document.getElementById('ob-cep').value.replace(/\D/g,'');
+  const st = document.getElementById('ob-cep-status');
+  if (cep.length !== 8) { st.textContent = 'CEP inválido'; st.style.color='var(--red)'; return; }
+  st.textContent = 'Buscando...'; st.style.color='var(--text3)';
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d = await r.json();
+    if (d.erro) { st.textContent = 'CEP não encontrado'; st.style.color='var(--red)'; return; }
+    const end = `${d.logradouro}, ${d.bairro}, ${d.localidade} - ${d.uf}`;
+    document.getElementById('ob-endereco').value = end;
+    st.textContent = '✓ Endereço encontrado'; st.style.color='var(--green)';
+  } catch(e) { st.textContent = 'Erro ao buscar CEP'; st.style.color='var(--red)'; }
+}
+
+async function obSalvar() {
+  const endereco = document.getElementById('ob-endereco').value.trim();
+  const media = parseFloat(document.getElementById('ob-media').value) || 10;
+  const gasolina = parseFloat(document.getElementById('ob-gasolina').value) || 6.0;
+  if (!endereco) { showToast('Informe o endereço'); return; }
+  const btn = document.getElementById('ob-btn-salvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    if (currentRep) {
+      await sb.from('representantes').update({
+        endereco_base: endereco, media_carro: media,
+        preco_gasolina: gasolina, onboarding_ok: true
+      }).eq('id', currentRep.id);
+      currentRep.endereco_base = endereco;
+      currentRep.media_carro = media;
+      currentRep.preco_gasolina = gasolina;
+      currentRep.onboarding_ok = true;
+    }
+    document.getElementById('screen-onboarding').style.display = 'none';
+    showToast('✓ Configuração salva!');
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Salvar e começar →';
+    showToast('Erro ao salvar');
+  }
+}
+
+function obPular() {
+  document.getElementById('screen-onboarding').style.display = 'none';
 }
 
 // Inicia verificação de auth ao carregar
