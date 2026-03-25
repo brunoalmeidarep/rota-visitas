@@ -904,6 +904,57 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
         <!-- preenchido por renderTarefas() -->
       </div>
     </div>
+
+<!-- TELA FINANÇAS -->
+<div id="screen-financas" class="screen">
+  <div class="fin-tabs">
+    <button class="fin-tab active" id="fin-tab-lancamentos" onclick="setFinTab('lancamentos')">💰 Lançamentos</button>
+    <button class="fin-tab" id="fin-tab-impostos" onclick="setFinTab('impostos')">📋 Impostos</button>
+    <button class="fin-tab" id="fin-tab-resumo" onclick="setFinTab('resumo')">📊 Resumo</button>
+  </div>
+
+  <!-- Lançamentos -->
+  <div id="fin-wrap-lancamentos" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="fin-periodo-tabs">
+      <button class="fin-periodo-tab" onclick="setFinPeriodo('hoje')">Hoje</button>
+      <button class="fin-periodo-tab" onclick="setFinPeriodo('semana')">Semana</button>
+      <button class="fin-periodo-tab active" onclick="setFinPeriodo('mes')">Mês</button>
+    </div>
+    <div class="fin-body" id="fin-lista-lancamentos"></div>
+  </div>
+
+  <!-- Impostos -->
+  <div id="fin-wrap-impostos" style="display:none;flex:1;overflow-y:auto;padding:12px 12px 80px;">
+    <div class="fin-card" style="margin-bottom:10px;">
+      <div class="fin-card-header">
+        <div class="fin-card-titulo">Impostos cadastrados</div>
+        <button onclick="abrirFormImposto()" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;">+ Adicionar</button>
+      </div>
+      <div id="fin-impostos-lista"></div>
+    </div>
+    <div id="fin-form-imposto" style="display:none;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow);">
+      <div style="margin-bottom:10px;"><label class="campo-label">Nome do imposto</label><input class="campo-input" id="fin-imp-nome" placeholder="Ex: DAS, IRRF..."></div>
+      <div style="margin-bottom:14px;"><label class="campo-label">Dia de vencimento</label><input class="campo-input" id="fin-imp-dia" type="number" min="1" max="31" placeholder="20"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="fecharFormImposto()" style="flex:1;padding:12px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;">Cancelar</button>
+        <button onclick="salvarImposto()" style="flex:2;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resumo -->
+  <div id="fin-wrap-resumo" style="display:none;flex:1;overflow-y:auto;padding:10px 12px 80px;">
+    <div class="fin-periodo-tabs">
+      <button class="fin-periodo-tab" onclick="setFinPeriodoResumo('hoje')">Hoje</button>
+      <button class="fin-periodo-tab" onclick="setFinPeriodoResumo('semana')">Semana</button>
+      <button class="fin-periodo-tab active" onclick="setFinPeriodoResumo('mes')">Mês</button>
+    </div>
+    <div id="fin-resumo-conteudo"></div>
+  </div>
+
+  <button class="fin-fab" onclick="abrirModalLancamento()" id="fin-fab-btn">+</button>
+</div>
+
 <div id="screen-planner" class="screen">
       <div class="planner-nav">
         <button class="planner-nav-btn" onclick="navegarPlanner(-1)">‹</button>
@@ -958,6 +1009,75 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       </div>
     </div>
 </div>
+</div>
+
+<!-- MODAL LANÇAMENTO -->
+<div class="lancamento-modal" id="lancamento-modal" onclick="fecharModalLancamento(event)">
+  <div class="lancamento-modal-sheet" onclick="event.stopPropagation()">
+    <div class="rota-modal-handle"></div>
+    <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:14px;">💰 Novo Lançamento</div>
+    <div class="lancamento-tipo-row">
+      <button class="lancamento-tipo-btn" id="ln-btn-receita" onclick="setLancTipo('receita')">📈 Receita</button>
+      <button class="lancamento-tipo-btn" id="ln-btn-gasto" onclick="setLancTipo('gasto')">📉 Gasto</button>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="campo-label">Categoria</label>
+      <select class="campo-input" id="ln-categoria" onchange="atualizarCamposLancamento()">
+        <option value="">Selecione...</option>
+      </select>
+    </div>
+    <div id="ln-representada-row" style="display:none;margin-bottom:10px;">
+      <label class="campo-label">Representada</label>
+      <select class="campo-input" id="ln-representada">
+        <option value="">Selecione...</option>
+      </select>
+    </div>
+    <div id="ln-mes-row" style="display:none;margin-bottom:10px;">
+      <label class="campo-label">Mês referência</label>
+      <input class="campo-input" id="ln-mes" type="month">
+    </div>
+    <div id="ln-cliente-row" style="display:none;margin-bottom:10px;">
+      <label class="campo-label">Cliente (opcional)</label>
+      <select class="campo-input" id="ln-cliente">
+        <option value="">Nenhum</option>
+      </select>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="campo-label">Descrição</label>
+      <input class="campo-input" id="ln-descricao" placeholder="Descreva o lançamento...">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="campo-label">Valor (R$)</label>
+      <input class="campo-input" id="ln-valor" type="number" step="0.01" min="0" placeholder="0,00">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="campo-label">Data</label>
+      <input class="campo-input" id="ln-data" type="date">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="fecharModalLancamento()" style="flex:1;padding:12px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;">Cancelar</button>
+      <button onclick="salvarLancamento()" style="flex:2;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP IMPOSTOS (primeira vez) -->
+<div class="impostos-setup" id="impostos-setup">
+  <div style="font-size:42px;margin-bottom:16px;">📋</div>
+  <div style="font-size:22px;font-weight:800;color:var(--text);text-align:center;margin-bottom:8px;">Configure seus impostos!</div>
+  <div style="font-size:13px;color:var(--text3);text-align:center;margin-bottom:24px;line-height:1.5;">Cadastre os impostos que você paga.<br>O app vai te lembrar na semana do vencimento.</div>
+  <div style="width:100%;max-width:360px;">
+    <div style="background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow);">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">✓ DAS (Simples Nacional)</div>
+      <div style="font-size:12px;color:var(--text3);">Vencimento: dia 20</div>
+    </div>
+    <div style="background:var(--card);border-radius:14px;padding:14px;margin-bottom:16px;box-shadow:var(--shadow);">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">✓ IRRF</div>
+      <div style="font-size:12px;color:var(--text3);">Vencimento: dia 20</div>
+    </div>
+    <button onclick="salvarImpostosIniciais()" style="width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;">Confirmar e continuar</button>
+    <button onclick="document.getElementById('impostos-setup').style.display='none'" style="width:100%;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;font-family:inherit;">Configurar depois</button>
+  </div>
 </div>
 
 <!-- MODAL NOVA ROTA -->
@@ -1470,6 +1590,10 @@ function showScreen(s) {
   if (s === 'list') renderList();
   if (s === 'report') { renderReport(); if (currentUser) carregarPeriodoRelatorio(); }
   if (s === 'tarefas') renderTarefas();
+  if (s === 'financas') {
+    setFinTab('lancamentos');
+    verificarSetupImpostos();
+  }
   if (s === 'planner') {
     if (!plannerCarregado) {
       plannerRef = new Date(); plannerDiaSel = new Date();
@@ -4792,6 +4916,292 @@ async function deletarSegmento(id) {
     renderSegmentos();
     showToast('Segmento excluído');
   } catch(e) { showToast('❌ Erro ao excluir', true); }
+}
+
+// ── FINANÇAS ──────────────────────────────────────────
+let finTab = 'lancamentos';
+let finPeriodo = 'mes';
+let finPeriodoResumo = 'mes';
+let lancamentosCache = [];
+let impostosCache = [];
+let lancTipoAtual = 'gasto';
+
+const CATEGORIAS_RECEITA = ['Comissão', 'Bônus', 'Outros'];
+const CATEGORIAS_GASTO = ['Combustível', 'Alimentação', 'Clientes', 'Impostos', 'Outros'];
+
+function setFinTab(tab) {
+  finTab = tab;
+  ['lancamentos','impostos','resumo'].forEach(t => {
+    document.getElementById(`fin-tab-${t}`).classList.toggle('active', t===tab);
+    document.getElementById(`fin-wrap-${t}`).style.display = t===tab ? (t==='lancamentos'?'flex':'block') : 'none';
+  });
+  if (tab==='lancamentos') carregarLancamentos().then(renderLancamentos);
+  if (tab==='impostos') carregarImpostos().then(renderImpostos);
+  if (tab==='resumo') carregarLancamentos().then(renderResumoFin);
+  document.getElementById('fin-fab-btn').style.display = tab==='lancamentos' ? 'flex' : 'none';
+}
+
+function setFinPeriodo(p) {
+  finPeriodo = p;
+  document.querySelectorAll('#fin-wrap-lancamentos .fin-periodo-tab').forEach((b,i) => {
+    b.classList.toggle('active', ['hoje','semana','mes'][i]===p);
+  });
+  carregarLancamentos().then(renderLancamentos);
+}
+
+function setFinPeriodoResumo(p) {
+  finPeriodoResumo = p;
+  carregarLancamentos().then(renderResumoFin);
+}
+
+function getDateRange(periodo) {
+  const hoje = new Date();
+  const ini = new Date(hoje);
+  if (periodo==='hoje') { ini.setHours(0,0,0,0); }
+  else if (periodo==='semana') { ini.setDate(hoje.getDate() - hoje.getDay()); ini.setHours(0,0,0,0); }
+  else { ini.setDate(1); ini.setHours(0,0,0,0); }
+  return { ini: ini.toISOString().split('T')[0], fim: hoje.toISOString().split('T')[0] };
+}
+
+async function carregarLancamentos() {
+  if (!currentRep) return;
+  const { ini, fim } = getDateRange(finPeriodo==='mes' ? 'mes' : finPeriodo);
+  try {
+    const { data } = await sb.from('financeiro').select('*').eq('rep_id', currentRep.id).gte('data', ini).lte('data', fim).order('data', { ascending: false });
+    lancamentosCache = data || [];
+  } catch(e) { lancamentosCache = []; }
+}
+
+function renderLancamentos() {
+  const el = document.getElementById('fin-lista-lancamentos');
+  if (!el) return;
+  if (!lancamentosCache.length) {
+    el.innerHTML = '<div style="text-align:center;padding:48px 16px;color:var(--text3);font-size:14px;">Nenhum lançamento no período.<br>Toque + para adicionar.</div>';
+    return;
+  }
+  const grupos = {};
+  lancamentosCache.forEach(l => {
+    const d = l.data;
+    if (!grupos[d]) grupos[d] = [];
+    grupos[d].push(l);
+  });
+  el.innerHTML = Object.entries(grupos).map(([data, items]) => `
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;padding:10px 2px 6px;">${formatarDataBR(data)}</div>
+    <div class="fin-card">
+      ${items.map(l => `
+        <div class="fin-item">
+          <div class="fin-item-info">
+            <div class="fin-item-desc">${l.descricao || l.categoria}</div>
+            <div class="fin-item-sub">${l.categoria}${l.mes_referencia ? ' • '+l.mes_referencia : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="fin-item-val ${l.tipo}">${l.tipo==='receita'?'+':'-'}R$${Number(l.valor).toFixed(2).replace('.',',')}</div>
+            <button onclick="excluirLancamento('${l.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;">×</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function renderResumoFin() {
+  const { ini, fim } = getDateRange(finPeriodoResumo);
+  const filtrados = lancamentosCache.filter(l => l.data >= ini && l.data <= fim);
+  const receitas = filtrados.filter(l=>l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0);
+  const gastos = filtrados.filter(l=>l.tipo==='gasto').reduce((s,l)=>s+Number(l.valor),0);
+  const resultado = receitas - gastos;
+
+  const catGastos = {};
+  filtrados.filter(l=>l.tipo==='gasto').forEach(l => { catGastos[l.categoria] = (catGastos[l.categoria]||0) + Number(l.valor); });
+
+  const el = document.getElementById('fin-resumo-conteudo');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="fin-resumo-grid" style="margin-top:8px;">
+      <div class="fin-resumo-card" style="grid-column:1/-1;">
+        <div class="fin-resumo-val" style="color:${resultado>=0?'var(--green)':'var(--red)'}">R$${Math.abs(resultado).toFixed(2).replace('.',',')}</div>
+        <div class="fin-resumo-lbl">${resultado>=0?'Lucro líquido':'Prejuízo'}</div>
+      </div>
+      <div class="fin-resumo-card"><div class="fin-resumo-val" style="color:var(--green)">R$${receitas.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Receitas</div></div>
+      <div class="fin-resumo-card"><div class="fin-resumo-val" style="color:var(--red)">R$${gastos.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Gastos</div></div>
+    </div>
+    ${Object.keys(catGastos).length ? `
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;padding:12px 2px 8px;">Gastos por categoria</div>
+      <div class="fin-card">
+        ${Object.entries(catGastos).sort((a,b)=>b[1]-a[1]).map(([cat,val]) => `
+          <div class="fin-item">
+            <div class="fin-item-info"><div class="fin-item-desc">${cat}</div><div style="height:4px;background:var(--border);border-radius:2px;margin-top:4px;overflow:hidden;"><div style="height:100%;background:var(--red);width:${gastos>0?Math.min(100,val/gastos*100).toFixed(0):0}%;border-radius:2px;"></div></div></div>
+            <div class="fin-item-val gasto">R$${val.toFixed(2).replace('.',',')}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+function formatarDataBR(dataStr) {
+  const [y,m,d] = dataStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+async function excluirLancamento(id) {
+  if (!confirm('Excluir lançamento?')) return;
+  await sb.from('financeiro').delete().eq('id', id);
+  lancamentosCache = lancamentosCache.filter(l => l.id !== id);
+  renderLancamentos();
+  showToast('Lançamento excluído');
+}
+
+function abrirModalLancamento() {
+  lancTipoAtual = 'gasto';
+  document.getElementById('ln-btn-receita').className = 'lancamento-tipo-btn';
+  document.getElementById('ln-btn-gasto').className = 'lancamento-tipo-btn ativo-gasto';
+  document.getElementById('ln-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ln-descricao').value = '';
+  document.getElementById('ln-valor').value = '';
+  atualizarCategoriasLancamento();
+  document.getElementById('lancamento-modal').classList.add('open');
+}
+
+function fecharModalLancamento(e) {
+  if (!e || e.target === document.getElementById('lancamento-modal'))
+    document.getElementById('lancamento-modal').classList.remove('open');
+}
+
+function setLancTipo(tipo) {
+  lancTipoAtual = tipo;
+  document.getElementById('ln-btn-receita').className = `lancamento-tipo-btn ${tipo==='receita'?'ativo-receita':''}`;
+  document.getElementById('ln-btn-gasto').className = `lancamento-tipo-btn ${tipo==='gasto'?'ativo-gasto':''}`;
+  atualizarCategoriasLancamento();
+}
+
+function atualizarCategoriasLancamento() {
+  const cats = lancTipoAtual==='receita' ? CATEGORIAS_RECEITA : CATEGORIAS_GASTO;
+  const sel = document.getElementById('ln-categoria');
+  sel.innerHTML = '<option value="">Selecione...</option>' + cats.map(c => `<option>${c}</option>`).join('');
+  atualizarCamposLancamento();
+}
+
+function atualizarCamposLancamento() {
+  const cat = document.getElementById('ln-categoria').value;
+  document.getElementById('ln-representada-row').style.display = cat==='Comissão' ? 'block' : 'none';
+  document.getElementById('ln-mes-row').style.display = cat==='Comissão' ? 'block' : 'none';
+  document.getElementById('ln-cliente-row').style.display = cat==='Clientes' ? 'block' : 'none';
+
+  if (cat==='Comissão') {
+    const sel = document.getElementById('ln-representada');
+    sel.innerHTML = '<option value="">Selecione...</option>' + representadasCache.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+  }
+  if (cat==='Clientes') {
+    const sel = document.getElementById('ln-cliente');
+    sel.innerHTML = '<option value="">Nenhum</option>' + clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  }
+}
+
+async function salvarLancamento() {
+  const cat = document.getElementById('ln-categoria').value;
+  const desc = document.getElementById('ln-descricao').value.trim();
+  const valor = parseFloat(document.getElementById('ln-valor').value);
+  const data = document.getElementById('ln-data').value;
+  if (!cat) { showToast('Selecione uma categoria'); return; }
+  if (!valor || valor <= 0) { showToast('Informe o valor'); return; }
+  if (!data) { showToast('Informe a data'); return; }
+  if (!currentRep) { showToast('Faça login'); return; }
+
+  const payload = {
+    tipo: lancTipoAtual, categoria: cat, descricao: desc || cat,
+    valor, data, rep_id: currentRep.id
+  };
+  if (cat==='Comissão') {
+    payload.representada_id = document.getElementById('ln-representada').value || null;
+    payload.mes_referencia = document.getElementById('ln-mes').value || null;
+  }
+  if (cat==='Clientes') {
+    payload.cliente_id = document.getElementById('ln-cliente').value || null;
+  }
+
+  const { error } = await sb.from('financeiro').insert(payload);
+  if (error) { showToast('Erro ao salvar'); return; }
+  document.getElementById('lancamento-modal').classList.remove('open');
+  showToast('✓ Lançamento salvo!');
+  await carregarLancamentos();
+  renderLancamentos();
+}
+
+// Impostos
+async function carregarImpostos() {
+  if (!currentRep) return;
+  try {
+    const { data } = await sb.from('impostos').select('*').eq('rep_id', currentRep.id).order('dia_vencimento');
+    impostosCache = data || [];
+  } catch(e) { impostosCache = []; }
+}
+
+function renderImpostos() {
+  const el = document.getElementById('fin-impostos-lista');
+  if (!el) return;
+  if (!impostosCache.length) { el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px;">Nenhum imposto cadastrado</div>'; return; }
+  el.innerHTML = impostosCache.map(imp => `
+    <div class="fin-imposto-item">
+      <div>
+        <div class="fin-imposto-nome">${imp.nome}</div>
+        <div class="fin-imposto-dia">Vence todo dia ${imp.dia_vencimento}</div>
+      </div>
+      <button class="fin-imposto-del" onclick="excluirImposto('${imp.id}')">×</button>
+    </div>
+  `).join('');
+}
+
+function abrirFormImposto() {
+  document.getElementById('fin-form-imposto').style.display = 'block';
+  document.getElementById('fin-imp-nome').value = '';
+  document.getElementById('fin-imp-dia').value = '';
+}
+
+function fecharFormImposto() {
+  document.getElementById('fin-form-imposto').style.display = 'none';
+}
+
+async function salvarImposto() {
+  const nome = document.getElementById('fin-imp-nome').value.trim();
+  const dia = parseInt(document.getElementById('fin-imp-dia').value);
+  if (!nome) { showToast('Informe o nome'); return; }
+  if (!dia || dia < 1 || dia > 31) { showToast('Dia inválido'); return; }
+  if (!currentRep) return;
+  const { error } = await sb.from('impostos').insert({ nome, dia_vencimento: dia, rep_id: currentRep.id });
+  if (error) { showToast('Erro ao salvar'); return; }
+  fecharFormImposto();
+  showToast('✓ Imposto salvo!');
+  await carregarImpostos();
+  renderImpostos();
+}
+
+async function excluirImposto(id) {
+  if (!confirm('Excluir imposto?')) return;
+  await sb.from('impostos').delete().eq('id', id);
+  impostosCache = impostosCache.filter(i => i.id !== id);
+  renderImpostos();
+  showToast('Imposto removido');
+}
+
+async function salvarImpostosIniciais() {
+  if (!currentRep) return;
+  const impostos = [{ nome: 'DAS', dia_vencimento: 20 }, { nome: 'IRRF', dia_vencimento: 20 }];
+  for (const imp of impostos) {
+    await sb.from('impostos').insert({ ...imp, rep_id: currentRep.id }).throwOnError().catch(()=>{});
+  }
+  await sb.from('representantes').update({ impostos_ok: true }).eq('id', currentRep.id);
+  currentRep.impostos_ok = true;
+  document.getElementById('impostos-setup').style.display = 'none';
+  showToast('✓ Impostos configurados!');
+  await carregarImpostos();
+  renderImpostos();
+}
+
+function verificarSetupImpostos() {
+  if (currentRep && !currentRep.impostos_ok) {
+    document.getElementById('impostos-setup').style.display = 'flex';
+  }
 }
 
 // ── ROTAS ─────────────────────────────────────────────
