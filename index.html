@@ -8,6 +8,7 @@
   <!-- v2.1 desktop -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2a2a2a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4062,6 +4063,148 @@ function confirmarNovoSeg(focusOut) {
   }
 }
 
+// ── IMPORTAR CLIENTES (SheetJS) ──────────────────────
+let _importarLinhas = []; // dados processados aguardando confirmação
+
+function openImportar() {
+  document.getElementById('screen-importar').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  _importarLinhas = [];
+  document.getElementById('importar-preview').style.display = 'none';
+  document.getElementById('importar-progress').style.display = 'none';
+  document.getElementById('importar-file-label').textContent = 'Selecionar arquivo .xlsx';
+  document.getElementById('importar-file').value = '';
+}
+
+function closeImportar() {
+  document.getElementById('screen-importar').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function baixarModeloXlsx() {
+  if (!window.XLSX) { showToast('⚠️ Aguarde o carregamento', true); return; }
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['nome','comprador','cnpj','cep','endereco','telefone','segmento','ultima_visita','ultima_obs'],
+    ['Exemplo Materiais (João)','João','12.345.678/0001-90','89200-000','Rua das Flores, 123','(47) 99999-0000','Mat. Construção','2026-01-15','Pediu catálogo'],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+  XLSX.writeFile(wb, 'clientes_modelo_importacao.xlsx');
+}
+
+async function importarLerArquivo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('importar-file-label').textContent = file.name;
+  document.getElementById('importar-preview').style.display = 'none';
+  document.getElementById('importar-progress').style.display = 'block';
+  document.getElementById('importar-progress').textContent = '⏳ Lendo arquivo...';
+
+  if (!window.XLSX) { showToast('⚠️ SheetJS ainda carregando', true); return; }
+
+  const buf = await file.arrayBuffer();
+  const wb  = XLSX.read(buf, { type: 'array' });
+  const ws  = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+  document.getElementById('importar-progress').textContent = `⏳ Processando ${rows.length} linhas...`;
+
+  const cnpjsExistentes = new Set(clientes.map(c => (c.cnpj||'').replace(/\D/g,'')).filter(Boolean));
+  const novos = [], existentes = [], problemas = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const nome = (r.nome || r.Nome || '').toString().trim();
+    const cep  = (r.cep  || r.CEP  || '').toString().replace(/\D/g,'');
+
+    if (!nome) { problemas.push({ linha: i+2, motivo: 'Nome vazio' }); continue; }
+    if (!cep || cep.length < 8) { problemas.push({ linha: i+2, motivo: 'CEP inválido' }); continue; }
+
+    const cnpj = (r.cnpj || r.CNPJ || '').toString().replace(/\D/g,'');
+    if (cnpj && cnpjsExistentes.has(cnpj)) { existentes.push(i+2); continue; }
+
+    // Busca cidade via ViaCEP
+    let cidade = '';
+    let endVia = '';
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const d   = await res.json();
+      if (!d.erro) {
+        cidade  = normalizarCidadeTexto((d.localidade||'') + (d.uf ? ' - '+d.uf.toUpperCase() : ''));
+        endVia  = [d.logradouro, d.bairro].filter(Boolean).join(', ');
+      }
+    } catch(e) {}
+    if (!cidade) { problemas.push({ linha: i+2, motivo: 'CEP não encontrado' }); continue; }
+
+    const comprador = (r.comprador || r.Comprador || '').toString().trim();
+    const nomeExibir = comprador ? `${nome} (${comprador})` : nome;
+    novos.push({
+      id:           Date.now() + i,
+      nome:         nomeExibir,
+      cnpj:         cnpj ? cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5') : '',
+      cep,
+      cidade,
+      endereco:     (r.endereco || r.Endereço || endVia || '').toString().trim() || endVia,
+      tel:          (r.telefone || r.Telefone || '').toString().trim(),
+      segmento:     (r.segmento || r.Segmento || '').toString().trim(),
+      ultimaVisita: (r.ultima_visita || '').toString().trim() || null,
+      ultimaObs:    (r.ultima_obs   || '').toString().trim(),
+      lat: parseFloat(r.lat) || null,
+      lng: parseFloat(r.lng) || null,
+      visitadoHoje: false,
+      horaHoje: null,
+    });
+  }
+
+  _importarLinhas = novos;
+  document.getElementById('importar-progress').style.display = 'none';
+
+  const textoPreview = [
+    novos.length     ? `<div style="color:var(--green)">✓ ${novos.length} novo${novos.length>1?'s':''} — serão importados</div>` : '',
+    existentes.length? `<div style="color:var(--text3)">⏭ ${existentes.length} já exist${existentes.length>1?'em':'e'} — serão ignorados</div>` : '',
+    problemas.length ? `<div style="color:var(--orange)">⚠️ ${problemas.length} com problema${problemas.length>1?'s':''} — linhas ${problemas.map(p=>p.linha).join(', ')}</div>` : '',
+  ].filter(Boolean).join('');
+
+  document.getElementById('importar-preview-texto').innerHTML = textoPreview || '<div>Nenhuma linha válida encontrada.</div>';
+  document.getElementById('importar-preview').style.display = novos.length ? 'block' : 'block';
+  document.getElementById('importar-btn-confirmar').style.display = novos.length ? '' : 'none';
+}
+
+async function importarConfirmar() {
+  if (!_importarLinhas.length) return;
+  const btn = document.getElementById('importar-btn-confirmar');
+  const prog = document.getElementById('importar-progress');
+  btn.disabled = true;
+  prog.style.display = 'block';
+
+  let ok = 0;
+  for (const c of _importarLinhas) {
+    clientes.push(c);
+    ok++;
+    prog.textContent = `⏳ Importando... ${ok}/${_importarLinhas.length}`;
+    if (currentUser && sb) {
+      try {
+        await sb.from('clientes').insert({
+          id: c.id, nome: c.nome, cnpj: c.cnpj, cep: c.cep,
+          cidade: c.cidade, endereco: c.endereco, telefone: c.tel,
+          segmento: c.segmento,
+          ultima_visita: c.ultimaVisita || null,
+          ultima_obs: c.ultimaObs || '',
+          lat: c.lat, lng: c.lng,
+          rep_id: currentUser.id,
+        });
+      } catch(e) { /* continua */ }
+    }
+  }
+
+  renderList();
+  if (gmap) renderMapMarkers();
+  prog.textContent = `✓ ${ok} cliente${ok>1?'s':''} importado${ok>1?'s':''}!`;
+  btn.disabled = false;
+  _importarLinhas = [];
+  setTimeout(() => closeImportar(), 2000);
+}
+
 // ── MODO OFFLINE ─────────────────────────────────────
 let _offlineDB = null;
 
@@ -4631,6 +4774,7 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('screen-admin')?.style.display === 'flex') { closeAdmin(); return; }
     if (document.getElementById('screen-empresas')?.style.display === 'flex') { closeEmpresas(); return; }
     if (document.getElementById('screen-segmentos')?.style.display === 'flex') { closeSegmentos(); return; }
+    if (document.getElementById('screen-importar')?.style.display === 'flex') { closeImportar(); return; }
   }
 });
 
@@ -4747,6 +4891,38 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
 
+
+    <!-- TELA IMPORTAR CLIENTES -->
+    <div id="screen-importar">
+      <div class="gestao-header">
+        <button class="perfil-back" onclick="closeImportar()" style="flex-shrink:0">← Voltar</button>
+        <div class="gestao-titulo">📥 Importar Clientes</div>
+        <div style="width:70px"></div>
+      </div>
+      <div class="gestao-body" id="importar-body">
+        <div class="gestao-form-card">
+          <div class="gestao-form-titulo">1. Baixe o modelo</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.5">Preencha a planilha modelo com seus clientes. Colunas: nome, comprador, cnpj, cep, endereco, telefone, segmento, ultima_visita, ultima_obs</p>
+          <button class="gestao-btn-sm" style="width:100%;padding:10px;font-size:13px" onclick="baixarModeloXlsx()">⬇ Baixar planilha modelo (.xlsx)</button>
+        </div>
+        <div class="gestao-form-card">
+          <div class="gestao-form-titulo">2. Selecione o arquivo</div>
+          <label style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;font-size:14px;color:var(--text2)">
+            <span>📎</span>
+            <span id="importar-file-label">Selecionar arquivo .xlsx</span>
+            <input type="file" id="importar-file" accept=".xlsx,.xls" style="display:none" onchange="importarLerArquivo(this)">
+          </label>
+        </div>
+        <div id="importar-preview" style="display:none">
+          <div class="gestao-form-card">
+            <div class="gestao-form-titulo">3. Prévia</div>
+            <div id="importar-preview-texto" style="font-size:14px;line-height:1.8"></div>
+          </div>
+          <button class="gestao-fab" style="position:relative;bottom:auto;right:auto;width:100%;border-radius:12px;margin-bottom:16px" id="importar-btn-confirmar" onclick="importarConfirmar()">✓ Confirmar Importação</button>
+        </div>
+        <div id="importar-progress" style="display:none;text-align:center;padding:24px;font-size:14px;color:var(--text2)"></div>
+      </div>
+    </div>
 
     <!-- TELA EMPRESAS -->
     <div id="screen-empresas">
@@ -5068,6 +5244,13 @@ if ('serviceWorker' in navigator) {
           <div class="config-item-left">
             <div class="config-item-icon">➕</div>
             <div><div class="config-item-nome">Novo cliente</div><div class="config-item-sub">Adicionar à carteira</div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </div>
+        <div class="config-item" onclick="closeConfig();openImportar()">
+          <div class="config-item-left">
+            <div class="config-item-icon">📥</div>
+            <div><div class="config-item-nome">Importar Clientes</div><div class="config-item-sub">Planilha .xlsx</div></div>
           </div>
           <div class="config-item-right">›</div>
         </div>
