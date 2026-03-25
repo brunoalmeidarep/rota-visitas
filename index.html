@@ -972,9 +972,18 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       </div>
 
       <div class="planner-view-toggle">
-        <button class="planner-view-btn active" id="planner-btn-semana" onclick="setViewPlanner('semana')">📅 Semana</button>
-        <button class="planner-view-btn" id="planner-btn-mes" onclick="setViewPlanner('mes')" style="display:none">🗓 Mês</button>
-        <button class="planner-view-btn" id="planner-btn-rotas" onclick="setViewPlanner('rotas')">🗺️ Rotas</button>
+        <button class="planner-view-btn" id="planner-btn-hoje" onclick="setViewPlanner('hoje')">Hoje</button>
+        <button class="planner-view-btn active" id="planner-btn-semana" onclick="setViewPlanner('semana')">Semana</button>
+        <button class="planner-view-btn" id="planner-btn-mes" onclick="setViewPlanner('mes')">Mês</button>
+      </div>
+
+      <!-- CARD ROTA INTELIGENTE -->
+      <div id="planner-rota-card" style="margin:8px 12px 4px;background:linear-gradient(135deg,#007aff,#5856d6);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#fff;">🗺️ Monte sua rota</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;">Otimize suas visitas do dia</div>
+        </div>
+        <button onclick="setViewPlanner('rotas')" style="background:rgba(255,255,255,.2);border:none;border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;">Planejar Rota →</button>
       </div>
 
       <!-- VISÃO SEMANAL -->
@@ -3565,6 +3574,7 @@ function navegarMes(delta) {
 
 // ── PLANNER ──────────────────────────────────────────
 var plannerView = 'semana';
+var plannerPeriodo = 'semana'; // 'hoje' | 'semana' | 'mes'
 var plannerRef = new Date(); // data de referência
 var plannerDiaSel = new Date(); // dia selecionado
 var plannerCarregado = false; // evita reload do Supabase a cada visita
@@ -3585,18 +3595,18 @@ function getPlannerDia(dataStr) {
 }
 
 async function carregarPlannerDia(dataStr) {
-  if (!currentUser) return getPlannerDia(dataStr);
+  if (!currentRep) return getPlannerDia(dataStr);
   try {
-    const { data } = await sb.from('planner')
-      .select('*').eq('rep_id', currentUser.id).eq('data', dataStr).single();
+    const { data, error } = await sb.from('planner')
+      .select('*').eq('rep_id', currentRep.id).eq('data', dataStr).maybeSingle();
+    if (error && error.code !== 'PGRST116') throw error; // ignora "not found"
     if (data) {
-      // Atualiza cache local
       const local = getPlannerData();
       local[dataStr] = { cidades: data.cidades || '', notas: data.notas || '', eventos: data.eventos || [] };
       setPlannerDataLocal(local);
       return local[dataStr];
     }
-  } catch(e) {}
+  } catch(e) { /* tabela pode não existir ainda — usa localStorage */ }
   return getPlannerDia(dataStr);
 }
 
@@ -3605,22 +3615,17 @@ async function salvarPlannerDia(ds) {
   const notas = document.getElementById('plan-notas')?.value || '';
   const atual = getPlannerDia(ds);
   const novo = { ...atual, cidades, notas };
-  // Salva local
   const local = getPlannerData();
   local[ds] = novo;
   setPlannerDataLocal(local);
-  // Salva Supabase
-  if (!currentUser) return;
+  if (!currentRep) return;
   try {
     await sb.from('planner').upsert({
-      data: ds,
-      rep_id: currentUser.id,
-      cidades: novo.cidades,
-      notas: novo.notas,
-      eventos: novo.eventos || [],
-      atualizado_em: new Date().toISOString()
+      data: ds, rep_id: currentRep.id,
+      cidades: novo.cidades, notas: novo.notas,
+      eventos: novo.eventos || [], atualizado_em: new Date().toISOString()
     });
-  } catch(e) { console.log('Erro salvar planner:', e); }
+  } catch(e) { /* localStorage já salvou */ }
 }
 
 async function salvarEventosPlanner(ds, eventos) {
@@ -3628,23 +3633,20 @@ async function salvarEventosPlanner(ds, eventos) {
   if (!local[ds]) local[ds] = { cidades:'', notas:'', eventos:[] };
   local[ds].eventos = eventos;
   setPlannerDataLocal(local);
-  if (!currentUser) return;
+  if (!currentRep) return;
   try {
     await sb.from('planner').upsert({
-      data: ds,
-      rep_id: currentUser.id,
-      cidades: local[ds].cidades || '',
-      notas: local[ds].notas || '',
-      eventos: eventos,
-      atualizado_em: new Date().toISOString()
+      data: ds, rep_id: currentRep.id,
+      cidades: local[ds].cidades || '', notas: local[ds].notas || '',
+      eventos: eventos, atualizado_em: new Date().toISOString()
     });
-  } catch(e) {}
+  } catch(e) { /* localStorage já salvou */ }
 }
 
 async function carregarTodoPlanner() {
-  if (!currentUser) return;
+  if (!currentRep) return;
   try {
-    const { data } = await sb.from('planner').select('*').eq('rep_id', currentUser.id);
+    const { data } = await sb.from('planner').select('*').eq('rep_id', currentRep.id);
     if (!data) return;
     const local = {};
     data.forEach(row => {
@@ -3665,6 +3667,7 @@ function irParaHojePlanner() {
 }
 
 function navegarPlanner(delta) {
+  if (plannerPeriodo === 'hoje') return; // sem navegação no modo Hoje
   if (plannerView === 'semana') {
     plannerRef.setDate(plannerRef.getDate() + delta * 7);
   } else {
@@ -3675,17 +3678,40 @@ function navegarPlanner(delta) {
 }
 
 function setViewPlanner(view) {
-  plannerView = view;
-  document.getElementById('planner-btn-semana').classList.toggle('active', view === 'semana');
-  document.getElementById('planner-btn-mes').classList.toggle('active', view === 'mes');
-  document.getElementById('planner-btn-rotas').classList.toggle('active', view === 'rotas');
-  document.getElementById('planner-semana-wrap').style.display = view === 'semana' ? 'flex' : 'none';
+  plannerPeriodo = view;
+  // 'hoje' usa a visão semanal mas fixa no dia atual
+  if (view === 'hoje') {
+    plannerRef = new Date();
+    plannerDiaSel = new Date();
+    plannerView = 'semana';
+  } else if (view === 'mes') {
+    plannerView = 'mes';
+  } else if (view === 'semana' || view === 'rotas') {
+    plannerView = view;
+  }
+
+  // atualiza botões de período
+  ['hoje','semana','mes'].forEach(p => {
+    const btn = document.getElementById('planner-btn-' + p);
+    if (btn) btn.classList.toggle('active', p === view);
+  });
+
+  // mostra/oculta setas de navegação (desnecessárias no modo Hoje)
+  document.querySelectorAll('.planner-nav-btn').forEach(b => {
+    b.style.visibility = view === 'hoje' ? 'hidden' : '';
+  });
+
+  // mostra/oculta card de rota
+  const rotaCard = document.getElementById('planner-rota-card');
+  if (rotaCard) rotaCard.style.display = view === 'rotas' ? 'none' : 'flex';
+
+  document.getElementById('planner-semana-wrap').style.display = plannerView === 'semana' ? 'flex' : 'none';
   document.getElementById('planner-semana-wrap').style.flexDirection = 'column';
-  const mesWrap = document.getElementById('planner-mes-wrap');
-  mesWrap.style.display = view === 'mes' ? 'flex' : 'none';
-  document.getElementById('planner-rotas-wrap').style.display = view === 'rotas' ? 'flex' : 'none';
-  if (view === 'rotas') { carregarRotas().then(renderRotas); }
-  if (view !== 'rotas') renderPlanner();
+  document.getElementById('planner-mes-wrap').style.display = plannerView === 'mes' ? 'flex' : 'none';
+  document.getElementById('planner-rotas-wrap').style.display = plannerView === 'rotas' ? 'flex' : 'none';
+
+  if (plannerView === 'rotas') { carregarRotas().then(renderRotas); }
+  else renderPlanner();
 }
 
 function getCheckinsDia(dataStr) {
