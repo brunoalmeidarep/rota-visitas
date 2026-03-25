@@ -707,6 +707,90 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .rep-detalhe-pdf { padding:7px 13px; background:var(--blue); color:#fff; border:none; border-radius:10px; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
 .rep-detalhe-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:20px; }
 
+/* ── ROTAS ───────────────────────────────────────────── */
+.rota-card { background:var(--card); border-radius:14px; padding:14px; margin-bottom:10px; box-shadow:var(--shadow); cursor:pointer; }
+.rota-card:active { opacity:.7; }
+.rota-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.rota-card-nome { font-size:15px; font-weight:700; color:var(--text); }
+.rota-card-status { font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; background:var(--green-bg); color:var(--green); }
+.rota-card-meta { font-size:12px; color:var(--text3); display:flex; gap:12px; }
+.rota-card-acoes { display:flex; gap:8px; margin-top:10px; }
+.rota-btn-sm { flex:1; padding:8px; border:1.5px solid var(--border); border-radius:10px; background:none; font-family:inherit; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; }
+.rota-btn-sm.primary { background:var(--blue); color:#fff; border-color:var(--blue); }
+
+/* Modal nova rota */
+.rota-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:800; align-items:flex-end; backdrop-filter:blur(4px); }
+.rota-modal.open { display:flex; }
+.rota-modal-sheet { background:var(--surface); border-radius:20px 20px 0 0; padding:20px; width:100%; max-height:90vh; overflow-y:auto; }
+.rota-modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 16px; }
+.rota-modal-titulo { font-size:17px; font-weight:700; color:var(--text); margin-bottom:16px; }
+.rota-cidade-pills { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.rota-cidade-pill { padding:6px 12px; border-radius:20px; border:1.5px solid var(--border); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; background:var(--surface); color:var(--text2); }
+.rota-cidade-pill.sel { background:var(--blue); color:#fff; border-color:var(--blue); }
+.rota-cliente-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+.rota-cliente-item:last-child { border-bottom:none; }
+.rota-cliente-check { width:22px; height:22px; border-radius:6px; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.rota-cliente-check.sel { background:var(--blue); border-color:var(--blue); color:#fff; font-size:11px; }
+.rota-cliente-nome { font-size:14px; color:var(--text); }
+.rota-cliente-cidade { font-size:11px; color:var(--text3); }
+
+/* Detalhe da rota */
+.rota-detalhe { display:none; position:fixed; inset:0; background:var(--bg); z-index:700; flex-direction:column; animation:slideIn .22s ease; }
+.rota-detalhe.open { display:flex; }
+.rota-detalhe-header { background:var(--surface); padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; }
+.rota-detalhe-body { flex:1; overflow-y:auto; padding:14px; padding-bottom:100px; }
+.rota-trecho { background:var(--card); border-radius:12px; padding:12px 14px; margin-bottom:8px; box-shadow:var(--shadow); display:flex; align-items:center; gap:10px; }
+.rota-trecho-num { width:28px; height:28px; border-radius:50%; background:var(--blue); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.rota-trecho-info { flex:1; }
+.rota-trecho-nome { font-size:14px; font-weight:600; color:var(--text); }
+.rota-trecho-meta { font-size:11px; color:var(--text3); margin-top:2px; }
+.rota-resumo-bar { background:var(--card); border-radius:14px; padding:14px; margin-bottom:14px; box-shadow:var(--shadow); display:flex; gap:16px; }
+.rota-resumo-item { flex:1; text-align:center; }
+.rota-resumo-val { font-size:20px; font-weight:800; color:var(--text); }
+.rota-resumo-lbl { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; margin-top:2px; }
+
+/* ── FINANÇAS ─────────────────────────────────────────── */
+.fin-tabs { display:flex; background:var(--bg); border-radius:10px; padding:3px; margin:10px 12px; flex-shrink:0; }
+.fin-tab { flex:1; padding:6px; border-radius:8px; border:none; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; background:none; color:var(--text3); }
+.fin-tab.active { background:var(--surface); color:var(--text); box-shadow:var(--shadow); }
+.fin-body { flex:1; overflow-y:auto; padding:10px 12px 80px; -webkit-overflow-scrolling:touch; }
+.fin-card { background:var(--card); border-radius:14px; overflow:hidden; margin-bottom:10px; box-shadow:var(--shadow); }
+.fin-card-header { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border); }
+.fin-card-titulo { font-size:13px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.3px; }
+.fin-item { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-bottom:1px solid var(--border); }
+.fin-item:last-child { border-bottom:none; }
+.fin-item-info { flex:1; }
+.fin-item-desc { font-size:14px; font-weight:500; color:var(--text); }
+.fin-item-sub { font-size:11px; color:var(--text3); margin-top:1px; }
+.fin-item-val { font-size:15px; font-weight:700; }
+.fin-item-val.receita { color:var(--green); }
+.fin-item-val.gasto { color:var(--red); }
+.fin-periodo-tabs { display:flex; gap:6px; padding:8px 12px; flex-shrink:0; }
+.fin-periodo-tab { flex:1; padding:6px; border:none; border-radius:8px; font-family:inherit; font-size:11px; font-weight:600; cursor:pointer; background:var(--bg); color:var(--text2); }
+.fin-periodo-tab.active { background:var(--blue); color:#fff; }
+.fin-resumo-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.fin-resumo-card { background:var(--card); border-radius:14px; padding:14px; box-shadow:var(--shadow); }
+.fin-resumo-val { font-size:24px; font-weight:800; }
+.fin-resumo-lbl { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.3px; margin-top:3px; }
+.fin-fab { position:fixed; bottom:90px; right:16px; background:var(--blue); color:#fff; border:none; border-radius:50%; width:52px; height:52px; font-size:24px; cursor:pointer; box-shadow:0 4px 16px rgba(0,122,255,.35); z-index:40; display:flex; align-items:center; justify-content:center; }
+.fin-imposto-item { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border); }
+.fin-imposto-item:last-child { border-bottom:none; }
+.fin-imposto-nome { font-size:14px; font-weight:600; color:var(--text); }
+.fin-imposto-dia { font-size:12px; color:var(--text3); }
+.fin-imposto-del { background:none; border:none; font-size:18px; color:var(--text3); cursor:pointer; }
+
+/* Modal lançamento */
+.lancamento-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:800; align-items:flex-end; backdrop-filter:blur(4px); }
+.lancamento-modal.open { display:flex; }
+.lancamento-modal-sheet { background:var(--surface); border-radius:20px 20px 0 0; padding:20px; width:100%; max-height:90vh; overflow-y:auto; }
+.lancamento-tipo-row { display:flex; gap:8px; margin-bottom:14px; }
+.lancamento-tipo-btn { flex:1; padding:10px; border-radius:12px; border:2px solid var(--border); font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; background:none; color:var(--text2); }
+.lancamento-tipo-btn.ativo-receita { background:var(--green-bg); border-color:var(--green); color:var(--green); }
+.lancamento-tipo-btn.ativo-gasto { background:var(--red-bg); border-color:var(--red); color:var(--red); }
+
+/* Setup impostos */
+.impostos-setup { display:none; position:fixed; inset:0; background:var(--surface); z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; }
+
 </style>
 </head>
 <body>
@@ -833,7 +917,8 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 
       <div class="planner-view-toggle">
         <button class="planner-view-btn active" id="planner-btn-semana" onclick="setViewPlanner('semana')">📅 Semana</button>
-        <button class="planner-view-btn" id="planner-btn-mes" onclick="setViewPlanner('mes')">🗓 Mês</button>
+        <button class="planner-view-btn" id="planner-btn-mes" onclick="setViewPlanner('mes')" style="display:none">🗓 Mês</button>
+        <button class="planner-view-btn" id="planner-btn-rotas" onclick="setViewPlanner('rotas')">🗺️ Rotas</button>
       </div>
 
       <!-- VISÃO SEMANAL -->
@@ -860,8 +945,45 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
         </div>
         <div class="planner-body" id="planner-body-mes" style="flex:1;overflow-y:auto;padding:10px 12px 80px"></div>
       </div>
+
+      <!-- VISÃO ROTAS -->
+      <div id="planner-rotas-wrap" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+        <div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Rotas salvas</div>
+          <button onclick="abrirNovaRota()" style="background:var(--blue);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">+ Nova Rota</button>
+        </div>
+        <div id="rotas-lista" style="flex:1;overflow-y:auto;padding:0 12px 80px;-webkit-overflow-scrolling:touch;">
+          <div style="text-align:center;padding:40px 16px;color:var(--text3);font-size:14px;" id="rotas-vazio">Nenhuma rota salva ainda.</div>
+        </div>
+      </div>
     </div>
 </div>
+</div>
+
+<!-- MODAL NOVA ROTA -->
+<div class="rota-modal" id="rota-modal" onclick="fecharModalRota(event)">
+  <div class="rota-modal-sheet" onclick="event.stopPropagation()">
+    <div class="rota-modal-handle"></div>
+    <div class="rota-modal-titulo">🗺️ Nova Rota</div>
+    <div style="margin-bottom:12px;">
+      <label class="campo-label">Nome da rota</label>
+      <input class="campo-input" id="rota-nome-input" placeholder="Ex: Jaraguá do Sul - Segunda">
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;">Filtrar por cidade</div>
+    <div class="rota-cidade-pills" id="rota-cidades-pills"></div>
+    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;">Clientes</div>
+    <div id="rota-clientes-lista" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:0 12px;margin-bottom:14px;"></div>
+    <button onclick="salvarNovaRota()" style="width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;">Criar Rota</button>
+  </div>
+</div>
+
+<!-- DETALHE ROTA -->
+<div class="rota-detalhe" id="rota-detalhe">
+  <div class="rota-detalhe-header">
+    <button onclick="fecharDetalheRota()" style="background:none;border:none;color:var(--blue);font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;">← Voltar</button>
+    <div id="rota-detalhe-title" style="font-size:17px;font-weight:700;color:var(--text);flex:1;margin-left:8px;"></div>
+  </div>
+  <div class="rota-detalhe-body" id="rota-detalhe-body"></div>
 </div>
 
 <!-- ONBOARDING -->
@@ -3372,11 +3494,14 @@ function setViewPlanner(view) {
   plannerView = view;
   document.getElementById('planner-btn-semana').classList.toggle('active', view === 'semana');
   document.getElementById('planner-btn-mes').classList.toggle('active', view === 'mes');
+  document.getElementById('planner-btn-rotas').classList.toggle('active', view === 'rotas');
   document.getElementById('planner-semana-wrap').style.display = view === 'semana' ? 'flex' : 'none';
   document.getElementById('planner-semana-wrap').style.flexDirection = 'column';
   const mesWrap = document.getElementById('planner-mes-wrap');
   mesWrap.style.display = view === 'mes' ? 'flex' : 'none';
-  renderPlanner();
+  document.getElementById('planner-rotas-wrap').style.display = view === 'rotas' ? 'flex' : 'none';
+  if (view === 'rotas') { carregarRotas().then(renderRotas); }
+  if (view !== 'rotas') renderPlanner();
 }
 
 function getCheckinsDia(dataStr) {
@@ -4667,6 +4792,198 @@ async function deletarSegmento(id) {
     renderSegmentos();
     showToast('Segmento excluído');
   } catch(e) { showToast('❌ Erro ao excluir', true); }
+}
+
+// ── ROTAS ─────────────────────────────────────────────
+let rotasCache = [];
+let novaRotaCidadesSel = [];
+let novaRotaClientesSel = [];
+
+async function carregarRotas() {
+  if (!currentRep) return;
+  try {
+    const { data } = await sb.from('rotas').select('*').eq('rep_id', currentRep.id).order('created_at', { ascending: false });
+    rotasCache = data || [];
+  } catch(e) { rotasCache = []; }
+}
+
+function renderRotas() {
+  const el = document.getElementById('rotas-lista');
+  const vazio = document.getElementById('rotas-vazio');
+  if (!rotasCache.length) { if (vazio) vazio.style.display='block'; return; }
+  if (vazio) vazio.style.display='none';
+  const cards = rotasCache.map(r => `
+    <div class="rota-card" onclick="abrirDetalheRota('${r.id}')">
+      <div class="rota-card-header">
+        <div class="rota-card-nome">${r.nome}</div>
+        <div class="rota-card-status">${r.status || 'ativa'}</div>
+      </div>
+      <div class="rota-card-meta">
+        <span>👥 ${(r.clientes_ids||[]).length} clientes</span>
+        ${r.km_total ? `<span>📍 ${r.km_total.toFixed(0)} km</span>` : ''}
+        ${r.tempo_estimado ? `<span>⏱ ${Math.round(r.tempo_estimado/60)}h</span>` : ''}
+      </div>
+      <div class="rota-card-acoes">
+        <button class="rota-btn-sm" onclick="event.stopPropagation();abrirGoogleMapsRota('${r.id}')">↗ Google Maps</button>
+        <button class="rota-btn-sm danger" onclick="event.stopPropagation();excluirRota('${r.id}')" style="color:var(--red);border-color:var(--red)">🗑</button>
+      </div>
+    </div>
+  `).join('');
+  el.innerHTML = cards;
+}
+
+function abrirNovaRota() {
+  novaRotaCidadesSel = [];
+  novaRotaClientesSel = [];
+  document.getElementById('rota-nome-input').value = '';
+  renderCidadesPillsRota();
+  renderClientesRota();
+  document.getElementById('rota-modal').classList.add('open');
+}
+
+function fecharModalRota(e) {
+  if (!e || e.target === document.getElementById('rota-modal'))
+    document.getElementById('rota-modal').classList.remove('open');
+}
+
+function renderCidadesPillsRota() {
+  const cidades = [...new Set(clientes.map(c => c.cidade).filter(Boolean))].sort();
+  const el = document.getElementById('rota-cidades-pills');
+  if (!el) return;
+  el.innerHTML = cidades.map(c => `
+    <button class="rota-cidade-pill ${novaRotaCidadesSel.includes(c)?'sel':''}" onclick="toggleCidadeRota('${c}')">${c}</button>
+  `).join('');
+}
+
+function toggleCidadeRota(cidade) {
+  const i = novaRotaCidadesSel.indexOf(cidade);
+  if (i >= 0) novaRotaCidadesSel.splice(i,1); else novaRotaCidadesSel.push(cidade);
+  renderCidadesPillsRota();
+  renderClientesRota();
+}
+
+function renderClientesRota() {
+  const el = document.getElementById('rota-clientes-lista');
+  if (!el) return;
+  const filtrados = novaRotaCidadesSel.length
+    ? clientes.filter(c => novaRotaCidadesSel.includes(c.cidade))
+    : clientes;
+  el.innerHTML = filtrados.map(c => `
+    <div class="rota-cliente-item" onclick="toggleClienteRota('${c.id}')">
+      <div class="rota-cliente-check ${novaRotaClientesSel.includes(String(c.id))?'sel':''}">
+        ${novaRotaClientesSel.includes(String(c.id))?'✓':''}
+      </div>
+      <div>
+        <div class="rota-cliente-nome">${c.nome}</div>
+        <div class="rota-cliente-cidade">${c.cidade||''}</div>
+      </div>
+    </div>
+  `).join('') || '<div style="text-align:center;padding:24px;color:var(--text3)">Selecione cidades acima</div>';
+}
+
+function toggleClienteRota(id) {
+  const sid = String(id);
+  const i = novaRotaClientesSel.indexOf(sid);
+  if (i >= 0) novaRotaClientesSel.splice(i,1); else novaRotaClientesSel.push(sid);
+  renderClientesRota();
+}
+
+async function salvarNovaRota() {
+  const nome = document.getElementById('rota-nome-input').value.trim();
+  if (!nome) { showToast('Dê um nome para a rota'); return; }
+  if (novaRotaClientesSel.length < 2) { showToast('Selecione ao menos 2 clientes'); return; }
+  if (!currentRep) { showToast('Faça login primeiro'); return; }
+
+  const clientesSel = clientes.filter(c => novaRotaClientesSel.includes(String(c.id)) && c.lat && c.lng);
+  let kmTotal = 0;
+  const ordem = clientesSel.map(c => String(c.id));
+
+  for (let i = 0; i < clientesSel.length - 1; i++) {
+    const a = clientesSel[i], b = clientesSel[i+1];
+    if (a.lat && b.lat) kmTotal += calcDistKm(a.lat, a.lng, b.lat, b.lng);
+  }
+
+  const { error } = await sb.from('rotas').insert({
+    nome, clientes_ids: novaRotaClientesSel,
+    ordem_otimizada: ordem,
+    km_total: Math.round(kmTotal * 1.3 * 10) / 10,
+    tempo_estimado: Math.round(kmTotal * 1.3 / 60 * 3600),
+    rep_id: currentRep.id
+  });
+
+  if (error) { showToast('Erro ao salvar rota'); return; }
+  document.getElementById('rota-modal').classList.remove('open');
+  showToast('✓ Rota salva!');
+  await carregarRotas();
+  renderRotas();
+}
+
+function calcDistKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLng = (lng2-lng1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function abrirDetalheRota(id) {
+  const rota = rotasCache.find(r => r.id === id);
+  if (!rota) return;
+  const el = document.getElementById('rota-detalhe');
+  if (!el) return;
+
+  const media = currentRep?.media_carro || 10;
+  const precGas = currentRep?.preco_gasolina || 6;
+  const litros = (rota.km_total || 0) / media;
+  const custo = litros * precGas;
+
+  const clientesDaRota = (rota.ordem_otimizada || rota.clientes_ids || []).map(id => clientes.find(c => String(c.id) === id)).filter(Boolean);
+
+  document.getElementById('rota-detalhe-title').textContent = rota.nome;
+  document.getElementById('rota-detalhe-body').innerHTML = `
+    <div class="rota-resumo-bar">
+      <div class="rota-resumo-item"><div class="rota-resumo-val">${(rota.km_total||0).toFixed(0)}</div><div class="rota-resumo-lbl">km total</div></div>
+      <div class="rota-resumo-item"><div class="rota-resumo-val">${litros.toFixed(1)}L</div><div class="rota-resumo-lbl">combustível</div></div>
+      <div class="rota-resumo-item"><div class="rota-resumo-val">R$${custo.toFixed(0)}</div><div class="rota-resumo-lbl">custo est.</div></div>
+    </div>
+    ${currentRep?.endereco_base ? `<div style="background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)"><div style="width:28px;height:28px;border-radius:50%;background:var(--green);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">🏠</div><div><div style="font-size:14px;font-weight:600;color:var(--text)">Saída: Endereço base</div><div style="font-size:11px;color:var(--text3)">${currentRep.endereco_base}</div></div></div>` : ''}
+    ${clientesDaRota.map((c,i) => `
+      <div class="rota-trecho">
+        <div class="rota-trecho-num">${i+1}</div>
+        <div class="rota-trecho-info">
+          <div class="rota-trecho-nome">${c.nome}</div>
+          <div class="rota-trecho-meta">${c.cidade||''} ${c.endereco ? '• '+c.endereco : ''}</div>
+        </div>
+      </div>
+    `).join('')}
+    <button onclick="abrirGoogleMapsRota('${rota.id}')" style="width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;">↗ Abrir no Google Maps</button>
+  `;
+  el.classList.add('open');
+}
+
+function fecharDetalheRota() {
+  document.getElementById('rota-detalhe').classList.remove('open');
+}
+
+function abrirGoogleMapsRota(id) {
+  const rota = rotasCache.find(r => r.id === id);
+  if (!rota) return;
+  const ids = rota.ordem_otimizada || rota.clientes_ids || [];
+  const pts = ids.map(cid => clientes.find(c => String(c.id) === cid)).filter(c => c && c.lat && c.lng);
+  if (!pts.length) { showToast('Sem coordenadas para esta rota'); return; }
+  const origin = currentRep?.endereco_base ? encodeURIComponent(currentRep.endereco_base) : `${pts[0].lat},${pts[0].lng}`;
+  const dest = `${pts[pts.length-1].lat},${pts[pts.length-1].lng}`;
+  const waypoints = pts.slice(0,-1).map(c => `${c.lat},${c.lng}`).join('|');
+  const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints?'&waypoints='+waypoints:''}&travelmode=driving`;
+  window.open(url, '_blank');
+}
+
+async function excluirRota(id) {
+  if (!confirm('Excluir esta rota?')) return;
+  await sb.from('rotas').delete().eq('id', id);
+  rotasCache = rotasCache.filter(r => r.id !== id);
+  renderRotas();
+  showToast('Rota excluída');
 }
 
 // ── TAREFAS (Supabase) ──────────────────────────────
