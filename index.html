@@ -1541,52 +1541,29 @@ async function loadClientes() {
   const listEl = document.getElementById('list');
   if (listEl) listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando carteira...</div>';
   if (!currentUser) { console.warn('[loadClientes] sem currentUser'); return; }
-
-  console.group('[loadClientes] diagnóstico');
-  console.log('auth.uid (currentUser.id):', currentUser.id);
-  console.log('email:', currentUser.email);
+  if (!currentRep)  { console.warn('[loadClientes] currentRep ainda não carregado'); return; }
 
   try {
-    // ── QUERY PRINCIPAL: filtra por rep_id = auth.uid() ──
-    console.log('query: clientes WHERE rep_id =', currentUser.id);
-    const { data, error } = await sb.from('clientes').select('*').eq('rep_id', currentUser.id).order('nome');
-    console.log('resultado principal → data:', data?.length ?? 'null', '| error:', error);
-    if (error) { console.error('erro na query principal:', error); }
-
-    // ── DIAGNÓSTICO: total sem filtro ──
-    const { count: totalSemFiltro, error: eTot } = await sb.from('clientes').select('*', { count: 'exact', head: true });
-    console.log('total de clientes na tabela (sem filtro):', totalSemFiltro, '| error:', eTot);
-
-    // ── DIAGNÓSTICO: clientes com rep_id nulo ──
-    const { count: nullCount, error: eNull } = await sb.from('clientes').select('*', { count: 'exact', head: true }).is('rep_id', null);
-    console.log('clientes com rep_id IS NULL:', nullCount, '| error:', eNull);
-
-    // ── DIAGNÓSTICO: primeiro cliente da tabela (sem filtro) para ver o rep_id real ──
-    const { data: amostra, error: eAm } = await sb.from('clientes').select('id,nome,rep_id').limit(3);
-    console.log('amostra (3 primeiros clientes sem filtro):', amostra, '| error:', eAm);
-
+    const { data, error } = await sb.from('clientes').select('*').eq('rep_id', currentRep.id).order('nome');
     if (error) throw error;
 
-    // ── AUTO-MIGRAÇÃO: rep_id nulo → currentUser.id ──
-    if ((!data || !data.length) && nullCount > 0) {
-      console.log('tentando migrar', nullCount, 'clientes com rep_id nulo...');
-      if (listEl) listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Corrigindo carteira...</div>';
-      const { error: eUpd } = await sb.from('clientes').update({ rep_id: currentUser.id }).is('rep_id', null);
-      console.log('update rep_id nulo → result error:', eUpd);
-      const { data: data2 } = await sb.from('clientes').select('*').eq('rep_id', currentUser.id).order('nome');
-      console.log('após migração → data2:', data2?.length);
-      if (data2 && data2.length) {
-        clientes = data2.map(_mapearCliente);
-        restaurarCheckinsDoDia();
-        renderList();
-        if (gmap) renderMapMarkers();
-        showToast(`✓ Carteira restaurada: ${clientes.length} clientes`);
-        console.groupEnd();
-        return;
+    // ── AUTO-MIGRAÇÃO: rep_id nulo → currentRep.id ──
+    if (!data || !data.length) {
+      const { count: nullCount } = await sb.from('clientes').select('*', { count: 'exact', head: true }).is('rep_id', null);
+      if (nullCount > 0) {
+        if (listEl) listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Corrigindo carteira...</div>';
+        await sb.from('clientes').update({ rep_id: currentRep.id }).is('rep_id', null);
+        const { data: data2 } = await sb.from('clientes').select('*').eq('rep_id', currentRep.id).order('nome');
+        if (data2 && data2.length) {
+          clientes = data2.map(_mapearCliente);
+          restaurarCheckinsDoDia();
+          renderList();
+          if (gmap) renderMapMarkers();
+          showToast(`✓ Carteira restaurada: ${clientes.length} clientes`);
+          return;
+        }
       }
     }
-
-    console.groupEnd();
     clientes = (data || []).map(_mapearCliente);
     restaurarCheckinsDoDia();
     if (!clientes.length) {
@@ -2582,7 +2559,7 @@ async function salvarCliente() {
         segmento,
         ultima_visita: null,
         ultima_obs:  '',
-        rep_id:      currentUser.id,
+        rep_id:      currentRep?.id,
       }).select().single();
       if (inserted && inserted.id) novoCliente.id = inserted.id;
     } catch(e) { console.log('salvarCliente Supabase erro:', e); }
@@ -2664,7 +2641,7 @@ async function salvarEdicaoCliente() {
         segmento,
         lat:         c.lat,
         lng:         c.lng,
-        rep_id:      currentUser?.id,
+        rep_id:      currentRep?.id,
       }, { onConflict: 'id' });
     } catch(e) { /* tabela pode não existir ainda */ }
   }
@@ -4626,7 +4603,7 @@ async function importarConfirmar() {
           ultima_visita: c.ultimaVisita || null,
           ultima_obs: c.ultimaObs || '',
           lat: c.lat, lng: c.lng,
-          rep_id: currentUser.id,
+          rep_id: currentRep?.id,
         });
       } catch(e) { /* continua */ }
     }
