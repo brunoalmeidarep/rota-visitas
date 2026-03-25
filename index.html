@@ -1120,7 +1120,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <div class="rota-cidade-pills" id="rota-cidades-pills"></div>
     <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;">Clientes</div>
     <div id="rota-clientes-lista" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:0 12px;margin-bottom:14px;"></div>
-    <button onclick="salvarNovaRota()" style="width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;">Criar Rota</button>
+    <button id="btn-criar-rota" onclick="salvarNovaRota()" style="width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;">Criar Rota</button>
   </div>
 </div>
 
@@ -5353,12 +5353,12 @@ function renderRotas() {
     <div class="rota-card" onclick="abrirDetalheRota('${r.id}')">
       <div class="rota-card-header">
         <div class="rota-card-nome">${r.nome}</div>
-        <div class="rota-card-status">${r.status || 'ativa'}</div>
+        <div class="rota-card-status" style="${r.status==='otimizada'?'background:var(--blue-bg);color:var(--blue)':''}">${r.status==='otimizada'?'🗺️ Google':'ativa'}</div>
       </div>
       <div class="rota-card-meta">
         <span>👥 ${(r.clientes_ids||[]).length} clientes</span>
         ${r.km_total ? `<span>📍 ${r.km_total.toFixed(0)} km</span>` : ''}
-        ${r.tempo_estimado ? `<span>⏱ ${Math.round(r.tempo_estimado/60)}h</span>` : ''}
+        ${r.tempo_estimado ? `<span>⏱ ${Math.round(r.tempo_estimado/60)}h${Math.round((r.tempo_estimado%3600)/60).toString().padStart(2,'0')}min</span>` : ''}
       </div>
       <div class="rota-card-acoes">
         <button class="rota-btn-sm" onclick="event.stopPropagation();abrirGoogleMapsRota('${r.id}')">↗ Google Maps</button>
@@ -5431,28 +5431,82 @@ async function salvarNovaRota() {
   if (novaRotaClientesSel.length < 2) { showToast('Selecione ao menos 2 clientes'); return; }
   if (!currentRep) { showToast('Faça login primeiro'); return; }
 
+  const btn = document.getElementById('btn-criar-rota');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Otimizando rota...'; }
+
   const clientesSel = clientes.filter(c => novaRotaClientesSel.includes(String(c.id)) && c.lat && c.lng);
   let kmTotal = 0;
-  const ordem = clientesSel.map(c => String(c.id));
+  let tempoEstimado = 0;
+  let ordemOtimizada = clientesSel.map(c => String(c.id));
+  let fonte = 'haversine';
 
-  for (let i = 0; i < clientesSel.length - 1; i++) {
-    const a = clientesSel[i], b = clientesSel[i+1];
-    if (a.lat && b.lat) kmTotal += calcDistKm(a.lat, a.lng, b.lat, b.lng);
+  // Tenta otimização real via Google Directions API
+  try {
+    if (window.google && google.maps && google.maps.DirectionsService) {
+      const resultado = await otimizarRotaGoogle(clientesSel, currentRep?.endereco_base);
+      const route = resultado.routes[0];
+      // Reordena clientes conforme sugestão do Google
+      ordemOtimizada = route.waypoint_order.map(i => String(clientesSel[i].id));
+      // Soma distância e tempo de cada trecho
+      route.legs.forEach(leg => {
+        kmTotal += leg.distance.value / 1000;
+        tempoEstimado += leg.duration.value;
+      });
+      fonte = 'google';
+    } else {
+      throw new Error('Maps não disponível');
+    }
+  } catch(e) {
+    // Fallback: Haversine com fator de estrada 1.3
+    console.warn('Fallback Haversine:', e);
+    for (let i = 0; i < clientesSel.length - 1; i++) {
+      const a = clientesSel[i], b = clientesSel[i+1];
+      if (a.lat && b.lat) kmTotal += calcDistKm(a.lat, a.lng, b.lat, b.lng);
+    }
+    kmTotal = Math.round(kmTotal * 1.3 * 10) / 10;
+    tempoEstimado = Math.round(kmTotal / 60 * 3600);
   }
 
   const { error } = await sb.from('rotas').insert({
-    nome, clientes_ids: novaRotaClientesSel,
-    ordem_otimizada: ordem,
-    km_total: Math.round(kmTotal * 1.3 * 10) / 10,
-    tempo_estimado: Math.round(kmTotal * 1.3 / 60 * 3600),
+    nome,
+    clientes_ids: novaRotaClientesSel,
+    ordem_otimizada: ordemOtimizada,
+    km_total: Math.round(kmTotal * 10) / 10,
+    tempo_estimado: Math.round(tempoEstimado),
+    status: fonte === 'google' ? 'otimizada' : 'ativa',
     rep_id: currentRep.id
   });
 
+  if (btn) { btn.disabled = false; btn.textContent = 'Criar Rota'; }
   if (error) { showToast('Erro ao salvar rota'); return; }
   document.getElementById('rota-modal').classList.remove('open');
-  showToast('✓ Rota salva!');
+  showToast(fonte === 'google' ? '✓ Rota otimizada pelo Google!' : '✓ Rota salva!');
   await carregarRotas();
   renderRotas();
+}
+
+// Chama Google Directions API com optimizeWaypoints:true
+// origin/destination = endereço base do rep (round trip); fallback = primeiro/último cliente
+function otimizarRotaGoogle(clientesSel, enderecoBase) {
+  return new Promise((resolve, reject) => {
+    const ds = new google.maps.DirectionsService();
+    const origem  = enderecoBase || `${clientesSel[0].lat},${clientesSel[0].lng}`;
+    const destino = enderecoBase || `${clientesSel[clientesSel.length - 1].lat},${clientesSel[clientesSel.length - 1].lng}`;
+    const waypoints = clientesSel.map(c => ({
+      location: new google.maps.LatLng(parseFloat(c.lat), parseFloat(c.lng)),
+      stopover: true
+    }));
+    ds.route({
+      origin: origem,
+      destination: destino,
+      waypoints,
+      optimizeWaypoints: true,
+      travelMode: google.maps.TravelMode.DRIVING
+    }, (result, status) => {
+      if (status === 'OK') resolve(result);
+      else reject(status);
+    });
+  });
 }
 
 function calcDistKm(lat1, lng1, lat2, lng2) {
