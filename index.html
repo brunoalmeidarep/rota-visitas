@@ -3040,19 +3040,33 @@ async function marcarOrcamentoPerdido(visitaId) {
 }
 
 // Busca histórico de um cliente no Supabase
+// Retenta mobile apenas últimos 6 meses; desktop retorna tudo
+function get6MesesAtras() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 6);
+  return d.toISOString().slice(0, 10);
+}
+
+const IS_MOBILE = () => window.innerWidth < 768;
+
 async function buscarHistoricoSupabase(clienteId) {
   // Primeiro carrega do backup local (instantâneo)
   const local = carregarHistoricoLocal(clienteId);
 
   if (!currentUser) return local;
   try {
-    const { data, error } = await sb
+    let query = sb
       .from('visitas')
       .select('*')
       .eq('id_cliente', String(clienteId))
       .eq('rep_id', currentUser.id)
       .order('data', { ascending: false })
       .order('hora', { ascending: false });
+
+    // Mobile: apenas últimos 6 meses
+    if (IS_MOBILE()) query = query.gte('data', get6MesesAtras());
+
+    const { data, error } = await query;
     if (error) return local;
     // Combina Supabase + local (sem duplicatas)
     const supaIds = new Set((data||[]).map(v => v.data + v.hora));
