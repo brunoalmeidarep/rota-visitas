@@ -56,11 +56,12 @@ CREATE POLICY "Rep insere seus clientes"
   TO authenticated
   WITH CHECK (rep_id = auth.uid());
 
--- UPDATE: só pode alterar seus próprios clientes
+-- UPDATE: pode alterar seus clientes E clientes sem rep_id (migração automática via app)
 CREATE POLICY "Rep atualiza seus clientes"
   ON clientes FOR UPDATE
   TO authenticated
-  USING (rep_id = auth.uid());
+  USING (rep_id = auth.uid() OR rep_id IS NULL)
+  WITH CHECK (rep_id = auth.uid());
 
 -- DELETE: só pode excluir seus próprios clientes
 CREATE POLICY "Rep deleta seus clientes"
