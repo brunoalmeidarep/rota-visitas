@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -682,6 +682,31 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .rep-exportar-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px; background:var(--blue); color:#fff; border:none; border-radius:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:80px; }
 .rep-tabela-vazia { padding:24px; text-align:center; color:var(--text3); font-size:14px; }
 
+/* Rep cards grid */
+.rep-cards-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.rep-card { background:var(--card); border-radius:16px; padding:16px 14px; box-shadow:var(--shadow); cursor:pointer; transition:opacity .1s; border:none; width:100%; text-align:left; font-family:inherit; }
+.rep-card:active { opacity:.7; }
+.rep-card-full { grid-column:1/-1; }
+.rep-card-icon { font-size:22px; margin-bottom:8px; }
+.rep-card-val { font-size:28px; font-weight:800; line-height:1.1; }
+.rep-card-label { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.3px; margin-top:4px; }
+.rep-card-sub { font-size:12px; color:var(--text2); margin-top:3px; }
+/* Representadas filter */
+.rep-filter-row { padding:8px 14px; background:var(--surface); border-bottom:1px solid var(--border); position:relative; }
+.rep-filter-btn { display:flex; align-items:center; justify-content:space-between; width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; padding:8px 12px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:500; color:var(--text); }
+.rep-filter-dropdown { position:absolute; left:14px; right:14px; top:100%; background:var(--card); border:1.5px solid var(--border); border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,.18); z-index:10; overflow:hidden; margin-top:2px; }
+.rep-filter-option { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border); cursor:pointer; font-size:14px; color:var(--text); }
+.rep-filter-option:last-child { border-bottom:none; }
+/* Detail overlay */
+#screen-report { position:relative; overflow:hidden; }
+.rep-detalhe { position:absolute; inset:0; background:var(--bg); display:none; flex-direction:column; overflow:hidden; z-index:20; }
+.rep-detalhe.open { display:flex; }
+.rep-detalhe-hdr { background:var(--surface); border-bottom:1px solid var(--border); padding:12px 14px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.rep-detalhe-back { font-size:22px; cursor:pointer; color:var(--blue); background:none; border:none; padding:0 4px; font-family:inherit; line-height:1; }
+.rep-detalhe-title { font-size:16px; font-weight:700; color:var(--text); flex:1; }
+.rep-detalhe-pdf { padding:7px 13px; background:var(--blue); color:#fff; border:none; border-radius:10px; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.rep-detalhe-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:20px; }
+
 </style>
 </head>
 <body>
@@ -772,6 +797,15 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       </div>
       <div class="rep-body" id="rep-body">
         <!-- preenchido por renderReport() -->
+      </div>
+      <!-- DETALHE OVERLAY -->
+      <div id="rep-detalhe" class="rep-detalhe">
+        <div class="rep-detalhe-hdr">
+          <button class="rep-detalhe-back" onclick="fecharRepDetalhe()">‹</button>
+          <div class="rep-detalhe-title" id="rep-detalhe-title"></div>
+          <button class="rep-detalhe-pdf" onclick="exportarPDFDetalhe()">📄 PDF</button>
+        </div>
+        <div class="rep-detalhe-body" id="rep-detalhe-body"></div>
       </div>
     </div>
 
@@ -1428,388 +1462,343 @@ function cardHTML(c) {
 }
 
 // ── RELATÓRIO ──────────────────────────────────────────
+function getRowsFiltradas() {
+  const hoje = new Date();
+  const hojStr = hoje.toISOString().slice(0,10);
+  let rows;
+  if (repFiltroAtual === 'hoje') {
+    rows = visatasDoRelatorio.filter(v => v.data === hojStr);
+    clientes.filter(c => c.visitadoHoje).forEach(c => {
+      if (!rows.find(r => String(r.id_cliente) === String(c.id)))
+        rows.push({ id_cliente: String(c.id), nome_cliente: c.nome, cidade: c.cidade, data: hojStr, hora: c.horaHoje, obs: c.ultimaObs, tipo: 'visita', valor_pedido: null, representada_id: null });
+    });
+  } else if (repFiltroAtual === 'semana') {
+    const dSem = hoje.getDay();
+    const iniSem = new Date(hoje); iniSem.setDate(hoje.getDate() - dSem); iniSem.setHours(0,0,0,0);
+    rows = visatasDoRelatorio.filter(v => v.data >= iniSem.toISOString().slice(0,10) && v.data <= hojStr);
+  } else {
+    rows = [...visatasDoRelatorio];
+  }
+  if (repRepresentadasFiltro.length > 0)
+    rows = rows.filter(v => repRepresentadasFiltro.includes(String(v.representada_id)));
+  return rows;
+}
+
+function renderRepFilterHTML() {
+  if (!representadasCache.length) return '';
+  const todas = repRepresentadasFiltro.length === 0;
+  const label = todas ? 'Todas as empresas' : repRepresentadasFiltro.length + ' selecionada(s)';
+  const chk = sel => '<span style="width:18px;height:18px;border-radius:4px;background:'+(sel?'var(--blue)':'var(--border)')+';display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0">'+(sel?'✓':'')+'</span>';
+  return '<div class="rep-filter-row" id="rep-filter-row">' +
+    '<button class="rep-filter-btn" onclick="toggleRepFilter()"><span>🏢 '+label+'</span><span>'+(repFiltroDropdownOpen?'▲':'▼')+'</span></button>' +
+    (repFiltroDropdownOpen ?
+      '<div class="rep-filter-dropdown">' +
+        '<div class="rep-filter-option" onclick="selecionarTodasRepresentadas()">'+chk(todas)+'<span>Todas as empresas</span></div>' +
+        representadasCache.map(r => '<div class="rep-filter-option" onclick="toggleRepresentada(\''+r.id+'\')">'+chk(repRepresentadasFiltro.includes(String(r.id)))+'<span>'+r.nome+'</span></div>').join('') +
+      '</div>' : '') +
+  '</div>';
+}
+
+function toggleRepFilter() { repFiltroDropdownOpen = !repFiltroDropdownOpen; renderReport(); }
+function selecionarTodasRepresentadas() { repRepresentadasFiltro = []; repFiltroDropdownOpen = false; renderReport(); }
+function toggleRepresentada(id) {
+  const sid = String(id);
+  const idx = repRepresentadasFiltro.indexOf(sid);
+  if (idx >= 0) repRepresentadasFiltro.splice(idx, 1); else repRepresentadasFiltro.push(sid);
+  renderReport();
+}
+
 function renderReport() {
   const hoje = new Date();
   const mesRef  = relMes;
   const anoRef  = relAno;
   const ehMesAtual = mesRef === hoje.getMonth() && anoRef === hoje.getFullYear();
-  const mesAtual = hoje.getMonth();
-  const anoAtual = hoje.getFullYear();
-  const nomeMes = new Date(anoRef, mesRef, 1).toLocaleDateString('pt-BR', {month:'long'});
-  const nomeMesCap = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+  const _nm = new Date(anoRef, mesRef, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  const nomeMesCap = _nm.charAt(0).toUpperCase() + _nm.slice(1);
 
-  // Classifica clientes
-  const grpHoje   = clientes.filter(c => getStatus(c) === 'today');
-  const grpVerde  = clientes.filter(c => getStatus(c) === 'green');
-  const grpAzul   = clientes.filter(c => getStatus(c) === 'blue');
-  const grpVerm   = clientes.filter(c => getStatus(c) === 'red');
-  const grpNunca  = clientes.filter(c => getStatus(c) === 'purple');
+  const rows = getRowsFiltradas();
+  const totalVisitas = rows.length;
+  const totalVendas = rows.reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
+  const totalVendasStr = 'R$ ' + totalVendas.toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const orcAbertos = rows.filter(v => v.tipo==='orcamento' && (!v.status_orcamento||v.status_orcamento==='aberto')).length;
+  const orcTotal = rows.filter(v => v.tipo==='orcamento').length;
 
-  // Contagem da semana (dom-sab)
-  const diaSemana = hoje.getDay();
-  const iniciSem  = new Date(hoje); iniciSem.setDate(hoje.getDate() - diaSemana); iniciSem.setHours(0,0,0,0);
-  const fimSem    = new Date(iniciSem); fimSem.setDate(iniciSem.getDate() + 6); fimSem.setHours(23,59,59,999);
-  const visitSem  = clientes.filter(c => {
-    if (!c.ultimaVisita) return false;
-    const d = new Date(c.ultimaVisita + 'T00:00:00');
-    return d >= iniciSem && d <= fimSem;
-  }).length + grpHoje.length;
-
-  // Contagem do mês
-  const visitMes = clientes.filter(c => {
+  // Conversão
+  const visitados = clientes.filter(c => {
+    if (repFiltroAtual==='hoje') return c.visitadoHoje;
+    if (repFiltroAtual==='semana') {
+      if (c.visitadoHoje) return true;
+      if (!c.ultimaVisita) return false;
+      const d = new Date(c.ultimaVisita+'T00:00:00');
+      const dSem = hoje.getDay();
+      const iniSem = new Date(hoje); iniSem.setDate(hoje.getDate()-dSem); iniSem.setHours(0,0,0,0);
+      return d >= iniSem;
+    }
     if (c.visitadoHoje) return true;
     if (!c.ultimaVisita) return false;
-    const d = new Date(c.ultimaVisita + 'T00:00:00');
-    return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+    const d = new Date(c.ultimaVisita+'T00:00:00');
+    return d.getMonth()===mesRef && d.getFullYear()===anoRef;
   }).length;
+  const pctConv = clientes.length ? Math.round(visitados/clientes.length*100) : 0;
 
-  const pctMes = clientes.length ? Math.round(visitMes / clientes.length * 100) : 0;
-
-  // Cidades visitadas no mês
-  const cidadesMap = {};
-  clientes.forEach(c => {
-    const visitouMes = c.visitadoHoje ||
-      (c.ultimaVisita && (() => { const d = new Date(c.ultimaVisita+'T00:00:00'); return d.getMonth()===mesAtual && d.getFullYear()===anoAtual; })());
-    if (!visitouMes) return;
-    const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
-    if (!cidadesMap[cidade]) cidadesMap[cidade] = { visitados:[], totalCidade:0 };
-    cidadesMap[cidade].visitados.push(c);
+  // Top representada
+  const byRep = {};
+  rows.forEach(v => {
+    const rid = String(v.representada_id||'');
+    if (!byRep[rid]) byRep[rid] = {count:0,total:0};
+    byRep[rid].count++; byRep[rid].total += parseFloat(v.valor_pedido)||0;
   });
-  // Total por cidade
-  clientes.forEach(c => {
-    const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
-    if (cidadesMap[cidade]) cidadesMap[cidade].totalCidade++;
-  });
+  const topRep = Object.entries(byRep).sort((a,b) => b[1].total-a[1].total)[0];
+  const topRepNome = topRep ? (representadasCache.find(r => String(r.id)===topRep[0])?.nome || 'Sem empresa') : null;
 
-  const cidadesOrdenadas = Object.entries(cidadesMap)
-    .sort((a,b) => b[1].visitados.length - a[1].visitados.length);
+  const filtroLabel = repFiltroAtual==='hoje'?'Hoje':repFiltroAtual==='semana'?'Semana':nomeMesCap;
 
-  // Cores por % de cobertura
-  const corCidade = (vis, tot) => {
-    const p = tot ? vis/tot : 0;
-    if (p >= 0.4) return 'var(--green)';
-    if (p >= 0.2) return 'var(--blue)';
-    return 'var(--orange)';
-  };
+  const navegador = repFiltroAtual==='mes' ?
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
+      '<button onclick="navegarMes(-1)" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:4px 8px">‹</button>' +
+      '<div style="font-size:14px;font-weight:700;color:var(--text)">'+nomeMesCap+(ehMesAtual?' <span style="font-size:11px;color:var(--green)">● atual</span>':'')+'</div>' +
+      '<button onclick="navegarMes(1)" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:4px 8px'+(ehMesAtual?';opacity:.3':'')+'"'+(ehMesAtual?' disabled':'')+'>›</button>' +
+    '</div>' : '';
 
-  // Linha de cliente visitado
-  const rowCliente = (c, i) => {
-    const nomeBase = c.nome.replace(/\s*\([^)]*\)/, '').trim();
-    const comp = (c.nome.match(/\(([^)]+)\)/) || [])[1] || '';
-    const hora = c.visitadoHoje ? c.horaHoje :
-      (c.ultimaVisita ? new Date(c.ultimaVisita+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '');
-    const obs = c.visitadoHoje ? c.ultimaObs : c.ultimaObs;
-    const bg = i%2===0 ? 'var(--card)' : 'var(--bg)';
-    return '<div style="display:flex;align-items:flex-start;padding:11px 14px;background:'+bg+';border-bottom:1px solid var(--border);gap:10px">' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nomeBase + '</div>' +
-        (comp ? '<div style="font-size:11px;color:var(--text3);margin-top:1px">👤 '+comp+'</div>' : '') +
-        (obs ? '<div style="font-size:12px;color:var(--text2);margin-top:5px;background:var(--bg);padding:5px 8px;border-radius:7px;line-height:1.4">'+obs+'</div>'
-             : '<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic">Sem observações</div>') +
-      '</div>' +
-      '<div style="font-size:13px;font-weight:700;color:var(--orange);flex-shrink:0;padding-top:2px">'+hora+'</div>' +
-    '</div>';
-  };
-
-  // Linha de cliente no painel filtro (status)
-  const rowFiltro = (c, i) => {
-    const nomeBase = c.nome.replace(/\s*\([^)]*\)/, '').trim();
-    const s = getStatus(c);
-    const lv = lastVisitText(c);
-    const cor = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'}[s];
-    const tempo = c.visitadoHoje ? ('✓ '+c.horaHoje) : (s==='purple'?'Prospect':lv.text);
-    const bg = i%2===0 ? 'var(--card)' : 'var(--bg)';
-    return '<div style="display:flex;align-items:center;padding:12px 16px;background:'+bg+';border-bottom:1px solid var(--border);gap:12px" onclick="openPerfil('+c.id+')">' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nomeBase+'</div>' +
-        '<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 '+c.cidade.replace(' - SC','').replace(' - PR','')+'</div>' +
-      '</div>' +
-      '<div style="font-size:13px;font-weight:700;color:'+cor+';flex-shrink:0">'+tempo+'</div>' +
-      '<div style="color:var(--text3);font-size:16px">›</div>' +
-    '</div>';
-  };
-
-  // Seção de cidades
-  let cidadesHTML = '';
-  cidadesOrdenadas.forEach(([cidade, info], cidIdx) => {
-    const vis = info.visitados.length;
-    const tot = info.totalCidade || vis;
-    const pct = tot ? Math.round(vis/tot*100) : 0;
-    const cor = corCidade(vis, tot);
-    const id = 'cidade-' + cidIdx;
-
-    cidadesHTML += '<div>' +
-      '<div style="display:flex;align-items:center;padding:11px 14px;background:var(--card);border-bottom:1px solid var(--border);gap:12px;cursor:pointer" onclick="toggleCidade(\'' + id + '\')">' +
-        '<div style="width:36px;height:36px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏙</div>' +
-        '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:14px;font-weight:600;color:var(--text)">'+cidade+'</div>' +
-          '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+vis+' visitados · '+pct+'% da cidade</div>' +
-          '<div style="height:4px;background:var(--border);border-radius:2px;margin-top:5px"><div style="height:100%;width:'+pct+'%;background:'+cor+';border-radius:2px"></div></div>' +
-        '</div>' +
-        '<div style="text-align:right;flex-shrink:0">' +
-          '<div style="font-size:18px;font-weight:800;color:'+cor+'">'+vis+'</div>' +
-          '<div style="font-size:10px;color:var(--text3)">de '+tot+'</div>' +
-        '</div>' +
-        '<div id="arr-'+id+'" style="color:var(--text3);font-size:16px;flex-shrink:0">›</div>' +
-      '</div>' +
-      '<div id="'+id+'" style="display:none">' +
-        info.visitados.map((c,i) => rowCliente(c,i)).join('') +
+  document.getElementById('rep-body').innerHTML = navegador + renderRepFilterHTML() +
+    '<div style="padding:14px">' +
+      '<div class="rep-cards-grid">' +
+        '<button class="rep-card" onclick="abrirRepDetalhe(\'visitas\')">' +
+          '<div class="rep-card-icon">🤝</div>' +
+          '<div class="rep-card-val" style="color:var(--blue)">'+totalVisitas+'</div>' +
+          '<div class="rep-card-label">Visitas</div>' +
+          '<div class="rep-card-sub">'+filtroLabel+'</div>' +
+        '</button>' +
+        '<button class="rep-card" onclick="abrirRepDetalhe(\'vendas\')">' +
+          '<div class="rep-card-icon">💰</div>' +
+          '<div class="rep-card-val" style="color:var(--green);font-size:'+(totalVendas>=10000?'18':totalVendas>=1000?'20':'26')+'px">'+totalVendasStr+'</div>' +
+          '<div class="rep-card-label">Vendas</div>' +
+          '<div class="rep-card-sub">Total pedidos</div>' +
+        '</button>' +
+        '<button class="rep-card" onclick="abrirRepDetalhe(\'orcamentos\')">' +
+          '<div class="rep-card-icon">📋</div>' +
+          '<div class="rep-card-val" style="color:'+(orcAbertos>0?'var(--orange)':'var(--text)')+'">'+orcTotal+'</div>' +
+          '<div class="rep-card-label">Orçamentos</div>' +
+          '<div class="rep-card-sub">'+orcAbertos+' em aberto</div>' +
+        '</button>' +
+        '<button class="rep-card" onclick="abrirRepDetalhe(\'conversao\')">' +
+          '<div class="rep-card-icon">📊</div>' +
+          '<div class="rep-card-val" style="color:var(--purple)">'+pctConv+'%</div>' +
+          '<div class="rep-card-label">Conversão</div>' +
+          '<div class="rep-card-sub">'+visitados+' / '+clientes.length+' clientes</div>' +
+        '</button>' +
+        '<button class="rep-card rep-card-full" onclick="abrirRepDetalhe(\'empresa\')">' +
+          '<div style="display:flex;align-items:center;gap:12px">' +
+            '<div style="font-size:22px">🏢</div>' +
+            '<div style="flex:1;min-width:0">' +
+              '<div style="font-size:14px;font-weight:700;color:var(--text)">Por Representada</div>' +
+              '<div class="rep-card-sub">'+(topRepNome ? topRepNome+' — R$ '+topRep[1].total.toLocaleString('pt-BR',{minimumFractionDigits:2}) : 'Ver detalhes')+'</div>' +
+            '</div>' +
+            '<div style="color:var(--text3);font-size:20px">›</div>' +
+          '</div>' +
+        '</button>' +
       '</div>' +
     '</div>';
-  });
-
-  if (!cidadesHTML) cidadesHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">Nenhuma visita registrada em '+nomeMesCap+'</div>';
-
-  // Mês de referência para o relatório
-  const nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const nomeMesRef = nomesMes[mesRef];
-
-  // Recontabiliza usando visatasDoRelatorio para períodos passados
-  let visitMesReal = visitMes;
-  let cidadesMapReal = cidadesMap;
-
-  if (!ehMesAtual && visatasDoRelatorio.length > 0) {
-    // Usa dados do Supabase para meses passados
-    visitMesReal = new Set(visatasDoRelatorio.map(v => v.id_cliente)).size;
-    const cidMapSup = {};
-    visatasDoRelatorio.forEach(v => {
-      const c = clientes.find(x => String(x.id) === String(v.id_cliente));
-      if (!c) return;
-      const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
-      if (!cidMapSup[cidade]) cidMapSup[cidade] = { visitados:[], totalCidade:0 };
-      if (!cidMapSup[cidade].visitados.find(x => x.id == c.id)) cidMapSup[cidade].visitados.push(c);
-    });
-    clientes.forEach(c => {
-      const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
-      if (cidMapSup[cidade]) cidMapSup[cidade].totalCidade++;
-    });
-    cidadesMapReal = cidMapSup;
-  }
-
-  const navegadorMes = '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)">' +
-    '<button onclick="navegarMes(-1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text);padding:4px 8px">‹</button>' +
-    '<div style="font-size:15px;font-weight:700;color:var(--text)">' + nomeMesCap + ' ' + anoRef + (ehMesAtual?' <span style=\'font-size:11px;color:var(--green)\'>● atual</span>':'') + '</div>' +
-    '<button onclick="navegarMes(1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text);padding:4px 8px' + (ehMesAtual?';opacity:.3;cursor:default':'') + '"' + (ehMesAtual?' disabled':'') + '>›</button>' +
-  '</div>';
-
-  // Calcula totais do período
-  const totalRPeriodo = visatasDoRelatorio.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
-  const orcAbertos = visatasDoRelatorio.filter(v => v.tipo === 'orcamento' && (!v.status_orcamento || v.status_orcamento === 'aberto'));
-  const totalRStr = totalRPeriodo > 0 ? 'R$ ' + totalRPeriodo.toLocaleString('pt-BR', {minimumFractionDigits:2}) : null;
-
-  document.getElementById('rep-body').innerHTML = navegadorMes +
-    // RESUMO
-    '<div class="card" style="background:var(--card);border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)">' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr">' +
-        '<div style="padding:14px 8px;border-right:1px solid var(--border);text-align:center">' +
-          '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Hoje</div>' +
-          '<div style="font-size:26px;font-weight:800;color:var(--orange)" id="r-hoje-num">'+grpHoje.length+'</div>' +
-          '<div style="font-size:10px;color:var(--text3);margin-top:2px">check-ins</div>' +
-        '</div>' +
-        '<div style="padding:14px 8px;border-right:1px solid var(--border);text-align:center">' +
-          '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Semana</div>' +
-          '<div style="font-size:26px;font-weight:800;color:var(--blue)">'+visitSem+'</div>' +
-          '<div style="font-size:10px;color:var(--text3);margin-top:2px">dom → sáb</div>' +
-        '</div>' +
-        '<div style="padding:14px 8px;text-align:center">' +
-          '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">'+nomeMesCap+'</div>' +
-          '<div style="font-size:26px;font-weight:800;color:var(--green)">'+visitMes+'</div>' +
-          '<div style="font-size:10px;color:var(--text3);margin-top:2px">visitas</div>' +
-        '</div>' +
-      '</div>' +
-      '<div style="padding:12px 14px;border-top:1px solid var(--border)">' +
-        '<div style="display:flex;justify-content:space-between;margin-bottom:6px">' +
-          '<div style="font-size:11px;font-weight:600;color:var(--text2)">Progresso de '+nomeMesCap+' — '+visitMes+' de '+clientes.length+' clientes</div>' +
-          '<div style="font-size:13px;font-weight:800;color:var(--green)">'+pctMes+'%</div>' +
-        '</div>' +
-        '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">' +
-          '<div style="height:100%;width:'+pctMes+'%;background:var(--green);border-radius:4px;transition:width .5s"></div>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-
-    // CARDS EXTRAS: total R$ e orçamentos em aberto
-    (totalRStr || orcAbertos.length > 0 ?
-    '<div style="display:grid;grid-template-columns:'+(totalRStr && orcAbertos.length > 0 ? '1fr 1fr' : '1fr')+';gap:10px;margin-bottom:10px">' +
-      (totalRStr ? '<div class="card" style="background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow);text-align:center"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:4px">💰 Total em Pedidos</div><div class="rep-total-val">'+totalRStr+'</div></div>' : '') +
-      (orcAbertos.length > 0 ? '<div class="card" style="background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow);text-align:center;cursor:pointer" onclick="setRepFiltro(\'mes\',document.getElementById(\'rep-tab-mes\'))"><div style="font-size:10px;font-weight:600;color:var(--orange);text-transform:uppercase;margin-bottom:4px">⚠️ Orç. em Aberto</div><div style="font-size:26px;font-weight:800;color:var(--orange)">'+orcAbertos.length+'</div></div>' : '') +
-    '</div>' : '') +
-
-    // VISITADOS HOJE
-    '<div class="card" style="background:var(--card);border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)">' +
-        '<div style="font-size:14px;font-weight:700;color:var(--text)">⭐ Visitados hoje</div>' +
-        '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:var(--orange-bg);color:var(--orange)">'+grpHoje.length+'</span>' +
-      '</div>' +
-      (grpHoje.length ? grpHoje.map((c,i)=>rowCliente(c,i)).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">Nenhuma visita hoje ainda</div>') +
-    '</div>' +
-
-    // CIDADES DO MÊS
-    '<div class="card" style="background:var(--card);border-radius:16px;overflow:hidden;margin-bottom:80px;box-shadow:var(--shadow)">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)">' +
-        '<div style="font-size:14px;font-weight:700;color:var(--text)">🏙 Cidades — '+nomeMesCap+'</div>' +
-        '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:var(--blue-bg);color:var(--blue)">'+cidadesOrdenadas.length+'</span>' +
-      '</div>' +
-      cidadesHTML +
-    '</div>' +
-
-    // TABELA DE VISITAS
-    (() => {
-      // Filtra visatas de acordo com repFiltroAtual
-      let rows = [];
-      const hj = new Date();
-      if (repFiltroAtual === 'hoje') {
-        const hojStr = hj.toISOString().slice(0,10);
-        rows = visatasDoRelatorio.filter(v => v.data === hojStr);
-        // Complementa com check-ins do dia em memória
-        clientes.filter(c => c.visitadoHoje).forEach(c => {
-          if (!rows.find(r => String(r.id_cliente) === String(c.id))) {
-            rows.push({ id_cliente: String(c.id), nome_cliente: c.nome, cidade: c.cidade, data: hojStr, hora: c.horaHoje, obs: c.ultimaObs, tipo: 'visita', valor_pedido: null });
-          }
-        });
-      } else if (repFiltroAtual === 'semana') {
-        const dSem = hj.getDay();
-        const iniSemTs = new Date(hj); iniSemTs.setDate(hj.getDate() - dSem); iniSemTs.setHours(0,0,0,0);
-        const iniSemStr = iniSemTs.toISOString().slice(0,10);
-        const fimSemStr = hj.toISOString().slice(0,10);
-        rows = visatasDoRelatorio.filter(v => v.data >= iniSemStr && v.data <= fimSemStr);
-      } else {
-        rows = [...visatasDoRelatorio];
-      }
-
-      // Total R$
-      const totalR = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
-      const totalRStr = totalR > 0 ? 'R$ ' + totalR.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
-
-      const tabelaHTML = rows.length ? rows.map((v, i) => {
-        const c = clientes.find(x => String(x.id) === String(v.id_cliente));
-        const nomeBase = (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim();
-        const seg = c ? (SEGMENTO_LABEL[c.segmento] || c.segmento || '—') : '—';
-        const tipo = v.tipo || 'visita';
-        const tipoBadge = tipo === 'orcamento'
-          ? '<span class="rep-tipo-badge" style="background:var(--blue-bg);color:var(--blue)">📋 Orçamento</span>'
-          : tipo === 'remoto'
-          ? '<span class="rep-tipo-badge rep-tipo-remoto">📦 Pedido</span>'
-          : '<span class="rep-tipo-badge rep-tipo-visita">🤝 Visita</span>';
-        const valorStr = v.valor_pedido ? 'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
-        const docLink = v.doc_url ? '<a href="' + v.doc_url + '" target="_blank" style="color:var(--blue);text-decoration:none">📄</a>' : '—';
-        const dataFmt = v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'}) : '';
-        const cidade = (v.cidade || '').replace(' - SC','').replace(' - PR','').trim();
-        const obs = v.obs ? '<span style="font-size:11px;color:var(--text2)">' + v.obs.slice(0,60) + (v.obs.length>60?'…':'') + '</span>' : '<span style="color:var(--text3);font-style:italic">—</span>';
-        return '<tr>' +
-          '<td style="font-weight:600;white-space:nowrap">' + nomeBase + '</td>' +
-          '<td style="white-space:nowrap">' + dataFmt + (v.hora && v.hora !== '00:00' ? ' ' + v.hora : '') + '</td>' +
-          '<td>' + tipoBadge + '</td>' +
-          '<td>' + cidade + '</td>' +
-          '<td>' + seg + '</td>' +
-          '<td>' + obs + '</td>' +
-          '<td style="font-weight:700;color:var(--green);white-space:nowrap">' + valorStr + '</td>' +
-          '<td style="text-align:center">' + docLink + '</td>' +
-        '</tr>';
-      }).join('') : '<tr><td colspan="8" class="rep-tabela-vazia">Nenhum registro neste período</td></tr>';
-
-      const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Esta Semana' : nomeMesCap + ' ' + anoRef;
-      return '<div class="rep-tabela-card">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)">' +
-          '<div style="font-size:14px;font-weight:700;color:var(--text)">📋 Registros — ' + filtroLabel + '</div>' +
-          (totalR > 0 ? '<div class="rep-total-val">' + totalRStr + '</div>' : '') +
-        '</div>' +
-        '<div class="rep-tabela-wrap">' +
-          '<table class="rep-tabela">' +
-            '<thead><tr>' +
-              '<th>Cliente</th><th>Data</th><th>Tipo</th><th>Cidade</th><th>Segmento</th><th>Obs.</th><th>Pedido</th><th>Doc</th>' +
-            '</tr></thead>' +
-            '<tbody>' + tabelaHTML + '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>' +
-
-      '<button class="rep-exportar-btn" onclick="exportarPDF()">' +
-        '📄 Exportar PDF' +
-      '</button>';
-    })();
 }
 
+// ── RELATÓRIO DETALHE ──────────────────────────────────
+function abrirRepDetalhe(tipo) {
+  repDetalheAtual = tipo;
+  repFiltroDropdownOpen = false;
+  const overlay = document.getElementById('rep-detalhe');
+  overlay.classList.add('open');
+  const rows = getRowsFiltradas();
+  const hoje = new Date();
+  const titulos = { visitas:'Visitas', vendas:'Vendas', orcamentos:'Orçamentos', conversao:'Conversão', empresa:'Por Representada' };
+  document.getElementById('rep-detalhe-title').textContent = titulos[tipo] || tipo;
+  let html = '';
 
+  if (tipo === 'visitas') {
+    html = renderDetalheLista(rows);
+  } else if (tipo === 'vendas') {
+    const comPedido = rows.filter(v => parseFloat(v.valor_pedido) > 0).sort((a,b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
+    const totalVendas = comPedido.reduce((s,v) => s + parseFloat(v.valor_pedido), 0);
+    html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
+      '<span style="font-size:13px;color:var(--text2)">' + comPedido.length + ' pedido(s)</span>' +
+      '<span class="rep-total-val" style="font-size:20px">R$ ' + totalVendas.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</span>' +
+    '</div>' + renderDetalheLista(comPedido, true);
+  } else if (tipo === 'orcamentos') {
+    const abertos = rows.filter(v => v.tipo === 'orcamento' && (!v.status_orcamento || v.status_orcamento === 'aberto'));
+    const fechados = rows.filter(v => v.tipo === 'orcamento' && v.status_orcamento === 'fechado');
+    const perdidos = rows.filter(v => v.tipo === 'orcamento' && v.status_orcamento === 'perdido');
+    html = renderGrupoOrcamentos('Em Aberto', abertos, 'var(--orange)') +
+           renderGrupoOrcamentos('Fechados', fechados, 'var(--green)') +
+           renderGrupoOrcamentos('Perdidos', perdidos, 'var(--red)');
+    if (!html) html = '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum orçamento no período</div>';
+  } else if (tipo === 'conversao') {
+    const mesRef = relMes, anoRef = relAno;
+    const visitadosList = clientes.filter(c => {
+      if (repFiltroAtual === 'hoje') return c.visitadoHoje;
+      if (repFiltroAtual === 'semana') {
+        if (c.visitadoHoje) return true;
+        if (!c.ultimaVisita) return false;
+        const d = new Date(c.ultimaVisita + 'T00:00:00');
+        const dSem = hoje.getDay();
+        const iniSem = new Date(hoje); iniSem.setDate(hoje.getDate() - dSem); iniSem.setHours(0,0,0,0);
+        return d >= iniSem;
+      }
+      if (c.visitadoHoje) return true;
+      if (!c.ultimaVisita) return false;
+      const d = new Date(c.ultimaVisita + 'T00:00:00');
+      return d.getMonth() === mesRef && d.getFullYear() === anoRef;
+    });
+    const naoVisitados = clientes.filter(c => !visitadosList.includes(c));
+    const pct = clientes.length ? Math.round(visitadosList.length / clientes.length * 100) : 0;
+    html = '<div style="padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+        '<span style="font-size:13px;color:var(--text2)">' + visitadosList.length + ' de ' + clientes.length + ' clientes</span>' +
+        '<span style="font-size:18px;font-weight:800;color:var(--purple)">' + pct + '%</span>' +
+      '</div>' +
+      '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--purple);border-radius:4px"></div></div>' +
+    '</div>' +
+    '<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase">Visitados (' + visitadosList.length + ')</div>' +
+    visitadosList.map((c,i) => rowClienteDetalhe(c, i, true)).join('') +
+    (naoVisitados.length ? '<div style="padding:8px 14px 4px;margin-top:4px;font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase">Pendentes (' + naoVisitados.length + ')</div>' +
+    naoVisitados.map((c,i) => rowClienteDetalhe(c, i, false)).join('') : '');
+  } else if (tipo === 'empresa') {
+    const grupos = {};
+    rows.forEach(v => {
+      const rid = String(v.representada_id || '');
+      if (!grupos[rid]) grupos[rid] = {count:0,total:0,rows:[]};
+      grupos[rid].count++; grupos[rid].total += parseFloat(v.valor_pedido) || 0;
+      grupos[rid].rows.push(v);
+    });
+    const sorted = Object.entries(grupos).sort((a,b) => b[1].total - a[1].total);
+    html = sorted.map(([rid, g]) => {
+      const rep = representadasCache.find(r => String(r.id) === rid);
+      const nome = rep ? rep.nome : 'Sem empresa';
+      const totalStr = g.total > 0 ? 'R$ ' + g.total.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
+      return '<div style="background:var(--surface);padding:10px 14px;border-bottom:2px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
+          '<div><div style="font-size:14px;font-weight:700;color:var(--text)">🏢 ' + nome + '</div><div style="font-size:12px;color:var(--text3)">' + g.count + ' registro(s)</div></div>' +
+          '<div style="font-size:16px;font-weight:800;color:var(--green)">' + totalStr + '</div>' +
+        '</div>' + renderDetalheLista(g.rows, true);
+    }).join('');
+    if (!html) html = '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum registro no período</div>';
+  }
 
-// Exportar relatório em PDF via jsPDF
-function exportarPDF() {
+  document.getElementById('rep-detalhe-body').innerHTML = html || '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum registro</div>';
+}
+
+function fecharRepDetalhe() {
+  document.getElementById('rep-detalhe').classList.remove('open');
+  repDetalheAtual = null;
+}
+
+function renderDetalheLista(rows, showValor) {
+  if (!rows.length) return '<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">Nenhum registro</div>';
+  return rows.map((v, i) => {
+    const nomeBase = (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim();
+    const dataFmt = v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
+    const hora = v.hora && v.hora !== '00:00' ? ' ' + v.hora : '';
+    const cidade = (v.cidade || '').replace(' - SC','').replace(' - PR','').trim();
+    const obs = v.obs ? v.obs.slice(0,80) + (v.obs.length > 80 ? '…' : '') : '';
+    const bg = i % 2 === 0 ? 'var(--card)' : 'var(--bg)';
+    const tipo = v.tipo || 'visita';
+    const icone = tipo === 'orcamento' ? '📋' : tipo === 'remoto' ? '📦' : '🤝';
+    return '<div style="display:flex;align-items:flex-start;padding:12px 14px;background:' + bg + ';border-bottom:1px solid var(--border);gap:10px" onclick="fecharRepDetalhe();openPerfil(' + v.id_cliente + ')">' +
+      '<div style="font-size:16px;margin-top:1px">' + icone + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:14px;font-weight:600;color:var(--text)">' + nomeBase + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 ' + cidade + ' · ' + dataFmt + hora + '</div>' +
+        (obs ? '<div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.4">' + obs + '</div>' : '') +
+      '</div>' +
+      (showValor && v.valor_pedido ? '<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px">R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function rowClienteDetalhe(c, i, visitado) {
+  const nomeBase = c.nome.replace(/\s*\([^)]*\)/,'').trim();
+  const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+  const bg = i % 2 === 0 ? 'var(--card)' : 'var(--bg)';
+  const ultimaData = c.visitadoHoje ? 'Hoje' : (c.ultimaVisita ? new Date(c.ultimaVisita + 'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—');
+  return '<div style="display:flex;align-items:center;padding:11px 14px;background:' + bg + ';border-bottom:1px solid var(--border);gap:10px" onclick="fecharRepDetalhe();openPerfil(' + c.id + ')">' +
+    '<div style="width:8px;height:8px;border-radius:50%;background:' + (visitado ? 'var(--green)' : 'var(--border)') + ';flex-shrink:0"></div>' +
+    '<div style="flex:1;min-width:0">' +
+      '<div style="font-size:14px;font-weight:600;color:var(--text)">' + nomeBase + '</div>' +
+      '<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 ' + cidade + '</div>' +
+    '</div>' +
+    '<div style="font-size:12px;font-weight:600;color:' + (visitado ? 'var(--green)' : 'var(--text3)') + '">' + ultimaData + '</div>' +
+    '<div style="color:var(--text3);font-size:16px">›</div>' +
+  '</div>';
+}
+
+function renderGrupoOrcamentos(titulo, lista, cor) {
+  if (!lista.length) return '';
+  return '<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:' + cor + ';text-transform:uppercase">' + titulo + ' (' + lista.length + ')</div>' +
+    renderDetalheLista(lista, true);
+}
+
+function exportarPDFDetalhe() {
   if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
-    showToast('⚠️ jsPDF não carregado', true); return;
+    showToast('jsPDF não carregado', true); return;
   }
   const { jsPDF } = window.jspdf || window;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const tipo = repDetalheAtual;
+  const rows = getRowsFiltradas();
   const hoje = new Date();
-  const nomeMes = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', {month:'long'});
-  const titulo = 'Relatório de Visitas — ' + nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1) + ' ' + relAno;
+  const _nm = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  const nomeMesCap = _nm.charAt(0).toUpperCase() + _nm.slice(1);
+  const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Semana' : nomeMesCap;
+  const titulos = { visitas:'Visitas', vendas:'Vendas', orcamentos:'Orcamentos', conversao:'Conversao', empresa:'Por Representada' };
 
-  let rows = [];
-  if (repFiltroAtual === 'hoje') {
-    const hojStr = hoje.toISOString().slice(0,10);
-    rows = visatasDoRelatorio.filter(v => v.data === hojStr);
-    clientes.filter(c => c.visitadoHoje).forEach(c => {
-      if (!rows.find(r => String(r.id_cliente) === String(c.id))) {
-        rows.push({ id_cliente: String(c.id), nome_cliente: c.nome, cidade: c.cidade, data: hojStr, hora: c.horaHoje, obs: c.ultimaObs, tipo: 'visita', valor_pedido: null });
-      }
-    });
-  } else if (repFiltroAtual === 'semana') {
-    const dSem = hoje.getDay();
-    const iniSemTs = new Date(hoje); iniSemTs.setDate(hoje.getDate() - dSem); iniSemTs.setHours(0,0,0,0);
-    rows = visatasDoRelatorio.filter(v => v.data >= iniSemTs.toISOString().slice(0,10) && v.data <= hoje.toISOString().slice(0,10));
+  doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text('Relatorio: ' + (titulos[tipo] || tipo) + ' — ' + filtroLabel, 14, 15);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('Gerado em: ' + hoje.toLocaleDateString('pt-BR') + ' as ' + hoje.toTimeString().slice(0,5), 14, 22);
+
+  let headers, tableRows, startY = 28;
+  if (tipo === 'vendas') {
+    const cp = rows.filter(v => parseFloat(v.valor_pedido) > 0).sort((a,b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
+    const tot = cp.reduce((s,v) => s + parseFloat(v.valor_pedido), 0);
+    doc.setFont('helvetica','bold');
+    doc.text('Total: R$ ' + tot.toLocaleString('pt-BR',{minimumFractionDigits:2}), 14, 28);
+    startY = 34;
+    headers = [['Cliente','Data','Cidade','Pedido R$']];
+    tableRows = cp.map(v => [
+      (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim(),
+      v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR') : '',
+      (v.cidade || '').replace(' - SC','').replace(' - PR','').trim(),
+      'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2})
+    ]);
+  } else if (tipo === 'orcamentos') {
+    const orc = rows.filter(v => v.tipo === 'orcamento');
+    headers = [['Cliente','Data','Status','Valor']];
+    tableRows = orc.map(v => [
+      (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim(),
+      v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR') : '',
+      v.status_orcamento || 'aberto',
+      v.valor_pedido ? 'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'
+    ]);
   } else {
-    rows = [...visatasDoRelatorio];
+    headers = [['Cliente','Data','Tipo','Cidade','Obs.']];
+    tableRows = rows.map(v => [
+      (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim(),
+      v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR') : '',
+      v.tipo || 'visita',
+      (v.cidade || '').replace(' - SC','').replace(' - PR','').trim(),
+      (v.obs || '').slice(0, 50)
+    ]);
   }
-
-  const totalR = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
-
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text(titulo, 14, 15);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Gerado em: ' + hoje.toLocaleDateString('pt-BR') + ' às ' + hoje.toTimeString().slice(0,5), 14, 21);
-  if (totalR > 0) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Total em pedidos: R$ ' + totalR.toLocaleString('pt-BR', {minimumFractionDigits:2}), 14, 27);
-  }
-
-  const headers = [['Cliente', 'Data', 'Tipo', 'Cidade', 'Segmento', 'Obs.', 'Pedido R$']];
-  const body = rows.map(v => {
-    const c = clientes.find(x => String(x.id) === String(v.id_cliente));
-    const nomeBase = (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim();
-    const seg = c ? (SEGMENTO_LABEL[c.segmento] || c.segmento || '') : '';
-    const dataFmt = v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR') : '';
-    const valorStr = v.valor_pedido ? 'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
-    const cidade = (v.cidade || '').replace(' - SC','').replace(' - PR','').trim();
-    return [nomeBase, dataFmt + (v.hora && v.hora !== '00:00' ? ' ' + v.hora : ''), v.tipo === 'remoto' ? 'Remoto' : 'Visita', cidade, seg, (v.obs || '').slice(0,60), valorStr];
-  });
 
   if (typeof doc.autoTable === 'function') {
-    doc.autoTable({ head: headers, body: body, startY: totalR > 0 ? 33 : 27, styles: { fontSize: 8 }, headStyles: { fillColor: [41, 98, 255] } });
+    doc.autoTable({ head: headers, body: tableRows, startY, styles:{fontSize:8}, headStyles:{fillColor:[41,98,255]} });
   } else {
-    // Fallback manual sem autoTable
-    let y = totalR > 0 ? 33 : 27;
+    let y = startY;
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Cliente | Data | Tipo | Cidade | Pedido', 14, y); y += 6;
-    doc.setFont('helvetica', 'normal');
-    body.forEach(row => {
-      doc.text(row[0].slice(0,30) + ' | ' + row[1] + ' | ' + row[2] + ' | ' + row[3].slice(0,15) + ' | ' + row[6], 14, y);
-      y += 5;
-      if (y > 185) { doc.addPage(); y = 14; }
+    tableRows.forEach(row => {
+      doc.text(row.join(' | ').slice(0,110), 14, y); y += 5;
+      if (y > 270) { doc.addPage(); y = 14; }
     });
   }
-
-  const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Semana' : nomeMes.slice(0,3) + relAno;
-  doc.save('relatorio_' + filtroLabel + '.pdf');
+  doc.save('relatorio_' + tipo + '_' + filtroLabel.replace(/[\s/]/g, '_') + '.pdf');
 }
-
-// Painel filtro (clique nos números do header)
-
-
-
-
 
 // ── MODAL ──────────────────────────────────────────────
 function openModal(id) {
@@ -3128,6 +3117,9 @@ let relMes = new Date().getMonth();
 let relAno = new Date().getFullYear();
 let visatasDoRelatorio = [];
 let repFiltroAtual = 'mes'; // 'mes' | 'semana' | 'hoje'
+let repRepresentadasFiltro = []; // [] = todas
+let repFiltroDropdownOpen = false;
+let repDetalheAtual = null;
 
 function setRepFiltro(filtro, btn) {
   repFiltroAtual = filtro;
@@ -4775,6 +4767,7 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('screen-empresas')?.style.display === 'flex') { closeEmpresas(); return; }
     if (document.getElementById('screen-segmentos')?.style.display === 'flex') { closeSegmentos(); return; }
     if (document.getElementById('screen-importar')?.style.display === 'flex') { closeImportar(); return; }
+    if (document.getElementById('rep-detalhe')?.classList.contains('open')) { fecharRepDetalhe(); return; }
   }
 });
 
