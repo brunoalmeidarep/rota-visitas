@@ -1540,29 +1540,53 @@ function _mapearCliente(c) {
 async function loadClientes() {
   const listEl = document.getElementById('list');
   if (listEl) listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando carteira...</div>';
-  if (!currentUser) return;
+  if (!currentUser) { console.warn('[loadClientes] sem currentUser'); return; }
+
+  console.group('[loadClientes] diagnóstico');
+  console.log('auth.uid (currentUser.id):', currentUser.id);
+  console.log('email:', currentUser.email);
+
   try {
+    // ── QUERY PRINCIPAL: filtra por rep_id = auth.uid() ──
+    console.log('query: clientes WHERE rep_id =', currentUser.id);
     const { data, error } = await sb.from('clientes').select('*').eq('rep_id', currentUser.id).order('nome');
+    console.log('resultado principal → data:', data?.length ?? 'null', '| error:', error);
+    if (error) { console.error('erro na query principal:', error); }
+
+    // ── DIAGNÓSTICO: total sem filtro ──
+    const { count: totalSemFiltro, error: eTot } = await sb.from('clientes').select('*', { count: 'exact', head: true });
+    console.log('total de clientes na tabela (sem filtro):', totalSemFiltro, '| error:', eTot);
+
+    // ── DIAGNÓSTICO: clientes com rep_id nulo ──
+    const { count: nullCount, error: eNull } = await sb.from('clientes').select('*', { count: 'exact', head: true }).is('rep_id', null);
+    console.log('clientes com rep_id IS NULL:', nullCount, '| error:', eNull);
+
+    // ── DIAGNÓSTICO: primeiro cliente da tabela (sem filtro) para ver o rep_id real ──
+    const { data: amostra, error: eAm } = await sb.from('clientes').select('id,nome,rep_id').limit(3);
+    console.log('amostra (3 primeiros clientes sem filtro):', amostra, '| error:', eAm);
+
     if (error) throw error;
 
-    // Se sem resultados, verifica se há clientes com rep_id nulo e migra
-    if (!data || !data.length) {
-      const { count } = await sb.from('clientes').select('*', { count: 'exact', head: true }).is('rep_id', null);
-      if (count > 0) {
-        if (listEl) listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Corrigindo carteira...</div>';
-        await sb.from('clientes').update({ rep_id: currentUser.id }).is('rep_id', null);
-        const { data: data2 } = await sb.from('clientes').select('*').eq('rep_id', currentUser.id).order('nome');
-        if (data2 && data2.length) {
-          clientes = data2.map(_mapearCliente);
-          restaurarCheckinsDoDia();
-          renderList();
-          if (gmap) renderMapMarkers();
-          showToast(`✓ Carteira restaurada: ${clientes.length} clientes`);
-          return;
-        }
+    // ── AUTO-MIGRAÇÃO: rep_id nulo → currentUser.id ──
+    if ((!data || !data.length) && nullCount > 0) {
+      console.log('tentando migrar', nullCount, 'clientes com rep_id nulo...');
+      if (listEl) listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Corrigindo carteira...</div>';
+      const { error: eUpd } = await sb.from('clientes').update({ rep_id: currentUser.id }).is('rep_id', null);
+      console.log('update rep_id nulo → result error:', eUpd);
+      const { data: data2 } = await sb.from('clientes').select('*').eq('rep_id', currentUser.id).order('nome');
+      console.log('após migração → data2:', data2?.length);
+      if (data2 && data2.length) {
+        clientes = data2.map(_mapearCliente);
+        restaurarCheckinsDoDia();
+        renderList();
+        if (gmap) renderMapMarkers();
+        showToast(`✓ Carteira restaurada: ${clientes.length} clientes`);
+        console.groupEnd();
+        return;
       }
     }
 
+    console.groupEnd();
     clientes = (data || []).map(_mapearCliente);
     restaurarCheckinsDoDia();
     if (!clientes.length) {
@@ -1578,7 +1602,8 @@ async function loadClientes() {
     renderList();
     if (gmap) renderMapMarkers();
   } catch(e) {
-    console.log('loadClientes erro:', e);
+    console.error('[loadClientes] erro catch:', e);
+    console.groupEnd();
     if (listEl) listEl.innerHTML = '<div class="empty">❌ Erro ao carregar clientes.</div>';
   }
 }
