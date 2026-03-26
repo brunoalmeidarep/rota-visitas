@@ -64,20 +64,29 @@ App de rota de visitas comerciais para representante Menegotti (Bruno Almeida, P
 - PWA instalável no iPhone
 - Segmento de cliente (mat. construção, construtora, tintas, distribuidora)
 
-## Desktop (⚠️ em ajuste)
-- Layout 3 colunas: sidebar lista | mapa central | painel detalhe
-- Abas: Mapa & Lista | Planner | Tarefas | Relatório
-- Sistema unificado: dtInit, dtRenderList, dtSelectCliente, dtMostrarDetalhe, dtCheckin, dtTab
-- Contadores no header: Carteira | Hoje | 1m | 2m | +2m | Novos
-- Lembrete editável e campo de obs no painel detalhe
-- Relatório desktop com grid 3 colunas
-- **PRÓXIMO PASSO:** separar em desktop.html independente
+## Desktop (v2.0 — implementação isolada)
+- Arquivos: `desktop.html` + `desktop.css` + `desktop.js` (totalmente independentes do mobile)
+- Layout: header fixo | tabs | 3 colunas (sidebar 280px | mapa central | detalhe 360px)
+- Header: logo, data, busca global, contadores clicáveis (Carteira/Hoje/≤1m/1–2m/+2m/Novos), + Novo, Sair
+- Abas: Mapa & Lista | Relatório | Tarefas | Admin (admin só visível para ADMIN_EMAIL)
+- Sidebar: filter pills de status + filtro cidade + lista de clientes agrupada por status
+- Mapa Google Maps com pins coloridos por status de visita
+- Painel detalhe: info do cliente, check-in com obs + valor, lembrete fixo editável (Supabase), histórico (Supabase)
+- Relatório: grid 3 colunas, navegação de mês, filtros Hoje/Semana/Mês, progresso carteira, top cidades
+- Tarefas: localStorage por dia, add/toggle/delete
+- Admin: lista representantes, criar novo representante
+- Cadastro: modal com GPS + ViaCEP + segmento pills
+- Clientes carregados do Supabase (tabela `clientes`), não do array hardcoded
+- **PRÓXIMOS PASSOS:** Planner desktop, importação XLSX, relatório por representada
 
 ---
 
 ## Arquivos no repositório
 ```
-index.html       — app principal mobile (~4500 linhas)
+index.html       — app principal mobile (~5300 linhas) — NÃO EDITAR
+desktop.html     — app desktop (252 linhas, apenas estrutura HTML)
+desktop.css      — estilos do desktop (577 linhas)
+desktop.js       — lógica do desktop (965 linhas)
 manifest.json    — PWA manifest
 sw.js            — service worker (sem cache, passa tudo direto)
 icon-192.png

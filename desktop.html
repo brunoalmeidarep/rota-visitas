@@ -3,617 +3,250 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>Minha Rota RP — Desktop</title>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
 
   <!-- Fontes -->
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <style>
-    /* ── RESET ──────────────────────────────────────── */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    /* ── TEMA ───────────────────────────────────────── */
-    :root {
-      --bg: #f2f2f7;
-      --surface: #ffffff;
-      --border: #e5e7eb;
-      --text: #111111;
-      --text2: #555555;
-      --text3: #999999;
-      --blue: #007AFF;
-      --green: #34C759;
-      --orange: #FF9500;
-      --red: #FF3B30;
-      --purple: #AF52DE;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1c1c1e;
-        --surface: #2c2c2e;
-        --border: #3a3a3c;
-        --text: #ffffff;
-        --text2: #ebebf5bb;
-        --text3: #ebebf566;
-      }
-    }
-
-    html, body { height: 100%; font-family: 'IBM Plex Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
-
-    /* ── LOGIN ──────────────────────────────────────── */
-    #screen-login {
-      position: fixed; inset: 0; z-index: 999;
-      background: #111;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .login-box {
-      width: 360px;
-      background: rgba(255,255,255,.07);
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 20px;
-      padding: 36px 32px;
-      display: flex; flex-direction: column; gap: 14px;
-    }
-    .login-titulo { font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 4px; }
-    .login-sub    { font-size: 12px; color: rgba(255,255,255,.4); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
-    .login-input  {
-      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
-      border-radius: 10px; padding: 12px 16px; color: #fff; font-size: 14px;
-      font-family: inherit; outline: none; width: 100%;
-    }
-    .login-input::placeholder { color: rgba(255,255,255,.3); }
-    .login-btn {
-      background: #fff; color: #111; border: none; border-radius: 10px;
-      padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
-    }
-    .login-btn:disabled { opacity: .5; }
-    .login-erro { font-size: 13px; color: #ff6b6b; text-align: center; min-height: 18px; }
-    .login-versao { font-size: 11px; color: rgba(255,255,255,.2); text-align: center; }
-
-    /* ── LAYOUT PRINCIPAL ───────────────────────────── */
-    #app {
-      display: none;
-      flex-direction: column;
-      height: 100vh;
-      width: 100%;
-    }
-
-    /* ── HEADER ─────────────────────────────────────── */
-    #header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 20px;
-      height: 52px;
-      display: flex; align-items: center; justify-content: space-between;
-      flex-shrink: 0;
-    }
-    #header-title { font-size: 17px; font-weight: 800; letter-spacing: -.3px; }
-    #header-user  { font-size: 13px; color: var(--text3); }
-    #btn-logout   { background: none; border: none; color: var(--red); font-size: 13px; cursor: pointer; font-family: inherit; }
-
-    /* ── TABS ───────────────────────────────────────── */
-    #tabs {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 20px;
-      display: flex; gap: 4px;
-      flex-shrink: 0;
-    }
-    .tab {
-      background: none; border: none; padding: 12px 20px;
-      font-family: inherit; font-size: 14px; font-weight: 600;
-      color: var(--text3); cursor: pointer;
-      border-bottom: 2px solid transparent; transition: .2s;
-    }
-    .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
-    .tab:hover  { color: var(--text); }
-
-    /* ── CONTEÚDO ───────────────────────────────────── */
-    #content { flex: 1; display: flex; overflow: hidden; min-height: 0; }
-
-    /* ── SIDEBAR ────────────────────────────────────── */
-    #sidebar {
-      width: 300px; flex-shrink: 0;
-      display: flex; flex-direction: column;
-      border-right: 1px solid var(--border); overflow: hidden;
-    }
-    #search-wrap {
-      padding: 10px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-      background: var(--surface);
-    }
-    #search-box {
-      background: var(--bg); border-radius: 10px; padding: 7px 12px;
-      display: flex; align-items: center; gap: 7px;
-    }
-    #search-box input {
-      flex: 1; background: none; border: none; outline: none;
-      font-size: 13px; color: var(--text); font-family: inherit;
-    }
-    #search-box input::placeholder { color: var(--text3); }
-    #client-list { flex: 1; overflow-y: auto; }
-
-    /* ── MAPA ───────────────────────────────────────── */
-    #map-wrap { flex: 1; min-width: 0; overflow: hidden; position: relative; display: flex; flex-direction: column; }
-    #map      { flex: 1; width: 100%; height: 100%; }
-
-    /* ── DETALHE ────────────────────────────────────── */
-    #detail {
-      width: 340px; flex-shrink: 0;
-      display: flex; flex-direction: column;
-      border-left: 1px solid var(--border); overflow-y: auto;
-      background: var(--surface);
-    }
-    #detail-empty {
-      flex: 1; display: flex; align-items: center; justify-content: center;
-      font-size: 14px; color: var(--text3); text-align: center; padding: 20px;
-    }
-
-    /* ── RELATÓRIO ──────────────────────────────────── */
-    #report { flex: 1; overflow-y: auto; padding: 20px; display: none; background: var(--bg); }
-
-    /* ── TOAST ──────────────────────────────────────── */
-    #toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: #111; color: #fff; padding: 10px 20px; border-radius: 20px;
-      font-size: 13px; font-weight: 500; opacity: 0; transition: all .3s; z-index: 999;
-      pointer-events: none; white-space: nowrap;
-    }
-    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    @media (prefers-color-scheme: dark) { #toast { background: #fff; color: #111; } }
-  </style>
+  <!-- Estilos -->
+  <link rel="stylesheet" href="desktop.css">
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- ── LOGIN ──────────────────────────────────────────────────────── -->
 <div id="screen-login">
   <div class="login-box">
-    <div class="login-titulo">Minha Rota RP</div>
-    <div class="login-sub">Gestão comercial</div>
-    <input class="login-input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="email">
-    <input class="login-input" id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password"
+    <div class="login-logo">Minha Rota RP</div>
+    <div class="login-sub">Gestão Comercial · Desktop</div>
+    <input class="login-input" id="login-email" type="email"
+      placeholder="seu@email.com" autocomplete="email">
+    <input class="login-input" id="login-senha" type="password"
+      placeholder="Senha" autocomplete="current-password"
       onkeydown="if(event.key==='Enter') fazerLogin()">
     <div class="login-erro" id="login-erro"></div>
     <button class="login-btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
-    <div class="login-versao">v1.0 desktop</div>
+    <div class="login-versao">v2.0 desktop · Mundo do Rep</div>
   </div>
 </div>
 
-<!-- APP -->
+<!-- ── APP ────────────────────────────────────────────────────────── -->
 <div id="app">
 
-  <!-- Header -->
-  <div id="header">
-    <div id="header-title">Minha Rota RP</div>
-    <div style="display:flex;align-items:center;gap:16px">
-      <span id="header-user"></span>
-      <button id="btn-logout" onclick="fazerLogout()">Sair</button>
+  <!-- HEADER -->
+  <header id="header">
+    <div id="header-logo">Minha Rota RP</div>
+    <div id="header-date"></div>
+
+    <div id="header-search">
+      <span style="font-size:13px;color:var(--text3)">🔍</span>
+      <input type="search" id="search-input" placeholder="Buscar cliente ou cidade...">
     </div>
-  </div>
 
-  <!-- Tabs -->
-  <div id="tabs">
-    <button class="tab active" onclick="showTab('mapa')">🗺 Mapa</button>
-    <button class="tab"        onclick="showTab('relatorio')">📊 Relatório</button>
-  </div>
+    <div id="header-counters">
+      <!-- renderizado por renderCounters() -->
+    </div>
 
-  <!-- Conteúdo -->
-  <div id="content">
+    <div id="header-right">
+      <span id="header-user"></span>
+      <button class="hdr-btn primary" onclick="openCadastro()">+ Novo cliente</button>
+      <button class="hdr-btn danger" onclick="fazerLogout()">Sair</button>
+    </div>
+  </header>
 
-    <!-- Sidebar -->
-    <div id="sidebar">
-      <div id="search-wrap">
-        <div id="search-box">
-          <span style="font-size:13px">🔍</span>
-          <input type="search" id="search-input" placeholder="Buscar cliente..." oninput="renderList()">
+  <!-- TABS -->
+  <nav id="tab-bar">
+    <button class="tab-btn active" data-tab="mapa"      onclick="showTab('mapa')">🗺 Mapa &amp; Lista</button>
+    <button class="tab-btn"        data-tab="relatorio" onclick="showTab('relatorio')">📊 Relatório</button>
+    <button class="tab-btn"        data-tab="tarefas"   onclick="showTab('tarefas'); renderTarefas()">📋 Tarefas</button>
+    <button class="tab-btn"        data-tab="admin"     id="tab-admin-btn"
+      onclick="showTab('admin'); carregarReps()" style="display:none">⚙ Admin</button>
+  </nav>
+
+  <!-- CONTEÚDO -->
+  <div id="main">
+
+    <!-- ── TAB MAPA & LISTA ──────────────────────────────────────── -->
+    <div id="tab-mapa" class="tab-pane active">
+
+      <!-- Sidebar esquerda -->
+      <aside id="sidebar">
+        <div id="filter-bar">
+          <button class="filter-pill active" onclick="setFilter('all')">Todos</button>
+          <button class="filter-pill f-today"  onclick="setFilter('today')">Hoje</button>
+          <button class="filter-pill f-green"  onclick="setFilter('green')">≤1m</button>
+          <button class="filter-pill f-blue"   onclick="setFilter('blue')">1–2m</button>
+          <button class="filter-pill f-red"    onclick="setFilter('red')">+2m</button>
+          <button class="filter-pill f-purple" onclick="setFilter('purple')">Novos</button>
+        </div>
+        <div id="city-filter-wrap">
+          <select id="city-select">
+            <option value="">Todas as cidades</option>
+          </select>
+        </div>
+        <div id="client-list">
+          <div class="list-empty">Carregando...</div>
+        </div>
+      </aside>
+
+      <!-- Mapa central -->
+      <div id="map-wrap">
+        <div id="map"></div>
+        <div id="map-overlay">Carregando mapa...</div>
+      </div>
+
+      <!-- Painel de detalhe -->
+      <aside id="detail-panel">
+        <div id="detail-empty">
+          <div class="empty-icon">👈</div>
+          <p>Selecione um cliente<br>na lista ou no mapa<br>para ver os detalhes</p>
+        </div>
+        <div id="detail-body"></div>
+      </aside>
+
+    </div><!-- /tab-mapa -->
+
+    <!-- ── TAB RELATÓRIO ─────────────────────────────────────────── -->
+    <div id="tab-relatorio" class="tab-pane" style="flex-direction:column">
+        <div id="rep-nav">
+          <button class="rep-nav-btn" id="rep-nav-prev" onclick="navegarMes(-1)">‹</button>
+          <div id="rep-mes-titulo" style="flex:1;text-align:center;font-size:15px;font-weight:700"></div>
+          <button class="rep-nav-btn" id="rep-nav-next" onclick="navegarMes(1)">›</button>
+          <div class="rep-filtro-tabs">
+            <button class="rep-ftab" onclick="setRelFiltro('hoje', this)">Hoje</button>
+            <button class="rep-ftab" onclick="setRelFiltro('semana', this)">Semana</button>
+            <button class="rep-ftab active" onclick="setRelFiltro('mes', this)">Mês</button>
+          </div>
+        </div>
+        <div id="rep-body"></div>
+    </div><!-- /tab-relatorio -->
+
+    <!-- ── TAB TAREFAS ───────────────────────────────────────────── -->
+    <div id="tab-tarefas" class="tab-pane">
+      <div id="tarefas-header">
+        <h2>📋 Tarefas do dia</h2>
+        <p id="tarefas-date"></p>
+      </div>
+      <div id="tarefas-input-wrap">
+        <input type="text" id="tarefas-input" placeholder="Nova tarefa... (Enter para adicionar)">
+        <button id="tarefas-add-btn" onclick="adicionarTarefa()">Adicionar</button>
+      </div>
+      <div id="tarefas-list"></div>
+    </div><!-- /tab-tarefas -->
+
+    <!-- ── TAB ADMIN ─────────────────────────────────────────────── -->
+    <div id="tab-admin" class="tab-pane">
+      <div class="admin-section">
+        <h3>Representantes</h3>
+        <div id="reps-list"><div class="list-empty">Carregando...</div></div>
+      </div>
+      <div class="admin-section">
+        <h3>Criar representante</h3>
+        <div class="admin-form">
+          <input class="admin-input" id="admin-nome"  type="text"     placeholder="Nome completo">
+          <input class="admin-input" id="admin-email" type="email"    placeholder="E-mail">
+          <input class="admin-input" id="admin-senha" type="password" placeholder="Senha inicial">
+          <button class="admin-submit" id="admin-submit" onclick="criarRep()">Criar representante</button>
+          <div class="admin-msg" id="admin-msg"></div>
         </div>
       </div>
-      <div id="client-list">
-        <!-- preenchido por renderList() -->
+    </div><!-- /tab-admin -->
+
+  </div><!-- /main -->
+
+</div><!-- /app -->
+
+<!-- ── MODAL CADASTRO DE CLIENTE ──────────────────────────────────── -->
+<div id="modal-overlay" onclick="if(event.target===this) closeCadastro()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeCadastro()">×</button>
+    <div class="modal-title">Novo cliente</div>
+
+    <form id="cad-form" onsubmit="return false">
+
+      <div class="campo-row">
+        <div>
+          <label class="campo-label">Nome / Fantasia *</label>
+          <input class="campo-input" id="cad-nome" type="text" placeholder="Ex: Julio Mat. Construção" required>
+        </div>
+        <div>
+          <label class="campo-label">Razão social</label>
+          <input class="campo-input" id="cad-razao" type="text" placeholder="Razão social completa">
+        </div>
       </div>
-    </div>
 
-    <!-- Mapa -->
-    <div id="map-wrap">
-      <div id="map"></div>
-    </div>
+      <div class="campo-row">
+        <div>
+          <label class="campo-label">Comprador / Contato</label>
+          <input class="campo-input" id="cad-comprador" type="text" placeholder="Nome do comprador">
+        </div>
+        <div>
+          <label class="campo-label">Fantasia (apelido)</label>
+          <input class="campo-input" id="cad-fantasia" type="text" placeholder="Apelido da loja">
+        </div>
+      </div>
 
-    <!-- Detalhe -->
-    <div id="detail">
-      <div id="detail-empty">Selecione um cliente<br>para ver os detalhes</div>
-    </div>
+      <div class="campo-row">
+        <div>
+          <label class="campo-label">CNPJ</label>
+          <input class="campo-input" id="cad-cnpj" type="text" placeholder="00.000.000/0001-00">
+        </div>
+        <div>
+          <label class="campo-label">Telefone / WhatsApp</label>
+          <input class="campo-input" id="cad-tel" type="tel" placeholder="(47) 99999-9999">
+        </div>
+      </div>
 
+      <div>
+        <label class="campo-label">Segmento</label>
+        <div class="seg-pills" id="seg-pills-wrap"></div>
+      </div>
+
+      <div>
+        <label class="campo-label">CEP</label>
+        <div class="campo-cep-row">
+          <input class="campo-input" id="cad-cep" type="text" placeholder="00000-000" maxlength="9">
+          <button type="button" class="btn-buscar-cep" id="btn-buscar-cep" onclick="buscarCEP()">Buscar</button>
+        </div>
+        <div class="cep-status" id="cad-cep-status"></div>
+      </div>
+
+      <div>
+        <label class="campo-label">Endereço</label>
+        <input class="campo-input" id="cad-endereco" type="text" placeholder="Rua, número, bairro">
+      </div>
+
+      <div>
+        <label class="campo-label">Cidade *</label>
+        <input class="campo-input" id="cad-cidade" type="text" placeholder="Ex: Jaraguá do Sul - SC">
+      </div>
+
+      <div>
+        <label class="campo-label">Localização GPS</label>
+        <button type="button" class="btn-gps" id="btn-cad-gps" onclick="usarGPS()">
+          📍 Usar localização atual
+        </button>
+        <div class="gps-status" id="cad-gps-status"></div>
+      </div>
+
+    </form>
+
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="closeCadastro()">Cancelar</button>
+      <button class="btn-salvar-modal" id="btn-salvar-cad" onclick="salvarCliente()">Salvar cliente</button>
+    </div>
   </div>
-
-  <!-- Relatório (oculto por padrão) -->
-  <div id="report">
-    <!-- preenchido por renderReport() -->
-  </div>
-
 </div>
 
+<!-- TOAST -->
 <div id="toast"></div>
 
-<script>
-// ── SUPABASE ──────────────────────────────────────────────
-const { createClient } = window.supabase;
-const sb = createClient(
-  'https://fiwpmhrjbovnazagjcjf.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpd3BtaHJqYm92bmF6YWdqY2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNDI1MzAsImV4cCI6MjA4OTcxODUzMH0.pHgiICZzqoeLq5uez8_3WwfurHuouV_Cp9kz1ThRsFs'
-);
+<!-- JS principal -->
+<script src="desktop.js"></script>
 
-// ── ESTADO ────────────────────────────────────────────────
-let currentUser = null;
-let clientes    = [];
-let gmap        = null;
-let activeId    = null;
-
-// ── GOOGLE MAPS ───────────────────────────────────────────
-window.initMap = function () {
-  gmap = new google.maps.Map(document.getElementById('map'), {
-    center: { lat: -26.5, lng: -49.0 },
-    zoom: 8,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: false,
-    styles: [
-      { elementType: 'geometry',            stylers: [{ color: '#1a1a1e' }] },
-      { elementType: 'labels.text.stroke',  stylers: [{ color: '#1a1a1e' }] },
-      { elementType: 'labels.text.fill',    stylers: [{ color: '#888888' }] },
-      { featureType: 'road', elementType: 'geometry',          stylers: [{ color: '#2d2d32' }] },
-      { featureType: 'road', elementType: 'labels.text.fill',  stylers: [{ color: '#666666' }] },
-      { featureType: 'water', elementType: 'geometry',         stylers: [{ color: '#111118' }] },
-      { featureType: 'poi',     stylers: [{ visibility: 'off' }] },
-      { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-      { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#aaaaaa' }] }
-    ]
-  });
-  if (clientes.length > 0) renderMapMarkers();
-};
-
-(function loadMapsScript() {
-  const s = document.createElement('script');
-  s.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&callback=initMap&loading=async';
-  s.async = true; s.defer = true;
-  document.head.appendChild(s);
-})();
-
-// ── AUTH ──────────────────────────────────────────────────
-async function iniciarApp() {
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) {
-      currentUser = session.user;
-      mostrarApp();
-    } else {
-      mostrarLogin();
-    }
-  } catch(e) {
-    mostrarLogin();
-  }
-
-  sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-      currentUser = session.user;
-      mostrarApp();
-    } else if (event === 'SIGNED_OUT') {
-      currentUser = null;
-      mostrarLogin();
-    }
-  });
-}
-
-async function fazerLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const senha = document.getElementById('login-senha').value;
-  const btn   = document.getElementById('btn-login');
-  const erro  = document.getElementById('login-erro');
-  if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha.'; return; }
-  btn.disabled = true; btn.textContent = 'Entrando...'; erro.textContent = '';
-  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
-  if (error) {
-    erro.textContent = 'E-mail ou senha incorretos.';
-    btn.disabled = false; btn.textContent = 'Entrar';
-  }
-}
-
-function fazerLogout() { sb.auth.signOut(); }
-
-function mostrarLogin() {
-  document.getElementById('screen-login').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-}
-
-function mostrarApp() {
-  document.getElementById('screen-login').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('header-user').textContent = currentUser?.email ?? '';
-  loadDemo();
-}
-
-// ── TABS ──────────────────────────────────────────────────
-function showTab(tab) {
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  const isRelatorio = tab === 'relatorio';
-  document.getElementById('content').style.display = isRelatorio ? 'none' : 'flex';
-  document.getElementById('report').style.display  = isRelatorio ? 'block' : 'none';
-  if (isRelatorio) renderReport();
-}
-
-// ── LISTA ─────────────────────────────────────────────────
-function renderList() {
-  const q    = document.getElementById('search-input').value.toLowerCase();
-  const list = document.getElementById('client-list');
-  const filtered = clientes.filter(c =>
-    !q || c.nome.toLowerCase().includes(q) || (c.cidade || '').toLowerCase().includes(q)
-  );
-
-  if (!filtered.length) {
-    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Nenhum cliente encontrado</div>';
-    return;
-  }
-
-  list.innerHTML = filtered.map(c => {
-    const status = getStatus(c);
-    const cores  = { today: '#34C759', green: '#007AFF', blue: '#FF9500', red: '#FF3B30', purple: '#AF52DE' };
-    const cor    = cores[status] || '#999';
-    return `<div onclick="selectCliente(${c.id})" style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:10px;align-items:center;transition:.1s${activeId==c.id?' background:var(--bg)':''}" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=activeId==${c.id}?'var(--bg)':''">
-      <div style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">${c.cidade || ''}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function getStatus(c) {
-  if (!c.ultimaVisita) return 'purple';
-  const dias = Math.floor((new Date() - new Date(c.ultimaVisita)) / 86400000);
-  if (c.visitadoHoje) return 'today';
-  if (dias <= 30)  return 'green';
-  if (dias <= 60)  return 'blue';
-  return 'red';
-}
-
-// ── SELECIONAR CLIENTE ────────────────────────────────────
-function selectCliente(id) {
-  activeId = id;
-  const c = clientes.find(x => x.id === id);
-  if (!c) return;
-  renderList();
-  renderDetail(c);
-  if (gmap && c.lat && c.lng) {
-    gmap.panTo({ lat: c.lat, lng: c.lng });
-    gmap.setZoom(14);
-  }
-}
-
-function renderDetail(c) {
-  const status = getStatus(c);
-  const labels = { today:'Visitado hoje', green:'Até 1 mês', blue:'1–2 meses', red:'Mais de 2 meses', purple:'Novo' };
-  const cores  = { today:'#34C759', green:'#007AFF', blue:'#FF9500', red:'#FF3B30', purple:'#AF52DE' };
-  const detail = document.getElementById('detail');
-  detail.innerHTML = `
-    <div style="padding:16px;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;color:${cores[status]};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${labels[status]}</div>
-      <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:3px">${c.nome}</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:3px">${c.cnpj || ''}</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">📍 ${c.cidade || ''}</div>
-      <div style="display:flex;gap:8px">
-        <button onclick="doCheckin(${c.id})" ${c.visitadoHoje?'disabled':''} style="flex:1;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;opacity:${c.visitadoHoje?'.5':'1'}">
-          ${c.visitadoHoje ? '✓ Visitado às '+c.horaHoje : '✓ Check-in'}
-        </button>
-        <button onclick="abrirMaps(${c.id})" style="background:var(--bg);border:none;border-radius:10px;padding:10px 14px;font-size:16px;cursor:pointer">↗</button>
-      </div>
-    </div>
-    <div style="padding:14px 16px">
-      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Endereço</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.5">${c.endereco || '—'}</div>
-      ${c.ultimaVisita ? `
-      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Última visita</div>
-      <div style="font-size:13px;color:var(--text2)">${formatDate(c.ultimaVisita)}</div>
-      ${c.ultimaObs ? `<div style="font-size:13px;color:var(--text);margin-top:6px;background:var(--bg);padding:8px 10px;border-radius:8px;line-height:1.4">${c.ultimaObs}</div>` : ''}
-      ` : ''}
-    </div>`;
-}
-
-function formatDate(iso) {
-  if (!iso) return '—';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-
-function abrirMaps(id) {
-  const c = clientes.find(x => x.id === id);
-  if (!c) return;
-  window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.endereco + ', ' + c.cidade), '_blank');
-}
-
-// ── CHECK-IN ──────────────────────────────────────────────
-async function doCheckin(id) {
-  const c = clientes.find(x => x.id === id);
-  if (!c || c.visitadoHoje) return;
-  const hora  = new Date().toTimeString().slice(0, 5);
-  const data  = new Date().toISOString().slice(0, 10);
-  c.visitadoHoje = true; c.horaHoje = hora;
-  renderDetail(c); renderList();
-  if (currentUser) {
-    try {
-      await sb.from('visitas').insert({ id_cliente: String(c.id), nome_cliente: c.nome, cidade: c.cidade, data, hora, obs: '', rep_id: currentUser.id });
-    } catch(e) { console.log('Erro ao salvar check-in:', e); }
-  }
-  showToast('✓ Check-in salvo — ' + hora);
-}
-
-// ── MAPA ──────────────────────────────────────────────────
-function renderMapMarkers() {
-  if (!gmap) return;
-  const cores = { today: '#fbbf24', green: '#4ade80', blue: '#60a5fa', red: '#f87171', purple: '#c084fc' };
-  clientes.filter(c => c.lat && c.lng).forEach(c => {
-    const status = getStatus(c);
-    const marker = new google.maps.Marker({
-      position: { lat: c.lat, lng: c.lng },
-      map: gmap,
-      title: c.nome,
-      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: cores[status], fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5 }
-    });
-    marker.addListener('click', () => selectCliente(c.id));
-  });
-}
-
-// ── RELATÓRIO ─────────────────────────────────────────────
-function renderReport() {
-  const hoje = new Date();
-  const total   = clientes.length;
-  const visitadosHoje = clientes.filter(c => c.visitadoHoje).length;
-  const ate1mes = clientes.filter(c => { if (!c.ultimaVisita) return false; return Math.floor((hoje - new Date(c.ultimaVisita)) / 86400000) <= 30; }).length;
-  const ate2mes = clientes.filter(c => { if (!c.ultimaVisita) return false; const d = Math.floor((hoje - new Date(c.ultimaVisita)) / 86400000); return d > 30 && d <= 60; }).length;
-  const atrasados = clientes.filter(c => { if (!c.ultimaVisita) return false; return Math.floor((hoje - new Date(c.ultimaVisita)) / 86400000) > 60; }).length;
-  const novos    = clientes.filter(c => !c.ultimaVisita).length;
-
-  document.getElementById('report').innerHTML = `
-    <div style="max-width:900px">
-      <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">📊 Relatório</h2>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
-        ${[
-          ['Total', total, '#007AFF'],
-          ['Hoje', visitadosHoje, '#34C759'],
-          ['Até 1 mês', ate1mes, '#007AFF'],
-          ['1–2 meses', ate2mes, '#FF9500'],
-          ['+2 meses', atrasados, '#FF3B30'],
-          ['Novos', novos, '#AF52DE'],
-        ].map(([l, v, cor]) => `
-          <div style="background:var(--surface);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-            <div style="font-size:28px;font-weight:800;color:${cor}">${v}</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-top:4px">${l}</div>
-          </div>`).join('')}
-      </div>
-    </div>`;
-}
-
-// ── TOAST ─────────────────────────────────────────────────
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-// ── DADOS ─────────────────────────────────────────────────
-function loadDemo() {
-  clientes = [
-  {id:62007,nome:"Juarez Marcos Devigili",cnpj:"49.802.458/0001-53",cidade:"Balneário Barra do Sul - SC",endereco:"Avenida Araquari, 487 - Salinas - 89247-000",ultimaVisita:"2025-10-13",ultimaObs:"",lat:-26.4797746,lng:-48.6179668},
-  {id:49144,nome:"Cintia Farias",cnpj:"50.858.203/0001-91",cidade:"Garuva - SC",endereco:"Av Paraná, 953 - Centro - 89248-000",ultimaVisita:"2026-02-24",ultimaObs:"",lat:-26.0289076,lng:-48.8600793},
-  {id:35458,nome:"Agroville Máquinas Ltda",cnpj:"95.767.968/0001-54",cidade:"Joinville - SC",endereco:"Rua Quinze de Novembro, 7942 - Vila Nova - 89237-000",ultimaVisita:"2026-02-16",ultimaObs:"",lat:-26.2864946,lng:-48.912563},
-  {id:63707,nome:"Altec Automação Ltda (Neri)",cnpj:"24.893.830/0001-53",cidade:"Schroeder - SC",endereco:"R Gustavo Streit, 527 - Tomaselli - 89275-000",ultimaVisita:"2026-01-16",ultimaObs:"",lat:-26.3825829,lng:-49.0605372},
-  {id:4004,nome:"Apoio Materiais de Construção (Sr. Francisco)",cnpj:"80.734.288/0001-67",cidade:"Joinville - SC",endereco:"Rua Monsenhor Gercino, 3243 - Itaum - 89210-505",ultimaVisita:"2026-02-27",ultimaObs:"",lat:-26.3268558,lng:-48.8378457},
-  {id:64171,nome:"Arocha Empreendimentos Imobiliários (Luciano)",cnpj:"46.248.194/0001-40",cidade:"Joinville - SC",endereco:"Rua Santa Catarina, 2348 - Floresta - 89212-001",ultimaVisita:null,ultimaObs:"",lat:-26.3444377,lng:-48.8474355},
-  {id:39230,nome:"Assocom Comercial S.A. (Gilmar)",cnpj:"15.023.257/0001-36",cidade:"Joinville - SC",endereco:"Rua XV de Novembro, 7581 - Vila Nova - 89237-001",ultimaVisita:"2026-02-26",ultimaObs:"",lat:-26.2874651,lng:-48.9093311},
-  {id:33691,nome:"Aurea Comercial Ltda (Ernesto)",cnpj:"81.609.208/0001-04",cidade:"Guaramirim - SC",endereco:"Estrada Corticeira, 1483 - Corticeira - 89270-000",ultimaVisita:"2025-10-27",ultimaObs:"",lat:-26.4603957,lng:-48.895782},
-  {id:12587,nome:"Barra Casa de Construção (Pedro Alves)",cnpj:"05.660.952/0001-55",cidade:"Jaraguá do Sul - SC",endereco:"R Feliciano Bortolini, 1110 - Barra do Rio Cerro - 89260-180",ultimaVisita:"2020-06-03",ultimaObs:"",lat:-26.512617,lng:-49.1161763},
-  {id:23680,nome:"Besen Comércio de Materiais de Construção",cnpj:"79.851.697/0001-64",cidade:"Itapoá - SC",endereco:"Avenida 370 Sai Mirim, 133 - Barra do Saí - 89361-718",ultimaVisita:"2026-02-26",ultimaObs:"",lat:-26.0314264,lng:-48.6195713},
-  {id:62664,nome:"Casa Moderna & Construção (Carol)",cnpj:"52.952.644/0001-83",cidade:"São Francisco do Sul - SC",endereco:"Rod Duque de Caxias, 8776 - Ubatuba - 89240-000",ultimaVisita:"2026-02-03",ultimaObs:""},
-  {id:61170,nome:"Casa Nova Materiais de Construção (Giovani)",cnpj:"72.483.787/0001-09",cidade:"Schroeder - SC",endereco:"Rua Helena Koplin, 53 - Centro - 89275-000",ultimaVisita:"2026-02-27",ultimaObs:"",lat:-26.4081241,lng:-49.079126},
-  {id:61080,nome:"Cefeq Suprimentos Industriais (Gerson)",cnpj:"09.248.043/0001-65",cidade:"Mafra - SC",endereco:"Rua Victor Celestino de Oliveira, 349 - Vila Ferroviária - 89300-102",ultimaVisita:null,ultimaObs:"",lat:-26.1223226,lng:-49.7991703},
-  {id:61348,nome:"Clock Cores Oficina das Tintas (Lucas)",cnpj:"50.248.440/0001-30",cidade:"Joinville - SC",endereco:"Rua Marques de Olinda, 3550 - Glória - 89216-100",ultimaVisita:"2026-02-27",ultimaObs:"",lat:-26.2959808,lng:-48.864956},
-  {id:60860,nome:"Colaço Equipamentos de Informática (Guilherme)",cnpj:"42.376.680/0001-92",cidade:"Pinhais - PR",endereco:"Av Jacob Macanhan, 1577 - Emiliano Perneta - 83325-390",ultimaVisita:"2026-02-13",ultimaObs:"",lat:-25.4211684,lng:-49.1815517},
-  {id:60861,nome:"Colaço Equipamentos (Guilherme) - Joinville",cnpj:"55.333.148/0001-30",cidade:"Joinville - SC",endereco:"R Prefeito Helmuth Fallgatter, 1280 - Boa Vista - 89205-300",ultimaVisita:"2026-01-19",ultimaObs:"",lat:-26.3059821,lng:-48.8295842},
-  {id:62288,nome:"Comercial Alcântara (Maico)",cnpj:"73.223.273/0001-79",cidade:"Joinville - SC",endereco:"Rua Alcântara, 637 - Boa Vista - 89206-300",ultimaVisita:"2025-10-24",ultimaObs:"",lat:-26.3008782,lng:-48.8141192},
-  {id:18756,nome:"Comercial Clock Ltda (Francini)",cnpj:"04.705.143/0001-50",cidade:"Joinville - SC",endereco:"Rua Marques de Olinda, 3550 - Glória - 89216-100",ultimaVisita:"2013-10-04",ultimaObs:"",lat:-26.2959808,lng:-48.864956},
-  {id:4037,nome:"Comercial Devegili Material p/ Construção (Maiko)",cnpj:"80.148.356/0001-06",cidade:"Joinville - SC",endereco:"Rua Minas Gerais, 1231 - Nova Brasília - 89213-300",ultimaVisita:"2026-02-25",ultimaObs:"",lat:-26.3291912,lng:-48.8647151},
-  {id:26420,nome:"Comercial Vila da Glória (Paulo Cesar)",cnpj:"03.466.918/0001-19",cidade:"São Francisco do Sul - SC",endereco:"Rodovia SF 245, S/N - Vila da Glória - 89240-000",ultimaVisita:"2025-07-24",ultimaObs:""},
-  {id:60242,nome:"Comércio Rocamel (Herlei)",cnpj:"03.361.175/0002-01",cidade:"Jaraguá do Sul - SC",endereco:"Rua Manoel Francisco da Costa, 5083 - João Pessoa - 89257-000",ultimaVisita:"2026-02-11",ultimaObs:"",lat:-26.4395499,lng:-49.0664992},
-  {id:14526,nome:"Construsilva Com. de Mat. de Constr. (Fabio)",cnpj:"00.353.934/0001-07",cidade:"Joinville - SC",endereco:"Rua Ottokar Doerffel, 185 - Anita Garibaldi - 89203-307",ultimaVisita:"2025-07-15",ultimaObs:"",lat:-26.3131362,lng:-48.8578864},
-  {id:40371,nome:"Construtenfen Materiais de Construção (Daniel/Rodolfo)",cnpj:"30.982.421/0001-26",cidade:"Blumenau - SC",endereco:"R Philipp Bauler, 1340 - Testo Salto - 89074-300",ultimaVisita:"2026-01-30",ultimaObs:"",lat:-26.8609533,lng:-49.1371911},
-  {id:61427,nome:"Correa Materiais Elétricos (Fabrício) - Itoupava Norte 185",cnpj:"02.559.947/0005-96",cidade:"Blumenau - SC",endereco:"Rua Paulo Kuehnrich, 185 - Itoupava Norte - 89052-270",ultimaVisita:"2026-02-19",ultimaObs:"",lat:-26.8886367,lng:-49.0801454},
-  {id:61429,nome:"Correa Materiais Elétricos (Fabrício) - Itoupava Norte 3323",cnpj:"02.559.947/0004-05",cidade:"Blumenau - SC",endereco:"Rua Dois de Setembro, 3323 - Itoupava Norte - 89052-505",ultimaVisita:"2025-11-12",ultimaObs:"",lat:-26.8844428,lng:-49.0850273},
-  {id:64295,nome:"Da Barra Pisos e Materiais de Construção (Thiago)",cnpj:"16.823.055/0001-31",cidade:"Balneário Barra do Sul - SC",endereco:"Avenida São Francisco do Sul, 1221 - Salinas - 89247-000",ultimaVisita:"2026-02-25",ultimaObs:"",lat:-26.4666064,lng:-48.6100317},
-  {id:60849,nome:"Distribuidora Blumenau Ltda",cnpj:"03.910.903/0001-06",cidade:"Blumenau - SC",endereco:"Rua Erwin Manzke, 2310 - Vila Itoupava - 89075-505",ultimaVisita:"2026-01-30",ultimaObs:""},
-  {id:62872,nome:"Embracol Obras Ltda (Cleu)",cnpj:"05.901.551/0001-40",cidade:"Joinville - SC",endereco:"Rua Irmãs Lauer, 221 - Bom Retiro - 89222-370",ultimaVisita:"2026-02-13",ultimaObs:"",lat:-26.2671804,lng:-48.8406598},
-  {id:61267,nome:"Ferramentas S&V (Vailson)",cnpj:"54.306.858/0001-08",cidade:"São Bento do Sul - SC",endereco:"Rua Augusto Wunderwald, 4655 - Brasília - 89282-615",ultimaVisita:"2025-08-07",ultimaObs:"",lat:-26.2149463,lng:-49.3324682},
-  {id:61582,nome:"G E Materiais de Construção (Wiliam)",cnpj:"02.565.683/0001-50",cidade:"Pomerode - SC",endereco:"Rua Presidente Costa e Silva, 416 - Testo Rega - 89107-000",ultimaVisita:"2026-02-05",ultimaObs:"",lat:-26.7095586,lng:-49.1641369},
-  {id:60961,nome:"GS Instalações Elétricas e Sistemas Preventivos (Alex)",cnpj:"33.192.137/0001-44",cidade:"Guabiruba - SC",endereco:"R Lidia Baron, 84 - Lageado Baixo - 88360-000",ultimaVisita:null,ultimaObs:""},
-  {id:34877,nome:"Guabimat Com. de Mat. de Construção (Amilton/Diego)",cnpj:"21.923.554/0001-30",cidade:"Guabiruba - SC",endereco:"Rua Carlos Boos, 3575 - Aimoré - 88360-000",ultimaVisita:"2026-02-09",ultimaObs:""},
-  {id:44784,nome:"Guaramirim Comércio de Materiais de Construção (Juliana)",cnpj:"36.543.900/0001-22",cidade:"Guaramirim - SC",endereco:"Rod BR 280, 13372 - Centro - 89270-000",ultimaVisita:"2024-03-07",ultimaObs:""},
-  {id:15119,nome:"Hardt Materiais de Construção (Dorileia)",cnpj:"81.875.189/0001-68",cidade:"Joinville - SC",endereco:"Rua 15 de Outubro, 3510 - Pirabeiraba - 89239-700",ultimaVisita:"2025-07-31",ultimaObs:""},
-  {id:4418,nome:"Herbert Materiais para Construção Ltda",cnpj:"77.143.402/0001-70",cidade:"União da Vitória - PR",endereco:"R Professor Cleto, 170 - Centro - 84600-000",ultimaVisita:"2025-01-23",ultimaObs:"",lat:-26.2318075,lng:-51.0874299},
-  {id:48963,nome:"Inkor - Ind. Catarinense de Colas e Rejuntes (Solange)",cnpj:"06.101.244/0001-47",cidade:"Imbituba - SC",endereco:"Av Levy Ramos Martins, S/N - Nova Brasília - 88780-000",ultimaVisita:"2025-08-21",ultimaObs:""},
-  {id:37700,nome:"Inovar Com. de Materiais p/ Construção Ltda",cnpj:"11.303.991/0001-06",cidade:"Brusque - SC",endereco:"Rua Ernesto Bianchini, 260 - Guarani - 88350-600",ultimaVisita:"2023-03-23",ultimaObs:"",lat:-27.1052847,lng:-48.9445492},
-  {id:61678,nome:"Inove Sua Obra Ltda (Ismael)",cnpj:"60.322.177/0001-36",cidade:"Blumenau - SC",endereco:"Rua Norma Hadlich, 754 - Itoupava Central - 89069-040",ultimaVisita:"2025-09-08",ultimaObs:"",lat:-26.8065823,lng:-49.0950099},
-  {id:60213,nome:"Itapoá Materiais Elétricos (Antonio)",cnpj:"33.774.346/0001-04",cidade:"Itapoá - SC",endereco:"Avenida das Margaridas, 1571 - São José - 89249-000",ultimaVisita:"2025-06-06",ultimaObs:"",lat:-26.0727475,lng:-48.6246779},
-  {id:14216,nome:"JAB Materiais de Construção (Tibério)",cnpj:"82.168.519/0001-48",cidade:"Joinville - SC",endereco:"Rua Constantino de O. Borges, 307 - Itaum - 89211-595",ultimaVisita:"2026-01-29",ultimaObs:""},
-  {id:62005,nome:"JCN Casa e Construção (Julinho)",cnpj:"45.855.795/0001-58",cidade:"Jaraguá do Sul - SC",endereco:"Rua Erwin Hermann Pfiffer, 11 - Tifa Martins - 89253-834",ultimaVisita:"2025-09-16",ultimaObs:"",lat:-26.4852519,lng:-49.1117198},
-  {id:8088,nome:"Julio Materiais de Construção Eireli (Julho)",cnpj:"08.015.692/0001-53",cidade:"Jaraguá do Sul - SC",endereco:"Rua Dorval Marcatto, 700 - Tifa Martins - 89253-825",ultimaVisita:"2026-02-27",ultimaObs:"",lat:-26.4847998,lng:-49.1115133},
-  {id:62136,nome:"KM Construtora Ltda (Kleiton)",cnpj:"26.364.628/0001-60",cidade:"Jaraguá do Sul - SC",endereco:"Rua Antonio Forlin, 140 - Centenário - 89256-732",ultimaVisita:null,ultimaObs:"",lat:-26.4790055,lng:-49.0360772},
-  {id:62220,nome:"KM Imobiliária Ltda (Kayan)",cnpj:"38.475.606/0001-56",cidade:"Garuva - SC",endereco:"Rua Rui Barbosa, 976 - Centro - 89248-000",ultimaVisita:"2025-09-25",ultimaObs:"",lat:-26.031858,lng:-48.8541169},
-  {id:62796,nome:"MAKN Empreendimentos e Locações (Mara)",cnpj:"43.559.775/0001-04",cidade:"Balneário Barra do Sul - SC",endereco:"Avenida Jaraguá do Sul, 661 - Costeira - 89247-000",ultimaVisita:null,ultimaObs:"",lat:-26.4492351,lng:-48.6223822},
-  {id:21407,nome:"Materiais de Construção Águas Claras (Cintia)",cnpj:"85.316.313/0001-06",cidade:"Brusque - SC",endereco:"Rua Florianópolis, 1810 - Águas Claras - 88353-501",ultimaVisita:"2026-02-11",ultimaObs:"",lat:-27.1433777,lng:-48.9000622},
-  {id:12977,nome:"Materiais de Construção América do Sol (Jonatan)",cnpj:"03.488.271/0001-26",cidade:"Blumenau - SC",endereco:"Rua Frederico Jensen, 3481 - Itoupavazinha - 89066-301",ultimaVisita:"2025-10-31",ultimaObs:"",lat:-26.8570262,lng:-49.1073066},
-  {id:26593,nome:"Materiais de Construção Eixo Sul (Maria)",cnpj:"10.869.943/0001-09",cidade:"Joinville - SC",endereco:"Rua Boemerwald, 737 - Boemerwaldt - 89232-485",ultimaVisita:"2026-02-20",ultimaObs:""},
-  {id:64475,nome:"Material de Construção Edinho",cnpj:"13.109.747/0001-24",cidade:"Araquari - SC",endereco:"Estrada Geral Itapocu, s/n - Itapocu - 89245-000",ultimaVisita:null,ultimaObs:""},
-  {id:62925,nome:"Material de Construção JS Ltda (Romulo)",cnpj:"41.415.087/0001-45",cidade:"São Francisco do Sul - SC",endereco:"Rua Caramuru, SN - Praia Grande - 89240-000",ultimaVisita:"2025-12-08",ultimaObs:""},
-  {id:27008,nome:"Material de Construção Velha Pequena (Telmo/Leomar)",cnpj:"73.962.342/0001-66",cidade:"Blumenau - SC",endereco:"Rua José Reuter, 1911 - Velha Central - 89046-640",ultimaVisita:"2026-02-04",ultimaObs:"",lat:-26.9334164,lng:-49.1339687},
-  {id:61978,nome:"Mato Grosso Casa e Construção (Kiko)",cnpj:"41.408.756/0001-51",cidade:"Joinville - SC",endereco:"Rua Anita Garibaldi, 2097 - Anita Garibaldi - 89203-332",ultimaVisita:"2025-10-27",ultimaObs:"",lat:-26.3248192,lng:-48.8622084},
-  {id:53216,nome:"Matriz Material de Construção (Airton)",cnpj:"29.041.648/0001-98",cidade:"Garuva - SC",endereco:"Av Celso Ramos, 800 - Centro - 89248-000",ultimaVisita:"2026-03-04",ultimaObs:"",lat:-26.0338116,lng:-48.856505},
-  {id:64141,nome:"Mecânica Freisleben Ltda (Fernando)",cnpj:"30.356.227/0001-35",cidade:"Porto União - SC",endereco:"Rua Jornalista Herminio Millis, 56 - Santa Rosa - 89400-000",ultimaVisita:"2026-02-16",ultimaObs:""},
-  {id:6969,nome:"Mendonça Materiais de Construção (André)",cnpj:"13.722.177/0002-24",cidade:"Itapoá - SC",endereco:"Avenida Dom Henrique II, 3523 - Balneário Barra do Saí - 89249-000",ultimaVisita:"2026-03-06",ultimaObs:"",lat:-26.0368993,lng:-48.609891},
-  {id:60699,nome:"Messias Casa & Construção (Jean)",cnpj:"51.015.987/0001-59",cidade:"Joinville - SC",endereco:"Rua Prefeito Baltazar Buschle, 301 - Comasa - 89228-001",ultimaVisita:"2025-09-09",ultimaObs:""},
-  {id:13537,nome:"Miquelute & Filhos Eireli (Cassiano)",cnpj:"00.719.168/0001-51",cidade:"Joinville - SC",endereco:"Rua XV de Novembro, 7708 - Vila Nova - 89237-001",ultimaVisita:"2026-02-25",ultimaObs:"",lat:-26.2867161,lng:-48.9105052},
-  {id:22869,nome:"Miquelute Morro do Meio Eireli (Cida)",cnpj:"10.630.260/0001-02",cidade:"Joinville - SC",endereco:"Rua Minas Gerais, 6037 - Morro Meio - 89215-000",ultimaVisita:"2026-02-27",ultimaObs:"",lat:-26.3364892,lng:-48.910165},
-  {id:60778,nome:"MJ Materiais de Construção Ltda",cnpj:"49.839.070/0001-27",cidade:"Guaramirim - SC",endereco:"Rua Francisco Carlos Machado, 23 - Caixa da Água - 89270-000",ultimaVisita:"2025-07-23",ultimaObs:""},
-  {id:63232,nome:"Moretti Comércio de Materiais de Construções (Chico)",cnpj:"85.312.312/0001-93",cidade:"Jaraguá do Sul - SC",endereco:"Rua Joaquim Francisco de Paula, 158 - Chico de Paulo - 89254-710",ultimaVisita:null,ultimaObs:"",lat:-26.4764566,lng:-49.1009073},
-  {id:62973,nome:"MR Comércio de Ferragens (Marcio)",cnpj:"59.743.456/0001-94",cidade:"São Francisco do Sul - SC",endereco:"Av Claudiomiro Vizoto, 121 - Praia do Ervino - 89337-899",ultimaVisita:"2025-11-13",ultimaObs:""},
-  {id:64001,nome:"Naihul Ferramentas Ltda (Lucian)",cnpj:"44.617.797/0001-46",cidade:"Blumenau - SC",endereco:"Rua Doutor Pedro Zimmermann, 7781 - Itoupava Central - 89069-001",ultimaVisita:null,ultimaObs:"",lat:-26.831522,lng:-49.0906339},
-  {id:58329,nome:"NCV Comércio e Materiais para Construção (Nelson)",cnpj:"39.407.220/0001-70",cidade:"São Francisco do Sul - SC",endereco:"Rodovia Duque de Caxias, 12775 - Ubatuba - 89240-000",ultimaVisita:"2025-12-02",ultimaObs:"",lat:-26.2250923,lng:-48.5766942},
-  {id:968,nome:"Oxford Porcelanas S/A",cnpj:"86.046.463/0001-00",cidade:"São Bento do Sul - SC",endereco:"Rua Jorge Diener, 88 - Oxford - 89285-580",ultimaVisita:"2025-12-19",ultimaObs:"",lat:-26.2189224,lng:-49.4041174},
-  {id:43320,nome:"Parizotto Material de Construção (Rau)",cnpj:"35.317.121/0001-46",cidade:"Jaraguá do Sul - SC",endereco:"Rua Affonso Nicoluzzi, 1879 - Rau - 89254-300",ultimaVisita:"2026-02-19",ultimaObs:"",lat:-26.4648567,lng:-49.1164613},
-  {id:63643,nome:"PGA Manutenção - Paulo Gracionir Albrecht (Paulo)",cnpj:"18.516.223/0001-71",cidade:"Schroeder - SC",endereco:"Rua Marechal Castelo Branco, 5273 - Centro Norte - 89275-000",ultimaVisita:null,ultimaObs:"",lat:-26.392473,lng:-49.0938962},
-  {id:6664,nome:"Petroski Materiais de Construção (Leandro)",cnpj:"01.398.219/0001-53",cidade:"Blumenau - SC",endereco:"Rua Frederico Jensen, 3463 - Itoupavazinha - 89066-301",ultimaVisita:"2023-09-28",ultimaObs:"",lat:-26.854561,lng:-49.1182479},
-  {id:63177,nome:"PF Parafusos & Ferramentas (Ian)",cnpj:"30.532.757/0001-97",cidade:"Blumenau - SC",endereco:"Rua Doutor Pedro Zimmermann, 6931 - Itoupava Central - 89068-005",ultimaVisita:"2026-02-24",ultimaObs:"",lat:-26.8120573,lng:-49.0893782},
-  {id:64103,nome:"Planeja - Comércio de Materiais de Construção (Samia)",cnpj:"15.051.688/0001-06",cidade:"Canoinhas - SC",endereco:"Rua Getúlio Vargas, 83 - Centro - 89460-046",ultimaVisita:"2026-02-17",ultimaObs:""},
-  {id:26201,nome:"Realeza Materiais de Construção Ltda",cnpj:"04.047.818/0001-10",cidade:"Itapoá - SC",endereco:"Rua 641 do Comércio, 326 - Itapema do Norte - 89361-004",ultimaVisita:"2017-05-30",ultimaObs:""},
-  {id:35307,nome:"Realeza Materiais de Construção (Renata)",cnpj:"04.047.818/0002-00",cidade:"Itapoá - SC",endereco:"Av 1101 Brasil, 2434 - Centro - 89360-000",ultimaVisita:"2025-12-30",ultimaObs:"",lat:-26.1185252,lng:-48.601801},
-  {id:11784,nome:"Refer Comércio Eireli (Douglas)",cnpj:"17.952.028/0001-21",cidade:"Jaraguá do Sul - SC",endereco:"R Major Julio Ferreira, 318 - Vila Lalau - 89256-210",ultimaVisita:"2026-01-09",ultimaObs:"",lat:-26.4826602,lng:-49.0617013},
-  {id:60185,nome:"Representações Almeida Ltda (Bruno Almeida)",cnpj:"40.400.336/0001-66",cidade:"Pomerode - SC",endereco:"Rua Vidal Ferreira, 1252 - Pomerode Fundos - 89107-000",ultimaVisita:"2025-08-01",ultimaObs:"",lat:-26.7296433,lng:-49.2134387},
-  {id:61084,nome:"RJ Hamer (Rafael)",cnpj:"33.939.830/0001-38",cidade:"Jaraguá do Sul - SC",endereco:"Servidão 464, 50 - Rau - 89254-075",ultimaVisita:null,ultimaObs:"",lat:-26.4670954,lng:-49.1088662},
-  {id:44869,nome:"RR Materiais de Construção (Romeu)",cnpj:"13.069.623/0001-62",cidade:"Joinville - SC",endereco:"Rua Monsenhor Gercino, 2294 - Itaum - 89210-155",ultimaVisita:"2026-02-18",ultimaObs:"",lat:-26.3364767,lng:-48.8284611},
-  {id:60960,nome:"Sanretech Impermeabilização (Bruno)",cnpj:"28.622.833/0001-03",cidade:"Joinville - SC",endereco:"Rua Sete de Setembro, 23 - Centro - 89201-200",ultimaVisita:"2025-07-21",ultimaObs:"",lat:-26.3041217,lng:-48.8435003},
-  {id:64493,nome:"Sernete Materiais de Construção (Paulo)",cnpj:"01.470.823/0001-43",cidade:"Blumenau - SC",endereco:"R Franz Volles, 2160 - Itoupava Central - 89060-100",ultimaVisita:null,ultimaObs:"",lat:-26.8361212,lng:-49.1022829},
-  {id:25896,nome:"Stedile Madeiras e Material de Construção (Amilton)",cnpj:"80.463.151/0001-15",cidade:"Guabiruba - SC",endereco:"Rua Brusque, 1261 - Centro - 88360-000",ultimaVisita:"2025-09-23",ultimaObs:"",lat:-27.0844676,lng:-48.968685},
-  {id:53147,nome:"Tijoarte Materiais de Construção e Variedades (Cleiton)",cnpj:"05.077.939/0001-78",cidade:"Jaraguá do Sul - SC",endereco:"R Antonio Forlin, 140 - Centenário - 89256-732",ultimaVisita:"2026-02-26",ultimaObs:"",lat:-26.4792095,lng:-49.0346339},
-  {id:63695,nome:"Tintas Mais Cores (Leandro)",cnpj:"50.098.924/0001-40",cidade:"Joinville - SC",endereco:"Rua Blumenau, 1281 - América - 89204-251",ultimaVisita:"2026-01-19",ultimaObs:"",lat:-26.2871671,lng:-48.8498072},
-  {id:60082,nome:"Tintas Muller Ltda (Rodrigo)",cnpj:"11.714.592/0001-20",cidade:"Jaraguá do Sul - SC",endereco:"Rua Horácio Rubini, 6945 - Barra do Rio Cerro - 89260-250",ultimaVisita:"2026-01-30",ultimaObs:"",lat:-26.5256377,lng:-49.1312158},
-  {id:62551,nome:"Top Tintas Ltda (Jander)",cnpj:"36.469.806/0001-70",cidade:"São Francisco do Sul - SC",endereco:"Rua Barra Velha, SN - Praia Grande - 89240-000",ultimaVisita:"2025-10-31",ultimaObs:""},
-  {id:29933,nome:"TRC Materiais de Construção (Larissa)",cnpj:"02.764.853/0001-25",cidade:"Blumenau - SC",endereco:"Rua Guilherme Scharf, 605 - Itoupava Central - 89060-000",ultimaVisita:"2026-02-06",ultimaObs:"",lat:-26.8493198,lng:-49.0827998},
-  {id:14113,nome:"Univale Materiais de Construção (Wilson)",cnpj:"75.548.750/0001-00",cidade:"Canoinhas - SC",endereco:"Rua Coronel Albuquerque, 257 - Centro - 89460-000",ultimaVisita:"2025-08-21",ultimaObs:"",lat:-26.1740264,lng:-50.3925165},
-  {id:60862,nome:"Vilson Rieg Materiais de Construção (Rafael)",cnpj:"80.644.818/0001-86",cidade:"Guabiruba - SC",endereco:"Rua José Fischer, 1570 - São Pedro - 88360-000",ultimaVisita:null,ultimaObs:"",lat:-27.0770635,lng:-48.9713741},
-  {id:57219,nome:"Vogelsanger Comércio de Ferramentas e Abrasivos (Camila)",cnpj:"25.299.854/0001-41",cidade:"Joinville - SC",endereco:"Rua Quinze de Novembro, 8549 - Vila Nova - 89237-002",ultimaVisita:null,ultimaObs:"",lat:-26.2876021,lng:-48.9176341},
-  {id:13963,nome:"Barni Acabamento e Material p/ Construção (Silvério) [Inativo]",cnpj:"74.156.381/0001-39",cidade:"Blumenau - SC",endereco:"Rua Marechal Deodoro, 668 - Vila Nova - 89035-090",ultimaVisita:"2018-10-22",ultimaObs:"Inativo",lat:-26.9130926,lng:-49.0909595},
-  {id:22535,nome:"Belmar Material de Construção [Inativo]",cnpj:"78.881.620/0001-74",cidade:"Guaramirim - SC",endereco:"Rodovia SC 413 KM 1, 120 - Centro - 89270-000",ultimaVisita:"2010-06-09",ultimaObs:"Inativo"},
-  {id:17827,nome:"Construcon Materiais de Construção (Anselmo) [Inativo]",cnpj:"00.471.578/0002-07",cidade:"Blumenau - SC",endereco:"Rua das Missões, 1400 - Ponta Aguda - 89051-001",ultimaVisita:"2018-06-20",ultimaObs:"Inativo",lat:-26.9016966,lng:-49.0619607},
-  {id:13902,nome:"Construcon Materiais de Construção (João Wolfgang) [Inativo]",cnpj:"00.471.578/0001-26",cidade:"Blumenau - SC",endereco:"Rua Benjamin Constant, 711 - Escola Agrícola - 89031-200",ultimaVisita:"2020-07-27",ultimaObs:"Inativo",lat:-26.8926434,lng:-49.0982058},
-  {id:61438,nome:"Disbracon Distribuidora (Luiz) [Inativo]",cnpj:"24.845.459/0001-54",cidade:"Blumenau - SC",endereco:"Rua Governador Jorge Lacerda, 3030 - Velha Central - 89045-337",ultimaVisita:null,ultimaObs:"Inativo",lat:-26.9314903,lng:-49.1259124},
-  {id:29628,nome:"Euclides René dos Santos & CIA (Euclides) [Inativo]",cnpj:"02.527.655/0001-48",cidade:"Canoinhas - SC",endereco:"Rua Roberto Helke, 716 - Jardim Esperança - 89460-000",ultimaVisita:"2025-07-24",ultimaObs:"Inativo"},
-  {id:16011,nome:"Gadotti Materiais para Construção (Osmair) [Inativo]",cnpj:"82.178.310/0001-65",cidade:"Jaraguá do Sul - SC",endereco:"Rua Luiz Sarti, 761 - Nereu Ramos - 89265-500",ultimaVisita:"2025-07-21",ultimaObs:"Inativo",lat:-26.4492102,lng:-49.178159},
-  {id:18723,nome:"NSC Com. de Fer. Mat. de Constr. (Nelson Libardi) [Inativo]",cnpj:"00.525.466/0001-00",cidade:"São Francisco do Sul - SC",endereco:"Rodovia Duque de Caxias, 12775 - Ubatuba - 89240-000",ultimaVisita:"2023-12-08",ultimaObs:"Inativo",lat:-26.2250923,lng:-48.5766942},
-  {id:25144,nome:"Nicocceli Comércio de Materiais de Construção (Alex) [Inativo]",cnpj:"01.164.947/0001-09",cidade:"Jaraguá do Sul - SC",endereco:"Rua Carlos Hardt, 1700 - Vila Rau - 89254-580",ultimaVisita:"2013-03-08",ultimaObs:"Inativo"},
-  {id:21825,nome:"NK Ferragens (Irineu) [Inativo]",cnpj:"03.219.654/0001-07",cidade:"Canoinhas - SC",endereco:"Rua Paul Harris, 346 - Centro - 89460-156",ultimaVisita:"2011-04-01",ultimaObs:"Inativo"},
-  {id:19301,nome:"Tijucon Com. de Mat. de Constr. (Zilma) [Inativo]",cnpj:"01.969.595/0001-50",cidade:"Blumenau - SC",endereco:"Rua Dr. Pedro Zimmermann, 10810 - Itoupava Central - 89075-000",ultimaVisita:"2025-07-23",ultimaObs:"Inativo",lat:-26.7782332,lng:-49.082877},
-  {id:60147,nome:"Pedra Boa Com. de Ferragens e Material Elétrico (Danilo) [Inativo]",cnpj:"01.072.346/0001-68",cidade:"Joinville - SC",endereco:"Rua Juvenil, 285 - Aventureiro - 89226-430",ultimaVisita:null,ultimaObs:"Inativo",lat:-26.2366297,lng:-48.8170751},
-  {id:28116,nome:"Mendonça Materiais de Construção (Osmar) [Inativo]",cnpj:"13.722.177/0001-43",cidade:"Itapoá - SC",endereco:"Av. Dom Henrique II, 3523 - Barra do Saí - 89249-000",ultimaVisita:null,ultimaObs:"Inativo",lat:-26.0368993,lng:-48.609891},
-  {id:15667,nome:"Material de Construção Nossa Senhora da Glória (Elonir) [Bloqueado]",cnpj:"73.568.917/0001-60",cidade:"Blumenau - SC",endereco:"Rua da Glória, 893 - Glória - 89025-300",ultimaVisita:"2013-06-10",ultimaObs:"Bloqueado",lat:-26.9628742,lng:-49.0645222},
-  {id:13574,nome:"Praiana Com. de Mat. de Construção (Elisabete) [Bloqueado]",cnpj:"76.542.521/0001-32",cidade:"São Francisco do Sul - SC",endereco:"Rua Felipe Musse, 251 - Ubatuba - 89240-000",ultimaVisita:"2025-09-17",ultimaObs:"Bloqueado",lat:-26.2253309,lng:-48.5365769},
-  {id:19222,nome:"Schreiner Com. de Materiais de Construção (Willian) [Bloqueado]",cnpj:"05.511.764/0001-65",cidade:"Joinville - SC",endereco:"Rua Otto Pfuetzenreuter, 59 - Costa e Silva - 89219-200",ultimaVisita:"2018-08-07",ultimaObs:"Bloqueado",lat:-26.2730858,lng:-48.8719289}
-  ].map(c => ({ ...c, visitadoHoje: false, horaHoje: null, lat: c.lat || null, lng: c.lng || null }));
-
-  renderList();
-  if (gmap) renderMapMarkers();
-}
-
-// ── INIT ──────────────────────────────────────────────────
-iniciarApp();
-</script>
 </body>
 </html>
