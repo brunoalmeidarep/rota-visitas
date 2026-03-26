@@ -36,6 +36,7 @@ const STATUS_BG = {
 // ── ESTADO ──────────────────────────────────────────────────────────
 let sb            = null;
 let currentUser   = null;
+let currentRep    = null;   // linha da tabela `representantes` — fonte do rep_id
 let clientes      = [];
 let lembretes     = {};   // { clienteId: texto }
 let gmap          = null;
@@ -111,12 +112,26 @@ async function mostrarApp() {
   document.getElementById('screen-login').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   document.getElementById('header-user').textContent = currentUser?.email ?? '';
-  // Admin button
   if (currentUser?.email === ADMIN_EMAIL) {
     document.getElementById('tab-admin-btn').style.display = 'inline-block';
   }
+  await carregarRepresentante();
   await loadClientes();
   carregarLembretesSupabase();
+}
+
+// Carrega a linha da tabela `representantes` pelo email — igual ao mobile
+async function carregarRepresentante() {
+  try {
+    const { data } = await sb
+      .from('representantes')
+      .select('*')
+      .eq('email', currentUser.email)
+      .maybeSingle();
+    currentRep = data || null;
+  } catch(e) {
+    currentRep = null;
+  }
 }
 
 async function fazerLogin() {
@@ -138,15 +153,45 @@ function fazerLogout() { sb.auth.signOut(); }
 // ── CLIENTES ─────────────────────────────────────────────────────────
 async function loadClientes() {
   if (!currentUser) return;
+
+  // Usa o ID da tabela representantes (igual ao mobile).
+  // Se currentRep for nulo, cai de volta para o auth UID como último recurso.
+  const repId = currentRep?.id || currentUser.id;
+
+  const listEl = document.getElementById('client-list');
+  if (listEl) listEl.innerHTML = '<div class="list-empty">Carregando...</div>';
+
   try {
     const { data, error } = await sb
-      .from('clientes').select('*')
-      .eq('rep_id', currentUser.id).order('nome');
+      .from('clientes')
+      .select('*')
+      .eq('rep_id', repId)
+      .order('nome');
+
     if (error) throw error;
-    clientes = (data || []).map(mapCliente);
+
+    if (!data || !data.length) {
+      // Verifica quantos registros existem na tabela (sem filtro) para diagnóstico
+      const { count } = await sb
+        .from('clientes')
+        .select('*', { count: 'exact', head: true });
+
+      const msg = count > 0
+        ? `A tabela clientes tem ${count} registro(s) mas nenhum com rep_id = ${repId}. ` +
+          `Verifique se a migração foi feita com o rep_id correto.`
+        : `A tabela clientes está vazia. A migração ainda não foi executada.`;
+
+      if (listEl) listEl.innerHTML = `<div class="list-empty" style="color:var(--orange)">⚠️ ${msg}</div>`;
+      clientes = [];
+      renderAll();
+      return;
+    }
+
+    clientes = data.map(mapCliente);
     restaurarCheckinsDoDia();
   } catch(e) {
     console.warn('loadClientes:', e);
+    if (listEl) listEl.innerHTML = `<div class="list-empty" style="color:var(--red)">❌ Erro ao carregar: ${e.message}</div>`;
     clientes = [];
   }
   renderAll();
@@ -494,7 +539,7 @@ async function doCheckin(id) {
       cidade:       c.cidade,
       data, hora,
       obs:          obs || '',
-      rep_id:       currentUser.id,
+      rep_id:       currentRep?.id || currentUser.id,
       tipo:         'visita',
     };
     if (valor !== null) payload.valor_pedido = valor;
@@ -514,7 +559,7 @@ async function carregarHistorico(clienteId) {
       .from('visitas')
       .select('*')
       .eq('id_cliente', String(clienteId))
-      .eq('rep_id', currentUser.id)
+      .eq('rep_id', currentRep?.id || currentUser.id)
       .order('data', { ascending: false })
       .order('hora', { ascending: false })
       .limit(20);
@@ -563,7 +608,7 @@ async function salvarLembrete(clienteId) {
   try {
     await sb.from('lembretes').upsert({
       id_cliente:    String(clienteId),
-      rep_id:        currentUser.id,
+      rep_id:        currentRep?.id || currentUser.id,
       texto,
       atualizado_em: new Date().toISOString()
     }, { onConflict: 'id_cliente,rep_id' });
@@ -575,7 +620,7 @@ async function salvarLembrete(clienteId) {
 async function carregarLembretesSupabase() {
   if (!currentUser) return;
   try {
-    const { data } = await sb.from('lembretes').select('*').eq('rep_id', currentUser.id);
+    const { data } = await sb.from('lembretes').select('*').eq('rep_id', currentRep?.id || currentUser.id);
     if (!data) return;
     data.forEach(l => { lembretes[l.id_cliente] = l.texto; });
   } catch(e) {}
@@ -605,7 +650,7 @@ async function carregarRelatorio() {
   const fim = new Date(relAno, relMes + 1, 0).toISOString().slice(0, 10);
   try {
     const { data } = await sb.from('visitas').select('*')
-      .eq('rep_id', currentUser.id)
+      .eq('rep_id', currentRep?.id || currentUser.id)
       .gte('data', ini).lte('data', fim)
       .order('data', { ascending: false });
     visatasRel = data || [];
@@ -900,7 +945,7 @@ async function salvarCliente() {
   btn.disabled = true; btn.textContent = 'Salvando...';
   try {
     const payload = {
-      rep_id:      currentUser.id,
+      rep_id:      currentRep?.id || currentUser.id,
       nome,
       razao_social: document.getElementById('cad-razao').value.trim() || nome,
       fantasia:     document.getElementById('cad-fantasia').value.trim(),
