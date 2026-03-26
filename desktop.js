@@ -49,6 +49,8 @@ let relMes        = new Date().getMonth();
 let relAno        = new Date().getFullYear();
 let relFiltro     = 'mes'; // 'hoje' | 'semana' | 'mes'
 let visatasRel    = [];
+let relRowsAtual  = [];    // rows filtradas no período — compartilhadas com o detalhe
+let relEstAtual   = {};    // { visitados, pctConv, totalVendas, totalVisitas }
 let novoSegInput  = '';
 
 // ── INIT ─────────────────────────────────────────────────────────────
@@ -701,6 +703,9 @@ function renderReport() {
   const totalVendas  = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
   const orcAbertos   = rows.filter(v => v.tipo === 'orcamento' && (!v.status_orcamento || v.status_orcamento === 'aberto')).length;
 
+  // Salva estado para uso nas telas de detalhe
+  relRowsAtual = rows;
+
   // Conversão: clientes visitados no período / total carteira
   let visitados;
   if (relFiltro === 'hoje') {
@@ -723,31 +728,34 @@ function renderReport() {
   }
   const pctConv = clientes.length ? Math.round(visitados / clientes.length * 100) : 0;
 
+  // Salva métricas para o detalhe
+  relEstAtual = { visitados, pctConv, totalVendas, totalVisitas };
+
   // Top cidades
   const byCidade = {};
   rows.forEach(v => { byCidade[v.cidade] = (byCidade[v.cidade] || 0) + 1; });
   const topCidades = Object.entries(byCidade).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
   document.getElementById('rep-body').innerHTML = `
-    <div class="rep-card">
+    <div class="rep-card clickable" onclick="abrirDetalheRelatorio('visitas')" title="Ver detalhes de visitas">
       <div class="rep-card-icon">🤝</div>
       <div class="rep-card-val" style="color:var(--blue)">${totalVisitas}</div>
       <div class="rep-card-label">Visitas</div>
-      <div class="rep-card-sub">registradas</div>
+      <div class="rep-card-sub">registradas · clique para detalhar</div>
     </div>
-    <div class="rep-card">
+    <div class="rep-card clickable" onclick="abrirDetalheRelatorio('vendas')" title="Ver detalhes de vendas">
       <div class="rep-card-icon">💰</div>
       <div class="rep-card-val" style="color:var(--green);font-size:${totalVendas>=10000?'18':totalVendas>=1000?'20':'24'}px">
         R$ ${totalVendas.toLocaleString('pt-BR', {minimumFractionDigits:2})}
       </div>
       <div class="rep-card-label">Vendas</div>
-      <div class="rep-card-sub">total pedidos</div>
+      <div class="rep-card-sub">total pedidos · clique para detalhar</div>
     </div>
-    <div class="rep-card">
+    <div class="rep-card clickable" onclick="abrirDetalheRelatorio('conversao')" title="Ver detalhes de conversão">
       <div class="rep-card-icon">📊</div>
       <div class="rep-card-val" style="color:var(--purple)">${pctConv}%</div>
       <div class="rep-card-label">Conversão</div>
-      <div class="rep-card-sub">${visitados} / ${clientes.length} clientes</div>
+      <div class="rep-card-sub">${visitados} / ${clientes.length} clientes · clique para detalhar</div>
     </div>
     <div class="rep-card rep-card-wide rep-progresso">
       <div class="det-section-title">Progresso da carteira no ${relFiltro === 'mes' ? nomeMes : 'período'}</div>
@@ -774,6 +782,249 @@ function renderReport() {
       <div style="font-size:12px;color:var(--text3);margin-top:4px">Acompanhe no app mobile</div>
     </div>` : ''}
   `;
+}
+
+// ── RELATÓRIO DETALHE ────────────────────────────────────────────────
+function abrirDetalheRelatorio(tipo) {
+  document.getElementById('rep-body').style.display = 'none';
+  const det = document.getElementById('rep-detail');
+  det.style.display = 'flex';
+
+  const periodoLabel =
+    relFiltro === 'hoje' ? 'Hoje' :
+    relFiltro === 'semana' ? 'Esta semana' :
+    new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+  const titulos = { visitas: '🤝 Visitas', vendas: '💰 Vendas', conversao: '📊 Conversão' };
+  document.getElementById('rep-detail-titulo').textContent = titulos[tipo];
+  document.getElementById('rep-detail-meta').textContent = periodoLabel;
+
+  const body = document.getElementById('rep-detail-body');
+  if (tipo === 'visitas')  body.innerHTML = renderDetalheVisitas();
+  if (tipo === 'vendas')   body.innerHTML = renderDetalheVendas();
+  if (tipo === 'conversao') body.innerHTML = renderDetalheConversao();
+}
+
+function fecharDetalheRelatorio() {
+  document.getElementById('rep-detail').style.display = 'none';
+  document.getElementById('rep-body').style.display = '';
+}
+
+function renderDetalheVisitas() {
+  const rows = relRowsAtual;
+  const total = rows.length;
+
+  const resumo = `
+    <div class="det-summary-row">
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--blue)">${total}</div>
+        <div class="det-summary-label">Visitas registradas</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--green)">
+          ${[...new Set(rows.map(v => v.id_cliente))].length}
+        </div>
+        <div class="det-summary-label">Clientes distintos</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--purple)">
+          ${[...new Set(rows.map(v => v.cidade).filter(Boolean))].length}
+        </div>
+        <div class="det-summary-label">Cidades visitadas</div>
+      </div>
+    </div>`;
+
+  if (!rows.length) {
+    return resumo + `<div class="det-table-wrap"><div class="det-table-empty">Nenhuma visita registrada no período.</div></div>`;
+  }
+
+  const linhas = rows.map(v => {
+    const obsHtml = v.obs ? `<div class="dt-obs">${v.obs}</div>` : '';
+    const valorHtml = v.valor_pedido
+      ? `<span style="font-size:11px;font-weight:600;color:var(--green);margin-left:6px">R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>`
+      : '';
+    return `<tr>
+      <td class="muted" style="white-space:nowrap">${formatDate(v.data)}</td>
+      <td class="muted">${v.hora || '—'}</td>
+      <td><strong>${v.nome_cliente || '—'}</strong>${valorHtml}${obsHtml}</td>
+      <td class="muted">${v.cidade || '—'}</td>
+    </tr>`;
+  }).join('');
+
+  return resumo + `
+    <div class="det-table-wrap">
+      <table class="det-table">
+        <thead>
+          <tr>
+            <th>Data</th><th>Hora</th><th>Cliente / Obs</th><th>Cidade</th>
+          </tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderDetalheVendas() {
+  const rows = relRowsAtual;
+  const comValor = rows.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+  const totalVendas = comValor.reduce((s, v) => s + parseFloat(v.valor_pedido), 0);
+  const ticketMedio = comValor.length ? totalVendas / comValor.length : 0;
+
+  const resumo = `
+    <div class="det-summary-row">
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--green);font-size:${totalVendas>=10000?'20':'28'}px">
+          R$ ${totalVendas.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+        </div>
+        <div class="det-summary-label">Total vendido</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--blue)">${comValor.length}</div>
+        <div class="det-summary-label">Pedidos com valor</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--orange);font-size:${ticketMedio>=10000?'20':'28'}px">
+          R$ ${ticketMedio.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+        </div>
+        <div class="det-summary-label">Ticket médio</div>
+      </div>
+    </div>`;
+
+  if (!comValor.length) {
+    const semValorMsg = rows.length > 0
+      ? `Existem ${rows.length} visita(s) no período, mas nenhuma com valor de pedido registrado. O campo "Valor do pedido" deve ser preenchido no check-in para aparecer aqui.`
+      : 'Nenhuma visita registrada no período.';
+    return resumo + `<div class="det-table-wrap"><div class="det-table-empty">${semValorMsg}</div></div>`;
+  }
+
+  const ordenado = [...comValor].sort((a, b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
+
+  const linhas = ordenado.map(v => `
+    <tr>
+      <td class="muted" style="white-space:nowrap">${formatDate(v.data)}</td>
+      <td><strong>${v.nome_cliente || '—'}</strong></td>
+      <td class="muted">${v.cidade || '—'}</td>
+      <td class="val-green" style="text-align:right;white-space:nowrap">
+        R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+      </td>
+    </tr>`).join('');
+
+  return resumo + `
+    <div class="det-table-wrap">
+      <table class="det-table">
+        <thead>
+          <tr><th>Data</th><th>Cliente</th><th>Cidade</th><th style="text-align:right">Valor</th></tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderDetalheConversao() {
+  const { visitados, pctConv } = relEstAtual;
+  const total = clientes.length;
+  const hoje  = new Date();
+
+  // Determina quais clientes foram convertidos no período atual
+  const convertidos = clientes.filter(c => {
+    if (relFiltro === 'hoje') return c.visitadoHoje;
+    if (relFiltro === 'semana') {
+      if (c.visitadoHoje) return true;
+      if (!c.ultimaVisita) return false;
+      const dSem = hoje.getDay();
+      const iniSem = new Date(hoje); iniSem.setDate(hoje.getDate() - dSem); iniSem.setHours(0,0,0,0);
+      return new Date(c.ultimaVisita + 'T00:00:00') >= iniSem;
+    }
+    if (c.visitadoHoje && relMes === hoje.getMonth() && relAno === hoje.getFullYear()) return true;
+    if (!c.ultimaVisita) return false;
+    const d = new Date(c.ultimaVisita + 'T00:00:00');
+    return d.getMonth() === relMes && d.getFullYear() === relAno;
+  });
+
+  const naoVisitados = clientes.filter(c => !convertidos.includes(c));
+  const naoVisitadosPorStatus = naoVisitados
+    .map(c => ({ ...c, st: getStatus(c) }))
+    .sort((a, b) => {
+      const ord = { red: 0, blue: 1, green: 2, purple: 3, today: 4 };
+      return (ord[a.st] ?? 9) - (ord[b.st] ?? 9);
+    });
+
+  const periodoLabel = relFiltro === 'hoje' ? 'hoje' : relFiltro === 'semana' ? 'esta semana' :
+    new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+  const formula = `
+    <div class="conv-formula-box">
+      <strong>Como a conversão é calculada:</strong><br>
+      Conversão = clientes visitados no período ÷ total da carteira × 100<br>
+      <strong>${visitados} visitados</strong> ÷ <strong>${total} na carteira</strong> = <strong style="color:var(--purple)">${pctConv}%</strong><br>
+      Período considerado: <strong>${periodoLabel}</strong>
+    </div>`;
+
+  const resumo = `
+    <div class="det-summary-row">
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--purple)">${pctConv}%</div>
+        <div class="det-summary-label">Taxa de conversão</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--green)">${visitados}</div>
+        <div class="det-summary-label">Visitados</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--red)">${total - visitados}</div>
+        <div class="det-summary-label">Não visitados</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--text)">${total}</div>
+        <div class="det-summary-label">Total carteira</div>
+      </div>
+    </div>`;
+
+  // Tabela dos convertidos
+  const linhasConv = convertidos.length
+    ? convertidos.map(c => `
+        <tr>
+          <td><strong>${c.nome}</strong></td>
+          <td class="muted">${c.cidade}</td>
+          <td class="val-green">${c.visitadoHoje ? 'Hoje às ' + c.horaHoje : formatDate(c.ultimaVisita)}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="3" class="det-table-empty">Nenhum cliente visitado no período.</td></tr>`;
+
+  // Tabela dos não visitados (prioridade: mais atrasados primeiro)
+  const linhasNaoConv = naoVisitadosPorStatus.slice(0, 30).map(c => {
+    const cor = STATUS_COLORS[c.st];
+    const lbl = STATUS_LABELS[c.st];
+    return `<tr>
+      <td><strong>${c.nome}</strong></td>
+      <td class="muted">${c.cidade}</td>
+      <td><span style="font-size:11px;font-weight:700;color:${cor}">${lbl}</span></td>
+      <td class="muted">${c.ultimaVisita ? formatDate(c.ultimaVisita) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const maisMsg = naoVisitadosPorStatus.length > 30
+    ? `<tr><td colspan="4" class="det-table-empty">+ ${naoVisitadosPorStatus.length - 30} clientes não exibidos</td></tr>`
+    : '';
+
+  return formula + resumo + `
+    <div class="det-section-block">
+      <div class="det-section-block-title">✅ Visitados no período (${convertidos.length})</div>
+      <div class="det-table-wrap">
+        <table class="det-table">
+          <thead><tr><th>Cliente</th><th>Cidade</th><th>Visita</th></tr></thead>
+          <tbody>${linhasConv}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="det-section-block">
+      <div class="det-section-block-title">⏳ Não visitados no período (${naoVisitadosPorStatus.length}) — por prioridade</div>
+      <div class="det-table-wrap">
+        <table class="det-table">
+          <thead><tr><th>Cliente</th><th>Cidade</th><th>Status</th><th>Última visita</th></tr></thead>
+          <tbody>${linhasNaoConv}${maisMsg}</tbody>
+        </table>
+      </div>
+    </div>`;
 }
 
 // ── TAREFAS ──────────────────────────────────────────────────────────

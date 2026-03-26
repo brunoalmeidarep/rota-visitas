@@ -123,6 +123,17 @@
           </div>
         </div>
         <div id="rep-body"></div>
+
+        <!-- painel de detalhe — substitui rep-body quando aberto -->
+        <div id="rep-detail" style="display:none;flex:1;overflow:hidden;flex-direction:column;min-height:0">
+          <div id="rep-detail-header">
+            <button class="rep-detail-back" onclick="fecharDetalheRelatorio()">← Voltar ao relatório</button>
+            <h2 id="rep-detail-titulo"></h2>
+            <div id="rep-detail-meta"></div>
+          </div>
+          <div id="rep-detail-body"></div>
+        </div>
+
     </div><!-- /tab-relatorio -->
 
     <!-- ── TAB TAREFAS ───────────────────────────────────────────── -->
