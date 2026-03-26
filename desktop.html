@@ -75,22 +75,38 @@
 
       <!-- Sidebar esquerda -->
       <aside id="sidebar">
-        <div id="filter-bar">
-          <button class="filter-pill active" onclick="setFilter('all')">Todos</button>
-          <button class="filter-pill f-today"  onclick="setFilter('today')">Hoje</button>
-          <button class="filter-pill f-green"  onclick="setFilter('green')">≤1m</button>
-          <button class="filter-pill f-blue"   onclick="setFilter('blue')">1–2m</button>
-          <button class="filter-pill f-red"    onclick="setFilter('red')">+2m</button>
-          <button class="filter-pill f-purple" onclick="setFilter('purple')">Novos</button>
+
+        <!-- Toggle Clientes / Planejar -->
+        <div id="sidebar-toggle">
+          <button class="sb-mode-btn active" id="sb-btn-lista"
+            onclick="setSidebarMode('lista')">Clientes</button>
+          <button class="sb-mode-btn" id="sb-btn-planner"
+            onclick="setSidebarMode('planner')">🗓 Planejar</button>
         </div>
-        <div id="city-filter-wrap">
-          <select id="city-select">
-            <option value="">Todas as cidades</option>
-          </select>
+
+        <!-- Modo lista (padrão) -->
+        <div id="sidebar-lista">
+          <div id="filter-bar">
+            <button class="filter-pill active" onclick="setFilter('all')">Todos</button>
+            <button class="filter-pill f-today"  onclick="setFilter('today')">Hoje</button>
+            <button class="filter-pill f-green"  onclick="setFilter('green')">≤1m</button>
+            <button class="filter-pill f-blue"   onclick="setFilter('blue')">1–2m</button>
+            <button class="filter-pill f-red"    onclick="setFilter('red')">+2m</button>
+            <button class="filter-pill f-purple" onclick="setFilter('purple')">Novos</button>
+          </div>
+          <div id="city-filter-wrap">
+            <select id="city-select">
+              <option value="">Todas as cidades</option>
+            </select>
+          </div>
+          <div id="client-list">
+            <div class="list-empty">Carregando...</div>
+          </div>
         </div>
-        <div id="client-list">
-          <div class="list-empty">Carregando...</div>
-        </div>
+
+        <!-- Modo planner (conteúdo gerado por JS) -->
+        <div id="planner-panel" style="display:none;flex-direction:column;flex:1;overflow:hidden;"></div>
+
       </aside>
 
       <!-- Mapa central -->
@@ -106,6 +122,8 @@
           <p>Selecione um cliente<br>na lista ou no mapa<br>para ver os detalhes</p>
         </div>
         <div id="detail-body"></div>
+        <!-- Resultado do planejamento de rota -->
+        <div id="rota-result" style="display:none;flex-direction:column;flex:1;overflow:hidden;"></div>
       </aside>
 
     </div><!-- /tab-mapa -->

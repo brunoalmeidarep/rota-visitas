@@ -54,6 +54,15 @@ let relRowsAtual      = [];    // rows filtradas no período — compartilhadas 
 let relEstAtual       = {};    // { visitados, pctConv, totalVendas, totalVisitas }
 let novoSegInput  = '';
 
+// ── PLANNER ──────────────────────────────────────────────────────────
+let plannerMode    = false;
+let plannerSel     = new Map();  // id → { horTipo:'nenhum'|'obrigatorio'|'preferencial', horario:'HH:MM' }
+let plannerOrigin  = null;       // { type:'gps'|'endereco', lat, lng, label }
+let plannerDate    = '';         // 'YYYY-MM-DD'
+let plannerSearchQ = '';
+let dirRenderer    = null;       // google.maps.DirectionsRenderer
+let plannerMarkers = [];         // marcadores numerados da rota ativa
+
 // ── INIT ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -88,6 +97,11 @@ window.initMap = function () {
       { featureType: 'transit', stylers: [{ visibility: 'off' }] },
       { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#aaaaaa' }] }
     ]
+  });
+  dirRenderer = new google.maps.DirectionsRenderer({
+    map: gmap,
+    suppressMarkers: true,
+    polylineOptions: { strokeColor: '#007AFF', strokeWeight: 4, strokeOpacity: .85 },
   });
   if (clientes.length) renderMapMarkers();
 };
@@ -1826,3 +1840,600 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('[data-tab="tarefas"]')?.addEventListener('click', renderTarefas);
   document.querySelector('[data-tab="admin"]')?.addEventListener('click', carregarReps);
 });
+
+// ── PLANNER ROTA ──────────────────────────────────────────────────────
+
+function setSidebarMode(mode) {
+  plannerMode = (mode === 'planner');
+  document.getElementById('sb-btn-lista')?.classList.toggle('active', !plannerMode);
+  document.getElementById('sb-btn-planner')?.classList.toggle('active', plannerMode);
+  document.getElementById('sidebar-lista').style.display = plannerMode ? 'none' : 'flex';
+
+  const pp = document.getElementById('planner-panel');
+  if (plannerMode) {
+    pp.style.display = 'flex';
+    renderPlannerPanel();
+  } else {
+    pp.style.display = 'none';
+    // Volta ao modo normal: restaura mapa de clientes, oculta resultado de rota
+    limparRota();
+    renderList();
+    if (gmap) renderMapMarkers();
+  }
+}
+
+function renderPlannerPanel() {
+  const pp = document.getElementById('planner-panel');
+  if (!plannerDate) plannerDate = new Date().toISOString().slice(0, 10);
+  const dateFmt = plannerDate
+    ? new Date(plannerDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit' })
+    : '';
+
+  const originStatus = plannerOrigin
+    ? `✅ ${plannerOrigin.label}`
+    : 'Nenhum ponto de partida definido';
+  const originInputVal = plannerOrigin?.type === 'endereco' ? plannerOrigin.label : '';
+
+  pp.innerHTML = `
+    <div class="planner-scroll" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+
+      <!-- DATA -->
+      <div class="planner-section">
+        <div class="planner-section-title">Data da rota</div>
+        <input class="planner-input" type="date" id="planner-date-input"
+          value="${plannerDate}"
+          onchange="plannerDate=this.value">
+      </div>
+
+      <!-- PARTIDA -->
+      <div class="planner-section">
+        <div class="planner-section-title">Ponto de partida</div>
+        <div class="planner-origin-btns">
+          <button class="planner-origin-btn${plannerOrigin?.type==='gps' ? ' active' : ''}"
+            onclick="plannerUsarGPS()">📍 GPS atual</button>
+          <button class="planner-origin-btn${plannerOrigin?.type==='endereco' ? ' active' : ''}"
+            onclick="document.getElementById('planner-origin-input').focus()">✍ Endereço</button>
+        </div>
+        <input class="planner-input" type="text" id="planner-origin-input"
+          placeholder="Ex: Rua Bahia, 123, Pomerode"
+          value="${originInputVal}"
+          oninput="plannerOriginDigitando(this.value)"
+          onkeydown="if(event.key==='Enter') plannerGeocodificarEndereco()">
+        <div class="planner-origin-status" id="planner-origin-status">${originStatus}</div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div class="planner-section" style="padding-bottom:6px;border-bottom:none;">
+        <div class="planner-section-title" style="margin-bottom:6px;">
+          Clientes da rota
+          <span id="planner-sel-count" style="font-weight:500;margin-left:4px;">
+            (${plannerSel.size} selecionado${plannerSel.size!==1?'s':''})
+          </span>
+        </div>
+        <input class="planner-input" type="search" id="planner-search"
+          placeholder="Buscar cliente ou cidade..."
+          value="${plannerSearchQ}"
+          oninput="plannerSearchQ=this.value; renderPlannerClientList()">
+      </div>
+      <div id="planner-client-list" style="flex:1;overflow-y:auto;min-height:0;"></div>
+    </div>
+
+    <!-- FOOTER -->
+    <div id="planner-footer">
+      <button id="btn-gerar-rota" onclick="gerarRota()" disabled>Selecione clientes</button>
+    </div>`;
+
+  renderPlannerClientList();
+  updatePlannerBtn();
+}
+
+function renderPlannerClientList() {
+  const container = document.getElementById('planner-client-list');
+  if (!container) return;
+  const q = plannerSearchQ.toLowerCase();
+  let lista = clientes.filter(c =>
+    !q || c.nome.toLowerCase().includes(q) || c.cidade.toLowerCase().includes(q)
+  );
+  // Selecionados primeiro, depois nome
+  lista.sort((a, b) => {
+    const diff = (plannerSel.has(b.id) ? 1 : 0) - (plannerSel.has(a.id) ? 1 : 0);
+    return diff || a.nome.localeCompare(b.nome, 'pt-BR');
+  });
+
+  if (!lista.length) {
+    container.innerHTML = `<div class="list-empty">Nenhum cliente encontrado</div>`;
+    return;
+  }
+
+  container.innerHTML = lista.map(c => {
+    const sel  = plannerSel.get(c.id);
+    const checked = !!sel;
+    const cor  = STATUS_COLORS[getStatus(c)];
+    const horTipo = sel?.horTipo || 'nenhum';
+    const horario = sel?.horario || '';
+    const noGPS   = !c.lat || !c.lng;
+    return `
+      <div class="planner-client-row" id="pcr-${c.id}">
+        <label class="planner-client-check">
+          <input type="checkbox" ${checked ? 'checked' : ''}
+            onchange="togglePlannerCliente(${c.id}, this.checked)">
+          <div class="pcc-dot" style="background:${cor}"></div>
+          <div class="pcc-info">
+            <div class="pcc-nome">${c.nome}</div>
+            <div class="pcc-cidade">${c.cidade}</div>
+          </div>
+          ${noGPS ? '<span class="pcc-nogps">sem GPS</span>' : ''}
+        </label>
+        <div class="planner-time-row ${checked ? 'visible' : ''}" id="ptr-${c.id}">
+          <button class="planner-type-btn ${horTipo==='nenhum'      ? 't-none'  : ''}"
+            onclick="setPlannerHorTipo(${c.id},'nenhum')">Sem hora</button>
+          <button class="planner-type-btn ${horTipo==='preferencial' ? 't-pref'  : ''}"
+            onclick="setPlannerHorTipo(${c.id},'preferencial')">Preferido</button>
+          <button class="planner-type-btn ${horTipo==='obrigatorio'  ? 't-obrig' : ''}"
+            onclick="setPlannerHorTipo(${c.id},'obrigatorio')">Fixo</button>
+          ${horTipo !== 'nenhum' ? `
+            <input type="time" class="planner-time-input" value="${horario}"
+              onchange="setPlannerHorario(${c.id}, this.value)">` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function togglePlannerCliente(id, checked) {
+  if (checked) {
+    plannerSel.set(id, { horTipo: 'nenhum', horario: '' });
+  } else {
+    plannerSel.delete(id);
+  }
+  const row = document.getElementById(`ptr-${id}`);
+  if (row) row.classList.toggle('visible', checked);
+  const countEl = document.getElementById('planner-sel-count');
+  if (countEl) countEl.textContent = `(${plannerSel.size} selecionado${plannerSel.size!==1?'s':''})`;
+  updatePlannerBtn();
+}
+
+function setPlannerHorTipo(id, tipo) {
+  if (!plannerSel.has(id)) return;
+  plannerSel.get(id).horTipo = tipo;
+  // Re-renderiza apenas a time-row do cliente
+  const row = document.getElementById(`ptr-${id}`);
+  if (!row) return;
+  const c = clientes.find(x => x.id === id);
+  const horario = plannerSel.get(id).horario || '';
+  row.innerHTML = `
+    <button class="planner-type-btn ${tipo==='nenhum'      ? 't-none'  : ''}"
+      onclick="setPlannerHorTipo(${id},'nenhum')">Sem hora</button>
+    <button class="planner-type-btn ${tipo==='preferencial' ? 't-pref'  : ''}"
+      onclick="setPlannerHorTipo(${id},'preferencial')">Preferido</button>
+    <button class="planner-type-btn ${tipo==='obrigatorio'  ? 't-obrig' : ''}"
+      onclick="setPlannerHorTipo(${id},'obrigatorio')">Fixo</button>
+    ${tipo !== 'nenhum' ? `
+      <input type="time" class="planner-time-input" value="${horario}"
+        onchange="setPlannerHorario(${id}, this.value)">` : ''}`;
+}
+
+function setPlannerHorario(id, val) {
+  if (plannerSel.has(id)) plannerSel.get(id).horario = val;
+}
+
+function updatePlannerBtn() {
+  const btn = document.getElementById('btn-gerar-rota');
+  if (!btn) return;
+  const disabled = !plannerOrigin || plannerSel.size === 0;
+  btn.disabled = disabled;
+  if (plannerSel.size === 0) {
+    btn.textContent = 'Selecione clientes para gerar';
+  } else if (!plannerOrigin) {
+    btn.textContent = 'Defina o ponto de partida';
+  } else {
+    btn.textContent = `🗺 Gerar rota · ${plannerSel.size} parada${plannerSel.size!==1?'s':''}`;
+  }
+}
+
+function plannerUsarGPS() {
+  const statusEl = document.getElementById('planner-origin-status');
+  if (statusEl) statusEl.textContent = '⏳ Obtendo localização...';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      plannerOrigin = {
+        type: 'gps',
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        label: `GPS (${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)})`,
+      };
+      const input = document.getElementById('planner-origin-input');
+      if (input) input.value = '';
+      if (statusEl) statusEl.textContent = `✅ ${plannerOrigin.label}`;
+      document.querySelectorAll('.planner-origin-btn').forEach((b, i) =>
+        b.classList.toggle('active', i === 0)
+      );
+      updatePlannerBtn();
+    },
+    () => {
+      if (statusEl) statusEl.textContent = '❌ Não foi possível obter localização';
+    }
+  );
+}
+
+function plannerOriginDigitando(val) {
+  // Limpa origem GPS se usuário digita no campo de endereço
+  if (plannerOrigin?.type === 'gps') {
+    plannerOrigin = null;
+    document.querySelectorAll('.planner-origin-btn').forEach(b => b.classList.remove('active'));
+  }
+  const statusEl = document.getElementById('planner-origin-status');
+  if (!statusEl) return;
+  if (val.trim().length > 4) {
+    statusEl.innerHTML =
+      `<span style="color:var(--blue);cursor:pointer" onclick="plannerGeocodificarEndereco()">
+        🔍 Pressione Enter ou clique para confirmar endereço
+      </span>`;
+  } else {
+    statusEl.textContent = 'Digite e pressione Enter para confirmar';
+  }
+  updatePlannerBtn();
+}
+
+function plannerGeocodificarEndereco() {
+  const input = document.getElementById('planner-origin-input');
+  const val = input?.value?.trim();
+  if (!val) return;
+  const statusEl = document.getElementById('planner-origin-status');
+  if (statusEl) statusEl.textContent = '⏳ Buscando endereço...';
+  if (!window.google?.maps) {
+    if (statusEl) statusEl.textContent = '❌ API de mapas não carregada';
+    return;
+  }
+  const geocoder = new google.maps.Geocoder();
+  geocoder.geocode({ address: val + ', Santa Catarina, Brasil', region: 'br' }, (results, status) => {
+    if (status === 'OK' && results[0]) {
+      const loc = results[0].geometry.location;
+      plannerOrigin = {
+        type: 'endereco',
+        lat: loc.lat(), lng: loc.lng(),
+        label: results[0].formatted_address,
+      };
+      if (input) input.value = plannerOrigin.label;
+      if (statusEl) statusEl.textContent = `✅ ${plannerOrigin.label}`;
+      document.querySelectorAll('.planner-origin-btn').forEach((b, i) =>
+        b.classList.toggle('active', i === 1)
+      );
+      updatePlannerBtn();
+    } else {
+      if (statusEl) statusEl.textContent = '❌ Endereço não encontrado. Tente mais específico.';
+    }
+  });
+}
+
+// ── Lógica de ordenação da rota ──────────────────────────────────────
+
+function prepararOrdemRota(selecionados) {
+  const fixed    = selecionados
+    .filter(c => c.horTipo === 'obrigatorio' && c.horario)
+    .sort((a, b) => a.horario.localeCompare(b.horario));
+  const flexible = selecionados.filter(c => !(c.horTipo === 'obrigatorio' && c.horario));
+
+  if (!fixed.length) {
+    return { ordered: selecionados, optimize: true, conflicts: [] };
+  }
+
+  // Âncoras: origem + cada cliente fixo (em ordem de horário)
+  const anchors = [
+    { lat: plannerOrigin.lat, lng: plannerOrigin.lng },
+    ...fixed.map(c => ({ lat: c.lat, lng: c.lng })),
+  ];
+
+  // Buckets: um por lacuna entre âncoras (incluindo após a última)
+  const buckets = anchors.map(() => []);
+
+  flexible.forEach(c => {
+    let best = 0, bestDist = Infinity;
+    for (let i = 0; i < anchors.length; i++) {
+      const next = anchors[i + 1] || anchors[i]; // após última âncora
+      const midLat = (anchors[i].lat + next.lat) / 2;
+      const midLng = (anchors[i].lng + next.lng) / 2;
+      const d = Math.hypot(c.lat - midLat, c.lng - midLng);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    buckets[best].push(c);
+  });
+
+  // Monta ordem final: [bucket[0]], fixed[0], [bucket[1]], fixed[1], ..., [bucket[n]]
+  const ordered = [];
+  fixed.forEach((fc, i) => {
+    ordered.push(...buckets[i]);
+    ordered.push(fc);
+  });
+  ordered.push(...buckets[fixed.length]);
+
+  return { ordered, optimize: false, conflicts: [] };
+}
+
+// ── Geração de rota ──────────────────────────────────────────────────
+
+async function gerarRota() {
+  if (!plannerOrigin || plannerSel.size === 0) return;
+  const btn = document.getElementById('btn-gerar-rota');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Calculando...'; }
+
+  // Coleta clientes selecionados, mergeando config de horário
+  const todos = [];
+  for (const [id, conf] of plannerSel) {
+    const c = clientes.find(x => x.id === id);
+    if (c) todos.push({ ...c, horTipo: conf.horTipo, horario: conf.horario });
+  }
+
+  const comGPS    = todos.filter(c => c.lat && c.lng);
+  const semGPS    = todos.filter(c => !c.lat || !c.lng);
+
+  if (!comGPS.length) {
+    showToast('Nenhum cliente selecionado tem coordenadas GPS.');
+    updatePlannerBtn();
+    return;
+  }
+
+  const { ordered, optimize, conflicts } = prepararOrdemRota(comGPS);
+
+  if (!window.google?.maps) {
+    showToast('API de mapas não carregada ainda. Aguarde.');
+    updatePlannerBtn();
+    return;
+  }
+
+  const svc = new google.maps.DirectionsService();
+
+  // Usa round-trip (origem = destino) para que o Google possa otimizar livremente
+  const waypoints = ordered.map(c => ({
+    location: new google.maps.LatLng(c.lat, c.lng),
+    stopover: true,
+  }));
+
+  svc.route({
+    origin:             new google.maps.LatLng(plannerOrigin.lat, plannerOrigin.lng),
+    destination:        new google.maps.LatLng(plannerOrigin.lat, plannerOrigin.lng),
+    waypoints,
+    travelMode:         google.maps.TravelMode.DRIVING,
+    optimizeWaypoints:  optimize,
+    region:             'br',
+  }, (result, status) => {
+    if (status !== 'OK') {
+      showToast(`Erro ao calcular rota: ${status}`);
+      updatePlannerBtn();
+      return;
+    }
+
+    // Se Google otimizou, reordena nosso array de clientes
+    let finalOrder = [...ordered];
+    if (optimize) {
+      const wo = result.routes[0].waypoint_order;
+      if (wo?.length) finalOrder = wo.map(i => ordered[i]);
+    }
+
+    // Exibe polilinha no mapa
+    dirRenderer.setDirections(result);
+
+    // Marcadores numerados
+    addPlannerMarkers(finalOrder);
+
+    // Painel de resultado
+    mostrarRotaResult(finalOrder, result.routes[0].legs, conflicts, semGPS);
+  });
+}
+
+// ── Marcadores numerados ─────────────────────────────────────────────
+
+function plannerMarkerSVG(label, color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <path d="M14 0C6.27 0 0 6.27 0 14c0 9.625 14 22 14 22S28 23.625 28 14C28 6.27 21.73 0 14 0z" fill="${color}" stroke="rgba(0,0,0,.25)" stroke-width="1"/>
+    <text x="14" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="white"
+      font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">${label}</text>
+  </svg>`;
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(28, 36),
+    anchor:     new google.maps.Point(14, 36),
+  };
+}
+
+function clearPlannerMarkers() {
+  plannerMarkers.forEach(m => m.setMap(null));
+  plannerMarkers = [];
+}
+
+function addPlannerMarkers(orderedClients) {
+  clearPlannerMarkers();
+  if (!gmap) return;
+
+  // Marcador de partida/chegada
+  plannerMarkers.push(new google.maps.Marker({
+    position: { lat: plannerOrigin.lat, lng: plannerOrigin.lng },
+    map: gmap,
+    icon:  plannerMarkerSVG('P', '#34C759'),
+    title: 'Ponto de partida / chegada',
+    zIndex: 10,
+  }));
+
+  // Marcadores numerados para cada stop
+  orderedClients.forEach((c, i) => {
+    plannerMarkers.push(new google.maps.Marker({
+      position: { lat: c.lat, lng: c.lng },
+      map: gmap,
+      icon:  plannerMarkerSVG(String(i + 1), '#007AFF'),
+      title: c.nome,
+      zIndex: 5,
+    }));
+  });
+}
+
+// ── Painel de resultado ──────────────────────────────────────────────
+
+function calcularETAs(legs, firstFixedHorario) {
+  // Hora base: primeiro horário fixo do primeiro leg, ou 08:00
+  let base = 8 * 60; // 08:00 em minutos
+  if (firstFixedHorario) {
+    const [h, m] = firstFixedHorario.split(':').map(Number);
+    // Volta no tempo: subtrai duração do 1º leg para estimar partida
+    const firstLegMin = Math.round((legs[0]?.duration?.value || 0) / 60);
+    base = h * 60 + m - firstLegMin;
+  }
+
+  const result = [];
+  let t = base;
+  for (let i = 0; i < legs.length; i++) {
+    const legMin = Math.round((legs[i].duration?.value || 0) / 60);
+    t += legMin;
+    const h = Math.floor(t / 60) % 24;
+    const m = t % 60;
+    const eta = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    const distKm = ((legs[i].distance?.value || 0) / 1000).toFixed(1);
+    result.push({
+      eta,
+      legDur: legs[i].duration?.text || '',
+      legDist: `${distKm} km`,
+    });
+    t += 15; // 15 min por parada
+  }
+  return result;
+}
+
+function mostrarRotaResult(ordered, legs, conflicts, semGPS) {
+  // Oculta painel normal
+  document.getElementById('detail-empty').style.display = 'none';
+  const db = document.getElementById('detail-body');
+  db.style.display = 'none';
+
+  const rr = document.getElementById('rota-result');
+  rr.style.display = 'flex';
+
+  // ETAs
+  const firstFixed = ordered.find(c => c.horTipo === 'obrigatorio' && c.horario);
+  const etas = calcularETAs(legs, firstFixed?.horario);
+
+  // Totais (todos os legs exceto o último = volta para origem)
+  const legsParadas = legs.slice(0, -1); // legs de origem→stop[0], stop[0]→stop[1], ...
+  const legsVolta   = legs[legs.length - 1]; // último leg = stop[n-1]→origem
+  const totalDist   = legs.reduce((s, l) => s + (l.distance?.value || 0), 0);
+  const totalDur    = legs.reduce((s, l) => s + (l.duration?.value || 0), 0);
+  const totalDistKm = (totalDist / 1000).toFixed(0);
+  const totalDurMin = Math.round(totalDur / 60);
+  const totalDurStr = totalDurMin >= 60
+    ? `${Math.floor(totalDurMin/60)}h${String(totalDurMin%60).padStart(2,'0')}`
+    : `${totalDurMin} min`;
+
+  const dateFmt = plannerDate
+    ? new Date(plannerDate + 'T12:00:00').toLocaleDateString('pt-BR',
+        { weekday:'short', day:'2-digit', month:'2-digit' })
+    : '';
+
+  let conflictHTML = '';
+  if (semGPS.length) {
+    const nomes = semGPS.slice(0, 3).map(c => c.nome.split(' ')[0]).join(', ');
+    conflictHTML += `<div class="rota-conflict">
+      ⚠️ ${semGPS.length} cliente${semGPS.length>1?'s':''} sem GPS foram ignorados: ${nomes}${semGPS.length>3?' e outros':''}
+    </div>`;
+  }
+  if (conflicts.length) {
+    conflictHTML += `<div class="rota-conflict">⚠️ ${conflicts.join(' · ')}</div>`;
+  }
+
+  // Linha de parada de origem
+  const origemLabel = plannerOrigin.type === 'gps' ? 'Localização atual' : plannerOrigin.label.split(',')[0];
+
+  // Lista de stops
+  const stopsHTML = [
+    // Origem
+    `<div class="rota-stop">
+       <div class="rota-stop-num s-origem">P</div>
+       <div class="rota-stop-info">
+         <div class="rota-stop-nome">${origemLabel}</div>
+         <div class="rota-stop-cidade">Ponto de partida</div>
+       </div>
+       <div class="rota-stop-meta">
+         <div class="rota-stop-eta">${etas[0] ? subtrairMin(etas[0].eta, Math.round((legs[0]?.duration?.value||0)/60)) : '–'}</div>
+         <div class="rota-stop-leg">saída</div>
+       </div>
+     </div>`,
+    // Paradas
+    ...ordered.map((c, i) => {
+      const eta = etas[i] || {};
+      let horHTML = '';
+      if (c.horTipo === 'obrigatorio' && c.horario)
+        horHTML = `<div class="rota-stop-hor h-obrig">🔒 Fixo: ${c.horario}</div>`;
+      else if (c.horTipo === 'preferencial' && c.horario)
+        horHTML = `<div class="rota-stop-hor h-pref">🕐 Pref: ${c.horario}</div>`;
+      return `
+        <div class="rota-stop">
+          <div class="rota-stop-num">${i + 1}</div>
+          <div class="rota-stop-info">
+            <div class="rota-stop-nome">${c.nome}</div>
+            <div class="rota-stop-cidade">${c.cidade}</div>
+            ${horHTML}
+          </div>
+          <div class="rota-stop-meta">
+            <div class="rota-stop-eta">${eta.eta || '–'}</div>
+            <div class="rota-stop-leg">${eta.legDur || ''} · ${eta.legDist || ''}</div>
+          </div>
+        </div>`;
+    }),
+    // Chegada
+    `<div class="rota-stop" style="opacity:.6">
+       <div class="rota-stop-num s-chegada">🏠</div>
+       <div class="rota-stop-info">
+         <div class="rota-stop-nome">${origemLabel}</div>
+         <div class="rota-stop-cidade">Chegada</div>
+       </div>
+       <div class="rota-stop-meta">
+         <div class="rota-stop-eta">${etas[etas.length-1]?.eta || '–'}</div>
+         <div class="rota-stop-leg">${legsVolta?.duration?.text || ''}</div>
+       </div>
+     </div>`,
+  ].join('');
+
+  rr.innerHTML = `
+    <div class="rota-result-header">
+      <button class="rota-back-btn" onclick="voltarParaPlanner()">← Nova rota</button>
+      <div class="rota-result-title">Rota · ${dateFmt}</div>
+    </div>
+    <div class="rota-summary">
+      <div class="rota-summary-card">
+        <div class="rota-summary-val">${ordered.length}</div>
+        <div class="rota-summary-label">Paradas</div>
+      </div>
+      <div class="rota-summary-card">
+        <div class="rota-summary-val">${totalDistKm} km</div>
+        <div class="rota-summary-label">Distância</div>
+      </div>
+      <div class="rota-summary-card">
+        <div class="rota-summary-val">${totalDurStr}</div>
+        <div class="rota-summary-label">Tempo</div>
+      </div>
+    </div>
+    ${conflictHTML}
+    <div id="rota-stops">${stopsHTML}</div>`;
+}
+
+function subtrairMin(horaStr, minutos) {
+  if (!horaStr) return '–';
+  const [h, m] = horaStr.split(':').map(Number);
+  const total = h * 60 + m - minutos;
+  const hh = Math.floor(Math.max(total, 0) / 60) % 24;
+  const mm = Math.max(total, 0) % 60;
+  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+}
+
+function limparRota() {
+  if (dirRenderer) {
+    try { dirRenderer.setMap(null); dirRenderer.setMap(gmap); } catch(e) {}
+  }
+  clearPlannerMarkers();
+  const rr = document.getElementById('rota-result');
+  if (rr) rr.style.display = 'none';
+  const de = document.getElementById('detail-empty');
+  if (de) de.style.display = '';
+}
+
+function voltarParaPlanner() {
+  limparRota();
+  // Re-exibe o painel planner (que já está no sidebar) com seleção preservada
+  renderPlannerPanel();
+}
