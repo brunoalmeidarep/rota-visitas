@@ -500,6 +500,29 @@ html, body {
 .rep-card.clickable:hover { box-shadow: 0 4px 16px rgba(0,0,0,.10); transform: translateY(-1px); }
 .rep-card { transition: box-shadow .15s, transform .15s; }
 
+/* ── RADAR COMERCIAL ────────────────────────────────────── */
+.rep-radar-header {
+  grid-column: 1 / -1;
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 20px 4px 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.rep-radar-titulo {
+  font-size: 14px; font-weight: 800; color: var(--text);
+  letter-spacing: -.2px;
+}
+.rep-radar-sub {
+  font-size: 12px; color: var(--text3);
+}
+.rep-radar-card {
+  border-color: var(--border);
+  background: var(--surface2);
+}
+.rep-radar-card:hover {
+  background: var(--surface);
+}
+
 /* ── TAREFAS TAB ────────────────────────────────────────── */
 #tab-tarefas { flex-direction: column; background: var(--bg); }
 #tarefas-header {

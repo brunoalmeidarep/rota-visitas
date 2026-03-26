@@ -45,12 +45,13 @@ let activeId      = null;
 let filterStatus  = null;
 let filterCidade  = null;
 let activeTab     = 'mapa';
-let relMes        = new Date().getMonth();
-let relAno        = new Date().getFullYear();
-let relFiltro     = 'mes'; // 'hoje' | 'semana' | 'mes'
-let visatasRel    = [];
-let relRowsAtual  = [];    // rows filtradas no período — compartilhadas com o detalhe
-let relEstAtual   = {};    // { visitados, pctConv, totalVendas, totalVisitas }
+let relMes            = new Date().getMonth();
+let relAno            = new Date().getFullYear();
+let relFiltro         = 'mes'; // 'hoje' | 'semana' | 'mes'
+let visatasRel        = [];
+let visatasRelAnterior = [];   // mês anterior — carregado lazy para radar
+let relRowsAtual      = [];    // rows filtradas no período — compartilhadas com o detalhe
+let relEstAtual       = {};    // { visitados, pctConv, totalVendas, totalVisitas }
 let novoSegInput  = '';
 
 // ── INIT ─────────────────────────────────────────────────────────────
@@ -781,11 +782,94 @@ function renderReport() {
       <div style="font-size:15px;font-weight:700;color:var(--orange)">${orcAbertos} orçamento${orcAbertos>1?'s':''} em aberto</div>
       <div style="font-size:12px;color:var(--text3);margin-top:4px">Acompanhe no app mobile</div>
     </div>` : ''}
+
+    ${renderRadarSection(rows)}
+  `;
+}
+
+// ── RADAR COMERCIAL — seção do dashboard ─────────────────────────────
+function renderRadarSection(rows) {
+  // Pré-calcula contadores para exibir nos cards antes de abrir o detalhe
+  const comValor     = rows.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+  const byCliente    = {};
+  comValor.forEach(v => {
+    const k = v.id_cliente;
+    if (!byCliente[k]) byCliente[k] = { nome: v.nome_cliente, cidade: v.cidade, total: 0, pedidos: 0 };
+    byCliente[k].total   += parseFloat(v.valor_pedido);
+    byCliente[k].pedidos += 1;
+  });
+  const rankingCount = Object.keys(byCliente).length;
+
+  const sumindoCount = clientes.filter(c => {
+    const st = getStatus(c);
+    return st === 'blue' || st === 'red';
+  }).length;
+
+  const potencialCount = clientes.filter(c => {
+    const st = getStatus(c);
+    return (st === 'blue' || st === 'red') && comValor.some(v => v.id_cliente == c.id);
+  }).length || clientes.filter(c => getStatus(c) === 'red').length;
+
+  return `
+    <div class="rep-radar-header">
+      <span class="rep-radar-titulo">⚡ Radar Comercial</span>
+      <span class="rep-radar-sub">Insights automáticos da carteira</span>
+    </div>
+
+    <div class="rep-card rep-radar-card clickable"
+         onclick="abrirDetalheRelatorio('top-compradores')"
+         title="Ver ranking de compradores">
+      <div class="rep-card-icon">🏆</div>
+      <div class="rep-card-val" style="color:var(--orange)">${rankingCount}</div>
+      <div class="rep-card-label">Top compradores</div>
+      <div class="rep-card-sub">clientes com pedido no período</div>
+    </div>
+
+    <div class="rep-card rep-radar-card clickable"
+         onclick="abrirDetalheRelatorio('mais-lucrativos')"
+         title="Ver clientes mais lucrativos">
+      <div class="rep-card-icon">💎</div>
+      <div class="rep-card-val" style="color:var(--green);font-size:20px">
+        R$ ${rankingCount > 0
+          ? (Object.values(byCliente).sort((a,b)=>b.total-a.total)[0].total)
+              .toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
+          : '—'}
+      </div>
+      <div class="rep-card-label">Mais lucrativos</div>
+      <div class="rep-card-sub">${rankingCount > 0 ? 'maior pedido individual' : 'sem pedidos com valor'}</div>
+    </div>
+
+    <div class="rep-card rep-radar-card clickable"
+         onclick="abrirDetalheRelatorio('clientes-sumindo')"
+         title="Ver clientes sem visita recente">
+      <div class="rep-card-icon">⚠️</div>
+      <div class="rep-card-val" style="color:var(--red)">${sumindoCount}</div>
+      <div class="rep-card-label">Clientes sumindo</div>
+      <div class="rep-card-sub">sem visita há mais de 30 dias</div>
+    </div>
+
+    <div class="rep-card rep-radar-card clickable"
+         onclick="abrirDetalheRelatorio('queda-40')"
+         title="Ver clientes com queda de compra">
+      <div class="rep-card-icon">📉</div>
+      <div class="rep-card-val" style="color:var(--red)">—</div>
+      <div class="rep-card-label">Caíram 40%+</div>
+      <div class="rep-card-sub">comparado ao mês anterior</div>
+    </div>
+
+    <div class="rep-card rep-radar-card clickable"
+         onclick="abrirDetalheRelatorio('potencial')"
+         title="Ver clientes com potencial não visitado">
+      <div class="rep-card-icon">🎯</div>
+      <div class="rep-card-val" style="color:var(--purple)">${potencialCount}</div>
+      <div class="rep-card-label">Potencial não visitado</div>
+      <div class="rep-card-sub">compradores atrasados na agenda</div>
+    </div>
   `;
 }
 
 // ── RELATÓRIO DETALHE ────────────────────────────────────────────────
-function abrirDetalheRelatorio(tipo) {
+async function abrirDetalheRelatorio(tipo) {
   document.getElementById('rep-body').style.display = 'none';
   const det = document.getElementById('rep-detail');
   det.style.display = 'flex';
@@ -795,14 +879,37 @@ function abrirDetalheRelatorio(tipo) {
     relFiltro === 'semana' ? 'Esta semana' :
     new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
-  const titulos = { visitas: '🤝 Visitas', vendas: '💰 Vendas', conversao: '📊 Conversão' };
-  document.getElementById('rep-detail-titulo').textContent = titulos[tipo];
+  const titulos = {
+    visitas:          '🤝 Visitas',
+    vendas:           '💰 Vendas',
+    conversao:        '📊 Conversão',
+    'top-compradores':'🏆 Top Compradores',
+    'mais-lucrativos':'💎 Mais Lucrativos',
+    'clientes-sumindo':'⚠️ Clientes Sumindo',
+    'queda-40':       '📉 Queda de 40%+',
+    potencial:        '🎯 Potencial Não Visitado',
+  };
+  document.getElementById('rep-detail-titulo').textContent = titulos[tipo] || tipo;
   document.getElementById('rep-detail-meta').textContent = periodoLabel;
 
   const body = document.getElementById('rep-detail-body');
-  if (tipo === 'visitas')  body.innerHTML = renderDetalheVisitas();
-  if (tipo === 'vendas')   body.innerHTML = renderDetalheVendas();
-  if (tipo === 'conversao') body.innerHTML = renderDetalheConversao();
+  body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Carregando...</div>';
+
+  if (tipo === 'visitas')           body.innerHTML = renderDetalheVisitas();
+  else if (tipo === 'vendas')       body.innerHTML = renderDetalheVendas();
+  else if (tipo === 'conversao')    body.innerHTML = renderDetalheConversao();
+  else if (tipo === 'top-compradores') body.innerHTML = renderDetalheTopCompradores();
+  else if (tipo === 'mais-lucrativos') body.innerHTML = renderDetalheMaisLucrativos();
+  else if (tipo === 'clientes-sumindo') body.innerHTML = renderDetalheClientesSumindo();
+  else if (tipo === 'queda-40') {
+    // Precisa do mês anterior — busca lazy
+    await carregarMesAnteriorParaRadar();
+    body.innerHTML = renderDetalheQueda40();
+  }
+  else if (tipo === 'potencial') {
+    await carregarMesAnteriorParaRadar();
+    body.innerHTML = renderDetalhePotencial();
+  }
 }
 
 function fecharDetalheRelatorio() {
@@ -1024,6 +1131,423 @@ function renderDetalheConversao() {
           <tbody>${linhasNaoConv}${maisMsg}</tbody>
         </table>
       </div>
+    </div>`;
+}
+
+// ── RADAR COMERCIAL — funções de detalhe ─────────────────────────────
+
+async function carregarMesAnteriorParaRadar() {
+  // Só busca se ainda não tiver os dados ou se o mês mudou
+  const mesAnt = relMes === 0 ? 11 : relMes - 1;
+  const anoAnt = relMes === 0 ? relAno - 1 : relAno;
+  const ini = new Date(anoAnt, mesAnt, 1).toISOString().slice(0, 10);
+  const fim = new Date(anoAnt, mesAnt + 1, 0).toISOString().slice(0, 10);
+  try {
+    const { data } = await sb.from('visitas').select('*')
+      .eq('rep_id', currentRep?.id || currentUser.id)
+      .gte('data', ini).lte('data', fim);
+    visatasRelAnterior = data || [];
+  } catch(e) { visatasRelAnterior = []; }
+}
+
+function renderDetalheTopCompradores() {
+  const rows = relRowsAtual.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+
+  // Agrupa por cliente
+  const byCliente = {};
+  rows.forEach(v => {
+    const k = String(v.id_cliente);
+    if (!byCliente[k]) byCliente[k] = { nome: v.nome_cliente, cidade: v.cidade, total: 0, pedidos: 0 };
+    byCliente[k].total   += parseFloat(v.valor_pedido);
+    byCliente[k].pedidos += 1;
+  });
+
+  const ranking = Object.values(byCliente).sort((a, b) => b.total - a.total);
+  const totalGeral = ranking.reduce((s, r) => s + r.total, 0);
+
+  const resumo = `
+    <div class="det-summary-row">
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--orange)">${ranking.length}</div>
+        <div class="det-summary-label">Clientes com pedido</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--green);font-size:${totalGeral>=10000?'18':'28'}px">
+          R$ ${totalGeral.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+        </div>
+        <div class="det-summary-label">Total do período</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--blue);font-size:20px">
+          ${ranking[0]?.nome?.split(' ').slice(0,2).join(' ') || '—'}
+        </div>
+        <div class="det-summary-label">Maior comprador</div>
+      </div>
+    </div>`;
+
+  if (!ranking.length) {
+    return resumo + `<div class="det-table-wrap"><div class="det-table-empty">
+      Nenhuma visita com valor de pedido registrado no período.<br>
+      Preencha o campo "Valor do pedido" no check-in para ver o ranking aqui.
+    </div></div>`;
+  }
+
+  const totalRef = totalGeral || 1;
+  const linhas = ranking.map((r, i) => {
+    const pct = Math.round(r.total / totalRef * 100);
+    const barWidth = Math.max(pct, 2);
+    return `<tr>
+      <td style="font-weight:700;color:var(--text3);width:36px">#${i + 1}</td>
+      <td><strong>${r.nome}</strong></td>
+      <td class="muted">${r.cidade || '—'}</td>
+      <td style="text-align:center" class="muted">${r.pedidos}</td>
+      <td style="min-width:140px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:6px;background:var(--border);border-radius:3px">
+            <div style="width:${barWidth}%;height:100%;background:var(--orange);border-radius:3px"></div>
+          </div>
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">${pct}%</span>
+        </div>
+      </td>
+      <td class="val-green" style="text-align:right;white-space:nowrap">
+        R$ ${r.total.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+      </td>
+    </tr>`;
+  }).join('');
+
+  return resumo + `
+    <div class="det-table-wrap">
+      <table class="det-table">
+        <thead>
+          <tr><th>#</th><th>Cliente</th><th>Cidade</th><th style="text-align:center">Pedidos</th><th>Participação</th><th style="text-align:right">Total</th></tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderDetalheMaisLucrativos() {
+  const rows = relRowsAtual.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+
+  const byCliente = {};
+  rows.forEach(v => {
+    const k = String(v.id_cliente);
+    if (!byCliente[k]) byCliente[k] = { nome: v.nome_cliente, cidade: v.cidade, total: 0, pedidos: 0, maior: 0 };
+    const val = parseFloat(v.valor_pedido);
+    byCliente[k].total   += val;
+    byCliente[k].pedidos += 1;
+    if (val > byCliente[k].maior) byCliente[k].maior = val;
+  });
+
+  const ranking = Object.values(byCliente).sort((a, b) => b.total - a.total);
+
+  // Aviso sobre limitação de dados (lucro real não está disponível)
+  const aviso = `
+    <div class="conv-formula-box" style="background:var(--orange-bg);border-color:rgba(255,149,0,.25)">
+      <strong style="color:var(--orange)">ℹ️ Nota sobre "lucratividade":</strong><br>
+      Este ranking usa o <strong>valor total de pedidos</strong> como proxy de lucratividade.
+      O cálculo de lucro real (receita − custo da visita − comissão − impostos) requer
+      dados adicionais ainda não disponíveis no sistema. A estrutura está pronta para evoluir
+      quando esses dados forem incluídos.
+    </div>`;
+
+  if (!ranking.length) {
+    return aviso + `<div class="det-table-wrap"><div class="det-table-empty">
+      Nenhum pedido com valor no período. Preencha o valor no check-in para ver este ranking.
+    </div></div>`;
+  }
+
+  const linhas = ranking.map((r, i) => `
+    <tr>
+      <td style="font-weight:700;color:var(--text3);width:36px">#${i + 1}</td>
+      <td><strong>${r.nome}</strong></td>
+      <td class="muted">${r.cidade || '—'}</td>
+      <td style="text-align:center" class="muted">${r.pedidos}</td>
+      <td class="muted" style="text-align:right;white-space:nowrap">
+        R$ ${r.maior.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+      </td>
+      <td class="val-green" style="text-align:right;white-space:nowrap">
+        R$ ${r.total.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+      </td>
+    </tr>`).join('');
+
+  return aviso + `
+    <div class="det-table-wrap">
+      <table class="det-table">
+        <thead>
+          <tr><th>#</th><th>Cliente</th><th>Cidade</th><th style="text-align:center">Pedidos</th><th style="text-align:right">Maior pedido</th><th style="text-align:right">Total período</th></tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderDetalheClientesSumindo() {
+  const hoje = new Date();
+
+  // Clientes sem visita há mais de 30 dias (status blue ou red) — ordenados por mais dias
+  const sumindo = clientes
+    .filter(c => { const st = getStatus(c); return st === 'blue' || st === 'red'; })
+    .map(c => {
+      const dias = c.ultimaVisita
+        ? Math.floor((Date.now() - new Date(c.ultimaVisita + 'T00:00:00')) / 86400000)
+        : null;
+      return { ...c, dias };
+    })
+    .sort((a, b) => (b.dias ?? 9999) - (a.dias ?? 9999));
+
+  const semVisitaNunca = clientes.filter(c => getStatus(c) === 'purple').length;
+
+  const resumo = `
+    <div class="conv-formula-box" style="background:var(--red-bg);border-color:rgba(255,59,48,.2)">
+      <strong style="color:var(--red)">Regra de detecção:</strong><br>
+      São considerados "sumindo" os clientes com <strong>última visita há mais de 30 dias</strong>
+      (status laranja ou vermelho). Clientes nunca visitados aparecem separados abaixo.
+    </div>
+    <div class="det-summary-row">
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--red)">${sumindo.length}</div>
+        <div class="det-summary-label">Atrasados (>30 dias)</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--purple)">${semVisitaNunca}</div>
+        <div class="det-summary-label">Nunca visitados</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--orange)">
+          ${sumindo[0]?.dias ?? '—'} dias
+        </div>
+        <div class="det-summary-label">Maior atraso</div>
+      </div>
+    </div>`;
+
+  if (!sumindo.length) {
+    return resumo + `<div class="det-table-wrap"><div class="det-table-empty">
+      Nenhum cliente com visita atrasada acima de 30 dias. Ótimo! 🎉
+    </div></div>`;
+  }
+
+  const linhas = sumindo.map(c => {
+    const st  = getStatus(c);
+    const cor = STATUS_COLORS[st];
+    const diasLabel = c.dias !== null ? `${c.dias} dias` : '—';
+    const urgencia  = c.dias > 60
+      ? `<span style="font-size:10px;font-weight:700;color:var(--red);background:var(--red-bg);padding:2px 7px;border-radius:10px">URGENTE</span>`
+      : '';
+    return `<tr>
+      <td><strong>${c.nome}</strong> ${urgencia}</td>
+      <td class="muted">${c.cidade}</td>
+      <td><span style="font-size:11px;font-weight:700;color:${cor}">${STATUS_LABELS[st]}</span></td>
+      <td class="muted" style="text-align:right">${c.ultimaVisita ? formatDate(c.ultimaVisita) : '—'}</td>
+      <td style="text-align:right;font-weight:700;color:${c.dias > 60 ? 'var(--red)' : 'var(--orange)'}">
+        ${diasLabel}
+      </td>
+    </tr>`;
+  }).join('');
+
+  return resumo + `
+    <div class="det-table-wrap">
+      <table class="det-table">
+        <thead>
+          <tr><th>Cliente</th><th>Cidade</th><th>Status</th><th style="text-align:right">Última visita</th><th style="text-align:right">Dias sem visita</th></tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderDetalheQueda40() {
+  const rowsAtual = relRowsAtual;
+  const rowsAnt   = visatasRelAnterior;
+
+  const mesAnt = relMes === 0 ? 11 : relMes - 1;
+  const anoAnt = relMes === 0 ? relAno - 1 : relAno;
+  const nomeMesAnt = new Date(anoAnt, mesAnt, 1)
+    .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const nomeMesAtual = new Date(relAno, relMes, 1)
+    .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+  const aviso = `
+    <div class="conv-formula-box">
+      <strong>Regra de detecção:</strong><br>
+      Compara o <strong>valor total de pedidos por cliente</strong> entre o mês atual
+      (${nomeMesAtual}) e o mês anterior (${nomeMesAnt}).
+      Um cliente é sinalizado quando o valor atual é <strong>40% menor ou mais</strong>
+      do que o valor do mês anterior.<br>
+      ${rowsAnt.length === 0
+        ? '<strong style="color:var(--orange)">⚠️ Dados do mês anterior não encontrados. A análise não pode ser feita.</strong>'
+        : `Mês anterior: ${rowsAnt.length} visitas carregadas.`}
+    </div>`;
+
+  if (!rowsAnt.length) return aviso;
+
+  // Agrega por cliente em cada período
+  const agregar = (rows) => {
+    const m = {};
+    rows.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0).forEach(v => {
+      const k = String(v.id_cliente);
+      if (!m[k]) m[k] = { nome: v.nome_cliente, cidade: v.cidade, total: 0 };
+      m[k].total += parseFloat(v.valor_pedido);
+    });
+    return m;
+  };
+
+  const atual = agregar(rowsAtual);
+  const ant   = agregar(rowsAnt);
+
+  // Encontra clientes que aparecem nos dois e caíram >= 40%
+  const quedas = Object.entries(ant)
+    .map(([id, a]) => {
+      const c = atual[id];
+      const valorAtual = c ? c.total : 0;
+      const queda = ((a.total - valorAtual) / a.total) * 100;
+      return { id, nome: a.nome, cidade: a.cidade, ant: a.total, atual: valorAtual, queda };
+    })
+    .filter(r => r.queda >= 40)
+    .sort((a, b) => b.queda - a.queda);
+
+  const resumo = `
+    <div class="det-summary-row">
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--red)">${quedas.length}</div>
+        <div class="det-summary-label">Clientes com queda ≥40%</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--orange)">
+          ${quedas[0] ? Math.round(quedas[0].queda) + '%' : '—'}
+        </div>
+        <div class="det-summary-label">Maior queda detectada</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--text)">
+          R$ ${quedas.reduce((s,r)=>s+(r.ant-r.atual),0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+        </div>
+        <div class="det-summary-label">Volume perdido</div>
+      </div>
+    </div>`;
+
+  if (!quedas.length) {
+    return aviso + resumo + `<div class="det-table-wrap"><div class="det-table-empty">
+      Nenhum cliente com queda de 40%+ em relação ao mês anterior. 👍
+    </div></div>`;
+  }
+
+  const linhas = quedas.map(r => `
+    <tr>
+      <td><strong>${r.nome}</strong></td>
+      <td class="muted">${r.cidade || '—'}</td>
+      <td class="muted" style="text-align:right;white-space:nowrap">
+        R$ ${r.ant.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+      </td>
+      <td style="text-align:right;white-space:nowrap;color:var(--${r.atual > 0 ? 'orange' : 'red'});font-weight:700">
+        ${r.atual > 0 ? 'R$ ' + r.atual.toLocaleString('pt-BR',{minimumFractionDigits:2}) : 'Sem pedido'}
+      </td>
+      <td style="text-align:right;font-weight:800;color:var(--red)">
+        −${Math.round(r.queda)}%
+      </td>
+    </tr>`).join('');
+
+  return aviso + resumo + `
+    <div class="det-table-wrap">
+      <table class="det-table">
+        <thead>
+          <tr><th>Cliente</th><th>Cidade</th><th style="text-align:right">Mês anterior</th><th style="text-align:right">Mês atual</th><th style="text-align:right">Queda</th></tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderDetalhePotencial() {
+  const rows = [...relRowsAtual, ...visatasRelAnterior];
+
+  // Clientes com pelo menos um pedido com valor em qualquer período carregado
+  const comHistoricoDeValor = new Set(
+    rows.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0)
+        .map(v => String(v.id_cliente))
+  );
+
+  // Filtro: tem histórico de valor E não visitado recentemente (>30 dias)
+  let potencial = clientes.filter(c => {
+    const st = getStatus(c);
+    return (st === 'blue' || st === 'red') && comHistoricoDeValor.has(String(c.id));
+  });
+
+  // Se não tiver dados de valor, amplia para todos os atrasados
+  const semDadosValor = comHistoricoDeValor.size === 0;
+  if (semDadosValor) {
+    potencial = clientes.filter(c => getStatus(c) === 'red');
+  }
+
+  potencial = potencial
+    .map(c => {
+      const pedidosC = rows.filter(v => String(v.id_cliente) === String(c.id) && v.valor_pedido);
+      const totalHist = pedidosC.reduce((s, v) => s + parseFloat(v.valor_pedido || 0), 0);
+      const dias = c.ultimaVisita
+        ? Math.floor((Date.now() - new Date(c.ultimaVisita + 'T00:00:00')) / 86400000)
+        : null;
+      return { ...c, totalHist, dias };
+    })
+    .sort((a, b) => b.totalHist - a.totalHist || (b.dias ?? 9999) - (a.dias ?? 9999));
+
+  const aviso = `
+    <div class="conv-formula-box">
+      <strong>Regra de identificação:</strong><br>
+      ${semDadosValor
+        ? 'Sem histórico de valor nos pedidos, o critério usado é: <strong>clientes com visita atrasada há mais de 60 dias</strong>. Para análise mais precisa, preencha o valor dos pedidos no check-in.'
+        : 'Clientes com <strong>pedido com valor registrado</strong> em qualquer visita dos períodos carregados, mas <strong>sem visita há mais de 30 dias</strong>. Ordenados pelo maior valor histórico.'
+      }
+    </div>`;
+
+  const resumo = `
+    <div class="det-summary-row">
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--purple)">${potencial.length}</div>
+        <div class="det-summary-label">Clientes identificados</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--green);font-size:${potencial.reduce((s,c)=>s+c.totalHist,0)>=10000?'18':'28'}px">
+          R$ ${potencial.reduce((s,c)=>s+c.totalHist,0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+        </div>
+        <div class="det-summary-label">Volume em risco</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--orange)">
+          ${potencial[0]?.dias ?? '—'} dias
+        </div>
+        <div class="det-summary-label">Mais tempo sem visita</div>
+      </div>
+    </div>`;
+
+  if (!potencial.length) {
+    return aviso + resumo + `<div class="det-table-wrap"><div class="det-table-empty">
+      Nenhum cliente com potencial detectado sem visita recente. 🎉
+    </div></div>`;
+  }
+
+  const linhas = potencial.map(c => {
+    const st  = getStatus(c);
+    const cor = STATUS_COLORS[st];
+    return `<tr>
+      <td><strong>${c.nome}</strong></td>
+      <td class="muted">${c.cidade}</td>
+      <td><span style="font-size:11px;font-weight:700;color:${cor}">${STATUS_LABELS[st]}</span></td>
+      <td class="muted" style="text-align:right">${c.ultimaVisita ? formatDate(c.ultimaVisita) : '—'}</td>
+      <td style="text-align:right;font-weight:700;color:var(--orange)">${c.dias ?? '—'} dias</td>
+      <td class="val-green" style="text-align:right;white-space:nowrap">
+        ${c.totalHist > 0 ? 'R$ ' + c.totalHist.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  return aviso + resumo + `
+    <div class="det-table-wrap">
+      <table class="det-table">
+        <thead>
+          <tr><th>Cliente</th><th>Cidade</th><th>Status</th><th style="text-align:right">Última visita</th><th style="text-align:right">Dias</th><th style="text-align:right">Histórico valor</th></tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
     </div>`;
 }
 
