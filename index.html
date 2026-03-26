@@ -361,6 +361,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 /* ── TAREFAS ─────────────────────────────────────────── */
 
 
+.tarefas-banner { position:fixed; top:56px; left:0; right:0; z-index:200; background:var(--blue); color:#fff; padding:10px 16px; display:flex; align-items:center; gap:10px; cursor:pointer; animation:slideIn .3s ease; }
+.tarefas-banner-text { flex:1; font-size:13px; font-weight:600; }
+.tarefas-banner-close { background:none; border:none; color:rgba(255,255,255,.7); font-size:18px; cursor:pointer; padding:0 4px; font-family:inherit; }
 .tarefas-topo { background:var(--surface); padding:12px 14px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
 .tarefas-titulo { font-size:17px; font-weight:800; color:var(--text); }
 .tarefas-data { font-size:11px; color:var(--text3); margin-top:2px; }
@@ -662,6 +665,11 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .detalhe-label { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
 .detalhe-valor { font-size:15px; color:var(--text); line-height:1.4; }
 .detalhe-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; padding-top:8px; border-top:1px solid var(--border); }
+.hist-delete-menu { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--card); border-radius:16px; padding:20px; z-index:900; box-shadow:0 8px 32px rgba(0,0,0,.3); min-width:280px; max-width:90vw; }
+.hist-delete-menu h3 { font-size:16px; font-weight:700; color:var(--text); margin:0 0 8px; }
+.hist-delete-menu p { font-size:13px; color:var(--text2); margin:0 0 16px; line-height:1.5; }
+.hist-delete-actions { display:flex; gap:8px; }
+.hist-delete-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:899; }
 .pf-feedback { font-size:13px; font-weight:600; color:var(--green); text-align:center; margin-top:8px; min-height:18px; }
 .pf-select { width:100%; background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--text2); font-family:inherit; font-size:14px; outline:none; -webkit-appearance:none; }
 .pf-select:focus { border-color:var(--blue); }
@@ -789,6 +797,22 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .rota-cidade-pills { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
 .rota-cidade-pill { padding:6px 12px; border-radius:20px; border:1.5px solid var(--border); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; background:var(--surface); color:var(--text2); }
 .rota-cidade-pill.sel { background:var(--blue); color:#fff; border-color:var(--blue); }
+.rota-ponto-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.rota-ponto-pill { flex:1; min-width:60px; text-align:center; padding:8px 6px; border-radius:16px; border:1.5px solid var(--border); background:var(--bg); font-size:12px; font-weight:600; cursor:pointer; color:var(--text2); font-family:inherit; }
+.rota-ponto-pill.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+.rota-custom-input { margin-top:6px; display:none; }
+.rota-viagem-toggle { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; margin-bottom:10px; cursor:pointer; }
+.rota-viagem-toggle-label { flex:1; font-size:13px; font-weight:600; color:var(--text); }
+.rota-viagem-sw { width:36px; height:20px; border-radius:10px; background:var(--border); position:relative; transition:background .2s; flex-shrink:0; }
+.rota-viagem-sw.on { background:var(--blue); }
+.rota-viagem-sw::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; transition:left .2s; }
+.rota-viagem-sw.on::after { left:19px; }
+.rota-viagem-cidades { margin-bottom:10px; }
+.rota-viagem-item { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:6px; }
+.rota-viagem-num { font-size:12px; font-weight:700; color:var(--blue); min-width:18px; }
+.rota-viagem-nome { flex:1; font-size:13px; color:var(--text); }
+.rota-viagem-del { background:none; border:none; color:var(--text3); font-size:16px; cursor:pointer; padding:0 4px; font-family:inherit; }
+.rota-add-cidade-btn { width:100%; padding:9px; background:var(--bg); border:1.5px dashed var(--border); border-radius:10px; font-family:inherit; font-size:13px; color:var(--text2); cursor:pointer; margin-bottom:8px; }
 .rota-cliente-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer; }
 .rota-cliente-item:last-child { border-bottom:none; }
 .rota-cliente-check { width:22px; height:22px; border-radius:6px; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; }
@@ -1140,6 +1164,12 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
         <option value="">Nenhum</option>
       </select>
     </div>
+    <div id="ln-cliente-bonif-row" style="display:none;margin-bottom:10px;">
+      <label class="campo-label">Cliente</label>
+      <select class="campo-input" id="ln-cliente-bonif">
+        <option value="">Selecione...</option>
+      </select>
+    </div>
     <div id="ln-hotel-nome-row" style="display:none;margin-bottom:10px;">
       <label class="campo-label">Nome do hotel</label>
       <input class="campo-input" id="ln-hotel-nome" placeholder="Ex: Hotel Central">
@@ -1154,9 +1184,20 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
         <span onclick="setHotelEstrelas(1)">☆</span><span onclick="setHotelEstrelas(2)">☆</span><span onclick="setHotelEstrelas(3)">☆</span><span onclick="setHotelEstrelas(4)">☆</span><span onclick="setHotelEstrelas(5)">☆</span>
       </div>
     </div>
+    <div id="ln-motivo-row" style="display:none;margin-bottom:10px;">
+      <label class="campo-label">Motivo</label>
+      <input class="campo-input" id="ln-motivo" placeholder="Ex: Extrakolla 2 — 5 cx">
+    </div>
     <div style="margin-bottom:10px;">
       <label class="campo-label" id="ln-descricao-label">Descrição</label>
       <input class="campo-input" id="ln-descricao" placeholder="Descreva o lançamento...">
+    </div>
+    <div id="ln-comprovante-row" style="display:none;margin-bottom:10px;">
+      <label class="campo-label">Comprovante (opcional)</label>
+      <label class="pedido-file-btn" for="ln-comprovante-input" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;background:var(--bg);">
+        <span>📎</span><span id="ln-comp-label">Anexar comprovante...</span>
+      </label>
+      <input type="file" id="ln-comprovante-input" accept=".pdf,image/*" style="display:none" onchange="lnComprovanteSelecionado(this)">
     </div>
     <div style="margin-bottom:10px;">
       <label class="campo-label">Valor (R$)</label>
@@ -1200,6 +1241,34 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <div style="margin-bottom:12px;">
       <label class="campo-label">Nome da rota</label>
       <input class="campo-input" id="rota-nome-input" placeholder="Ex: Jaraguá do Sul - Segunda">
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;">Ponto de partida</div>
+    <div class="rota-ponto-row">
+      <button class="rota-ponto-pill active" id="rp-casa" onclick="setRotaPartida('casa',this)">🏠 Casa</button>
+      <button class="rota-ponto-pill" id="rp-gps" onclick="setRotaPartida('gps',this)">📍 GPS</button>
+      <button class="rota-ponto-pill" id="rp-outro" onclick="setRotaPartida('outro',this)">✏️ Outro</button>
+    </div>
+    <input class="campo-input rota-custom-input" id="rota-partida-input" placeholder="Digite o endereço de partida...">
+    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;">Ponto de chegada</div>
+    <div class="rota-ponto-row">
+      <button class="rota-ponto-pill active" id="rc-casa" onclick="setRotaChegada('casa',this)">🏠 Casa</button>
+      <button class="rota-ponto-pill" id="rc-hotel" onclick="setRotaChegada('hotel',this)">🏨 Hotel</button>
+      <button class="rota-ponto-pill" id="rc-outra" onclick="setRotaChegada('outra',this)">✏️ Outro</button>
+    </div>
+    <input class="campo-input rota-custom-input" id="rota-chegada-input" placeholder="Digite o endereço de chegada...">
+    <div style="margin-top:2px;margin-bottom:10px">
+      <div class="rota-viagem-toggle" onclick="toggleModoViagem()">
+        <span style="font-size:16px">🗺️</span>
+        <span class="rota-viagem-toggle-label">Rota de viagem (múltiplas cidades)</span>
+        <div class="rota-viagem-sw" id="rota-viagem-sw"></div>
+      </div>
+      <div id="rota-viagem-wrap" style="display:none">
+        <div class="rota-viagem-cidades" id="rota-viagem-cidades-lista"></div>
+        <button class="rota-add-cidade-btn" onclick="abrirSelecionarCidadeViagem()">+ Adicionar cidade</button>
+        <select class="campo-input" id="rota-viagem-cidade-sel" style="display:none;margin-bottom:8px" onchange="adicionarCidadeViagem(this.value)">
+          <option value="">Selecione a cidade...</option>
+        </select>
+      </div>
     </div>
     <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;">Filtrar por cidade</div>
     <div class="rota-cidade-pills" id="rota-cidades-pills"></div>
@@ -1439,6 +1508,7 @@ function esconderLogin() {
   showScreen('list');
   verificarOnboarding();
   if (currentRep) carregarImpostos().then(verificarLembretes);
+  setTimeout(verificarBannerTarefas, 2000);
 }
 
 function mostrarLogin() {
@@ -2134,7 +2204,7 @@ function abrirRepDetalhe(tipo) {
       '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--purple);border-radius:4px"></div></div>' +
     '</div>' +
     '<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase">Visitados (' + visitadosList.length + ')</div>' +
-    visitadosList.map((c,i) => rowClienteDetalhe(c, i, true)).join('') +
+    visitadosList.map((c,i) => rowClienteDetalheComVisitas(c, i, mesRef, anoRef, repFiltroAtual)).join('') +
     (naoVisitados.length ? '<div style="padding:8px 14px 4px;margin-top:4px;font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase">Pendentes (' + naoVisitados.length + ')</div>' +
     naoVisitados.map((c,i) => rowClienteDetalhe(c, i, false)).join('') : '');
   } else if (tipo === 'empresa') {
@@ -2187,6 +2257,68 @@ function renderDetalheLista(rows, showValor) {
       (showValor && v.valor_pedido ? '<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px">R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</div>' : '') +
     '</div>';
   }).join('');
+}
+
+function rowClienteDetalheComVisitas(c, i, mesRef, anoRef, filtro) {
+  const nomeBase = c.nome.replace(/\s*\([^)]*\)/,'').trim();
+  const cidade = c.cidade.replace(' - SC','').replace(' - PR','').trim();
+  const bg = i % 2 === 0 ? 'var(--card)' : 'var(--bg)';
+
+  // Conta visitas no período a partir do histórico
+  const hist = historicoVisitas[c.id] || [];
+  let visitasPeriodo = [];
+  if (filtro === 'hoje') {
+    const hoje = dataHojeLocal();
+    visitasPeriodo = hist.filter(v => v.data === hoje && v.tipo !== 'whatsapp');
+    if (!visitasPeriodo.length && c.visitadoHoje) visitasPeriodo = [{ data: hoje, hora: c.horaHoje }];
+  } else if (filtro === 'semana') {
+    const agora = new Date();
+    const dSem = agora.getDay();
+    const iniSem = new Date(agora); iniSem.setDate(agora.getDate() - dSem); iniSem.setHours(0,0,0,0);
+    const iniStr = iniSem.toISOString().slice(0,10);
+    visitasPeriodo = hist.filter(v => v.data >= iniStr && v.tipo !== 'whatsapp');
+  } else {
+    visitasPeriodo = hist.filter(v => {
+      if (!v.data) return false;
+      const d = new Date(v.data + 'T12:00:00');
+      return d.getMonth() === mesRef && d.getFullYear() === anoRef && v.tipo !== 'whatsapp';
+    });
+  }
+
+  const qtd = visitasPeriodo.length || 1;
+  const ultimaData = c.visitadoHoje ? 'Hoje' : (c.ultimaVisita ? new Date(c.ultimaVisita + 'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—');
+  const badgeMulti = qtd > 1 ? `<span style="font-size:10px;font-weight:700;background:var(--green-bg);color:var(--green);padding:2px 7px;border-radius:10px;margin-left:6px">${qtd}x</span>` : '';
+
+  const expandId = 'hist-exp-' + c.id;
+  const datas = visitasPeriodo
+    .sort((a,b) => (b.data+(b.hora||'')).localeCompare(a.data+(a.hora||'')))
+    .map(v => {
+      const dp = new Date(v.data + 'T12:00:00').toLocaleDateString('pt-BR');
+      const hr = v.hora && v.hora !== '00:00' ? ' · ' + v.hora : '';
+      return `<div style="font-size:12px;color:var(--text2);padding:4px 0;border-top:1px solid var(--border)">${dp}${hr}</div>`;
+    }).join('');
+
+  return '<div style="background:' + bg + ';border-bottom:1px solid var(--border);">' +
+    '<div style="display:flex;align-items:center;padding:11px 14px;gap:10px" onclick="' + (qtd > 1 ? 'toggleHistExp(\'' + expandId + '\')' : 'fecharRepDetalhe();openPerfil(' + c.id + ')') + '">' +
+      '<div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0"></div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:14px;font-weight:600;color:var(--text)">' + nomeBase + badgeMulti + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 ' + cidade + '</div>' +
+      '</div>' +
+      '<div style="font-size:12px;font-weight:600;color:var(--green)">' + ultimaData + '</div>' +
+      (qtd > 1 ? '<div style="color:var(--text3);font-size:14px" id="' + expandId + '-chevron">›</div>' : '<div style="color:var(--text3);font-size:16px">›</div>') +
+    '</div>' +
+    (qtd > 1 ? '<div id="' + expandId + '" style="display:none;padding:0 14px 10px 32px">' + datas + '</div>' : '') +
+  '</div>';
+}
+
+function toggleHistExp(id) {
+  const el = document.getElementById(id);
+  const ch = document.getElementById(id + '-chevron');
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (ch) ch.textContent = isOpen ? '›' : '⌄';
 }
 
 function rowClienteDetalhe(c, i, visitado) {
@@ -3153,6 +3285,66 @@ async function fazerCheckin(tipoVisita) {
   if (btn) btn.disabled = false;
 }
 
+// ── LONG PRESS HISTÓRICO ──────────────────────────────
+let lpTimer = null;
+let lpVisitaId = null;
+
+function lpStart(e, visitaId) {
+  lpVisitaId = visitaId;
+  lpTimer = setTimeout(() => mostrarMenuApagarVisita(visitaId), 600);
+}
+
+function lpEnd() {
+  if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+}
+
+function mostrarMenuApagarVisita(visitaId) {
+  lpVisitaId = visitaId;
+  // Remove menu anterior se existir
+  document.getElementById('hist-delete-overlay')?.remove();
+  document.getElementById('hist-delete-menu')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'hist-delete-overlay';
+  overlay.id = 'hist-delete-overlay';
+  overlay.onclick = fecharMenuApagarVisita;
+
+  const menu = document.createElement('div');
+  menu.className = 'hist-delete-menu';
+  menu.id = 'hist-delete-menu';
+  menu.innerHTML = `
+    <h3>🗑 Apagar visita</h3>
+    <p>Tem certeza? Esta ação não pode ser desfeita.</p>
+    <div class="hist-delete-actions">
+      <button onclick="fecharMenuApagarVisita()" style="flex:1;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;">Cancelar</button>
+      <button onclick="confirmarApagarVisita()" style="flex:1;padding:11px;background:var(--red);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Apagar</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.body.appendChild(menu);
+}
+
+function fecharMenuApagarVisita() {
+  document.getElementById('hist-delete-overlay')?.remove();
+  document.getElementById('hist-delete-menu')?.remove();
+  lpVisitaId = null;
+}
+
+async function confirmarApagarVisita() {
+  if (!lpVisitaId || !currentUser) { fecharMenuApagarVisita(); return; }
+  const { error } = await sb.from('visitas').delete().eq('id', lpVisitaId).eq('rep_id', currentUser.id);
+  fecharMenuApagarVisita();
+  if (error) { showToast('❌ Erro ao apagar visita', true); return; }
+  // Remove do cache local
+  if (historicoVisitas[perfilId]) {
+    historicoVisitas[perfilId] = historicoVisitas[perfilId].filter(v => String(v.id) !== String(lpVisitaId));
+  }
+  showToast('✓ Visita apagada');
+  const c = clientes.find(x => x.id == perfilId);
+  renderHistorico(perfilId, c);
+}
+
 // ── DETALHE VISITA ────────────────────────────────────
 let dvVisitaAtual = null;
 
@@ -3753,7 +3945,7 @@ function renderHistorico(id, c) {
       ? `<div class="hist-obs">${v.obs}</div>`
       : `<div class="hist-obs-vazia">Sem observações</div>`;
 
-    const clickable = v.id ? `onclick="abrirDetalheVisita('${v.id}')" style="cursor:pointer"` : '';
+    const clickable = v.id ? `onclick="abrirDetalheVisita('${v.id}')" style="cursor:pointer" ontouchstart="lpStart(event,'${v.id}')" ontouchend="lpEnd()" ontouchmove="lpEnd()" onmousedown="lpStart(event,'${v.id}')" onmouseup="lpEnd()" onmouseleave="lpEnd()"` : '';
     return `
     <div class="historico-item" ${clickable}>
       <div class="hist-dot ${dotClass}">${emoji}</div>
@@ -5742,7 +5934,7 @@ let lancamentosCache = [];
 let impostosCache = [];
 let lancTipoAtual = 'gasto';
 
-const CATEGORIAS_RECEITA = ['Comissão', 'Bônus', 'Outros'];
+const CATEGORIAS_RECEITA = ['Comissão', 'Reembolso', 'Bonificação recebida'];
 const CATEGORIAS_GASTO = ['Combustível', 'Alimentação', 'Hospedagem', 'Clientes', 'Impostos', 'Outros'];
 let hotelEstrelas = 0;
 
@@ -5796,35 +5988,84 @@ function renderLancamentos() {
     el.innerHTML = '<div style="text-align:center;padding:48px 16px;color:var(--text3);font-size:14px;">Nenhum lançamento no período.<br>Toque + para adicionar.</div>';
     return;
   }
-  const grupos = {};
-  lancamentosCache.forEach(l => {
-    const d = l.data;
-    if (!grupos[d]) grupos[d] = [];
-    grupos[d].push(l);
-  });
-  el.innerHTML = Object.entries(grupos).map(([data, items]) => `
-    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;padding:10px 2px 6px;">${formatarDataBR(data)}</div>
-    <div class="fin-card">
-      ${items.map(l => {
-        const isHosp = l.categoria === 'Hospedagem';
-        const desc = isHosp ? (l.hotel_nome || l.descricao || 'Hospedagem') : (l.descricao || l.categoria);
-        const sub = isHosp
-          ? [l.hotel_cidade, l.hotel_estrelas ? '⭐'.repeat(l.hotel_estrelas) : '', l.descricao && l.descricao !== l.categoria ? l.descricao : ''].filter(Boolean).join(' · ')
-          : (l.categoria + (l.mes_referencia ? ' • '+l.mes_referencia : ''));
-        return `
-        <div class="fin-item">
-          <div class="fin-item-info">
-            <div class="fin-item-desc">${isHosp ? '🏨 ' : ''}${desc}</div>
-            <div class="fin-item-sub">${sub}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="fin-item-val ${l.tipo}">${l.tipo==='receita'?'+':'-'}R$${Number(l.valor).toFixed(2).replace('.',',')}</div>
-            <button onclick="excluirLancamento('${l.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;">×</button>
-          </div>
+
+  const receitas = lancamentosCache.filter(l => l.tipo === 'receita');
+  const gastos = lancamentosCache.filter(l => l.tipo === 'gasto');
+  let html = '';
+
+  if (receitas.length) {
+    const totalReceitas = receitas.reduce((s, l) => s + Number(l.valor), 0);
+    html += `<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.3px;padding:10px 2px 6px;">📈 Receitas · R$ ${totalReceitas.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>`;
+
+    // Agrupa por categoria
+    const gruposRec = {};
+    receitas.forEach(l => {
+      const cat = l.categoria || 'Outros';
+      if (!gruposRec[cat]) gruposRec[cat] = [];
+      gruposRec[cat].push(l);
+    });
+
+    const iconesCat = { 'Comissão': '💼', 'Reembolso': '🔄', 'Bonificação recebida': '🎁' };
+
+    html += Object.entries(gruposRec).map(([cat, items]) => {
+      const totalCat = items.reduce((s, l) => s + Number(l.valor), 0);
+      return `
+        <div style="font-size:12px;font-weight:700;color:var(--text2);padding:6px 2px 4px;">${iconesCat[cat] || '💰'} ${cat} <span style="font-weight:400;color:var(--text3)">· R$ ${totalCat.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></div>
+        <div class="fin-card">
+          ${items.map(l => {
+            let sub = '';
+            if (l.representada_nome) sub = '🏢 ' + l.representada_nome;
+            else if (l.mes_referencia) sub = l.mes_referencia;
+            if (l.cliente_nome) sub = (sub ? sub + ' · ' : '') + l.cliente_nome;
+            if (!sub) sub = l.descricao !== l.categoria ? (l.descricao || '') : '';
+            const docLink = l.url_comprovante ? `<a href="${l.url_comprovante}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:4px">📄</a>` : '';
+            return `
+            <div class="fin-item">
+              <div class="fin-item-info">
+                <div class="fin-item-desc">${l.descricao || l.categoria}${docLink}</div>
+                ${sub ? `<div class="fin-item-sub">${sub}</div>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="fin-item-val receita">+R$${Number(l.valor).toFixed(2).replace('.',',')}</div>
+                <button onclick="excluirLancamento('${l.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;">×</button>
+              </div>
+            </div>`;
+          }).join('')}
         </div>`;
-      }).join('')}
-    </div>
-  `).join('');
+    }).join('');
+  }
+
+  if (gastos.length) {
+    const totalGastos = gastos.reduce((s, l) => s + Number(l.valor), 0);
+    html += `<div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.3px;padding:10px 2px 6px;">📉 Gastos · R$ ${totalGastos.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>`;
+    const grupos = {};
+    gastos.forEach(l => { if (!grupos[l.data]) grupos[l.data] = []; grupos[l.data].push(l); });
+    html += Object.entries(grupos).map(([data, items]) => `
+      <div style="font-size:11px;font-weight:600;color:var(--text3);padding:6px 2px 4px;">${formatarDataBR(data)}</div>
+      <div class="fin-card">
+        ${items.map(l => {
+          const isHosp = l.categoria === 'Hospedagem';
+          const desc = isHosp ? (l.hotel_nome || l.descricao || 'Hospedagem') : (l.descricao || l.categoria);
+          const sub = isHosp
+            ? [l.hotel_cidade, l.hotel_estrelas ? '⭐'.repeat(l.hotel_estrelas) : ''].filter(Boolean).join(' · ')
+            : (l.categoria + (l.mes_referencia ? ' • '+l.mes_referencia : ''));
+          return `
+          <div class="fin-item">
+            <div class="fin-item-info">
+              <div class="fin-item-desc">${isHosp ? '🏨 ' : ''}${desc}</div>
+              <div class="fin-item-sub">${sub}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="fin-item-val gasto">-R$${Number(l.valor).toFixed(2).replace('.',',')}</div>
+              <button onclick="excluirLancamento('${l.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;">×</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('');
+  }
+
+  el.innerHTML = html;
 }
 
 function renderResumoFin() {
@@ -5887,6 +6128,9 @@ function abrirModalLancamento() {
   hotelEstrelas = 0;
   document.querySelectorAll('#ln-estrelas-display span').forEach(s => s.textContent = '☆');
   atualizarCategoriasLancamento();
+  const motivo = document.getElementById('ln-motivo'); if (motivo) motivo.value = '';
+  const compInput = document.getElementById('ln-comprovante-input'); if (compInput) compInput.value = '';
+  const compLbl = document.getElementById('ln-comp-label'); if (compLbl) compLbl.textContent = 'Anexar comprovante...';
   document.getElementById('lancamento-modal').classList.add('open');
 }
 
@@ -5902,6 +6146,11 @@ function setLancTipo(tipo) {
   atualizarCategoriasLancamento();
 }
 
+function lnComprovanteSelecionado(input) {
+  const lbl = document.getElementById('ln-comp-label');
+  if (lbl) lbl.textContent = input.files[0]?.name || 'Anexar comprovante...';
+}
+
 function atualizarCategoriasLancamento() {
   const cats = lancTipoAtual==='receita' ? CATEGORIAS_RECEITA : CATEGORIAS_GASTO;
   const sel = document.getElementById('ln-categoria');
@@ -5912,23 +6161,36 @@ function atualizarCategoriasLancamento() {
 function atualizarCamposLancamento() {
   const cat = document.getElementById('ln-categoria').value;
   const isHosp = cat === 'Hospedagem';
-  document.getElementById('ln-representada-row').style.display = cat==='Comissão' ? 'block' : 'none';
-  document.getElementById('ln-mes-row').style.display = cat==='Comissão' ? 'block' : 'none';
-  document.getElementById('ln-cliente-row').style.display = cat==='Clientes' ? 'block' : 'none';
+  const isComissao = cat === 'Comissão';
+  const isReembolso = cat === 'Reembolso';
+  const isBonifRecebida = cat === 'Bonificação recebida';
+
+  document.getElementById('ln-representada-row').style.display = (isComissao || isReembolso) ? 'block' : 'none';
+  document.getElementById('ln-mes-row').style.display = isComissao ? 'block' : 'none';
+  document.getElementById('ln-cliente-row').style.display = cat === 'Clientes' ? 'block' : 'none';
+  document.getElementById('ln-cliente-bonif-row').style.display = isBonifRecebida ? 'block' : 'none';
+  document.getElementById('ln-motivo-row').style.display = isBonifRecebida ? 'block' : 'none';
   document.getElementById('ln-hotel-nome-row').style.display = isHosp ? 'block' : 'none';
   document.getElementById('ln-hotel-cidade-row').style.display = isHosp ? 'block' : 'none';
   document.getElementById('ln-hotel-estrelas-row').style.display = isHosp ? 'block' : 'none';
-  const descLabel = document.getElementById('ln-descricao-label');
-  if (descLabel) descLabel.textContent = isHosp ? 'Observações (opcional)' : 'Descrição';
-  document.getElementById('ln-descricao').placeholder = isHosp ? 'Ex: Café da manhã ruim, quarto bom...' : 'Descreva o lançamento...';
+  document.getElementById('ln-comprovante-row').style.display = isReembolso ? 'block' : 'none';
 
-  if (cat==='Comissão') {
+  const descLabel = document.getElementById('ln-descricao-label');
+  if (descLabel) descLabel.textContent = isHosp ? 'Observações (opcional)' : isBonifRecebida ? 'Observações (opcional)' : 'Descrição';
+  const descInput = document.getElementById('ln-descricao');
+  if (descInput) descInput.placeholder = isHosp ? 'Ex: Café da manhã ruim, quarto bom...' : isBonifRecebida ? '' : 'Descreva o lançamento...';
+
+  if (isComissao || isReembolso) {
     const sel = document.getElementById('ln-representada');
     sel.innerHTML = '<option value="">Selecione...</option>' + representadasCache.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
   }
-  if (cat==='Clientes') {
+  if (cat === 'Clientes') {
     const sel = document.getElementById('ln-cliente');
     sel.innerHTML = '<option value="">Nenhum</option>' + clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  }
+  if (isBonifRecebida) {
+    const sel = document.getElementById('ln-cliente-bonif');
+    sel.innerHTML = '<option value="">Selecione...</option>' + clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
   }
 }
 
@@ -5953,17 +6215,35 @@ async function salvarLancamento() {
     tipo: lancTipoAtual, categoria: cat, descricao: desc || cat,
     valor, data, rep_id: currentRep.id
   };
-  if (cat==='Comissão') {
+  if (cat === 'Comissão' || cat === 'Reembolso') {
     payload.representada_id = document.getElementById('ln-representada').value || null;
+    const repSel = document.getElementById('ln-representada');
+    if (repSel?.value) payload.representada_nome = repSel.options[repSel.selectedIndex].text;
+  }
+  if (cat === 'Comissão') {
     payload.mes_referencia = document.getElementById('ln-mes').value || null;
   }
-  if (cat==='Clientes') {
+  if (cat === 'Bonificação recebida') {
+    const cliSel = document.getElementById('ln-cliente-bonif');
+    payload.cliente_id = cliSel?.value || null;
+    payload.cliente_nome = cliSel?.value ? cliSel.options[cliSel.selectedIndex].text : null;
+    const motivo = document.getElementById('ln-motivo')?.value.trim();
+    if (motivo) payload.descricao = motivo;
+  }
+  if (cat === 'Clientes') {
     payload.cliente_id = document.getElementById('ln-cliente').value || null;
   }
-  if (cat==='Hospedagem') {
+  if (cat === 'Hospedagem') {
     payload.hotel_nome = document.getElementById('ln-hotel-nome').value.trim() || null;
     payload.hotel_cidade = document.getElementById('ln-hotel-cidade').value.trim() || null;
     payload.hotel_estrelas = hotelEstrelas || null;
+  }
+
+  // Upload comprovante se houver
+  const compInput = document.getElementById('ln-comprovante-input');
+  if (compInput?.files?.[0]) {
+    const url = await uploadDocSupabase(compInput.files[0], 'reembolso_' + currentRep.id + '_' + data);
+    if (url) payload.url_comprovante = url;
   }
 
   const { error } = await sb.from('financeiro').insert(payload);
@@ -6201,10 +6481,114 @@ function renderRotas() {
   el.innerHTML = cards;
 }
 
+// ── ROTA: PARTIDA/CHEGADA/VIAGEM ──────────────────────
+let rotaPartidaTipo = 'casa';
+let rotaChegadaTipo = 'casa';
+let rotaModoViagem = false;
+let rotaViagemCidades = [];
+
+function setRotaPartida(tipo, btn) {
+  rotaPartidaTipo = tipo;
+  ['rp-casa','rp-gps','rp-outro'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const inp = document.getElementById('rota-partida-input');
+  if (inp) inp.style.display = tipo === 'outro' ? 'block' : 'none';
+}
+
+function setRotaChegada(tipo, btn) {
+  rotaChegadaTipo = tipo;
+  ['rc-casa','rc-hotel','rc-outra'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const inp = document.getElementById('rota-chegada-input');
+  if (inp) inp.style.display = (tipo === 'hotel' || tipo === 'outra') ? 'block' : 'none';
+  if (inp && tipo === 'hotel') inp.placeholder = 'Nome/endereço do hotel...';
+  if (inp && tipo === 'outra') inp.placeholder = 'Digite o endereço de chegada...';
+}
+
+function toggleModoViagem() {
+  rotaModoViagem = !rotaModoViagem;
+  document.getElementById('rota-viagem-sw')?.classList.toggle('on', rotaModoViagem);
+  document.getElementById('rota-viagem-wrap').style.display = rotaModoViagem ? 'block' : 'none';
+  renderCidadesViagem();
+}
+
+function renderCidadesViagem() {
+  const el = document.getElementById('rota-viagem-cidades-lista');
+  if (!el) return;
+  el.innerHTML = rotaViagemCidades.map((c, i) => `
+    <div class="rota-viagem-item">
+      <span class="rota-viagem-num">${i+1}.</span>
+      <span class="rota-viagem-nome">📍 ${c}</span>
+      <button class="rota-viagem-del" onclick="removerCidadeViagem(${i})">×</button>
+    </div>
+  `).join('') || '<div style="text-align:center;font-size:12px;color:var(--text3);padding:8px 0">Nenhuma cidade adicionada</div>';
+}
+
+function abrirSelecionarCidadeViagem() {
+  const sel = document.getElementById('rota-viagem-cidade-sel');
+  if (!sel) return;
+  const cidades = [...new Set(clientes.map(c => c.cidade).filter(Boolean))].sort()
+    .filter(c => !rotaViagemCidades.includes(c));
+  sel.innerHTML = '<option value="">Selecione a cidade...</option>' + cidades.map(c => `<option>${c}</option>`).join('');
+  sel.style.display = 'block';
+  sel.focus();
+}
+
+function adicionarCidadeViagem(cidade) {
+  if (!cidade) return;
+  if (!rotaViagemCidades.includes(cidade)) rotaViagemCidades.push(cidade);
+  document.getElementById('rota-viagem-cidade-sel').style.display = 'none';
+  renderCidadesViagem();
+  // Auto-selecionar clientes das cidades de viagem
+  if (rotaModoViagem) {
+    const clientesDasCidades = clientes.filter(c => rotaViagemCidades.includes(c.cidade));
+    novaRotaClientesSel = clientesDasCidades.map(c => String(c.id));
+    renderCidadesPillsRota();
+    renderClientesRota();
+  }
+}
+
+function removerCidadeViagem(idx) {
+  rotaViagemCidades.splice(idx, 1);
+  renderCidadesViagem();
+  if (rotaModoViagem) {
+    const clientesDasCidades = clientes.filter(c => rotaViagemCidades.includes(c.cidade));
+    novaRotaClientesSel = clientesDasCidades.map(c => String(c.id));
+    renderClientesRota();
+  }
+}
+
+async function resolverEnderecoPonto(tipo, inputId) {
+  if (tipo === 'casa') return currentRep?.endereco_base || null;
+  if (tipo === 'gps') {
+    return new Promise(resolve => {
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve(`${pos.coords.latitude},${pos.coords.longitude}`),
+        () => resolve(currentRep?.endereco_base || null),
+        { timeout: 5000 }
+      );
+    });
+  }
+  return document.getElementById(inputId)?.value.trim() || null;
+}
+
 function abrirNovaRota() {
   novaRotaCidadesSel = [];
   novaRotaClientesSel = [];
+  rotaPartidaTipo = 'casa';
+  rotaChegadaTipo = 'casa';
+  rotaModoViagem = false;
+  rotaViagemCidades = [];
   document.getElementById('rota-nome-input').value = '';
+  document.getElementById('rota-partida-input').style.display = 'none';
+  document.getElementById('rota-partida-input').value = '';
+  document.getElementById('rota-chegada-input').style.display = 'none';
+  document.getElementById('rota-chegada-input').value = '';
+  document.getElementById('rota-viagem-sw').classList.remove('on');
+  document.getElementById('rota-viagem-wrap').style.display = 'none';
+  document.getElementById('rota-viagem-cidade-sel').style.display = 'none';
+  ['rp-casa','rp-gps','rp-outro'].forEach(id => document.getElementById(id).classList.toggle('active', id==='rp-casa'));
+  ['rc-casa','rc-hotel','rc-outra'].forEach(id => document.getElementById(id).classList.toggle('active', id==='rc-casa'));
   renderCidadesPillsRota();
   renderClientesRota();
   document.getElementById('rota-modal').classList.add('open');
@@ -6289,30 +6673,49 @@ async function salvarNovaRota() {
   const btn = document.getElementById('btn-criar-rota');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Otimizando rota...'; }
 
+  // Resolve partida e chegada
+  const endPartida = await resolverEnderecoPonto(rotaPartidaTipo, 'rota-partida-input');
+  const endChegada = await resolverEnderecoPonto(rotaChegadaTipo, 'rota-chegada-input');
+
   const clientesSel = clientes.filter(c => novaRotaClientesSel.includes(String(c.id)) && c.lat && c.lng);
   let kmTotal = 0;
   let tempoEstimado = 0;
   let ordemOtimizada = clientesSel.map(c => String(c.id));
   let fonte = 'haversine';
 
-  // Tenta otimização real via Google Directions API
   try {
     if (window.google && google.maps && google.maps.DirectionsService) {
-      const resultado = await otimizarRotaGoogle(clientesSel, currentRep?.endereco_base);
-      const route = resultado.routes[0];
-      // Reordena clientes conforme sugestão do Google
-      ordemOtimizada = route.waypoint_order.map(i => String(clientesSel[i].id));
-      // Soma distância e tempo de cada trecho
-      route.legs.forEach(leg => {
-        kmTotal += leg.distance.value / 1000;
-        tempoEstimado += leg.duration.value;
-      });
-      fonte = 'google';
-    } else {
-      throw new Error('Maps não disponível');
-    }
+      if (rotaModoViagem && rotaViagemCidades.length > 1) {
+        // Rota de viagem: otimiza por cidade em sequência
+        let ordemFinal = [];
+        let kmAcum = 0, tempoAcum = 0;
+        for (let ci = 0; ci < rotaViagemCidades.length; ci++) {
+          const cidade = rotaViagemCidades[ci];
+          const clientesCidade = clientesSel.filter(c => c.cidade === cidade);
+          if (!clientesCidade.length) continue;
+          const origemCidade = ci === 0 ? endPartida : null;
+          const destinoCidade = ci === rotaViagemCidades.length - 1 ? endChegada : null;
+          try {
+            const res = await otimizarRotaGoogle(clientesCidade, origemCidade, destinoCidade);
+            const route = res.routes[0];
+            route.waypoint_order.forEach(i => ordemFinal.push(String(clientesCidade[i].id)));
+            route.legs.forEach(leg => { kmAcum += leg.distance.value/1000; tempoAcum += leg.duration.value; });
+          } catch {
+            clientesCidade.forEach(c => ordemFinal.push(String(c.id)));
+          }
+        }
+        ordemOtimizada = ordemFinal;
+        kmTotal = kmAcum; tempoEstimado = tempoAcum;
+        fonte = 'google';
+      } else {
+        const resultado = await otimizarRotaGoogle(clientesSel, endPartida, endChegada);
+        const route = resultado.routes[0];
+        ordemOtimizada = route.waypoint_order.map(i => String(clientesSel[i].id));
+        route.legs.forEach(leg => { kmTotal += leg.distance.value/1000; tempoEstimado += leg.duration.value; });
+        fonte = 'google';
+      }
+    } else { throw new Error('Maps não disponível'); }
   } catch(e) {
-    // Fallback: Haversine com fator de estrada 1.3
     console.warn('Fallback Haversine:', e);
     for (let i = 0; i < clientesSel.length - 1; i++) {
       const a = clientesSel[i], b = clientesSel[i+1];
@@ -6342,11 +6745,11 @@ async function salvarNovaRota() {
 
 // Chama Google Directions API com optimizeWaypoints:true
 // origin/destination = endereço base do rep (round trip); fallback = primeiro/último cliente
-function otimizarRotaGoogle(clientesSel, enderecoBase) {
+function otimizarRotaGoogle(clientesSel, origemCustom, destinoCustom) {
   return new Promise((resolve, reject) => {
     const ds = new google.maps.DirectionsService();
-    const origem  = enderecoBase || `${clientesSel[0].lat},${clientesSel[0].lng}`;
-    const destino = enderecoBase || `${clientesSel[clientesSel.length - 1].lat},${clientesSel[clientesSel.length - 1].lng}`;
+    const origem  = origemCustom || `${clientesSel[0].lat},${clientesSel[0].lng}`;
+    const destino = destinoCustom || origemCustom || `${clientesSel[clientesSel.length - 1].lat},${clientesSel[clientesSel.length - 1].lng}`;
     const waypoints = clientesSel.map(c => ({
       location: new google.maps.LatLng(parseFloat(c.lat), parseFloat(c.lng)),
       stopover: true
@@ -6499,6 +6902,42 @@ async function deletarTarefaSupabase(id, data) {
   try {
     await sb.from('tarefas').delete().eq('id', id).eq('rep_id', currentUser.id);
   } catch(e) {}
+}
+
+// ── BANNER TAREFAS APÓS 18H ───────────────────────────
+function verificarBannerTarefas() {
+  const agora = new Date();
+  if (agora.getHours() < 18) return;
+  const hoje = dataHojeLocal();
+  const chave = 'tarefas_banner_' + hoje;
+  if (localStorage.getItem(chave)) return;
+
+  const todas = getTarefas();
+  const pendentes = todas.filter(t => t.data === hoje && !t.feita);
+  if (!pendentes.length) return;
+
+  localStorage.setItem(chave, '1');
+  mostrarBannerTarefas(pendentes.length);
+}
+
+function mostrarBannerTarefas(qtd) {
+  document.getElementById('tarefas-banner-el')?.remove();
+  const banner = document.createElement('div');
+  banner.className = 'tarefas-banner';
+  banner.id = 'tarefas-banner-el';
+  banner.innerHTML = `
+    <span style="font-size:18px">📋</span>
+    <span class="tarefas-banner-text">Você tem ${qtd} tarefa${qtd>1?'s':''} aberta${qtd>1?'s':''} hoje</span>
+    <button class="tarefas-banner-close" onclick="event.stopPropagation();fecharBannerTarefas()">×</button>
+  `;
+  banner.addEventListener('click', () => { fecharBannerTarefas(); showScreen('tarefas'); });
+  document.body.appendChild(banner);
+  setTimeout(fecharBannerTarefas, 8000);
+}
+
+function fecharBannerTarefas() {
+  const el = document.getElementById('tarefas-banner-el');
+  if (el) el.remove();
 }
 
 function renderTarefas() {
