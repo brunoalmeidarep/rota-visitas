@@ -644,7 +644,7 @@ function showTab(tab) {
   document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.getElementById(`tab-${tab}`)?.classList.add('active');
-  if (tab === 'relatorio') carregarRelatorio();
+  if (tab === 'relatorio') { fecharDetalheRelatorio(); carregarRelatorio(); }
 }
 
 // ── RELATÓRIO ────────────────────────────────────────────────────────
@@ -912,8 +912,10 @@ async function abrirDetalheRelatorio(tipo) {
 }
 
 function fecharDetalheRelatorio() {
-  document.getElementById('rep-detail').style.display = 'none';
-  document.getElementById('rep-body').style.display = '';
+  const det = document.getElementById('rep-detail');
+  const body = document.getElementById('rep-body');
+  if (det)  det.style.display = 'none';
+  if (body) body.style.display = '';
 }
 
 function renderDetalheVisitas() {
