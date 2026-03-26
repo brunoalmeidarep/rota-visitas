@@ -641,6 +641,27 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .pf-visit-btn#pf-btn-whatsapp.active { background:#e7f9ef; border-color:#25D366; color:#128C7E; }
 .pf-btn-registrar { width:100%; background:var(--blue); color:#fff; border:none; border-radius:12px; padding:13px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; margin-top:4px; }
 .pf-btn-registrar:disabled { opacity:.6; cursor:default; }
+
+/* ── CHECK-IN UNIFICADO ─────────────────────────────── */
+.ci-tipo-row { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.ci-tipo-pill { flex:1; min-width:70px; text-align:center; padding:9px 6px; border-radius:20px; border:1.5px solid var(--border); background:var(--bg); font-size:12px; font-weight:600; cursor:pointer; color:var(--text2); font-family:inherit; }
+.ci-tipo-pill.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+.ci-btn-group { display:flex; gap:8px; margin-top:4px; }
+.btn-checkin-main { flex:2; background:var(--green); color:#fff; border:none; border-radius:12px; padding:13px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+.btn-checkin-main:disabled { opacity:.6; cursor:default; }
+.btn-checkin-wa { flex:1; background:var(--surface); border:1.5px solid #25D366; color:#128C7E; border-radius:12px; padding:10px 8px; font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; text-align:center; }
+.p-hoje-box { background:var(--green-bg); border:1.5px solid var(--green); border-radius:14px; padding:14px 16px; margin-bottom:12px; display:flex; align-items:flex-start; gap:10px; }
+.p-hoje-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
+.p-hoje-info { flex:1; min-width:0; }
+.p-hoje-hora { font-size:14px; font-weight:700; color:var(--green); }
+.p-hoje-obs { font-size:13px; color:var(--text2); margin-top:3px; line-height:1.4; }
+.p-hoje-pedido { font-size:12px; color:var(--text3); margin-top:3px; }
+.btn-edit-hoje { background:none; border:none; color:var(--blue); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; padding:0; }
+#screen-visita-detalhe { display:none; flex-direction:column; height:100%; background:var(--bg); position:fixed; top:0;left:0;right:0;bottom:0; z-index:700; animation:slideIn .22s ease; }
+.detalhe-campo { margin-bottom:14px; }
+.detalhe-label { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+.detalhe-valor { font-size:15px; color:var(--text); line-height:1.4; }
+.detalhe-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; padding-top:8px; border-top:1px solid var(--border); }
 .pf-feedback { font-size:13px; font-weight:600; color:var(--green); text-align:center; margin-top:8px; min-height:18px; }
 .pf-select { width:100%; background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--text2); font-family:inherit; font-size:14px; outline:none; -webkit-appearance:none; }
 .pf-select:focus { border-color:var(--blue); }
@@ -1327,6 +1348,12 @@ async function iniciarApp() {
       }
     });
   } catch(e) { console.log('Auth listener erro:', e); }
+}
+
+// ── DATA LOCAL ────────────────────────────────────────
+function dataHojeLocal() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
 // ── MÁSCARA MONETÁRIA ────────────────────────────────
@@ -2845,26 +2872,28 @@ function openPerfil(id) {
   const c = clientes.find(x => x.id == id);
   if (!c) return;
 
-  // Separa nome da empresa e comprador (entre parênteses)
+  // Nome e comprador
   const matchComp = c.nome.match(/^(.*?)\s*\(([^)]+)\)(.*)$/);
   const nomeEmpresa = matchComp ? (matchComp[1] + matchComp[3]).trim() : c.nome;
   const comprador   = matchComp ? matchComp[2] : null;
-
   document.getElementById('p-nome').textContent = nomeEmpresa;
-
   const pComp = document.getElementById('p-comprador');
-  if (comprador) {
-    pComp.innerHTML = `<span>👤</span> ${comprador}`;
-    pComp.style.display = 'flex';
-  } else {
-    pComp.style.display = 'none';
-  }
+  if (comprador) { pComp.innerHTML = `<span>👤</span> ${comprador}`; pComp.style.display = 'flex'; }
+  else pComp.style.display = 'none';
 
   document.getElementById('p-cidade').textContent = c.cidade;
-  document.getElementById('p-obs').value = '';
-  pfResetForm();
 
-  // Carrega lembrete salvo
+  // Populate representadas select
+  const ciRepSel = document.getElementById('ci-representada');
+  if (ciRepSel) {
+    ciRepSel.innerHTML = '<option value="">🏢 Representada (opcional)</option>' +
+      representadasCache.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+  }
+
+  // Reset form
+  ciResetForm();
+
+  // Lembrete
   const lembretes = JSON.parse(localStorage.getItem('lembretes') || '{}');
   document.getElementById('p-lembrete').value = lembretes[id] || '';
   document.getElementById('p-lembrete-salvo').textContent = lembretes[id] ? '✓ lembrete salvo' : '';
@@ -2876,29 +2905,37 @@ function openPerfil(id) {
   if (c.endereco) meta.innerHTML += `<span>📍 ${c.endereco}</span>`;
   if (c.ultimaVisita) meta.innerHTML += `<span>🗓 Última compra: ${formatDate(c.ultimaVisita)}</span>`;
 
-  // Botão check-in
-  const btn = document.getElementById('p-btn-checkin');
-  btn.disabled = c.visitadoHoje;
-  btn.textContent = c.visitadoHoje ? `✓ Visitado às ${c.horaHoje}` : '✓ CHECK-IN';
+  // Verifica se visitou hoje (data local)
+  const dataHoje = dataHojeLocal();
+  const histLocal = historicoVisitas[id] || [];
+  const visitaHojeCache = histLocal.find(v => v.data === dataHoje && v.tipo !== 'whatsapp');
 
-  // Histórico — carrega do Supabase em background
+  if (c.visitadoHoje || visitaHojeCache) {
+    const resumo = visitaHojeCache || { hora: c.horaHoje, obs: c.ultimaObs };
+    mostrarResumoHoje(c, resumo);
+  } else {
+    mostrarResumoHoje(c, null);
+  }
+
+  // Histórico
   renderHistorico(id, c);
   buscarHistoricoSupabase(id).then(visitas => {
     if (!visitas.length) return;
     if (!historicoVisitas[id]) historicoVisitas[id] = [];
-    // Adiciona visitas do Supabase que não estão no cache local
     visitas.forEach(v => {
       const jaExiste = historicoVisitas[id].some(h => h.data === v.data && h.hora === v.hora);
-      if (!jaExiste) historicoVisitas[id].push({ data: v.data, hora: v.hora, obs: v.obs });
+      if (!jaExiste) historicoVisitas[id].push(v);
     });
     renderHistorico(id, c);
+    // Reavalia visitado hoje com dados do Supabase
+    const vHoje = historicoVisitas[id].find(v => v.data === dataHoje && v.tipo !== 'whatsapp');
+    if (vHoje && !c.visitadoHoje) mostrarResumoHoje(c, vHoje);
   });
 
-  // Carrega resumos de gastos e bonificações
+  // Gastos e bonificações
   carregarGastosResumoPerfil();
   carregarBonifResumoPerfil();
 
-  // Garante aba lista ativa antes de abrir perfil
   showScreen('list');
   document.getElementById('screen-perfil').style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -2927,6 +2964,313 @@ async function salvarLembrete() {
 
   // Salva no Supabase em background
   salvarLembreteSupabase(perfilId, texto);
+}
+
+// ── HELPERS CHECK-IN UNIFICADO ───────────────────────
+let ciTipoAtual = 'pedido';
+
+function ciSetTipo(tipo, btn) {
+  ciTipoAtual = tipo;
+  ['nenhum','pedido','orcamento'].forEach(t => document.getElementById('ci-'+t)?.classList.toggle('active', t===tipo));
+  const campos = document.getElementById('ci-pedido-campos');
+  const statusGrupo = document.getElementById('ci-status-grupo');
+  if (campos) campos.style.display = tipo === 'nenhum' ? 'none' : 'block';
+  if (statusGrupo) statusGrupo.style.display = tipo === 'orcamento' ? 'flex' : 'none';
+}
+
+function ciSetStatus(status, btn) {
+  const hidden = document.getElementById('ci-status');
+  if (hidden) hidden.value = status;
+  document.querySelectorAll('#ci-status-aberto,#ci-status-fechado,#ci-status-perdido').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+function ciDocSelecionado(input) {
+  const lbl = document.getElementById('ci-doc-label');
+  const nm = document.getElementById('ci-doc-nome');
+  const nome = input.files[0]?.name || '';
+  if (lbl) lbl.textContent = nome || 'Anexar documento (opcional)';
+  if (nm) nm.textContent = nome ? '📄 ' + nome : '';
+}
+
+function ciResetForm() {
+  const obs = document.getElementById('p-obs');
+  if (obs) obs.value = '';
+  ciTipoAtual = 'pedido';
+  ['nenhum','pedido','orcamento'].forEach(t => document.getElementById('ci-'+t)?.classList.toggle('active', t==='pedido'));
+  const campos = document.getElementById('ci-pedido-campos');
+  if (campos) campos.style.display = 'block';
+  const statusGrupo = document.getElementById('ci-status-grupo');
+  if (statusGrupo) statusGrupo.style.display = 'none';
+  const hidden = document.getElementById('ci-status');
+  if (hidden) hidden.value = 'aberto';
+  ['ci-status-aberto','ci-status-fechado','ci-status-perdido'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', id === 'ci-status-aberto');
+  });
+  const repSel = document.getElementById('ci-representada');
+  if (repSel) repSel.value = '';
+  const valEl = document.getElementById('ci-valor');
+  if (valEl) valEl.value = '';
+  const docInput = document.getElementById('ci-doc-input');
+  if (docInput) docInput.value = '';
+  const lbl = document.getElementById('ci-doc-label');
+  if (lbl) lbl.textContent = 'Anexar documento (opcional)';
+  const nm = document.getElementById('ci-doc-nome');
+  if (nm) nm.textContent = '';
+  const fb = document.getElementById('ci-feedback');
+  if (fb) fb.textContent = '';
+}
+
+function mostrarResumoHoje(c, visitaHoje) {
+  const hojeDiv = document.getElementById('p-visitado-hoje');
+  const formDiv = document.getElementById('p-form-checkin');
+  if (!hojeDiv || !formDiv) return;
+  if (!visitaHoje) {
+    hojeDiv.style.display = 'none';
+    formDiv.style.display = 'block';
+    return;
+  }
+  hojeDiv.style.display = 'block';
+  formDiv.style.display = 'none';
+  const horaEl = document.getElementById('p-hoje-hora');
+  const obsEl = document.getElementById('p-hoje-obs');
+  const pedEl = document.getElementById('p-hoje-pedido');
+  if (horaEl) horaEl.textContent = visitaHoje.hora ? `✓ Visitado às ${visitaHoje.hora}` : '✓ Visitado hoje';
+  if (obsEl) obsEl.textContent = visitaHoje.obs || '';
+  if (pedEl) {
+    const pt = visitaHoje.pedido_tipo || (visitaHoje.tipo !== 'visita' && visitaHoje.tipo !== 'whatsapp' ? visitaHoje.tipo : null);
+    if (pt === 'pedido' || pt === 'orcamento' || pt === 'remoto') {
+      const val = visitaHoje.pedido_valor || visitaHoje.valor_pedido;
+      let txt = pt === 'orcamento' ? '📋 Orçamento' : '💰 Pedido';
+      if (val) txt += ' · R$ ' + parseFloat(val).toLocaleString('pt-BR', {minimumFractionDigits:2});
+      pedEl.textContent = txt;
+    } else { pedEl.textContent = ''; }
+  }
+}
+
+function editarVisitaHoje() {
+  const hojeDiv = document.getElementById('p-visitado-hoje');
+  const formDiv = document.getElementById('p-form-checkin');
+  if (hojeDiv) hojeDiv.style.display = 'none';
+  if (formDiv) formDiv.style.display = 'block';
+  // Pre-preenche com dados de hoje
+  const dataHoje = dataHojeLocal();
+  const hist = historicoVisitas[perfilId] || [];
+  const v = hist.find(x => x.data === dataHoje && x.tipo !== 'whatsapp');
+  if (!v) return;
+  const obs = document.getElementById('p-obs');
+  if (obs) obs.value = v.obs || '';
+  const val = v.pedido_valor || v.valor_pedido;
+  const valEl = document.getElementById('ci-valor');
+  if (valEl && val) valEl.value = parseFloat(val).toFixed(2).replace('.', ',');
+  const pt = v.pedido_tipo || v.tipo;
+  if (pt === 'orcamento') ciSetTipo('orcamento', document.getElementById('ci-orcamento'));
+  else if (pt === 'pedido' || pt === 'remoto') ciSetTipo('pedido', document.getElementById('ci-pedido'));
+  else ciSetTipo('nenhum', document.getElementById('ci-nenhum'));
+}
+
+async function fazerCheckin(tipoVisita) {
+  if (!perfilId || !currentUser) return;
+  const c = clientes.find(x => x.id == perfilId);
+  if (!c) return;
+
+  const btnMain = document.getElementById('p-btn-checkin');
+  const btnWA = document.querySelector('.btn-checkin-wa');
+  const btn = tipoVisita === 'visita' ? btnMain : btnWA;
+  const feedback = document.getElementById('ci-feedback');
+
+  const agora = new Date();
+  const hora = String(agora.getHours()).padStart(2,'0') + ':' + String(agora.getMinutes()).padStart(2,'0');
+  const dataHoje = dataHojeLocal();
+  const obs = document.getElementById('p-obs')?.value.trim() || '';
+  const pedidoTipo = ciTipoAtual;
+  const orcStatus = document.getElementById('ci-status')?.value || 'aberto';
+  const repSel = document.getElementById('ci-representada');
+  const representadaId = repSel?.value || null;
+  const representadaNome = representadaId ? repSel.options[repSel.selectedIndex].text : null;
+  const valEl = document.getElementById('ci-valor');
+  const valor = valEl?.value ? parseMoeda(valEl) : null;
+  const fileInput = document.getElementById('ci-doc-input');
+
+  if (btn) { btn.disabled = true; }
+  if (feedback) feedback.textContent = '';
+
+  let docUrl = null;
+  if (fileInput?.files?.[0]) {
+    docUrl = await uploadDocSupabase(fileInput.files[0], tipoVisita + '_' + perfilId + '_' + dataHoje);
+  }
+
+  const payload = {
+    id_cliente: String(perfilId),
+    nome_cliente: c.nome,
+    cidade: c.cidade,
+    data: dataHoje,
+    hora: hora,
+    obs: obs,
+    rep_id: currentUser.id,
+    tipo: tipoVisita === 'whatsapp' ? 'whatsapp' : 'visita',
+    pedido_tipo: pedidoTipo !== 'nenhum' ? pedidoTipo : null,
+    pedido_valor: valor,
+    pedido_representada: representadaNome,
+    pedido_url_doc: docUrl,
+    orcamento_status: pedidoTipo === 'orcamento' ? orcStatus : null,
+    // Legacy compat
+    valor_pedido: valor,
+    doc_url: docUrl,
+    representada_id: representadaId,
+    status_orcamento: pedidoTipo === 'orcamento' ? orcStatus : null,
+  };
+
+  const { data: savedData, error } = await sb.from('visitas').insert(payload).select().maybeSingle();
+
+  if (error) {
+    showToast('❌ Erro ao registrar: ' + (error.message || error.code), true);
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  const visitaObj = { ...payload, id: savedData?.id, hoje: tipoVisita === 'visita' };
+  if (!historicoVisitas[perfilId]) historicoVisitas[perfilId] = [];
+  historicoVisitas[perfilId].unshift(visitaObj);
+
+  if (tipoVisita === 'visita') {
+    c.visitadoHoje = true;
+    c.horaHoje = hora;
+    c.ultimaObs = obs;
+    salvarHistoricoLocal(perfilId, dataHoje, hora, obs);
+    mostrarResumoHoje(c, visitaObj);
+    renderList();
+    if (gmap) renderMapMarkers();
+    showToast('✓ Check-in — ' + hora);
+  } else {
+    ciResetForm();
+    showToast('✓ Pedido WhatsApp registrado');
+  }
+
+  renderHistorico(perfilId, c);
+  if (currentScreen === 'report') carregarPeriodoRelatorio();
+  if (btn) btn.disabled = false;
+}
+
+// ── DETALHE VISITA ────────────────────────────────────
+let dvVisitaAtual = null;
+
+function abrirDetalheVisita(visitaId) {
+  const hist = historicoVisitas[perfilId] || [];
+  const v = hist.find(x => String(x.id) === String(visitaId));
+  if (!v) return;
+  dvVisitaAtual = v;
+
+  const dataPt = new Date(v.data + 'T12:00:00').toLocaleDateString('pt-BR');
+  const horaStr = v.hora && v.hora !== '00:00' ? ' · ' + v.hora : '';
+  document.getElementById('dv-data-hora').textContent = dataPt + horaStr;
+
+  const tipoTexto = { visita:'🏪 Visita presencial', whatsapp:'💬 Via WhatsApp (sem visita)', pedido:'✅ Pedido presencial', orcamento:'📋 Orçamento', remoto:'✅ Pedido', compra:'🛒 Compra' }[v.tipo] || '📋 Visita';
+  document.getElementById('dv-tipo').textContent = tipoTexto;
+  document.getElementById('dv-obs').textContent = v.obs || '—';
+
+  const pt = v.pedido_tipo || (v.tipo !== 'visita' && v.tipo !== 'whatsapp' && v.tipo !== 'compra' ? v.tipo : null);
+  const dvPedRow = document.getElementById('dv-pedido-row');
+  if (pt && pt !== 'visita' && pt !== 'nenhum') {
+    let ptTxt = pt === 'orcamento' ? '📋 Orçamento' : '💰 Pedido';
+    const st = v.orcamento_status || v.status_orcamento;
+    if (pt === 'orcamento' && st) ptTxt += ' — ' + {aberto:'Aberto',fechado:'Fechado',perdido:'Perdido'}[st];
+    document.getElementById('dv-pedido-tipo').textContent = ptTxt;
+    dvPedRow.style.display = 'block';
+  } else { dvPedRow.style.display = 'none'; }
+
+  const rep = v.pedido_representada;
+  const dvRepRow = document.getElementById('dv-representada-row');
+  if (rep) { document.getElementById('dv-representada').textContent = rep; dvRepRow.style.display = 'block'; }
+  else dvRepRow.style.display = 'none';
+
+  const val = v.pedido_valor || v.valor_pedido;
+  const dvValRow = document.getElementById('dv-valor-row');
+  if (val) { document.getElementById('dv-valor').textContent = 'R$ ' + parseFloat(val).toLocaleString('pt-BR',{minimumFractionDigits:2}); dvValRow.style.display = 'block'; }
+  else dvValRow.style.display = 'none';
+
+  const docUrl = v.pedido_url_doc || v.doc_url;
+  const dvDocRow = document.getElementById('dv-doc-row');
+  if (docUrl) { document.getElementById('dv-doc-link').href = docUrl; dvDocRow.style.display = 'block'; }
+  else dvDocRow.style.display = 'none';
+
+  const acoes = document.getElementById('dv-acoes');
+  let acoesHtml = `<button class="gestao-btn-sm" onclick="ativarEdicaoVisita()" style="padding:10px 16px">✏️ Editar</button>`;
+  const isOrcAberto = (pt === 'orcamento' || v.tipo === 'orcamento') && v.id
+    && (!v.orcamento_status || v.orcamento_status === 'aberto') && (!v.status_orcamento || v.status_orcamento === 'aberto');
+  if (isOrcAberto) {
+    acoesHtml += `<button class="gestao-btn-sm" onclick="converterOrcamentoDV()" style="padding:10px 14px;color:var(--green);border-color:var(--green)">✓ Converter em Pedido</button>`;
+    acoesHtml += `<button class="gestao-btn-sm danger" onclick="perdidoDV()" style="padding:10px 14px">✗ Perdido</button>`;
+  }
+  acoes.innerHTML = acoesHtml;
+
+  document.getElementById('dv-modo-ver').style.display = 'block';
+  document.getElementById('dv-modo-editar').style.display = 'none';
+  document.getElementById('screen-visita-detalhe').style.display = 'flex';
+}
+
+function fecharDetalheVisita() {
+  document.getElementById('screen-visita-detalhe').style.display = 'none';
+  dvVisitaAtual = null;
+}
+
+function ativarEdicaoVisita() {
+  if (!dvVisitaAtual) return;
+  const v = dvVisitaAtual;
+  const obsEl = document.getElementById('dv-edit-obs');
+  if (obsEl) obsEl.value = v.obs || '';
+  const val = v.pedido_valor || v.valor_pedido;
+  const valEl = document.getElementById('dv-edit-valor');
+  if (valEl && val) valEl.value = parseFloat(val).toFixed(2).replace('.', ',');
+  const repSel = document.getElementById('dv-edit-representada');
+  if (repSel) {
+    repSel.innerHTML = '<option value="">Selecione...</option>' +
+      representadasCache.map(r => `<option value="${r.id}"${v.representada_id===r.id?' selected':''}>${r.nome}</option>`).join('');
+  }
+  document.getElementById('dv-modo-ver').style.display = 'none';
+  document.getElementById('dv-modo-editar').style.display = 'block';
+}
+
+function cancelarEdicaoVisita() {
+  document.getElementById('dv-modo-ver').style.display = 'block';
+  document.getElementById('dv-modo-editar').style.display = 'none';
+}
+
+async function salvarEdicaoVisita() {
+  if (!dvVisitaAtual?.id || !currentUser) return;
+  const obs = document.getElementById('dv-edit-obs')?.value.trim() || '';
+  const valEl = document.getElementById('dv-edit-valor');
+  const valor = valEl?.value ? parseMoeda(valEl) : null;
+  const repSel = document.getElementById('dv-edit-representada');
+  const representadaId = repSel?.value || null;
+  const representadaNome = representadaId ? repSel.options[repSel.selectedIndex].text : null;
+  const updates = { obs };
+  if (valor) { updates.pedido_valor = valor; updates.valor_pedido = valor; }
+  if (representadaId) { updates.representada_id = representadaId; updates.pedido_representada = representadaNome; }
+  const { error } = await sb.from('visitas').update(updates).eq('id', dvVisitaAtual.id).eq('rep_id', currentUser.id);
+  if (error) { showToast('❌ Erro ao salvar', true); return; }
+  Object.assign(dvVisitaAtual, updates);
+  if (historicoVisitas[perfilId]) {
+    const idx = historicoVisitas[perfilId].findIndex(v => String(v.id) === String(dvVisitaAtual.id));
+    if (idx >= 0) Object.assign(historicoVisitas[perfilId][idx], updates);
+  }
+  showToast('✓ Visita atualizada');
+  fecharDetalheVisita();
+  const c = clientes.find(x => x.id == perfilId);
+  renderHistorico(perfilId, c);
+}
+
+async function converterOrcamentoDV() {
+  if (!dvVisitaAtual?.id) return;
+  await converterOrcamentoEmPedido(dvVisitaAtual.id);
+  fecharDetalheVisita();
+}
+
+async function perdidoDV() {
+  if (!dvVisitaAtual?.id) return;
+  await marcarOrcamentoPerdido(dvVisitaAtual.id);
+  fecharDetalheVisita();
 }
 
 function closePerfil() {
@@ -3383,6 +3727,8 @@ function renderHistorico(id, c) {
       badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:4px">Pedido</span>';
     } else if (v.compra) {
       emoji = '🛒'; tipoLabel = 'Compra'; badge = '';
+    } else if (tipo === 'visita') {
+      emoji = '🏪'; tipoLabel = 'Visita presencial'; badge = '';
     } else {
       emoji = isHoje ? '⭐' : '📋'; tipoLabel = 'Visita'; badge = '';
     }
@@ -3407,13 +3753,14 @@ function renderHistorico(id, c) {
       ? `<div class="hist-obs">${v.obs}</div>`
       : `<div class="hist-obs-vazia">Sem observações</div>`;
 
+    const clickable = v.id ? `onclick="abrirDetalheVisita('${v.id}')" style="cursor:pointer"` : '';
     return `
-    <div class="historico-item">
+    <div class="historico-item" ${clickable}>
       <div class="hist-dot ${dotClass}">${emoji}</div>
       <div class="hist-content">
-        <div class="hist-data">${label}${horaStr}${badge}${valorStr}${docBtn}${editBtn}</div>
+        <div class="hist-data">${label}${horaStr}${badge}${valorStr}${docBtn}${v.id ? '' : editBtn}</div>
         ${obsHtml}
-        ${converterBtn}${perdidoBtn}
+        ${v.id ? '' : converterBtn+perdidoBtn}
       </div>
     </div>`;
   }).join('');
@@ -3589,7 +3936,7 @@ function carregarHistoricoLocal(clienteId) {
 
 function restaurarCheckinsDoDia() {
   // Ao abrir o app, restaura check-ins do dia atual do localStorage
-  const hoje = new Date().toISOString().slice(0,10);
+  const hoje = dataHojeLocal();
   clientes.forEach(c => {
     const hist = carregarHistoricoLocal(c.id);
     const checkinHoje = hist.find(h => h.data === hoje);
@@ -6273,6 +6620,7 @@ function deletarTarefa(id, data) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.getElementById('filtro-panel')?.style.display === 'flex') { fecharFiltro(); return; }
+    if (document.getElementById('screen-visita-detalhe')?.style.display === 'flex') { fecharDetalheVisita(); return; }
     if (document.getElementById('screen-bonificacoes')?.style.display === 'flex') { closeBonificacoes(); return; }
     if (document.getElementById('screen-gastos-cliente')?.style.display === 'flex') { closeGastosCliente(); return; }
     if (document.getElementById('screen-perfil')?.style.display === 'flex') { closePerfil(); return; }
@@ -6345,59 +6693,67 @@ if ('serviceWorker' in navigator) {
           <textarea id="p-lembrete" placeholder="Adicionar lembrete fixo..." onblur="salvarLembrete()"></textarea>
         </div>
         <div class="lembrete-salvo" id="p-lembrete-salvo"></div>
-        <div class="perfil-section-title">Observações desta visita</div>
-        <div class="checkin-obs-box">
-          <textarea id="p-obs" placeholder="Anotações sobre esta visita..."></textarea>
-        </div>
-        <button class="btn-checkin-perfil" id="p-btn-checkin" onclick="checkinPerfil()">✓ CHECK-IN</button>
-        <div class="perfil-section-title">💰 PEDIDO / ORÇAMENTO</div>
-        <div class="pf-form-box">
-          <div class="pf-tipo-row">
-            <button class="seg-pill-select active" id="pf-tipo-pedido" onclick="pfSetTipo('pedido',this)">💰 Pedido</button>
-            <button class="seg-pill-select" id="pf-tipo-orcamento" onclick="pfSetTipo('orcamento',this)">📋 Orçamento</button>
-          </div>
-          <input type="hidden" id="pf-tipo" value="pedido">
-          <div class="pf-status-row" id="pf-status-grupo" style="display:none">
-            <button class="seg-pill-select active" id="pf-status-aberto" onclick="pfSetStatus('aberto',this)">🔵 Aberto</button>
-            <button class="seg-pill-select" id="pf-status-fechado" onclick="pfSetStatus('fechado',this)">✅ Fechado</button>
-            <button class="seg-pill-select" id="pf-status-perdido" onclick="pfSetStatus('perdido',this)">❌ Perdido</button>
-            <input type="hidden" id="pf-status" value="aberto">
-          </div>
-          <div class="pf-row">
-            <select class="pf-select" id="pf-representada">
-              <option value="">🏢 Representada (opcional)</option>
-            </select>
-          </div>
-          <div class="pf-row">
-            <input class="pf-data-input" id="pf-data" type="date">
-          </div>
-          <div class="pf-row">
-            <div class="pf-valor-wrap">
-              <span class="pf-valor-pre">R$</span>
-              <input id="pf-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
+
+        <!-- Resumo se visitou hoje -->
+        <div id="p-visitado-hoje" style="display:none">
+          <div class="p-hoje-box">
+            <div class="p-hoje-icon">🏪</div>
+            <div class="p-hoje-info">
+              <div class="p-hoje-hora" id="p-hoje-hora">Visitado</div>
+              <div class="p-hoje-obs" id="p-hoje-obs"></div>
+              <div class="p-hoje-pedido" id="p-hoje-pedido"></div>
             </div>
+            <button class="btn-edit-hoje" onclick="editarVisitaHoje()">Editar</button>
           </div>
-          <div class="pf-row">
-            <label class="pedido-file-btn" for="pf-doc-input">
-              <span>📎</span><span id="pf-doc-label">Anexar documento (PDF ou imagem)</span>
-            </label>
-            <input type="file" id="pf-doc-input" accept=".pdf,image/*" style="display:none" onchange="pfDocSelecionado(this)">
-            <div class="pedido-file-nome" id="pf-doc-nome"></div>
-          </div>
-          <div class="pf-row">
-            <div class="pf-visit-type-group">
-              <button class="pf-visit-btn active" id="pf-btn-presencial" onclick="pfSetVisitType('presencial')">
-                📍<span>Presencial</span>
-              </button>
-              <button class="pf-visit-btn" id="pf-btn-whatsapp" onclick="pfSetVisitType('whatsapp')">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                <span>Via Whatsapp</span><span style="font-size:10px;font-weight:400">(sem visita)</span>
-              </button>
-            </div>
-          </div>
-          <button class="pf-btn-registrar" id="pf-btn-registrar" onclick="pfRegistrar()">Registrar</button>
-          <div class="pf-feedback" id="pf-feedback"></div>
         </div>
+
+        <!-- Form check-in unificado -->
+        <div id="p-form-checkin">
+          <div class="perfil-section-title">Registrar visita</div>
+          <div class="pf-form-box">
+            <textarea id="p-obs" placeholder="Observações desta visita (opcional)..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px;resize:none;outline:none;min-height:70px;margin-bottom:12px;display:block"></textarea>
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Pedido (opcional)</div>
+            <div class="ci-tipo-row">
+              <button class="ci-tipo-pill" id="ci-nenhum" onclick="ciSetTipo('nenhum',this)">Sem pedido</button>
+              <button class="ci-tipo-pill active" id="ci-pedido" onclick="ciSetTipo('pedido',this)">💰 Pedido</button>
+              <button class="ci-tipo-pill" id="ci-orcamento" onclick="ciSetTipo('orcamento',this)">📋 Orçamento</button>
+            </div>
+            <div id="ci-status-grupo" style="display:none;margin-bottom:12px">
+              <div class="pf-status-row">
+                <button class="seg-pill-select active" id="ci-status-aberto" onclick="ciSetStatus('aberto',this)">🔵 Aberto</button>
+                <button class="seg-pill-select" id="ci-status-fechado" onclick="ciSetStatus('fechado',this)">✅ Fechado</button>
+                <button class="seg-pill-select" id="ci-status-perdido" onclick="ciSetStatus('perdido',this)">❌ Perdido</button>
+                <input type="hidden" id="ci-status" value="aberto">
+              </div>
+            </div>
+            <div id="ci-pedido-campos">
+              <div class="pf-row">
+                <select class="pf-select" id="ci-representada">
+                  <option value="">🏢 Representada (opcional)</option>
+                </select>
+              </div>
+              <div class="pf-row">
+                <div class="pf-valor-wrap">
+                  <span class="pf-valor-pre">R$</span>
+                  <input id="ci-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
+                </div>
+              </div>
+              <div class="pf-row">
+                <label class="pedido-file-btn" for="ci-doc-input">
+                  <span>📎</span><span id="ci-doc-label">Anexar documento (opcional)</span>
+                </label>
+                <input type="file" id="ci-doc-input" accept=".pdf,image/*" style="display:none" onchange="ciDocSelecionado(this)">
+                <div class="pedido-file-nome" id="ci-doc-nome"></div>
+              </div>
+            </div>
+            <div class="ci-btn-group">
+              <button class="btn-checkin-main" id="p-btn-checkin" onclick="fazerCheckin('visita')">🏪 Check-in</button>
+              <button class="btn-checkin-wa" onclick="fazerCheckin('whatsapp')">💬 Via WhatsApp<br><span style="font-weight:400;font-size:10px">(sem visita)</span></button>
+            </div>
+            <div class="pf-feedback" id="ci-feedback"></div>
+          </div>
+        </div>
+
         <div class="perfil-row-link" onclick="openGastosCliente()">
           <span class="row-icon">💸</span>
           <div class="row-body">
@@ -6420,6 +6776,68 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
 
+
+    <!-- TELA DETALHE VISITA -->
+    <div id="screen-visita-detalhe">
+      <div class="gestao-header">
+        <button class="perfil-back" onclick="fecharDetalheVisita()" style="flex-shrink:0">← Voltar</button>
+        <div class="gestao-titulo" id="dv-titulo">Detalhes da visita</div>
+        <div style="width:70px"></div>
+      </div>
+      <div class="gestao-body">
+        <div class="gc-form-panel" id="dv-modo-ver">
+          <div class="detalhe-campo">
+            <div class="detalhe-label">Data e hora</div>
+            <div class="detalhe-valor" id="dv-data-hora"></div>
+          </div>
+          <div class="detalhe-campo">
+            <div class="detalhe-label">Tipo</div>
+            <div class="detalhe-valor" id="dv-tipo"></div>
+          </div>
+          <div class="detalhe-campo" id="dv-obs-campo">
+            <div class="detalhe-label">Observações</div>
+            <div class="detalhe-valor" id="dv-obs" style="color:var(--text2)"></div>
+          </div>
+          <div class="detalhe-campo" id="dv-pedido-row" style="display:none">
+            <div class="detalhe-label">Pedido / Orçamento</div>
+            <div class="detalhe-valor" id="dv-pedido-tipo"></div>
+          </div>
+          <div class="detalhe-campo" id="dv-representada-row" style="display:none">
+            <div class="detalhe-label">Representada</div>
+            <div class="detalhe-valor" id="dv-representada"></div>
+          </div>
+          <div class="detalhe-campo" id="dv-valor-row" style="display:none">
+            <div class="detalhe-label">Valor</div>
+            <div class="detalhe-valor" id="dv-valor" style="color:var(--green);font-weight:800"></div>
+          </div>
+          <div id="dv-doc-row" style="display:none;margin-bottom:14px">
+            <a id="dv-doc-link" target="_blank" class="gestao-btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px">📄 Ver documento</a>
+          </div>
+          <div class="detalhe-actions" id="dv-acoes"></div>
+        </div>
+        <div class="gc-form-panel" id="dv-modo-editar" style="display:none">
+          <div class="gc-form-title">Editar visita</div>
+          <div class="campo-grupo">
+            <label class="campo-label">Observações</label>
+            <textarea class="campo-input" id="dv-edit-obs" style="min-height:80px;resize:none"></textarea>
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Valor (R$)</label>
+            <input class="campo-input" id="dv-edit-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
+          </div>
+          <div class="campo-grupo">
+            <label class="campo-label">Representada</label>
+            <select class="campo-input" id="dv-edit-representada">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="gestao-btn-sm" onclick="cancelarEdicaoVisita()" style="flex:1;padding:11px">Cancelar</button>
+            <button class="pf-btn-registrar" onclick="salvarEdicaoVisita()" style="flex:2;margin-top:0">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- TELA IMPORTAR CLIENTES -->
     <div id="screen-importar">
