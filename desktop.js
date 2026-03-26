@@ -1921,6 +1921,8 @@ function renderPlannerPanel() {
     <!-- FOOTER -->
     <div id="planner-footer">
       <button id="btn-gerar-rota" onclick="gerarRota()" disabled>Selecione clientes</button>
+      <button class="btn-limpar-planner" onclick="resetarPlanner()"
+        title="Limpar toda a seleção e recomeçar">Limpar seleção</button>
     </div>`;
 
   renderPlannerClientList();
@@ -2217,6 +2219,9 @@ async function gerarRota() {
 
     // Painel de resultado
     mostrarRotaResult(finalOrder, result.routes[0].legs, conflicts, semGPS);
+
+    // Restaura botão
+    updatePlannerBtn();
   });
 }
 
@@ -2389,9 +2394,14 @@ function mostrarRotaResult(ordered, legs, conflicts, semGPS) {
      </div>`,
   ].join('');
 
+  // JSON compacto para passar pelo onclick sem problemas de closure
+  const exportPayload = JSON.stringify(
+    ordered.map(c => ({ lat: c.lat, lng: c.lng, nome: c.nome }))
+  ).replace(/'/g, '&#39;');
+
   rr.innerHTML = `
     <div class="rota-result-header">
-      <button class="rota-back-btn" onclick="voltarParaPlanner()">← Nova rota</button>
+      <button class="rota-back-btn" onclick="voltarParaPlanner()">← Editar</button>
       <div class="rota-result-title">Rota · ${dateFmt}</div>
     </div>
     <div class="rota-summary">
@@ -2409,7 +2419,16 @@ function mostrarRotaResult(ordered, legs, conflicts, semGPS) {
       </div>
     </div>
     ${conflictHTML}
-    <div id="rota-stops">${stopsHTML}</div>`;
+    <div id="rota-stops">${stopsHTML}</div>
+    <div class="rota-export-bar">
+      <button class="btn-export-maps"
+        onclick="exportarRotaGoogleMaps('${exportPayload}')">
+        🗺 Abrir no Google Maps
+      </button>
+      <button class="btn-nova-rota-clear" onclick="resetarPlanner()">
+        🔄 Nova rota
+      </button>
+    </div>`;
 }
 
 function subtrairMin(horaStr, minutos) {
@@ -2434,6 +2453,44 @@ function limparRota() {
 
 function voltarParaPlanner() {
   limparRota();
-  // Re-exibe o painel planner (que já está no sidebar) com seleção preservada
+  // Re-exibe o painel planner com seleção preservada
   renderPlannerPanel();
+}
+
+function resetarPlanner() {
+  plannerSel.clear();
+  plannerSearchQ = '';
+  limparRota();
+  renderPlannerPanel();
+}
+
+// ── Exportação para Google Maps ───────────────────────────────────────
+
+function exportarRotaGoogleMaps(orderedJSON) {
+  // orderedJSON é um JSON-string com array de {lat, lng, nome}
+  // (passado via onclick para evitar closure sobre variável mutable)
+  const ordered = JSON.parse(orderedJSON);
+  if (!ordered.length || !plannerOrigin) return;
+
+  // Formato: maps.google.com/maps/dir/[orig]/[s1]/[s2]/.../[orig]
+  // Suporta até ~25 paradas sem problemas de URL.
+  const MAX = 23; // deixa margem para orig + chegada
+  const stops = ordered.slice(0, MAX);
+  const truncado = ordered.length > MAX;
+
+  const encode = (lat, lng) => `${lat},${lng}`;
+  const orig   = encode(plannerOrigin.lat, plannerOrigin.lng);
+  const partes  = [
+    orig,
+    ...stops.map(s => encode(s.lat, s.lng)),
+    orig,  // retorno à origem
+  ];
+
+  const url = 'https://www.google.com/maps/dir/' + partes.join('/');
+
+  window.open(url, '_blank', 'noopener');
+
+  if (truncado) {
+    showToast(`Abrindo com ${MAX} de ${ordered.length} paradas (limite do Google Maps).`);
+  }
 }
