@@ -5098,10 +5098,9 @@ initOfflineDB().catch(() => {});
 
 async function carregarRepresentadas() {
   if (!currentUser) return;
-  try {
-    const { data } = await sb.from('representadas').select('*').eq('rep_id', currentUser.id).order('nome');
-    representadasCache = data || [];
-  } catch(e) { representadasCache = []; }
+  const { data, error } = await sb.from('representadas').select('*').eq('rep_id', currentUser.id).order('nome');
+  if (error) console.warn('carregarRepresentadas erro:', error);
+  representadasCache = data || [];
   preencherSelectRepresentadas();
 }
 
@@ -5114,10 +5113,11 @@ function preencherSelectRepresentadas() {
   if (val) sel.value = val;
 }
 
-function openEmpresas() {
+async function openEmpresas() {
   document.getElementById('screen-empresas').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   fecharFormEmpresa();
+  await carregarRepresentadas();
   renderEmpresas();
 }
 
@@ -5249,31 +5249,31 @@ async function salvarEmpresa() {
     fat_nome: document.getElementById('emp-fat-nome').value.trim(),
     fat_tel:  document.getElementById('emp-fat-tel').value.trim(),
   };
-  try {
-    if (id) {
-      await sb.from('representadas').update(payload).eq('id', id).eq('rep_id', currentUser.id);
-    } else {
-      await sb.from('representadas').insert(payload);
-    }
-    await carregarRepresentadas();
-    fecharFormEmpresa();
-    renderEmpresas();
-    showToast('✓ Empresa salva!');
-  } catch(e) {
-    showToast('❌ Erro ao salvar empresa', true);
-    console.log('salvarEmpresa erro:', e);
+  let err;
+  if (id) {
+    ({ error: err } = await sb.from('representadas').update(payload).eq('id', id).eq('rep_id', currentUser.id));
+  } else {
+    ({ error: err } = await sb.from('representadas').insert(payload));
   }
+  if (err) {
+    showToast('❌ Erro ao salvar: ' + (err.message || err.code || 'desconhecido'), true);
+    console.log('salvarEmpresa erro:', err);
+    return;
+  }
+  await carregarRepresentadas();
+  fecharFormEmpresa();
+  renderEmpresas();
+  showToast('✓ Empresa salva!');
 }
 
 async function deletarEmpresa(id) {
   const r = representadasCache.find(x => x.id === id);
   if (!r || !confirm(`Excluir "${r.nome}"?`)) return;
-  try {
-    await sb.from('representadas').delete().eq('id', id).eq('rep_id', currentUser.id);
-    await carregarRepresentadas();
-    renderEmpresas();
-    showToast('Empresa excluída');
-  } catch(e) { showToast('❌ Erro ao excluir', true); }
+  const { error } = await sb.from('representadas').delete().eq('id', id).eq('rep_id', currentUser.id);
+  if (error) { showToast('❌ Erro ao excluir: ' + (error.message || error.code), true); return; }
+  await carregarRepresentadas();
+  renderEmpresas();
+  showToast('Empresa excluída');
 }
 
 // ── SEGMENTOS ─────────────────────────────────────────
