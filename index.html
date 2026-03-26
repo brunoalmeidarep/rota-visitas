@@ -653,6 +653,13 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .btn-checkin-main { flex:2; background:var(--green); color:#fff; border:none; border-radius:12px; padding:13px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
 .btn-checkin-main:disabled { opacity:.6; cursor:default; }
 .btn-checkin-wa { flex:1; background:var(--surface); border:1.5px solid #25D366; color:#128C7E; border-radius:12px; padding:10px 8px; font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; text-align:center; }
+.ci-modo-row { display:flex; gap:8px; margin-bottom:14px; }
+.ci-modo-pill { flex:1; text-align:center; padding:11px 8px; border-radius:20px; border:1.5px solid var(--border); background:var(--bg); font-size:13px; font-weight:700; cursor:pointer; color:var(--text2); font-family:inherit; transition:.15s; }
+.ci-modo-pill.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+.ci-modo-pill#ci-modo-whatsapp.active { background:#25D366; border-color:#25D366; color:#fff; }
+.btn-checkin-unico { width:100%; background:var(--green); color:#fff; border:none; border-radius:12px; padding:14px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; margin-top:4px; }
+.btn-checkin-unico:disabled { opacity:.6; cursor:default; }
+.btn-checkin-unico.modo-wa { background:#25D366; }
 .p-hoje-box { background:var(--green-bg); border:1.5px solid var(--green); border-radius:14px; padding:14px 16px; margin-bottom:12px; display:flex; align-items:flex-start; gap:10px; }
 .p-hoje-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
 .p-hoje-info { flex:1; min-width:0; }
@@ -3101,6 +3108,25 @@ async function salvarLembrete() {
 // ── HELPERS CHECK-IN UNIFICADO ───────────────────────
 let ciTipoAtual = 'pedido';
 
+// ── MODO PRESENCIAL / WHATSAPP ────────────────────────
+let ciModoAtual = 'presencial';
+
+function ciSetModo(modo, btn) {
+  ciModoAtual = modo;
+  ['ci-modo-presencial','ci-modo-whatsapp'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const btnMain = document.getElementById('p-btn-checkin');
+  if (btnMain) {
+    if (modo === 'presencial') {
+      btnMain.textContent = '✓ Check-in';
+      btnMain.classList.remove('modo-wa');
+    } else {
+      btnMain.textContent = '📋 Registrar';
+      btnMain.classList.add('modo-wa');
+    }
+  }
+}
+
 function ciSetTipo(tipo, btn) {
   ciTipoAtual = tipo;
   ['nenhum','pedido','orcamento'].forEach(t => document.getElementById('ci-'+t)?.classList.toggle('active', t===tipo));
@@ -3126,12 +3152,22 @@ function ciDocSelecionado(input) {
 }
 
 function ciResetForm() {
+  // Reset modo
+  ciModoAtual = 'presencial';
+  ['ci-modo-presencial','ci-modo-whatsapp'].forEach(id =>
+    document.getElementById(id)?.classList.toggle('active', id === 'ci-modo-presencial'));
+  const btnMain = document.getElementById('p-btn-checkin');
+  if (btnMain) { btnMain.textContent = '✓ Check-in'; btnMain.classList.remove('modo-wa'); }
+
+  // Reset obs
   const obs = document.getElementById('p-obs');
   if (obs) obs.value = '';
-  ciTipoAtual = 'pedido';
-  ['nenhum','pedido','orcamento'].forEach(t => document.getElementById('ci-'+t)?.classList.toggle('active', t==='pedido'));
+
+  // Reset tipo — padrão 'nenhum'
+  ciTipoAtual = 'nenhum';
+  ['nenhum','pedido','orcamento'].forEach(t => document.getElementById('ci-'+t)?.classList.toggle('active', t==='nenhum'));
   const campos = document.getElementById('ci-pedido-campos');
-  if (campos) campos.style.display = 'block';
+  if (campos) campos.style.display = 'none';
   const statusGrupo = document.getElementById('ci-status-grupo');
   if (statusGrupo) statusGrupo.style.display = 'none';
   const hidden = document.getElementById('ci-status');
@@ -3168,13 +3204,17 @@ function mostrarResumoHoje(c, visitaHoje) {
   const horaEl = document.getElementById('p-hoje-hora');
   const obsEl = document.getElementById('p-hoje-obs');
   const pedEl = document.getElementById('p-hoje-pedido');
+  const iconEl = document.querySelector('#p-visitado-hoje .p-hoje-icon');
+  if (iconEl) iconEl.textContent = '🏪';
   if (horaEl) horaEl.textContent = visitaHoje.hora ? `✓ Visitado às ${visitaHoje.hora}` : '✓ Visitado hoje';
   if (obsEl) obsEl.textContent = visitaHoje.obs || '';
   if (pedEl) {
     const pt = visitaHoje.pedido_tipo || (visitaHoje.tipo !== 'visita' && visitaHoje.tipo !== 'whatsapp' ? visitaHoje.tipo : null);
-    if (pt === 'pedido' || pt === 'orcamento' || pt === 'remoto') {
+    if (pt && pt !== 'nenhum') {
       const val = visitaHoje.pedido_valor || visitaHoje.valor_pedido;
+      const rep = visitaHoje.pedido_representada;
       let txt = pt === 'orcamento' ? '📋 Orçamento' : '💰 Pedido';
+      if (rep) txt += ' · ' + rep;
       if (val) txt += ' · R$ ' + parseFloat(val).toLocaleString('pt-BR', {minimumFractionDigits:2});
       pedEl.textContent = txt;
     } else { pedEl.textContent = ''; }
@@ -3186,6 +3226,14 @@ function editarVisitaHoje() {
   const formDiv = document.getElementById('p-form-checkin');
   if (hojeDiv) hojeDiv.style.display = 'none';
   if (formDiv) formDiv.style.display = 'block';
+
+  // Reset modo para presencial ao editar visita do dia
+  ciModoAtual = 'presencial';
+  ['ci-modo-presencial','ci-modo-whatsapp'].forEach(id =>
+    document.getElementById(id)?.classList.toggle('active', id === 'ci-modo-presencial'));
+  const btnMain = document.getElementById('p-btn-checkin');
+  if (btnMain) { btnMain.textContent = '✓ Check-in'; btnMain.classList.remove('modo-wa'); }
+
   // Pre-preenche com dados de hoje
   const dataHoje = dataHojeLocal();
   const hist = historicoVisitas[perfilId] || [];
@@ -3202,14 +3250,13 @@ function editarVisitaHoje() {
   else ciSetTipo('nenhum', document.getElementById('ci-nenhum'));
 }
 
-async function fazerCheckin(tipoVisita) {
+async function fazerCheckin() {
   if (!perfilId || !currentUser) return;
   const c = clientes.find(x => x.id == perfilId);
   if (!c) return;
 
-  const btnMain = document.getElementById('p-btn-checkin');
-  const btnWA = document.querySelector('.btn-checkin-wa');
-  const btn = tipoVisita === 'visita' ? btnMain : btnWA;
+  const tipoVisita = ciModoAtual === 'whatsapp' ? 'whatsapp' : 'visita';
+  const btn = document.getElementById('p-btn-checkin');
   const feedback = document.getElementById('ci-feedback');
 
   const agora = new Date();
@@ -3277,7 +3324,7 @@ async function fazerCheckin(tipoVisita) {
     showToast('✓ Check-in — ' + hora);
   } else {
     ciResetForm();
-    showToast('✓ Pedido WhatsApp registrado');
+    showToast('✓ Registrado via WhatsApp');
   }
 
   renderHistorico(perfilId, c);
@@ -3909,7 +3956,8 @@ function renderHistorico(id, c) {
       emoji = '💰'; tipoLabel = 'Orçamento';
       badge = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${statusCor}22;color:${statusCor};margin-left:4px">${statusLabel}</span>`;
     } else if (tipo === 'whatsapp') {
-      emoji = '💬'; tipoLabel = 'Pedido via WhatsApp';
+      const hasOrder = v.pedido_tipo && v.pedido_tipo !== 'nenhum';
+      emoji = '💬'; tipoLabel = hasOrder ? (v.pedido_tipo === 'orcamento' ? 'Orçamento WhatsApp' : 'Pedido WhatsApp') : 'Contato WhatsApp';
       badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(37,211,102,.12);color:#1a7a44;margin-left:4px">WhatsApp</span>';
     } else if (tipo === 'pedido') {
       emoji = '✅'; tipoLabel = 'Pedido';
@@ -3927,7 +3975,9 @@ function renderHistorico(id, c) {
 
     const label = isHoje ? 'Hoje' : formatDate(v.data);
     const horaStr = v.hora && v.hora !== '00:00' ? ` · ${v.hora}` : '';
-    const valorStr = v.valor_pedido ? ` · <strong style="color:var(--green)">R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>` : '';
+    const valor = v.pedido_valor || v.valor_pedido;
+    const valorStr = valor ? ` · <strong style="color:var(--green)">R$ ${parseFloat(valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>` : '';
+    const repStr = v.pedido_representada ? `<span style="font-size:11px;color:var(--text3);margin-left:4px">· ${v.pedido_representada}</span>` : '';
     const docBtn = v.doc_url
       ? `<a href="${v.doc_url}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:6px;text-decoration:none" title="Abrir documento">📄</a>`
       : '';
@@ -3950,7 +4000,7 @@ function renderHistorico(id, c) {
     <div class="historico-item" ${clickable}>
       <div class="hist-dot ${dotClass}">${emoji}</div>
       <div class="hist-content">
-        <div class="hist-data">${label}${horaStr}${badge}${valorStr}${docBtn}${v.id ? '' : editBtn}</div>
+        <div class="hist-data">${label}${horaStr}${badge}${valorStr}${repStr}${docBtn}${v.id ? '' : editBtn}</div>
         ${obsHtml}
         ${v.id ? '' : converterBtn+perdidoBtn}
       </div>
@@ -7150,11 +7200,14 @@ if ('serviceWorker' in navigator) {
         <div id="p-form-checkin">
           <div class="perfil-section-title">Registrar visita</div>
           <div class="pf-form-box">
-            <textarea id="p-obs" placeholder="Observações desta visita (opcional)..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px;resize:none;outline:none;min-height:70px;margin-bottom:12px;display:block"></textarea>
-            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Pedido (opcional)</div>
+            <div class="ci-modo-row">
+              <button class="ci-modo-pill active" id="ci-modo-presencial" onclick="ciSetModo('presencial',this)">🏪 Presencial</button>
+              <button class="ci-modo-pill" id="ci-modo-whatsapp" onclick="ciSetModo('whatsapp',this)">💬 WhatsApp</button>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tipo de pedido (opcional)</div>
             <div class="ci-tipo-row">
-              <button class="ci-tipo-pill" id="ci-nenhum" onclick="ciSetTipo('nenhum',this)">Sem pedido</button>
-              <button class="ci-tipo-pill active" id="ci-pedido" onclick="ciSetTipo('pedido',this)">💰 Pedido</button>
+              <button class="ci-tipo-pill active" id="ci-nenhum" onclick="ciSetTipo('nenhum',this)">Sem pedido</button>
+              <button class="ci-tipo-pill" id="ci-pedido" onclick="ciSetTipo('pedido',this)">💰 Pedido</button>
               <button class="ci-tipo-pill" id="ci-orcamento" onclick="ciSetTipo('orcamento',this)">📋 Orçamento</button>
             </div>
             <div id="ci-status-grupo" style="display:none;margin-bottom:12px">
@@ -7165,7 +7218,7 @@ if ('serviceWorker' in navigator) {
                 <input type="hidden" id="ci-status" value="aberto">
               </div>
             </div>
-            <div id="ci-pedido-campos">
+            <div id="ci-pedido-campos" style="display:none">
               <div class="pf-row">
                 <select class="pf-select" id="ci-representada">
                   <option value="">🏢 Representada (opcional)</option>
@@ -7185,10 +7238,8 @@ if ('serviceWorker' in navigator) {
                 <div class="pedido-file-nome" id="ci-doc-nome"></div>
               </div>
             </div>
-            <div class="ci-btn-group">
-              <button class="btn-checkin-main" id="p-btn-checkin" onclick="fazerCheckin('visita')">🏪 Check-in</button>
-              <button class="btn-checkin-wa" onclick="fazerCheckin('whatsapp')">💬 Via WhatsApp<br><span style="font-weight:400;font-size:10px">(sem visita)</span></button>
-            </div>
+            <textarea id="p-obs" placeholder="Observações desta visita (opcional)..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px;resize:none;outline:none;min-height:70px;margin-bottom:4px;display:block"></textarea>
+            <button class="btn-checkin-unico" id="p-btn-checkin" onclick="fazerCheckin()">✓ Check-in</button>
             <div class="pf-feedback" id="ci-feedback"></div>
           </div>
         </div>
