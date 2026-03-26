@@ -5671,11 +5671,23 @@ async function excluirImposto(id) {
 
 async function salvarImpostosIniciais() {
   if (!currentRep) return;
-  const impostos = [{ nome: 'DAS', dia_vencimento: 20 }, { nome: 'IRRF', dia_vencimento: 20 }];
-  for (const imp of impostos) {
-    await sb.from('impostos').insert({ ...imp, rep_id: currentRep.id }).throwOnError().catch(()=>{});
+  const btn = document.querySelector('#impostos-setup button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+  const lista = [{ nome: 'DAS', dia_vencimento: 20 }, { nome: 'IRRF', dia_vencimento: 20 }];
+  for (const imp of lista) {
+    const { error } = await sb.from('impostos').insert({ ...imp, rep_id: currentRep.id });
+    if (error && error.code !== '23505') { // ignora duplicata
+      console.warn('impostos insert erro:', error);
+    }
   }
-  await sb.from('representantes').update({ impostos_ok: true }).eq('id', currentRep.id);
+
+  // Tenta marcar no banco; usa localStorage como fallback se RLS bloquear
+  const { error: updErr } = await sb.from('representantes').update({ impostos_ok: true }).eq('id', currentRep.id);
+  if (updErr) {
+    console.warn('representantes update erro (usando localStorage fallback):', updErr);
+    localStorage.setItem('impostos_ok_' + currentRep.id, '1');
+  }
   currentRep.impostos_ok = true;
   document.getElementById('impostos-setup').style.display = 'none';
   showToast('✓ Impostos configurados!');
@@ -5684,7 +5696,9 @@ async function salvarImpostosIniciais() {
 }
 
 function verificarSetupImpostos() {
-  if (currentRep && !currentRep.impostos_ok) {
+  if (!currentRep) return;
+  const jaFez = currentRep.impostos_ok || localStorage.getItem('impostos_ok_' + currentRep.id);
+  if (!jaFez) {
     document.getElementById('impostos-setup').style.display = 'flex';
   }
 }
