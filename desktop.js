@@ -849,12 +849,12 @@ function renderRadarSection(rows) {
     </div>
 
     <div class="rep-card rep-radar-card clickable"
-         onclick="abrirDetalheRelatorio('queda-40')"
-         title="Ver clientes com queda de compra">
+         onclick="abrirDetalheRelatorio('quedas')"
+         title="Ver ranking de queda vs mês anterior">
       <div class="rep-card-icon">📉</div>
       <div class="rep-card-val" style="color:var(--red)">—</div>
-      <div class="rep-card-label">Caíram 40%+</div>
-      <div class="rep-card-sub">comparado ao mês anterior</div>
+      <div class="rep-card-label">Maiores quedas</div>
+      <div class="rep-card-sub">ranking vs mês anterior</div>
     </div>
 
     <div class="rep-card rep-radar-card clickable"
@@ -886,7 +886,7 @@ async function abrirDetalheRelatorio(tipo) {
     'top-compradores':'🏆 Top Compradores',
     'mais-lucrativos':'💎 Mais Lucrativos',
     'clientes-sumindo':'⚠️ Clientes Sumindo',
-    'queda-40':       '📉 Queda de 40%+',
+    quedas:           '📉 Maiores Quedas vs Mês Anterior',
     potencial:        '🎯 Potencial Não Visitado',
   };
   document.getElementById('rep-detail-titulo').textContent = titulos[tipo] || tipo;
@@ -901,10 +901,9 @@ async function abrirDetalheRelatorio(tipo) {
   else if (tipo === 'top-compradores') body.innerHTML = renderDetalheTopCompradores();
   else if (tipo === 'mais-lucrativos') body.innerHTML = renderDetalheMaisLucrativos();
   else if (tipo === 'clientes-sumindo') body.innerHTML = renderDetalheClientesSumindo();
-  else if (tipo === 'queda-40') {
-    // Precisa do mês anterior — busca lazy
+  else if (tipo === 'quedas') {
     await carregarMesAnteriorParaRadar();
-    body.innerHTML = renderDetalheQueda40();
+    body.innerHTML = renderDetalheQuedas();
   }
   else if (tipo === 'potencial') {
     await carregarMesAnteriorParaRadar();
@@ -1356,32 +1355,32 @@ function renderDetalheClientesSumindo() {
     </div>`;
 }
 
-function renderDetalheQueda40() {
+function renderDetalheQuedas() {
   const rowsAtual = relRowsAtual;
   const rowsAnt   = visatasRelAnterior;
 
-  const mesAnt = relMes === 0 ? 11 : relMes - 1;
-  const anoAnt = relMes === 0 ? relAno - 1 : relAno;
-  const nomeMesAnt = new Date(anoAnt, mesAnt, 1)
+  const mesAnt    = relMes === 0 ? 11 : relMes - 1;
+  const anoAnt    = relMes === 0 ? relAno - 1 : relAno;
+  const nomeMesAnt   = new Date(anoAnt, mesAnt, 1)
     .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const nomeMesAtual = new Date(relAno, relMes, 1)
     .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   const aviso = `
     <div class="conv-formula-box">
-      <strong>Regra de detecção:</strong><br>
-      Compara o <strong>valor total de pedidos por cliente</strong> entre o mês atual
-      (${nomeMesAtual}) e o mês anterior (${nomeMesAnt}).
-      Um cliente é sinalizado quando o valor atual é <strong>40% menor ou mais</strong>
-      do que o valor do mês anterior.<br>
+      <strong>Regra do ranking:</strong><br>
+      Compara o <strong>valor total de pedidos por cliente</strong> entre
+      <strong>${nomeMesAtual}</strong> (mês atual) e <strong>${nomeMesAnt}</strong> (mês anterior).
+      São listados todos os clientes com queda em qualquer magnitude, do maior para o menor recuo.
+      Clientes que aparecem apenas no mês anterior (sem pedido no mês atual) são tratados como queda de 100%.
       ${rowsAnt.length === 0
-        ? '<strong style="color:var(--orange)">⚠️ Dados do mês anterior não encontrados. A análise não pode ser feita.</strong>'
-        : `Mês anterior: ${rowsAnt.length} visitas carregadas.`}
+        ? '<br><strong style="color:var(--orange)">⚠️ Dados do mês anterior não encontrados — sem visitas registradas para o período.</strong>'
+        : ''}
     </div>`;
 
   if (!rowsAnt.length) return aviso;
 
-  // Agrega por cliente em cada período
+  // Agrega valor total por cliente em cada período
   const agregar = (rows) => {
     const m = {};
     rows.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0).forEach(v => {
@@ -1395,63 +1394,105 @@ function renderDetalheQueda40() {
   const atual = agregar(rowsAtual);
   const ant   = agregar(rowsAnt);
 
-  // Encontra clientes que aparecem nos dois e caíram >= 40%
-  const quedas = Object.entries(ant)
+  // Todos os clientes que tinham pedido no mês anterior e caíram
+  const ranking = Object.entries(ant)
     .map(([id, a]) => {
-      const c = atual[id];
-      const valorAtual = c ? c.total : 0;
-      const queda = ((a.total - valorAtual) / a.total) * 100;
-      return { id, nome: a.nome, cidade: a.cidade, ant: a.total, atual: valorAtual, queda };
+      const valorAtual = atual[id]?.total ?? 0;
+      const diff       = valorAtual - a.total;           // negativo = queda
+      const pct        = ((a.total - valorAtual) / a.total) * 100; // positivo = queda
+      return { id, nome: a.nome, cidade: a.cidade, ant: a.total, atual: valorAtual, diff, pct };
     })
-    .filter(r => r.queda >= 40)
-    .sort((a, b) => b.queda - a.queda);
+    .filter(r => r.pct > 0)                              // só quedas
+    .sort((a, b) => b.pct - a.pct);                      // maiores quedas primeiro
+
+  // Clientes que cresceram (informação complementar)
+  const cresceram = Object.entries(ant)
+    .filter(([id, a]) => atual[id] && atual[id].total > a.total)
+    .length;
+
+  // Novos clientes no mês atual (não estavam no anterior)
+  const novosNoPeriodo = Object.keys(atual).filter(id => !ant[id]).length;
+
+  if (!Object.keys(ant).length) {
+    return aviso + `<div class="det-table-wrap"><div class="det-table-empty">
+      Nenhum cliente com valor de pedido registrado no mês anterior.<br>
+      Preencha o campo "Valor do pedido" no check-in para ativar este ranking.
+    </div></div>`;
+  }
+
+  const volPerdido = ranking.reduce((s, r) => s + (r.ant - r.atual), 0);
 
   const resumo = `
     <div class="det-summary-row">
       <div class="det-summary-card">
-        <div class="det-summary-num" style="color:var(--red)">${quedas.length}</div>
-        <div class="det-summary-label">Clientes com queda ≥40%</div>
+        <div class="det-summary-num" style="color:var(--red)">${ranking.length}</div>
+        <div class="det-summary-label">Com queda</div>
       </div>
       <div class="det-summary-card">
-        <div class="det-summary-num" style="color:var(--orange)">
-          ${quedas[0] ? Math.round(quedas[0].queda) + '%' : '—'}
-        </div>
-        <div class="det-summary-label">Maior queda detectada</div>
+        <div class="det-summary-num" style="color:var(--green)">${cresceram}</div>
+        <div class="det-summary-label">Cresceram</div>
       </div>
       <div class="det-summary-card">
-        <div class="det-summary-num" style="color:var(--text)">
-          R$ ${quedas.reduce((s,r)=>s+(r.ant-r.atual),0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+        <div class="det-summary-num" style="color:var(--blue)">${novosNoPeriodo}</div>
+        <div class="det-summary-label">Novos no período</div>
+      </div>
+      <div class="det-summary-card">
+        <div class="det-summary-num" style="color:var(--red);font-size:${volPerdido>=10000?'18':'28'}px">
+          R$ ${volPerdido.toLocaleString('pt-BR',{minimumFractionDigits:2})}
         </div>
-        <div class="det-summary-label">Volume perdido</div>
+        <div class="det-summary-label">Volume em queda</div>
       </div>
     </div>`;
 
-  if (!quedas.length) {
+  if (!ranking.length) {
     return aviso + resumo + `<div class="det-table-wrap"><div class="det-table-empty">
-      Nenhum cliente com queda de 40%+ em relação ao mês anterior. 👍
+      Nenhum cliente com queda em relação ao mês anterior. 🎉
     </div></div>`;
   }
 
-  const linhas = quedas.map(r => `
-    <tr>
+  // Função de gravidade: cor + label baseados na % de queda
+  const gravidade = (pct) => {
+    if (pct >= 80) return { cor: 'var(--red)',    label: 'Crítico' };
+    if (pct >= 50) return { cor: 'var(--red)',    label: 'Alto' };
+    if (pct >= 25) return { cor: 'var(--orange)', label: 'Médio' };
+    return            { cor: 'var(--blue)',   label: 'Baixo' };
+  };
+
+  const linhas = ranking.map((r, i) => {
+    const g = gravidade(r.pct);
+    const diffStr = 'R$ ' + Math.abs(r.diff).toLocaleString('pt-BR', {minimumFractionDigits:2});
+    return `<tr>
+      <td style="font-weight:700;color:var(--text3);width:36px">#${i + 1}</td>
       <td><strong>${r.nome}</strong></td>
       <td class="muted">${r.cidade || '—'}</td>
       <td class="muted" style="text-align:right;white-space:nowrap">
         R$ ${r.ant.toLocaleString('pt-BR',{minimumFractionDigits:2})}
       </td>
-      <td style="text-align:right;white-space:nowrap;color:var(--${r.atual > 0 ? 'orange' : 'red'});font-weight:700">
+      <td style="text-align:right;white-space:nowrap;font-weight:700;color:${r.atual > 0 ? 'var(--text)' : 'var(--text3)'}">
         ${r.atual > 0 ? 'R$ ' + r.atual.toLocaleString('pt-BR',{minimumFractionDigits:2}) : 'Sem pedido'}
       </td>
-      <td style="text-align:right;font-weight:800;color:var(--red)">
-        −${Math.round(r.queda)}%
+      <td style="text-align:right;white-space:nowrap;font-weight:700;color:var(--red)">
+        −${diffStr}
       </td>
-    </tr>`).join('');
+      <td style="text-align:right">
+        <span style="font-size:11px;font-weight:800;color:${g.cor};background:${g.cor}22;padding:3px 8px;border-radius:10px;white-space:nowrap">
+          −${Math.round(r.pct)}% · ${g.label}
+        </span>
+      </td>
+    </tr>`;
+  }).join('');
 
   return aviso + resumo + `
     <div class="det-table-wrap">
       <table class="det-table">
         <thead>
-          <tr><th>Cliente</th><th>Cidade</th><th style="text-align:right">Mês anterior</th><th style="text-align:right">Mês atual</th><th style="text-align:right">Queda</th></tr>
+          <tr>
+            <th>#</th><th>Cliente</th><th>Cidade</th>
+            <th style="text-align:right">${nomeMesAnt.split(' ')[0]}</th>
+            <th style="text-align:right">${nomeMesAtual.split(' ')[0]}</th>
+            <th style="text-align:right">Diferença</th>
+            <th style="text-align:right">Variação</th>
+          </tr>
         </thead>
         <tbody>${linhas}</tbody>
       </table>
