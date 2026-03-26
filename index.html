@@ -1139,7 +1139,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     </div>
     <div style="margin-bottom:10px;">
       <label class="campo-label">Valor (R$)</label>
-      <input class="campo-input" id="ln-valor" type="number" step="0.01" min="0" placeholder="0,00">
+      <input class="campo-input" id="ln-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
     </div>
     <div style="margin-bottom:14px;">
       <label class="campo-label">Data</label>
@@ -1249,7 +1249,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <label style="margin-top:10px;display:block">💰 Valor do pedido (opcional)</label>
     <div class="pedido-valor-row" style="margin-bottom:10px">
       <span class="pedido-valor-pre">R$</span>
-      <input class="pedido-valor-inp" id="m-valor" type="number" step="0.01" min="0" placeholder="0,00">
+      <input class="pedido-valor-inp" id="m-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
     </div>
     <label class="pedido-file-btn" for="m-doc-input" id="m-doc-btn">📎 Anexar documento (PDF ou imagem)</label>
     <input type="file" id="m-doc-input" accept=".pdf,image/*" style="display:none" onchange="modalDocSelecionado(this)">
@@ -1327,6 +1327,20 @@ async function iniciarApp() {
       }
     });
   } catch(e) { console.log('Auth listener erro:', e); }
+}
+
+// ── MÁSCARA MONETÁRIA ────────────────────────────────
+function maskMoeda(el) {
+  let v = el.value.replace(/\D/g, '');
+  if (!v) { el.value = ''; return; }
+  el.value = (parseInt(v, 10) / 100).toFixed(2)
+    .replace('.', ',')
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function parseMoeda(el) {
+  if (!el) return 0;
+  const v = (el.value || '').replace(/\./g, '').replace(',', '.');
+  return parseFloat(v) || 0;
 }
 
 async function carregarRepresentante() {
@@ -2282,7 +2296,7 @@ async function doCheckin() {
 
   // Captura valor e doc
   const valorEl = document.getElementById('m-valor');
-  const valorPedido = valorEl && valorEl.value ? parseFloat(valorEl.value) : null;
+  const valorPedido = valorEl && valorEl.value ? parseMoeda(valorEl) : null;
   const fileInput = document.getElementById('m-doc-input');
   let docUrl = null;
   if (fileInput && fileInput.files && fileInput.files[0]) {
@@ -3042,7 +3056,7 @@ async function salvarGasto() {
   const c = clientes.find(x => x.id == perfilId);
   if (!c) return;
   const desc = document.getElementById('gc-desc').value.trim();
-  const valor = parseFloat(document.getElementById('gc-valor').value);
+  const valor = parseMoeda(document.getElementById('gc-valor'));
   const data = document.getElementById('gc-data').value;
   const fileInput = document.getElementById('gc-nf-input');
   if (!desc) { showToast('⚠️ Informe a descrição', true); return; }
@@ -3129,7 +3143,7 @@ function setBonifQtd(n) {
 }
 
 function bonifAtualizarParcelas() {
-  const val = parseFloat(document.getElementById('bonif-valor')?.value) || 0;
+  const val = parseMoeda(document.getElementById('bonif-valor'));
   const prev = document.getElementById('bonif-parcelas-preview');
   if (!prev) return;
   if (!val) { prev.textContent = ''; return; }
@@ -3197,7 +3211,7 @@ async function salvarBonificacao() {
   const c = clientes.find(x => x.id == perfilId);
   if (!c) return;
   const motivo = document.getElementById('bonif-motivo').value.trim();
-  const valorTotal = parseFloat(document.getElementById('bonif-valor').value);
+  const valorTotal = parseMoeda(document.getElementById('bonif-valor'));
   const dataCombinada = document.getElementById('bonif-data').value;
   const repSel = document.getElementById('bonif-representada');
   const representadaId = repSel?.value || null;
@@ -3290,7 +3304,7 @@ async function checkinPerfil() {
 
   // Captura valor e documento do pedido
   const valorEl = document.getElementById('p-valor');
-  const valorPedido = valorEl && valorEl.value ? parseFloat(valorEl.value) : null;
+  const valorPedido = valorEl && valorEl.value ? parseMoeda(valorEl) : null;
   const fileInput = document.getElementById('p-doc-input');
   let docUrl = null;
   if (fileInput && fileInput.files && fileInput.files[0]) {
@@ -3710,7 +3724,7 @@ async function pfRegistrar() {
   const status   = document.getElementById('pf-status')?.value || 'aberto';
   const data     = document.getElementById('pf-data').value;
   const valorEl  = document.getElementById('pf-valor');
-  const valor    = valorEl?.value ? parseFloat(valorEl.value) : null;
+  const valor    = valorEl?.value ? parseMoeda(valorEl) : null;
   const waAtivo  = document.getElementById('pf-btn-whatsapp')?.classList.contains('active');
   const representadaId = document.getElementById('pf-representada')?.value || null;
   const fileInput = document.getElementById('pf-doc-input');
@@ -5581,7 +5595,7 @@ function setHotelEstrelas(n) {
 async function salvarLancamento() {
   const cat = document.getElementById('ln-categoria').value;
   const desc = document.getElementById('ln-descricao').value.trim();
-  const valor = parseFloat(document.getElementById('ln-valor').value);
+  const valor = parseMoeda(document.getElementById('ln-valor'));
   const data = document.getElementById('ln-data').value;
   if (!cat) { showToast('Selecione uma categoria'); return; }
   if (!valor || valor <= 0) { showToast('Informe o valor'); return; }
@@ -6360,7 +6374,7 @@ if ('serviceWorker' in navigator) {
           <div class="pf-row">
             <div class="pf-valor-wrap">
               <span class="pf-valor-pre">R$</span>
-              <input id="pf-valor" type="number" step="0.01" min="0" placeholder="0,00">
+              <input id="pf-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
             </div>
           </div>
           <div class="pf-row">
@@ -6467,7 +6481,7 @@ if ('serviceWorker' in navigator) {
           </div>
           <div class="campo-grupo">
             <label class="campo-label">Valor (R$) *</label>
-            <input class="campo-input" id="gc-valor" type="number" step="0.01" min="0" placeholder="0,00">
+            <input class="campo-input" id="gc-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
           </div>
           <div class="campo-grupo">
             <label class="campo-label">Data</label>
@@ -6507,7 +6521,7 @@ if ('serviceWorker' in navigator) {
           </div>
           <div class="campo-grupo">
             <label class="campo-label">Valor total (R$) *</label>
-            <input class="campo-input" id="bonif-valor" type="number" step="0.01" min="0" placeholder="0,00" oninput="bonifAtualizarParcelas()">
+            <input class="campo-input" id="bonif-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this);bonifAtualizarParcelas()">
           </div>
           <div class="campo-grupo">
             <label class="campo-label">Data combinada</label>
