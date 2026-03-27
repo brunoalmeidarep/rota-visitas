@@ -1770,22 +1770,34 @@ async function sincronizarUltimasVisitas() {
   if (!currentRep) return;
   try {
     const repId = await getRepId();
-    const { data: visitas } = await sb
+    console.log('sincronizarUltimasVisitas: repId=', repId, 'auth.uid=', currentUser?.id);
+    const { data: visitas, error: visErr } = await sb
       .from('visitas')
       .select('id_cliente, data, tipo')
       .eq('rep_id', repId)
       .neq('tipo', 'whatsapp')
       .order('data', { ascending: false });
+    console.log('sincronizarUltimasVisitas: visitas encontradas=', visitas?.length, visErr);
     if (!visitas || !visitas.length) return;
     // Pega a visita mais recente por cliente (já ordenado desc, primeiro win)
     const maisRecente = {};
     visitas.forEach(v => {
       if (v.id_cliente && !maisRecente[v.id_cliente]) maisRecente[v.id_cliente] = v.data;
     });
+    console.log('sincronizarUltimasVisitas: clientes com visita=', Object.keys(maisRecente).length);
     let atualizados = 0;
     for (const [clienteId, data] of Object.entries(maisRecente)) {
-      const { error } = await sb.from('clientes').update({ ultima_visita: data }).eq('id', clienteId);
-      if (!error) {
+      const { data: updData, error: updErr } = await sb
+        .from('clientes')
+        .update({ ultima_visita: data })
+        .eq('id', clienteId)
+        .eq('rep_id', repId)
+        .select('id, ultima_visita');
+      if (updErr) {
+        console.log('sincronizarUltimasVisitas: ERRO ao atualizar cliente', clienteId, updErr);
+      } else if (!updData || updData.length === 0) {
+        console.log('sincronizarUltimasVisitas: UPDATE bloqueado (0 linhas) para cliente', clienteId, '— provável bloqueio RLS');
+      } else {
         atualizados++;
         const cli = clientes.find(c => String(c.id) === String(clienteId));
         if (cli) cli.ultimaVisita = data;

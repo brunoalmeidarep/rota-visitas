@@ -1,33 +1,36 @@
 -- =====================================================
--- FIX RLS clientes
+-- FIX: RLS da tabela clientes
 -- Execute no SQL Editor do painel Supabase
+-- Seguro para re-executar.
 -- =====================================================
--- PROBLEMA: a política usava rep_id = auth.uid()
--- mas os dados têm rep_id = representantes.id
--- São UUIDs diferentes → RLS bloqueava tudo.
+-- PROBLEMA: política antiga usava rep_id = auth.uid()
+-- mas os clientes têm rep_id = representantes.id
+-- (UUIDs diferentes) → UPDATE/DELETE bloqueados silenciosamente.
 --
--- SOLUÇÃO: mesma lógica das outras tabelas
--- (financeiro, impostos, rotas): lookup via email
+-- SOLUÇÃO: mapear auth.uid() → representantes.id via auth_id
+-- (mesmo padrão de fix_auth_id_representantes.sql)
 -- =====================================================
 
-DROP POLICY IF EXISTS "Rep lê seus clientes"       ON clientes;
-DROP POLICY IF EXISTS "Rep insere seus clientes"   ON clientes;
-DROP POLICY IF EXISTS "Rep atualiza seus clientes" ON clientes;
-DROP POLICY IF EXISTS "Rep deleta seus clientes"   ON clientes;
+-- Remove políticas existentes (nomes comuns — inclua outros se houver)
+DROP POLICY IF EXISTS "Rep lê seus clientes"               ON clientes;
+DROP POLICY IF EXISTS "Rep insere seus clientes"           ON clientes;
+DROP POLICY IF EXISTS "Rep atualiza seus clientes"         ON clientes;
+DROP POLICY IF EXISTS "Rep deleta seus clientes"           ON clientes;
+DROP POLICY IF EXISTS "rep acessa seus clientes"           ON clientes;
+DROP POLICY IF EXISTS "clientes policy"                    ON clientes;
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON clientes;
 
-CREATE POLICY "Rep lê seus clientes"
-  ON clientes FOR SELECT TO authenticated
-  USING (rep_id = (SELECT id FROM representantes WHERE email = auth.email()));
+-- Política unificada usando auth_id
+CREATE POLICY "rep acessa seus clientes"
+  ON clientes FOR ALL TO authenticated
+  USING (
+    rep_id = (SELECT id FROM representantes WHERE auth_id = auth.uid())
+  )
+  WITH CHECK (
+    rep_id = (SELECT id FROM representantes WHERE auth_id = auth.uid())
+  );
 
-CREATE POLICY "Rep insere seus clientes"
-  ON clientes FOR INSERT TO authenticated
-  WITH CHECK (rep_id = (SELECT id FROM representantes WHERE email = auth.email()));
-
-CREATE POLICY "Rep atualiza seus clientes"
-  ON clientes FOR UPDATE TO authenticated
-  USING  (rep_id = (SELECT id FROM representantes WHERE email = auth.email()) OR rep_id IS NULL)
-  WITH CHECK (rep_id = (SELECT id FROM representantes WHERE email = auth.email()));
-
-CREATE POLICY "Rep deleta seus clientes"
-  ON clientes FOR DELETE TO authenticated
-  USING (rep_id = (SELECT id FROM representantes WHERE email = auth.email()));
+-- =====================================================
+-- DIAGNÓSTICO (opcional)
+-- =====================================================
+-- SELECT policyname, cmd, qual FROM pg_policies WHERE tablename = 'clientes';
