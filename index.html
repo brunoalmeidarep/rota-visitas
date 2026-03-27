@@ -3228,13 +3228,29 @@ function ciSetStatus(status, btn) {
 
 function ciDocSelecionado(input) {
   const lbl = document.getElementById('ci-doc-label');
-  const nm = document.getElementById('ci-doc-nome');
+  const btn = document.getElementById('ci-doc-remover');
   const nome = input.files[0]?.name || '';
-  if (lbl) lbl.textContent = nome || 'Anexar documento (opcional)';
-  if (nm) nm.textContent = nome ? '📄 ' + nome : '';
+  if (lbl) lbl.textContent = nome ? '📄 ' + nome : 'Anexar documento (opcional)';
+  if (btn) btn.style.display = nome ? 'block' : 'none';
+}
+
+function ciDocRemover() {
+  const input = document.getElementById('ci-doc-input');
+  const lbl = document.getElementById('ci-doc-label');
+  const btn = document.getElementById('ci-doc-remover');
+  if (input) input.value = '';
+  if (lbl) lbl.textContent = 'Anexar documento (opcional)';
+  if (btn) btn.style.display = 'none';
 }
 
 function ciResetForm() {
+  // Reset anexo
+  const docInput = document.getElementById('ci-doc-input');
+  const docLbl = document.getElementById('ci-doc-label');
+  const docBtn = document.getElementById('ci-doc-remover');
+  if (docInput) docInput.value = '';
+  if (docLbl) docLbl.textContent = 'Anexar documento (opcional)';
+  if (docBtn) docBtn.style.display = 'none';
   // Reset modo
   ciModoAtual = 'presencial';
   ['ci-modo-presencial','ci-modo-whatsapp'].forEach(id =>
@@ -7506,11 +7522,13 @@ if ('serviceWorker' in navigator) {
                 </div>
               </div>
               <div class="pf-row">
-                <label class="pedido-file-btn" for="ci-doc-input">
-                  <span>📎</span><span id="ci-doc-label">Anexar documento (opcional)</span>
-                </label>
+                <div id="ci-doc-wrap" style="display:flex;align-items:center;gap:8px;width:100%;">
+                  <label class="pedido-file-btn" for="ci-doc-input" id="ci-doc-label-wrap" style="flex:1;display:flex;align-items:center;gap:8px;">
+                    <span>📎</span><span id="ci-doc-label">Anexar documento (opcional)</span>
+                  </label>
+                  <button type="button" id="ci-doc-remover" onclick="ciDocRemover()" style="display:none;background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:0 4px;line-height:1;" title="Remover anexo">×</button>
+                </div>
                 <input type="file" id="ci-doc-input" accept=".pdf,image/*" style="display:none" onchange="ciDocSelecionado(this)">
-                <div class="pedido-file-nome" id="ci-doc-nome"></div>
               </div>
             </div>
             <textarea id="p-obs" placeholder="Observações desta visita (opcional)..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px;resize:none;outline:none;min-height:70px;margin-bottom:4px;display:block"></textarea>
