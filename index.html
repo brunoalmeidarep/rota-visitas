@@ -3229,18 +3229,26 @@ function ciSetStatus(status, btn) {
 function ciDocSelecionado(input) {
   const lbl = document.getElementById('ci-doc-label');
   const btn = document.getElementById('ci-doc-remover');
-  const nome = input.files[0]?.name || '';
+  const nomeInput = document.getElementById('ci-doc-nome-custom');
+  const file = input.files[0];
+  const nome = file?.name || '';
   if (lbl) lbl.textContent = nome ? '📄 ' + nome : 'Anexar documento (opcional)';
   if (btn) btn.style.display = nome ? 'block' : 'none';
+  if (nomeInput) {
+    nomeInput.style.display = nome ? 'block' : 'none';
+    nomeInput.value = nome ? nome.replace(/\.[^.]+$/, '') : '';
+  }
 }
 
 function ciDocRemover() {
   const input = document.getElementById('ci-doc-input');
   const lbl = document.getElementById('ci-doc-label');
   const btn = document.getElementById('ci-doc-remover');
+  const nomeInput = document.getElementById('ci-doc-nome-custom');
   if (input) input.value = '';
   if (lbl) lbl.textContent = 'Anexar documento (opcional)';
   if (btn) btn.style.display = 'none';
+  if (nomeInput) { nomeInput.style.display = 'none'; nomeInput.value = ''; }
 }
 
 function ciResetForm() {
@@ -3251,6 +3259,8 @@ function ciResetForm() {
   if (docInput) docInput.value = '';
   if (docLbl) docLbl.textContent = 'Anexar documento (opcional)';
   if (docBtn) docBtn.style.display = 'none';
+  const docNomeCustom = document.getElementById('ci-doc-nome-custom');
+  if (docNomeCustom) { docNomeCustom.style.display = 'none'; docNomeCustom.value = ''; }
   // Reset modo
   ciModoAtual = 'presencial';
   ['ci-modo-presencial','ci-modo-whatsapp'].forEach(id =>
@@ -3376,7 +3386,10 @@ async function fazerCheckin() {
 
   let docUrl = null;
   if (fileInput?.files?.[0]) {
-    docUrl = await uploadDocSupabase(fileInput.files[0], tipoVisita + '_' + perfilId + '_' + dataHoje);
+    const nomeCustomEl = document.getElementById('ci-doc-nome-custom');
+    const nomeCustom = nomeCustomEl?.value.trim().replace(/[^a-zA-Z0-9À-ÿ _\-]/g, '') || '';
+    const nomeBase = nomeCustom || tipoVisita + '_' + perfilId + '_' + dataHoje;
+    docUrl = await uploadDocSupabase(fileInput.files[0], nomeBase);
   }
 
   const payload = {
@@ -7529,6 +7542,7 @@ if ('serviceWorker' in navigator) {
                   <button type="button" id="ci-doc-remover" onclick="ciDocRemover()" style="display:none;background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:0 4px;line-height:1;" title="Remover anexo">×</button>
                 </div>
                 <input type="file" id="ci-doc-input" accept=".pdf,image/*" style="display:none" onchange="ciDocSelecionado(this)">
+                <input type="text" id="ci-doc-nome-custom" placeholder="Nome do arquivo (opcional)" style="display:none;width:100%;margin-top:6px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;">
               </div>
             </div>
             <textarea id="p-obs" placeholder="Observações desta visita (opcional)..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px;resize:none;outline:none;min-height:70px;margin-bottom:4px;display:block"></textarea>
