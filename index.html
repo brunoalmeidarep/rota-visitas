@@ -6394,6 +6394,34 @@ function renderLancamentos() {
   el.innerHTML = html;
 }
 
+function _htmlCompromissosResumo(ini, fim) {
+  if (!compromissosCache.length) return '';
+  const ativos = compromissosCache.filter(function(c) { return c.data_inicio && (c.parcela_atual||1) <= (c.total_parcelas||0); });
+  const parcelasM = ativos.filter(function(c) { return c.tipo==='parcela'; }).filter(function(c) { var v=calcProximoVencimento(c.data_inicio,c.parcela_atual||1); return v>=ini && v<=fim; });
+  const emprestiM = ativos.filter(function(c) { return c.tipo==='emprestimo'; }).filter(function(c) { var v=calcProximoVencimento(c.data_inicio,c.parcela_atual||1); return v>=ini && v<=fim; });
+  if (!parcelasM.length && !emprestiM.length) return '';
+  const totParcM = parcelasM.reduce(function(s,c){return s+(c.valor_parcela||0);},0);
+  const totEmpM  = emprestiM.reduce(function(s,c){return s+(c.valor_parcela||0);},0);
+  var html = '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;padding:12px 2px 8px;">Compromissos do período</div>';
+  if (parcelasM.length) {
+    html += '<div class="fin-card" style="margin-bottom:8px;">';
+    html += '<div class="fin-item"><div class="fin-item-info"><div class="fin-item-desc">📋 Parcelas do mês</div></div><div class="fin-item-val gasto">-R$' + totParcM.toFixed(2).replace('.',',') + '</div></div>';
+    parcelasM.forEach(function(c) {
+      html += '<div class="fin-item"><div class="fin-item-info"><div style="font-size:13px;color:var(--text2)">' + c.descricao + '</div><div class="fin-item-sub">' + (c.categoria||'') + ' · ' + (c.parcela_atual||1) + '/' + c.total_parcelas + '</div></div><div class="fin-item-val gasto">-R$' + (c.valor_parcela||0).toFixed(2).replace('.',',') + '</div></div>';
+    });
+    html += '</div>';
+  }
+  if (emprestiM.length) {
+    html += '<div class="fin-card">';
+    html += '<div class="fin-item"><div class="fin-item-info"><div class="fin-item-desc">🏦 Empréstimos do mês</div></div><div class="fin-item-val gasto">-R$' + totEmpM.toFixed(2).replace('.',',') + '</div></div>';
+    emprestiM.forEach(function(c) {
+      html += '<div class="fin-item"><div class="fin-item-info"><div style="font-size:13px;color:var(--text2)">' + c.descricao + '</div><div class="fin-item-sub">' + (c.banco||'') + ' · ' + (c.parcela_atual||1) + '/' + c.total_parcelas + '</div></div><div class="fin-item-val gasto">-R$' + (c.valor_parcela||0).toFixed(2).replace('.',',') + '</div></div>';
+    });
+    html += '</div>';
+  }
+  return html;
+}
+
 function renderResumoFin() {
   const { ini, fim } = getDateRange(finPeriodoResumo);
   const filtrados = lancamentosCache.filter(l => l.data >= ini && l.data <= fim);
@@ -6426,23 +6454,7 @@ function renderResumoFin() {
         `).join('')}
       </div>
     ` : ''}
-    ${(()=>{
-      if (!compromissosCache.length) return '';
-      const parcelasM = compromissosCache.filter(c=>c.tipo==='parcela'&&c.data_inicio&&(c.parcela_atual||1)<=(c.total_parcelas||0)).filter(c=>{const v=calcProximoVencimento(c.data_inicio,c.parcela_atual||1);return v>=ini&&v<=fim;});
-      const emprestiM = compromissosCache.filter(c=>c.tipo==='emprestimo'&&c.data_inicio&&(c.parcela_atual||1)<=(c.total_parcelas||0)).filter(c=>{const v=calcProximoVencimento(c.data_inicio,c.parcela_atual||1);return v>=ini&&v<=fim;});
-      const totParcM = parcelasM.reduce((s,c)=>s+(c.valor_parcela||0),0);
-      const totEmpM  = emprestiM.reduce((s,c)=>s+(c.valor_parcela||0),0);
-      if (!parcelasM.length && !emprestiM.length) return '';
-      return `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;padding:12px 2px 8px;">Compromissos do período</div>
-        ${parcelasM.length?`<div class="fin-card" style="margin-bottom:8px;">
-          <div class="fin-item"><div class="fin-item-info"><div class="fin-item-desc">📋 Parcelas do mês</div></div><div class="fin-item-val gasto">-R$${totParcM.toFixed(2).replace('.',',')}</div></div>
-          ${parcelasM.map(c=>`<div class="fin-item"><div class="fin-item-info"><div style="font-size:13px;color:var(--text2)">${c.descricao}</div><div class="fin-item-sub">${c.categoria||''} · ${c.parcela_atual||1}/${c.total_parcelas}</div></div><div class="fin-item-val gasto">-R$${(c.valor_parcela||0).toFixed(2).replace('.',',')}</div></div>`).join('')}
-        </div>`:''}
-        ${emprestiM.length?`<div class="fin-card">
-          <div class="fin-item"><div class="fin-item-info"><div class="fin-item-desc">🏦 Empréstimos do mês</div></div><div class="fin-item-val gasto">-R$${totEmpM.toFixed(2).replace('.',',')}</div></div>
-          ${emprestiM.map(c=>`<div class="fin-item"><div class="fin-item-info"><div style="font-size:13px;color:var(--text2)">${c.descricao}</div><div class="fin-item-sub">${c.banco||''} · ${c.parcela_atual||1}/${c.total_parcelas}</div></div><div class="fin-item-val gasto">-R$${(c.valor_parcela||0).toFixed(2).replace('.',',')}</div></div>`).join('')}
-        </div>`:''}`;
-    })()}
+    ${_htmlCompromissosResumo(ini, fim)}
   `;
 }
 
