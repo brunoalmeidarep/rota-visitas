@@ -1385,8 +1385,9 @@ const PIN_COLOR    = { today:'#fbbf24', green:'#4ade80', blue:'#60a5fa', red:'#f
 // ── SUPABASE ─────────────────────────────────────────────
 const { createClient } = window.supabase || supabase;
 const sb = createClient('https://fiwpmhrjbovnazagjcjf.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpd3BtaHJqYm92bmF6YWdqY2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNDI1MzAsImV4cCI6MjA4OTcxODUzMH0.pHgiICZzqoeLq5uez8_3WwfurHuouV_Cp9kz1ThRsFs');
-let currentUser = null;
+let currentUser  = null;
 let currentRep   = null;
+let _repIdCache  = null;
 
 // ── AUTH ─────────────────────────────────────────────────
 async function iniciarApp() {
@@ -1447,16 +1448,43 @@ function parseMoeda(el) {
 }
 
 async function carregarRepresentante() {
+  _repIdCache = null;
   try {
     const { data } = await sb
       .from('representantes')
       .select('*')
       .eq('email', currentUser.email)
       .maybeSingle();
-    currentRep = data || null;
+    if (data) {
+      currentRep = data;
+      // garante auth_id preenchido
+      if (!data.auth_id) {
+        await sb.from('representantes').update({ auth_id: currentUser.id }).eq('id', data.id);
+        currentRep.auth_id = currentUser.id;
+      }
+    } else {
+      // primeiro login: cria linha em representantes automaticamente
+      const { data: novo } = await sb.from('representantes').insert({
+        email:   currentUser.email,
+        nome:    currentUser.email.split('@')[0],
+        auth_id: currentUser.id,
+        ativo:   true,
+      }).select().maybeSingle();
+      currentRep = novo || null;
+    }
   } catch(e) {
     currentRep = null;
   }
+  _repIdCache = currentRep?.id || null;
+}
+
+// Retorna o id correto de representantes para uso como rep_id
+// em tabelas com FK → representantes(id)  (financeiro, impostos, rotas, representadas)
+async function getRepId() {
+  if (_repIdCache) return _repIdCache;
+  if (!currentRep) await carregarRepresentante();
+  _repIdCache = currentRep?.id || null;
+  return _repIdCache;
 }
 
 async function fazerLogin() {
@@ -1490,6 +1518,7 @@ async function fazerLogin() {
 
 function fazerLogout() {
   plannerCarregado = false;
+  _repIdCache = null;
   sb.auth.signOut();
 }
 
@@ -5701,7 +5730,7 @@ initOfflineDB().catch(() => {});
 
 async function carregarRepresentadas() {
   if (!currentUser) return;
-  const { data, error } = await sb.from('representadas').select('*').eq('rep_id', currentUser.id).order('nome');
+  const { data, error } = await sb.from('representadas').select('*').eq('rep_id', await getRepId()).order('nome');
   if (error) console.warn('carregarRepresentadas erro:', error);
   representadasCache = data || [];
   preencherSelectRepresentadas();
@@ -5833,7 +5862,7 @@ async function salvarEmpresa() {
   if (!nome) { showToast('⚠️ Nome obrigatório', true); return; }
   const id = document.getElementById('emp-id').value;
   const payload = {
-    rep_id:   currentUser.id,
+    rep_id:   await getRepId(),
     nome,
     cnpj:     document.getElementById('emp-cnpj').value.trim(),
     cep:      document.getElementById('emp-cep').value.replace(/\D/g,''),
@@ -5854,7 +5883,7 @@ async function salvarEmpresa() {
   };
   let err;
   if (id) {
-    ({ error: err } = await sb.from('representadas').update(payload).eq('id', id).eq('rep_id', currentUser.id));
+    ({ error: err } = await sb.from('representadas').update(payload).eq('id', id).eq('rep_id', await getRepId()));
   } else {
     ({ error: err } = await sb.from('representadas').insert(payload));
   }
@@ -5872,7 +5901,7 @@ async function salvarEmpresa() {
 async function deletarEmpresa(id) {
   const r = representadasCache.find(x => x.id === id);
   if (!r || !confirm(`Excluir "${r.nome}"?`)) return;
-  const { error } = await sb.from('representadas').delete().eq('id', id).eq('rep_id', currentUser.id);
+  const { error } = await sb.from('representadas').delete().eq('id', id).eq('rep_id', await getRepId());
   if (error) { showToast('❌ Erro ao excluir: ' + (error.message || error.code), true); return; }
   await carregarRepresentadas();
   renderEmpresas();
