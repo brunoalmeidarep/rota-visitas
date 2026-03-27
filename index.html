@@ -1252,7 +1252,8 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <label class="pedido-file-btn" for="ln-comprovante-input" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;background:var(--bg);">
         <span>📎</span><span id="ln-comp-label">Anexar comprovante...</span>
       </label>
-      <input type="file" id="ln-comprovante-input" accept=".pdf,image/*" style="display:none" onchange="lnComprovanteSelecionado(this)">
+      <input type="file" id="ln-comprovante-input" accept=".pdf,image/*" multiple style="display:none" onchange="lnComprovanteSelecionado(this)">
+      <div id="anexos-ln"></div>
     </div>
     <div style="margin-bottom:10px;">
       <label class="campo-label">Valor (R$)</label>
@@ -1396,9 +1397,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <span class="pedido-valor-pre">R$</span>
       <input class="pedido-valor-inp" id="m-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
     </div>
-    <label class="pedido-file-btn" for="m-doc-input" id="m-doc-btn">📎 Anexar documento (PDF ou imagem)</label>
-    <input type="file" id="m-doc-input" accept=".pdf,image/*" style="display:none" onchange="modalDocSelecionado(this)">
-    <div class="pedido-file-nome" id="m-doc-nome"></div>
+    <label class="pedido-file-btn" for="m-doc-input" id="m-doc-btn">📎 Anexar documentos (opcional)</label>
+    <input type="file" id="m-doc-input" accept=".pdf,image/*" multiple style="display:none" onchange="anexoAdd('m', this)">
+    <div id="anexos-m"></div>
     <div class="modal-actions">
       <button class="btn-primary"    id="btn-checkin"    onclick="doCheckin()">✓ Registrar visita agora</button>
       <button class="btn-maps-modal" id="btn-maps-modal" onclick="openMaps()">↗ Abrir no Google Maps</button>
@@ -2568,12 +2569,6 @@ function closeModal(e) {
   }
 }
 
-function modalDocSelecionado(input) {
-  const nome = input.files[0]?.name || '';
-  document.getElementById('m-doc-btn').textContent = nome ? '📎 ' + nome : '📎 Anexar documento (PDF ou imagem)';
-  const el = document.getElementById('m-doc-nome');
-  if (el) el.textContent = nome ? '📄 ' + nome : '';
-}
 
 async function doCheckin() {
   const c   = clientes.find(x => x.id == activeId);
@@ -2587,11 +2582,7 @@ async function doCheckin() {
   // Captura valor e doc
   const valorEl = document.getElementById('m-valor');
   const valorPedido = valorEl && valorEl.value ? parseMoeda(valorEl) : null;
-  const fileInput = document.getElementById('m-doc-input');
-  let docUrl = null;
-  if (fileInput && fileInput.files && fileInput.files[0]) {
-    docUrl = await uploadDocSupabase(fileInput.files[0], 'checkin_' + c.id + '_' + data);
-  }
+  let docUrl = await anexoUploadAll('m', 'checkin_' + c.id + '_' + data);
 
   try {
     c.horaHoje     = hora;
@@ -2602,9 +2593,7 @@ async function doCheckin() {
     if (mapReady) updateMarker(c);
     // Limpa campos
     if (valorEl) valorEl.value = '';
-    if (fileInput) fileInput.value = '';
-    document.getElementById('m-doc-btn').textContent = '📎 Anexar documento (PDF ou imagem)';
-    const nomeEl = document.getElementById('m-doc-nome'); if (nomeEl) nomeEl.textContent = '';
+    anexoReset('m');
     // Salva no Supabase
     await salvarCheckinSupabase(c, obs, data, hora, valorPedido, docUrl);
     showToast('✓ Visita registrada!');
@@ -3267,41 +3256,10 @@ function ciSetStatus(status, btn) {
   if (btn) btn.classList.add('active');
 }
 
-function ciDocSelecionado(input) {
-  const lbl = document.getElementById('ci-doc-label');
-  const btn = document.getElementById('ci-doc-remover');
-  const nomeInput = document.getElementById('ci-doc-nome-custom');
-  const file = input.files[0];
-  const nome = file?.name || '';
-  if (lbl) lbl.textContent = nome ? '📄 ' + nome : 'Anexar documento (opcional)';
-  if (btn) btn.style.display = nome ? 'block' : 'none';
-  if (nomeInput) {
-    nomeInput.style.display = nome ? 'block' : 'none';
-    nomeInput.value = nome ? nome.replace(/\.[^.]+$/, '') : '';
-  }
-}
-
-function ciDocRemover() {
-  const input = document.getElementById('ci-doc-input');
-  const lbl = document.getElementById('ci-doc-label');
-  const btn = document.getElementById('ci-doc-remover');
-  const nomeInput = document.getElementById('ci-doc-nome-custom');
-  if (input) input.value = '';
-  if (lbl) lbl.textContent = 'Anexar documento (opcional)';
-  if (btn) btn.style.display = 'none';
-  if (nomeInput) { nomeInput.style.display = 'none'; nomeInput.value = ''; }
-}
 
 function ciResetForm() {
-  // Reset anexo
-  const docInput = document.getElementById('ci-doc-input');
-  const docLbl = document.getElementById('ci-doc-label');
-  const docBtn = document.getElementById('ci-doc-remover');
-  if (docInput) docInput.value = '';
-  if (docLbl) docLbl.textContent = 'Anexar documento (opcional)';
-  if (docBtn) docBtn.style.display = 'none';
-  const docNomeCustom = document.getElementById('ci-doc-nome-custom');
-  if (docNomeCustom) { docNomeCustom.style.display = 'none'; docNomeCustom.value = ''; }
+  // Reset anexos
+  anexoReset('ci');
   // Reset modo
   ciModoAtual = 'presencial';
   ['ci-modo-presencial','ci-modo-whatsapp'].forEach(id =>
@@ -3414,18 +3372,10 @@ async function fazerCheckin() {
   const representadaNome = representadaId ? repSel.options[repSel.selectedIndex].text : null;
   const valEl = document.getElementById('ci-valor');
   const valor = valEl?.value ? parseMoeda(valEl) : null;
-  const fileInput = document.getElementById('ci-doc-input');
-
   if (btn) { btn.disabled = true; }
   if (feedback) feedback.textContent = '';
 
-  let docUrl = null;
-  if (fileInput?.files?.[0]) {
-    const nomeCustomEl = document.getElementById('ci-doc-nome-custom');
-    const nomeCustom = nomeCustomEl?.value.trim().replace(/[^a-zA-Z0-9À-ÿ _\-]/g, '') || '';
-    const nomeBase = nomeCustom || tipoVisita + '_' + perfilId + '_' + dataHoje;
-    docUrl = await uploadDocSupabase(fileInput.files[0], nomeBase);
-  }
+  const docUrl = await anexoUploadAll('ci', tipoVisita + '_' + perfilId + '_' + dataHoje);
 
   const payload = {
     id_cliente: String(perfilId),
@@ -3580,8 +3530,13 @@ function abrirDetalheVisita(visitaId) {
 
   const docUrl = v.pedido_url_doc || v.doc_url;
   const dvDocRow = document.getElementById('dv-doc-row');
-  if (docUrl) { document.getElementById('dv-doc-link').href = docUrl; dvDocRow.style.display = 'block'; }
-  else dvDocRow.style.display = 'none';
+  const dvDocUrls = parseDocUrls(docUrl);
+  if (dvDocUrls.length) {
+    dvDocRow.innerHTML = dvDocUrls.map((u, i, arr) =>
+      `<a href="${u}" target="_blank" class="gestao-btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;margin-right:6px;margin-bottom:4px">📄 Ver documento${arr.length > 1 ? ' ' + (i+1) : ''}</a>`
+    ).join('');
+    dvDocRow.style.display = 'block';
+  } else { dvDocRow.style.display = 'none'; }
 
   const acoes = document.getElementById('dv-acoes');
   let acoesHtml = `<button class="gestao-btn-sm" onclick="ativarEdicaoVisita()" style="padding:10px 16px">✏️ Editar</button>`;
@@ -3704,8 +3659,8 @@ function toggleGastoForm() {
 }
 
 function gcNfSelecionada(input) {
-  const lbl = document.getElementById('gc-nf-label');
-  if (input.files[0]) lbl.textContent = '✓ ' + input.files[0].name;
+  // kept for compatibility — use anexoAdd
+  anexoAdd('gc', input);
 }
 
 function setGastoFilter(f) {
@@ -3765,12 +3720,12 @@ function renderGastos() {
         <div class="gc-item-row" onclick="toggleGastoItem('${item.id}')">
           <div class="gc-item-main">
             <div class="gc-item-desc">${item.descricao||'Sem descrição'}</div>
-            <div class="gc-item-meta"><span>${dataPt}</span>${item.url_comprovante?'<span>📎 NF</span>':''}</div>
+            <div class="gc-item-meta"><span>${dataPt}</span>${parseDocUrls(item.url_comprovante).length?'<span>📎 NF</span>':''}</div>
           </div>
           <div class="gc-item-val">R$ ${(item.valor||0).toFixed(2).replace('.',',')}</div>
         </div>
         ${exp?`<div class="gc-item-actions">
-          ${item.url_comprovante?`<button class="gc-item-action-btn" onclick="window.open('${item.url_comprovante}','_blank')">📎 Ver NF</button>`:''}
+          ${parseDocUrls(item.url_comprovante).map((u,i,arr)=>`<button class="gc-item-action-btn" onclick="window.open('${u}','_blank')">📎 Ver NF${arr.length>1?' '+(i+1):''}</button>`).join('')}
           <button class="gc-item-action-btn danger" onclick="excluirGasto('${item.id}')">Excluir</button>
         </div>
         <div class="gc-item-footer">📊 Alimentou Finanças → Gastos com Clientes</div>`:''}
@@ -3792,14 +3747,10 @@ async function salvarGasto() {
   const desc = document.getElementById('gc-desc').value.trim();
   const valor = parseMoeda(document.getElementById('gc-valor'));
   const data = document.getElementById('gc-data').value;
-  const fileInput = document.getElementById('gc-nf-input');
   if (!desc) { showToast('⚠️ Informe a descrição', true); return; }
   if (!valor || isNaN(valor)) { showToast('⚠️ Informe o valor', true); return; }
   if (!data) { showToast('⚠️ Informe a data', true); return; }
-  let url_comprovante = null;
-  if (fileInput?.files?.[0]) {
-    url_comprovante = await uploadDocSupabase(fileInput.files[0], 'gasto_cli_'+perfilId+'_'+Date.now());
-  }
+  const url_comprovante = await anexoUploadAll('gc', 'gasto_cli_'+perfilId+'_'+Date.now());
   const { error } = await sb.from('financeiro').insert({
     tipo: 'gasto', categoria: 'clientes',
     descricao: desc, valor, data,
@@ -3811,8 +3762,7 @@ async function salvarGasto() {
   document.getElementById('gc-form').style.display = 'none';
   document.getElementById('gc-desc').value = '';
   document.getElementById('gc-valor').value = '';
-  document.getElementById('gc-nf-label').textContent = 'Anexar NF (opcional)';
-  fileInput.value = '';
+  anexoReset('gc');
   carregarGastos();
 }
 
@@ -4232,9 +4182,9 @@ function renderHistorico(id, c) {
     const valor = v.pedido_valor || v.valor_pedido;
     const valorStr = valor ? ` · <strong style="color:var(--green)">R$ ${parseFloat(valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>` : '';
     const repStr = v.pedido_representada ? `<span style="font-size:11px;color:var(--text3);margin-left:4px">· ${v.pedido_representada}</span>` : '';
-    const docBtn = v.doc_url
-      ? `<a href="${v.doc_url}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:6px;text-decoration:none" title="Abrir documento">📄</a>`
-      : '';
+    const docBtn = parseDocUrls(v.doc_url).map((u, i, arr) =>
+      `<a href="${u}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:4px;text-decoration:none" title="Abrir documento">📄${arr.length > 1 ? (i+1) : ''}</a>`
+    ).join('');
     const editBtn = isHoje && tipo !== 'orcamento' && tipo !== 'remoto'
       ? `<button onclick="editarObsHoje(${id},'${v.data}','${v.hora||''}')" style="background:none;border:none;font-size:13px;cursor:pointer;color:var(--text3);padding:0 2px">✏️</button>`
       : '';
@@ -4503,6 +4453,75 @@ async function uploadDocSupabase(file, nomeBase) {
     const { data: urlData } = sb.storage.from('pedidos').getPublicUrl(path);
     return urlData?.publicUrl || null;
   } catch(e) { console.log('Erro upload doc:', e); return null; }
+}
+
+// ── MULTI-ATTACH SYSTEM ─────────────────────────────────
+var _anexos = {};
+
+function anexoAdd(zona, input) {
+  if (!input.files || !input.files.length) return;
+  if (!_anexos[zona]) _anexos[zona] = [];
+  Array.from(input.files).forEach(function(f) {
+    _anexos[zona].push({ file: f, nomeCustom: f.name.replace(/\.[^.]+$/, '') });
+  });
+  input.value = '';
+  _renderAnexos(zona);
+}
+
+function anexoRemove(zona, idx) {
+  if (_anexos[zona]) { _anexos[zona].splice(idx, 1); _renderAnexos(zona); }
+}
+
+function _renderAnexos(zona) {
+  var container = document.getElementById('anexos-' + zona);
+  if (!container) return;
+  var lista = _anexos[zona] || [];
+  if (!lista.length) { container.innerHTML = ''; return; }
+  container.innerHTML = lista.map(function(item, i) {
+    return '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:7px 10px;">'
+      + '<span style="font-size:13px;flex:1;min-width:0;display:flex;align-items:center;gap:4px;">📎 '
+      + '<input type="text" value="' + _escHtml(item.nomeCustom) + '" '
+      + 'oninput="_anexos[\'' + zona + '\'][' + i + '].nomeCustom=this.value" '
+      + 'placeholder="Nome do arquivo" '
+      + 'style="background:none;border:none;outline:none;color:var(--text);font-family:inherit;font-size:13px;flex:1;min-width:0;"></span>'
+      + '<button type="button" onclick="anexoRemove(\'' + zona + '\',' + i + ')" '
+      + 'style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:0 4px;line-height:1;flex-shrink:0;">×</button>'
+      + '</div>';
+  }).join('');
+}
+
+function anexoReset(zona) {
+  _anexos[zona] = [];
+  _renderAnexos(zona);
+  var inputId = { ci:'ci-doc-input', m:'m-doc-input', gc:'gc-nf-input', ln:'ln-comprovante-input' }[zona] || (zona + '-input');
+  var inp = document.getElementById(inputId);
+  if (inp) inp.value = '';
+}
+
+async function anexoUploadAll(zona, prefixo) {
+  var lista = _anexos[zona] || [];
+  if (!lista.length) return null;
+  var urls = [];
+  for (var i = 0; i < lista.length; i++) {
+    var item = lista[i];
+    var nomeBase = (item.nomeCustom || '').replace(/[^a-zA-Z0-9À-ÿ _\-]/g, '') || (prefixo + '_' + i);
+    var url = await uploadDocSupabase(item.file, nomeBase);
+    if (url) urls.push(url);
+  }
+  if (!urls.length) return null;
+  return urls.length === 1 ? urls[0] : JSON.stringify(urls);
+}
+
+function _escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function parseDocUrls(docUrl) {
+  if (!docUrl) return [];
+  if (String(docUrl).startsWith('[')) {
+    try { return JSON.parse(docUrl); } catch(e) {}
+  }
+  return [docUrl];
 }
 
 function pedidoDocSelecionado(input) {
@@ -6338,7 +6357,7 @@ function renderLancamentos() {
             else if (l.mes_referencia) sub = l.mes_referencia;
             if (l.cliente_nome) sub = (sub ? sub + ' · ' : '') + l.cliente_nome;
             if (!sub) sub = l.descricao !== l.categoria ? (l.descricao || '') : '';
-            const docLink = l.url_comprovante ? `<a href="${l.url_comprovante}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:4px">📄</a>` : '';
+            const docLink = parseDocUrls(l.url_comprovante).map((u,i,arr)=>`<a href="${u}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:4px">📄${arr.length>1?(i+1):''}</a>`).join('');
             return `
             <div class="fin-item">
               <div class="fin-item-info">
@@ -6756,8 +6775,7 @@ function abrirModalLancamento() {
   document.querySelectorAll('#ln-estrelas-display span').forEach(s => s.textContent = '☆');
   atualizarCategoriasLancamento();
   const motivo = document.getElementById('ln-motivo'); if (motivo) motivo.value = '';
-  const compInput = document.getElementById('ln-comprovante-input'); if (compInput) compInput.value = '';
-  const compLbl = document.getElementById('ln-comp-label'); if (compLbl) compLbl.textContent = 'Anexar comprovante...';
+  anexoReset('ln');
   document.getElementById('lancamento-modal').classList.add('open');
 }
 
@@ -6774,8 +6792,8 @@ function setLancTipo(tipo) {
 }
 
 function lnComprovanteSelecionado(input) {
-  const lbl = document.getElementById('ln-comp-label');
-  if (lbl) lbl.textContent = input.files[0]?.name || 'Anexar comprovante...';
+  // kept for compatibility — use anexoAdd
+  anexoAdd('ln', input);
 }
 
 function atualizarCategoriasLancamento() {
@@ -6866,12 +6884,9 @@ async function salvarLancamento() {
     payload.hotel_estrelas = hotelEstrelas || null;
   }
 
-  // Upload comprovante se houver
-  const compInput = document.getElementById('ln-comprovante-input');
-  if (compInput?.files?.[0]) {
-    const url = await uploadDocSupabase(compInput.files[0], 'reembolso_' + currentRep.id + '_' + data);
-    if (url) payload.url_comprovante = url;
-  }
+  // Upload comprovante(s) se houver
+  const compUrl = await anexoUploadAll('ln', 'reembolso_' + currentRep.id + '_' + data);
+  if (compUrl) payload.url_comprovante = compUrl;
 
   const { error } = await sb.from('financeiro').insert(payload);
   if (error) { showToast('Erro ao salvar'); return; }
@@ -7815,14 +7830,11 @@ if ('serviceWorker' in navigator) {
                 </div>
               </div>
               <div class="pf-row">
-                <div id="ci-doc-wrap" style="display:flex;align-items:center;gap:8px;width:100%;">
-                  <label class="pedido-file-btn" for="ci-doc-input" id="ci-doc-label-wrap" style="flex:1;display:flex;align-items:center;gap:8px;">
-                    <span>📎</span><span id="ci-doc-label">Anexar documento (opcional)</span>
-                  </label>
-                  <button type="button" id="ci-doc-remover" onclick="ciDocRemover()" style="display:none;background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:0 4px;line-height:1;" title="Remover anexo">×</button>
-                </div>
-                <input type="file" id="ci-doc-input" accept=".pdf,image/*" style="display:none" onchange="ciDocSelecionado(this)">
-                <input type="text" id="ci-doc-nome-custom" placeholder="Nome do arquivo (opcional)" style="display:none;width:100%;margin-top:6px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;">
+                <label class="pedido-file-btn" for="ci-doc-input" style="display:flex;align-items:center;gap:8px;">
+                  <span>📎</span><span>Anexar documentos (opcional)</span>
+                </label>
+                <input type="file" id="ci-doc-input" accept=".pdf,image/*" multiple style="display:none" onchange="anexoAdd('ci', this)">
+                <div id="anexos-ci"></div>
               </div>
             </div>
             <textarea id="p-obs" placeholder="Observações desta visita (opcional)..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px;resize:none;outline:none;min-height:70px;margin-bottom:4px;display:block"></textarea>
@@ -7986,7 +7998,8 @@ if ('serviceWorker' in navigator) {
             <label class="pedido-file-btn" for="gc-nf-input" style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;cursor:pointer;font-size:14px;color:var(--text2)">
               <span>📎</span><span id="gc-nf-label">Anexar NF (opcional)</span>
             </label>
-            <input type="file" id="gc-nf-input" accept=".pdf,image/*" style="display:none" onchange="gcNfSelecionada(this)">
+            <input type="file" id="gc-nf-input" accept=".pdf,image/*" multiple style="display:none" onchange="anexoAdd('gc', this)">
+            <div id="anexos-gc"></div>
           </div>
           <button class="pf-btn-registrar" onclick="salvarGasto()">Salvar</button>
         </div>
