@@ -3316,7 +3316,7 @@ async function fazerCheckin() {
     data: dataHoje,
     hora: hora,
     obs: obs,
-    rep_id: currentUser.id,
+    rep_id: await getRepId(),
     tipo: tipoVisita === 'whatsapp' ? 'whatsapp' : 'visita',
     pedido_tipo: pedidoTipo !== 'nenhum' ? pedidoTipo : null,
     pedido_valor: valor,
@@ -3409,7 +3409,7 @@ function fecharMenuApagarVisita() {
 
 async function confirmarApagarVisita() {
   if (!lpVisitaId || !currentUser) { fecharMenuApagarVisita(); return; }
-  const { error } = await sb.from('visitas').delete().eq('id', lpVisitaId).eq('rep_id', currentUser.id);
+  const { error } = await sb.from('visitas').delete().eq('id', lpVisitaId).eq('rep_id', await getRepId());
   fecharMenuApagarVisita();
   if (error) { showToast('❌ Erro ao apagar visita', true); return; }
   // Remove do cache local
@@ -3516,7 +3516,7 @@ async function salvarEdicaoVisita() {
   const updates = { obs };
   if (valor) { updates.pedido_valor = valor; updates.valor_pedido = valor; }
   if (representadaId) { updates.representada_id = representadaId; updates.pedido_representada = representadaNome; }
-  const { error } = await sb.from('visitas').update(updates).eq('id', dvVisitaAtual.id).eq('rep_id', currentUser.id);
+  const { error } = await sb.from('visitas').update(updates).eq('id', dvVisitaAtual.id).eq('rep_id', await getRepId());
   if (error) { showToast('❌ Erro ao salvar', true); return; }
   Object.assign(dvVisitaAtual, updates);
   if (historicoVisitas[perfilId]) {
@@ -4170,7 +4170,7 @@ async function salvarObsHoje(clienteId, data, hora) {
     try {
       await sb.from('visitas')
         .update({ obs: novaObs })
-        .eq('rep_id', currentUser.id)
+        .eq('rep_id', await getRepId())
         .eq('id_cliente', String(clienteId))
         .eq('data', data)
         .eq('hora', hora);
@@ -4329,7 +4329,7 @@ async function salvarCheckinSupabase(c, obs, data, hora, valorPedido, docUrl) {
     data: data,
     hora: hora,
     obs: obs || '',
-    rep_id: currentUser.id,
+    rep_id: await getRepId(),
     tipo: 'visita'
   };
   if (valorPedido !== null && valorPedido !== undefined) payload.valor_pedido = valorPedido;
@@ -4458,7 +4458,7 @@ async function pfRegistrar() {
       data: data,
       hora: new Date().toTimeString().slice(0,5),
       obs: '',
-      rep_id: currentUser.id,
+      rep_id: await getRepId(),
       tipo: tipoFinal,
       status_orcamento: tipo === 'orcamento' ? status : null
     };
@@ -4496,7 +4496,7 @@ async function pfRegistrar() {
 async function converterOrcamentoEmPedido(visitaId) {
   if (!currentUser) return;
   try {
-    await sb.from('visitas').update({ tipo: 'remoto', status_orcamento: 'fechado' }).eq('id', visitaId).eq('rep_id', currentUser.id);
+    await sb.from('visitas').update({ tipo: 'remoto', status_orcamento: 'fechado' }).eq('id', visitaId).eq('rep_id', await getRepId());
     showToast('✓ Orçamento convertido em pedido!');
     // Recarrega histórico do cliente atual
     if (perfilId) {
@@ -4512,7 +4512,7 @@ async function converterOrcamentoEmPedido(visitaId) {
 async function marcarOrcamentoPerdido(visitaId) {
   if (!currentUser) return;
   try {
-    await sb.from('visitas').update({ status_orcamento: 'perdido' }).eq('id', visitaId).eq('rep_id', currentUser.id);
+    await sb.from('visitas').update({ status_orcamento: 'perdido' }).eq('id', visitaId).eq('rep_id', await getRepId());
     showToast('Orçamento marcado como perdido');
     if (perfilId) {
       const c = clientes.find(x => x.id == perfilId);
@@ -4543,7 +4543,7 @@ async function buscarHistoricoSupabase(clienteId) {
       .from('visitas')
       .select('*')
       .eq('id_cliente', String(clienteId))
-      .eq('rep_id', currentUser.id)
+      .eq('rep_id', await getRepId())
       .order('data', { ascending: false })
       .order('hora', { ascending: false });
 
@@ -4568,7 +4568,7 @@ async function buscarVisitasPeriodo(mes, ano) {
     const { data, error } = await sb
       .from('visitas')
       .select('*')
-      .eq('rep_id', currentUser.id)
+      .eq('rep_id', await getRepId())
       .gte('data', dataInicio)
       .lte('data', dataFim)
       .order('data', { ascending: false });
