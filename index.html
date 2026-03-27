@@ -654,8 +654,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .btn-checkin-main:disabled { opacity:.6; cursor:default; }
 .btn-checkin-wa { flex:1; background:var(--surface); border:1.5px solid #25D366; color:#128C7E; border-radius:12px; padding:10px 8px; font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; text-align:center; }
 .ci-modo-row { display:flex; gap:8px; margin-bottom:14px; }
-.ci-modo-pill { flex:1; text-align:center; padding:11px 8px; border-radius:20px; border:1.5px solid var(--border); background:var(--bg); font-size:13px; font-weight:700; cursor:pointer; color:var(--text2); font-family:inherit; transition:.15s; }
+.ci-modo-pill { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; text-align:center; padding:11px 8px; border-radius:20px; border:1.5px solid var(--border); background:var(--bg); font-size:13px; font-weight:700; cursor:pointer; color:var(--text2); font-family:inherit; transition:.15s; }
 .ci-modo-pill.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+.ci-modo-pill svg { flex-shrink:0; vertical-align:middle; }
 .ci-modo-pill#ci-modo-whatsapp.active { background:#25D366; border-color:#25D366; color:#fff; }
 .btn-checkin-unico { width:100%; background:var(--green); color:#fff; border:none; border-radius:12px; padding:14px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; margin-top:4px; }
 .btn-checkin-unico:disabled { opacity:.6; cursor:default; }
