@@ -1543,7 +1543,7 @@ function esconderLogin() {
     const emailEl = document.getElementById('config-user-email');
     if (emailEl && currentUser) emailEl.textContent = currentUser.email;
   } catch(e) {}
-  loadClientes();
+  loadClientes().then(() => sincronizarUltimasVisitas());
   carregarLembretesSupabase();
   iniciarTarefas();
   carregarRepresentadas();
@@ -1763,6 +1763,38 @@ async function loadClientes() {
     if (gmap) renderMapMarkers();
   } catch(e) {
     if (listEl) listEl.innerHTML = `<div class="empty">❌ DIAG catch: ${e.message}</div>`;
+  }
+}
+
+async function sincronizarUltimasVisitas() {
+  if (!currentRep) return;
+  try {
+    const repId = await getRepId();
+    const { data: visitas } = await sb
+      .from('visitas')
+      .select('id_cliente, data, tipo')
+      .eq('rep_id', repId)
+      .neq('tipo', 'whatsapp')
+      .order('data', { ascending: false });
+    if (!visitas || !visitas.length) return;
+    // Pega a visita mais recente por cliente (já ordenado desc, primeiro win)
+    const maisRecente = {};
+    visitas.forEach(v => {
+      if (v.id_cliente && !maisRecente[v.id_cliente]) maisRecente[v.id_cliente] = v.data;
+    });
+    let atualizados = 0;
+    for (const [clienteId, data] of Object.entries(maisRecente)) {
+      const { error } = await sb.from('clientes').update({ ultima_visita: data }).eq('id', clienteId);
+      if (!error) {
+        atualizados++;
+        const cli = clientes.find(c => String(c.id) === String(clienteId));
+        if (cli) cli.ultimaVisita = data;
+      }
+    }
+    console.log(`sincronizarUltimasVisitas: ${atualizados}/${Object.keys(maisRecente).length} clientes atualizados`);
+    if (atualizados > 0) renderList();
+  } catch(e) {
+    console.log('Erro sincronizarUltimasVisitas:', e);
   }
 }
 
@@ -4370,7 +4402,12 @@ async function salvarCheckinSupabase(c, obs, data, hora, valorPedido, docUrl) {
   try {
     await sb.from('visitas').insert(payload);
     // Atualiza ultima_visita do cliente
-    await sb.from('clientes').update({ ultima_visita: data }).eq('id', String(c.id));
+    const { data: updData, error: updErr } = await sb
+      .from('clientes')
+      .update({ ultima_visita: data })
+      .eq('id', String(c.id))
+      .select('id, ultima_visita');
+    console.log('ultima_visita update:', { clienteId: c.id, data, updData, updErr });
     const cli = clientes.find(x => String(x.id) === String(c.id));
     if (cli) cli.ultimaVisita = data;
   } catch(e) {
