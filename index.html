@@ -5885,7 +5885,8 @@ async function carregarSegmentos() {
   if (!currentUser) return;
   try {
     const { data } = await sb.from('segmentos').select('*').eq('rep_id', currentUser.id).order('nome');
-    segmentosCache = data || [];
+    const seen = new Set();
+    segmentosCache = (data || []).filter(s => seen.has(s.nome) ? false : seen.add(s.nome));
     if (!segmentosCache.length) {
       const defaults = ['Mat. Construção', 'Construtora', 'Tintas', 'Distribuidora'];
       await sb.from('segmentos').insert(defaults.map(nome => ({ nome, rep_id: currentUser.id })));
