@@ -3234,7 +3234,7 @@ function mostrarResumoHoje(c, visitaHoje) {
   const obsEl = document.getElementById('p-hoje-obs');
   const pedEl = document.getElementById('p-hoje-pedido');
   const iconEl = document.querySelector('#p-visitado-hoje .p-hoje-icon');
-  if (iconEl) iconEl.textContent = '🏪';
+  if (iconEl) iconEl.textContent = '🤝';
   if (horaEl) horaEl.textContent = visitaHoje.hora ? `✓ Visitado às ${visitaHoje.hora}` : '✓ Visitado hoje';
   if (obsEl) obsEl.textContent = visitaHoje.obs || '';
   if (pedEl) {
@@ -3434,7 +3434,7 @@ function abrirDetalheVisita(visitaId) {
   const horaStr = v.hora && v.hora !== '00:00' ? ' · ' + v.hora : '';
   document.getElementById('dv-data-hora').textContent = dataPt + horaStr;
 
-  const tipoTexto = { visita:'🏪 Visita presencial', whatsapp:'💬 Via WhatsApp (sem visita)', pedido:'✅ Pedido presencial', orcamento:'📋 Orçamento', remoto:'✅ Pedido', compra:'🛒 Compra' }[v.tipo] || '📋 Visita';
+  const tipoTexto = { visita:'🤝 Visita presencial', whatsapp:'💚 Via WhatsApp (sem visita)', pedido:'✅ Pedido presencial', orcamento:'📋 Orçamento', remoto:'✅ Pedido', compra:'🛒 Compra' }[v.tipo] || '📋 Visita';
   document.getElementById('dv-tipo').textContent = tipoTexto;
   document.getElementById('dv-obs').textContent = v.obs || '—';
 
@@ -4048,7 +4048,8 @@ function renderHistorico(id, c) {
   const container = document.getElementById('p-historico');
   const visitas = historicoVisitas[id] || [];
 
-  let items = [...visitas];
+  // WhatsApp não conta como visita no histórico
+  let items = [...visitas].filter(v => (v.tipo || 'visita') !== 'whatsapp');
 
   // Adiciona última compra como referência se não vier do Supabase
   if (c.ultimaVisita && !items.some(v => v.data === c.ultimaVisita && v.compra)) {
@@ -4076,7 +4077,7 @@ function renderHistorico(id, c) {
       badge = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${statusCor}22;color:${statusCor};margin-left:4px">${statusLabel}</span>`;
     } else if (tipo === 'whatsapp') {
       const hasOrder = v.pedido_tipo && v.pedido_tipo !== 'nenhum';
-      emoji = '💬'; tipoLabel = hasOrder ? (v.pedido_tipo === 'orcamento' ? 'Orçamento WhatsApp' : 'Pedido WhatsApp') : 'Contato WhatsApp';
+      emoji = '💚'; tipoLabel = hasOrder ? (v.pedido_tipo === 'orcamento' ? 'Orçamento WhatsApp' : 'Pedido WhatsApp') : 'Contato WhatsApp';
       badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(37,211,102,.12);color:#1a7a44;margin-left:4px">WhatsApp</span>';
     } else if (tipo === 'pedido') {
       emoji = '✅'; tipoLabel = 'Pedido';
@@ -4087,7 +4088,7 @@ function renderHistorico(id, c) {
     } else if (v.compra) {
       emoji = '🛒'; tipoLabel = 'Compra'; badge = '';
     } else if (tipo === 'visita') {
-      emoji = '🏪'; tipoLabel = 'Visita presencial'; badge = '';
+      emoji = '🤝'; tipoLabel = 'Visita presencial'; badge = '';
     } else {
       emoji = isHoje ? '⭐' : '📋'; tipoLabel = 'Visita'; badge = '';
     }
@@ -7306,7 +7307,7 @@ if ('serviceWorker' in navigator) {
         <!-- Resumo se visitou hoje -->
         <div id="p-visitado-hoje" style="display:none">
           <div class="p-hoje-box">
-            <div class="p-hoje-icon">🏪</div>
+            <div class="p-hoje-icon">🤝</div>
             <div class="p-hoje-info">
               <div class="p-hoje-hora" id="p-hoje-hora">Visitado</div>
               <div class="p-hoje-obs" id="p-hoje-obs"></div>
@@ -7321,8 +7322,8 @@ if ('serviceWorker' in navigator) {
           <div class="perfil-section-title">Registrar visita</div>
           <div class="pf-form-box">
             <div class="ci-modo-row">
-              <button class="ci-modo-pill active" id="ci-modo-presencial" onclick="ciSetModo('presencial',this)">🏪 Presencial</button>
-              <button class="ci-modo-pill" id="ci-modo-whatsapp" onclick="ciSetModo('whatsapp',this)">💬 WhatsApp</button>
+              <button class="ci-modo-pill active" id="ci-modo-presencial" onclick="ciSetModo('presencial',this)">🤝 Presencial</button>
+              <button class="ci-modo-pill" id="ci-modo-whatsapp" onclick="ciSetModo('whatsapp',this)">💚 WhatsApp</button>
             </div>
             <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tipo de pedido (opcional)</div>
             <div class="ci-tipo-row">
