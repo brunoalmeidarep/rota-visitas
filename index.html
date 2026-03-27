@@ -3964,7 +3964,7 @@ async function carregarBonifResumoPerfil() {
   const sub = document.getElementById('p-bonif-sub');
   const badge = document.getElementById('p-bonif-badge');
   if (!sub) return;
-  const { data } = await sb.from('bonificacoes').select('parcelas,valor_total,status').eq('rep_id', currentUser.id).eq('cliente_id', String(perfilId));
+  const { data } = await sb.from('bonificacoes').select('parcelas,valor_total,status').eq('rep_id', await getRepId()).eq('cliente_id', String(perfilId));
   if (!data || !data.length) { sub.textContent = 'Nenhuma bonificação'; if(badge) badge.style.display='none'; return; }
   let pendente = 0;
   data.forEach(b => (b.parcelas||[]).forEach(p => { if(!p.recebido) pendente+=(p.valor||0); }));
