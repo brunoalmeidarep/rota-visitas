@@ -3715,6 +3715,8 @@ async function carregarGastosResumoPerfil() {
 let bonifAtual = [];
 let bonifExpandido = null;
 let bonifQtd = 1;
+let bonifEditId = null;
+let bonifMarcandoParcela = null;
 
 function openBonificacoes() {
   if (!perfilId) return;
@@ -3745,7 +3747,17 @@ function closeBonificacoes() {
 
 function toggleBonifForm() {
   const f = document.getElementById('bonif-form');
-  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  const abrindo = f.style.display === 'none';
+  f.style.display = abrindo ? 'block' : 'none';
+  if (abrindo) {
+    bonifEditId = null;
+    document.getElementById('bonif-edit-id').value = '';
+    document.getElementById('bonif-form-title').textContent = 'Nova bonificação';
+    document.getElementById('bonif-motivo').value = '';
+    document.getElementById('bonif-valor').value = '';
+    document.getElementById('bonif-data').value = new Date().toISOString().split('T')[0];
+    setBonifQtd(1);
+  }
 }
 
 function setBonifQtd(n) {
@@ -3796,16 +3808,31 @@ function renderBonificacoes() {
               ${pendente>0?`<span style="color:var(--orange)">pendente R$ ${pendente.toFixed(2).replace('.',',')}</span>`:''}
             </div>
           </div>
-          <div style="font-size:13px;font-weight:800;margin-left:10px;white-space:nowrap">R$ ${(b.valor_total||0).toFixed(2).replace('.',',')}</div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-left:10px">
+            <div style="font-size:13px;font-weight:800;white-space:nowrap">R$ ${(b.valor_total||0).toFixed(2).replace('.',',')}</div>
+            <div style="display:flex;gap:6px">
+              <button class="gestao-btn-sm" style="font-size:11px;padding:3px 8px" onclick="event.stopPropagation();editarBonificacao('${b.id}')">✏️</button>
+              <button class="gestao-btn-sm danger" style="font-size:11px;padding:3px 8px" onclick="event.stopPropagation();deletarBonificacao('${b.id}')">🗑</button>
+            </div>
+          </div>
         </div>
-        ${exp?`<div>${parcelas.map((p,i)=>`
-          <div class="bonif-parcela-row">
+        ${exp?`<div>${parcelas.map((p,i)=>{
+          const marcando = bonifMarcandoParcela && bonifMarcandoParcela.bonifId===b.id && bonifMarcandoParcela.parcelaIdx===i;
+          const hoje = new Date().toISOString().split('T')[0];
+          return `<div class="bonif-parcela-row">
             <div class="bonif-parcela-num">${i+1}.</div>
             <div class="bonif-parcela-val">R$ ${(p.valor||0).toFixed(2).replace('.',',')}</div>
             ${p.recebido
               ?`<div style="font-size:11px;font-weight:600;color:var(--green)">✓ ${p.data_recebimento?new Date(p.data_recebimento+'T12:00:00').toLocaleDateString('pt-BR'):''}</div>`
-              :`<button class="gestao-btn-sm" style="font-size:11px;padding:4px 10px" onclick="marcarParcelaRecebida('${b.id}',${i})">Marcar recebido</button>`}
-          </div>`).join('')}</div>`:''}
+              : marcando
+                ?`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <input type="date" id="bonif-parc-data-${b.id}-${i}" value="${hoje}" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)">
+                    <button class="gestao-btn-sm" style="font-size:11px;padding:3px 8px" onclick="confirmarMarcacaoParcela('${b.id}',${i})">✓ Confirmar</button>
+                    <button class="gestao-btn-sm" style="font-size:11px;padding:3px 8px" onclick="cancelarMarcacaoParcela()">✕</button>
+                  </div>`
+                :`<button class="gestao-btn-sm" style="font-size:11px;padding:4px 10px" onclick="iniciarMarcacaoParcela('${b.id}',${i})">Marcar recebido</button>`}
+          </div>`;
+        }).join('')}</div>`:''}
       </div>`;
     }).join('');
   };
@@ -3831,27 +3858,62 @@ async function salvarBonificacao() {
   if (!motivo) { showToast('⚠️ Informe o motivo', true); return; }
   if (!valorTotal || isNaN(valorTotal)) { showToast('⚠️ Informe o valor', true); return; }
   const parcValor = Math.round(valorTotal/bonifQtd*100)/100;
-  const parcelas = Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
-  console.log('salvarBonificacao rep_id:', await getRepId());
-  const { error } = await sb.from('bonificacoes').insert({
-    rep_id: await getRepId(),
-    cliente_id: String(perfilId), cliente_nome: c.nome,
-    representada_id: representadaId||null,
-    representada_nome: representadaNome||null,
-    motivo, valor_total: valorTotal,
-    data_combinada: dataCombinada||null,
-    parcelas, status: 'em_andamento'
-  });
+  const editId = document.getElementById('bonif-edit-id').value;
+  let error;
+  if (editId) {
+    // mantém parcelas já recebidas; recria apenas as pendentes se a qtd mudou
+    const existente = bonifAtual.find(b => b.id === editId);
+    const parcelasAtuais = existente?.parcelas || [];
+    const parcelas = parcelasAtuais.length === bonifQtd
+      ? parcelasAtuais.map(p => ({...p, valor: parcValor}))
+      : Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
+    const novoStatus = parcelas.every(p=>p.recebido) ? 'concluida' : 'em_andamento';
+    ({ error } = await sb.from('bonificacoes').update({
+      representada_id: representadaId||null, representada_nome: representadaNome||null,
+      motivo, valor_total: valorTotal, data_combinada: dataCombinada||null,
+      parcelas, status: novoStatus
+    }).eq('id', editId));
+    if (!error) showToast('✓ Bonificação atualizada');
+  } else {
+    const parcelas = Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
+    ({ error } = await sb.from('bonificacoes').insert({
+      rep_id: await getRepId(),
+      cliente_id: String(perfilId), cliente_nome: c.nome,
+      representada_id: representadaId||null, representada_nome: representadaNome||null,
+      motivo, valor_total: valorTotal, data_combinada: dataCombinada||null,
+      parcelas, status: 'em_andamento'
+    }));
+    if (!error) showToast('✓ Bonificação registrada');
+  }
   if (error) { showToast('❌ Erro ao salvar', true); console.log(error); return; }
-  showToast('✓ Bonificação registrada');
+  bonifEditId = null;
+  document.getElementById('bonif-edit-id').value = '';
   document.getElementById('bonif-form').style.display = 'none';
   carregarBonificacoes();
 }
 
-async function marcarParcelaRecebida(bonifId, parcelaIdx) {
+function iniciarMarcacaoParcela(bonifId, parcelaIdx) {
+  bonifMarcandoParcela = { bonifId, parcelaIdx };
+  renderBonificacoes();
+}
+
+function cancelarMarcacaoParcela() {
+  bonifMarcandoParcela = null;
+  renderBonificacoes();
+}
+
+async function confirmarMarcacaoParcela(bonifId, parcelaIdx) {
+  const inputId = `bonif-parc-data-${bonifId}-${parcelaIdx}`;
+  const dataRecebimento = document.getElementById(inputId)?.value || new Date().toISOString().split('T')[0];
+  bonifMarcandoParcela = null;
+  await marcarParcelaRecebida(bonifId, parcelaIdx, dataRecebimento);
+}
+
+async function marcarParcelaRecebida(bonifId, parcelaIdx, dataRecebimento) {
   const bonif = bonifAtual.find(b => b.id === bonifId);
   if (!bonif) return;
-  const parcelas = bonif.parcelas.map((p,i) => i===parcelaIdx ? {...p, recebido:true, data_recebimento: new Date().toISOString().split('T')[0]} : p);
+  const data = dataRecebimento || new Date().toISOString().split('T')[0];
+  const parcelas = bonif.parcelas.map((p,i) => i===parcelaIdx ? {...p, recebido:true, data_recebimento: data} : p);
   const novoStatus = parcelas.every(p=>p.recebido) ? 'concluida' : 'em_andamento';
   await sb.from('bonificacoes').update({parcelas, status:novoStatus}).eq('id', bonifId);
   if (currentRep) {
@@ -3860,7 +3922,7 @@ async function marcarParcelaRecebida(bonifId, parcelaIdx) {
       tipo: 'receita', categoria: 'bonificacao',
       descricao: `Bonif: ${bonif.motivo}${bonif.representada_nome?' ('+bonif.representada_nome+')':''} — parcela ${parcelaIdx+1}/${parcelas.length}`,
       valor: parcelas[parcelaIdx].valor,
-      data: new Date().toISOString().split('T')[0],
+      data,
       cliente_id: String(perfilId), cliente_nome: c?.nome||'',
       representada_id: bonif.representada_id||null,
       rep_id: currentRep.id
@@ -3868,6 +3930,33 @@ async function marcarParcelaRecebida(bonifId, parcelaIdx) {
   }
   showToast('✓ Parcela recebida!');
   carregarBonificacoes();
+}
+
+async function deletarBonificacao(id) {
+  if (!confirm('Excluir esta bonificação?')) return;
+  const { error } = await sb.from('bonificacoes').delete().eq('id', id);
+  if (error) { showToast('❌ Erro ao excluir', true); return; }
+  showToast('Bonificação excluída');
+  carregarBonificacoes();
+}
+
+function editarBonificacao(id) {
+  const b = bonifAtual.find(x => x.id === id);
+  if (!b) return;
+  bonifEditId = id;
+  document.getElementById('bonif-edit-id').value = id;
+  document.getElementById('bonif-form-title').textContent = 'Editar bonificação';
+  document.getElementById('bonif-motivo').value = b.motivo || '';
+  const val = (b.valor_total || 0).toFixed(2).replace('.', ',');
+  document.getElementById('bonif-valor').value = val;
+  document.getElementById('bonif-data').value = b.data_combinada || '';
+  setBonifQtd(b.parcelas?.length || 1);
+  const sel = document.getElementById('bonif-representada');
+  if (sel && b.representada_id) sel.value = b.representada_id;
+  const f = document.getElementById('bonif-form');
+  f.style.display = 'block';
+  f.scrollIntoView({ behavior: 'smooth' });
+  bonifAtualizarParcelas();
 }
 
 async function carregarBonifResumoPerfil() {
@@ -7447,7 +7536,8 @@ if ('serviceWorker' in navigator) {
       </div>
       <div class="gestao-body">
         <div class="gc-form-panel" id="bonif-form" style="display:none">
-          <div class="gc-form-title">Nova bonificação</div>
+          <input type="hidden" id="bonif-edit-id">
+          <div class="gc-form-title" id="bonif-form-title">Nova bonificação</div>
           <div class="campo-grupo">
             <label class="campo-label">Representada</label>
             <select class="campo-input" id="bonif-representada">
