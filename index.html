@@ -3832,6 +3832,7 @@ async function salvarBonificacao() {
   if (!valorTotal || isNaN(valorTotal)) { showToast('⚠️ Informe o valor', true); return; }
   const parcValor = Math.round(valorTotal/bonifQtd*100)/100;
   const parcelas = Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
+  console.log('salvarBonificacao rep_id:', await getRepId());
   const { error } = await sb.from('bonificacoes').insert({
     rep_id: await getRepId(),
     cliente_id: String(perfilId), cliente_nome: c.nome,
