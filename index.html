@@ -3766,7 +3766,7 @@ async function carregarBonificacoes() {
   if (!currentUser || !perfilId) return;
   document.getElementById('bonif-andamento').innerHTML = '<div class="gestao-empty">Carregando...</div>';
   const { data } = await sb.from('bonificacoes')
-    .select('*').eq('rep_id', currentUser.id).eq('cliente_id', String(perfilId))
+    .select('*').eq('rep_id', await getRepId()).eq('cliente_id', String(perfilId))
     .order('created_at', { ascending: false });
   bonifAtual = data || [];
   renderBonificacoes();
