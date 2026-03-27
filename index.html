@@ -3833,7 +3833,7 @@ async function salvarBonificacao() {
   const parcValor = Math.round(valorTotal/bonifQtd*100)/100;
   const parcelas = Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
   const { error } = await sb.from('bonificacoes').insert({
-    rep_id: currentUser.id,
+    rep_id: await getRepId(),
     cliente_id: String(perfilId), cliente_nome: c.nome,
     representada_id: representadaId||null,
     representada_nome: representadaNome||null,
