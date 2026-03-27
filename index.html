@@ -3424,8 +3424,10 @@ async function confirmarApagarVisita() {
 
 // ── DETALHE VISITA ────────────────────────────────────
 let dvVisitaAtual = null;
+let dvOrigemTela = null;
 
 function abrirDetalheVisita(visitaId) {
+  dvOrigemTela = currentScreen;
   const hist = historicoVisitas[perfilId] || [];
   const v = hist.find(x => String(x.id) === String(visitaId));
   if (!v) return;
@@ -3482,6 +3484,8 @@ function abrirDetalheVisita(visitaId) {
 function fecharDetalheVisita() {
   document.getElementById('screen-visita-detalhe').style.display = 'none';
   dvVisitaAtual = null;
+  if (dvOrigemTela === 'report') { showScreen('report'); }
+  dvOrigemTela = null;
 }
 
 function ativarEdicaoVisita() {
@@ -7240,6 +7244,13 @@ function deletarTarefa(id, data) {
 }
 
 // ── NAVEGAÇÃO SEGURA ─────────────────────────────────
+document.addEventListener('click', e => {
+  if (repFiltroDropdownOpen && !e.target.closest('#rep-filter-row')) {
+    repFiltroDropdownOpen = false;
+    renderReport();
+  }
+});
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.getElementById('filtro-panel')?.style.display === 'flex') { fecharFiltro(); return; }
