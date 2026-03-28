@@ -458,6 +458,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .planner-evento-del { font-size:16px; color:var(--text3); cursor:pointer; }
 .planner-add-btn { width:100%; background:none; border:1px dashed var(--border); border-radius:8px; padding:8px; font-size:12px; color:var(--text3); cursor:pointer; font-family:inherit; margin-top:6px; }
 
+.planner-checkins-lista { max-height:220px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
 .planner-checkin-cidade { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; padding:6px 0 3px; }
 .planner-checkin-item { display:flex; align-items:center; gap:7px; padding:5px 0; border-bottom:1px solid var(--border); }
 .planner-checkin-item:last-child { border-bottom:none; }
@@ -1129,7 +1130,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       </div>
 
       <!-- VISÃO SEMANAL -->
-      <div id="planner-semana-wrap">
+      <div id="planner-semana-wrap" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
         <div class="planner-dias-mini" id="planner-dias-mini"></div>
         <div class="planner-body" id="planner-body-semana"></div>
       </div>
@@ -5143,7 +5144,7 @@ function renderPlannerSemana() {
   out += '<button class="planner-add-btn" data-ds="' + ds + '" onclick="abrirModalPlanner(this.dataset.ds)">+ Adicionar compromisso</button></div>';
 
   if (Object.keys(cidades).length) {
-    out += '<div class="planner-bloco"><div class="planner-bloco-label">✅ Visitados no dia</div>';
+    out += '<div class="planner-bloco"><div class="planner-bloco-label">✅ Visitados no dia</div><div class="planner-checkins-lista">';
     Object.entries(cidades).forEach(([cidade, items]) => {
       out += '<div class="planner-checkin-cidade">📍 ' + cidade + '</div>';
       items.forEach(ci => {
@@ -5151,7 +5152,7 @@ function renderPlannerSemana() {
         out += '<div class="planner-checkin-item"><div class="planner-checkin-dot"></div><div class="planner-checkin-nome">' + nome + '</div><div class="planner-checkin-hora">' + (ci.hora||'') + '</div></div>';
       });
     });
-    out += '</div>';
+    out += '</div></div>';
   }
 
   out += '<div class="planner-bloco"><div class="planner-bloco-label">📝 Notas</div>' +
@@ -5236,7 +5237,7 @@ function renderPlannerMes() {
     NOMES_DIA[sel.getDay()] + ', ' + sel.getDate() + ' de ' + NOMES_MES[sel.getMonth()] + '</div>';
 
   if (checkins.length) {
-    bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">✅ Visitados</div>';
+    bodyHTML += '<div class="planner-bloco"><div class="planner-bloco-label">✅ Visitados</div><div class="planner-checkins-lista">';
     Object.entries(cidades).forEach(([cidade, items]) => {
       bodyHTML += '<div class="planner-checkin-cidade">📍 ' + cidade + '</div>';
       items.forEach(ci => {
@@ -5244,7 +5245,7 @@ function renderPlannerMes() {
         bodyHTML += '<div class="planner-checkin-item"><div class="planner-checkin-dot"></div><div class="planner-checkin-nome">' + nome + '</div><div class="planner-checkin-hora">' + (ci.hora||'') + '</div></div>';
       });
     });
-    bodyHTML += '</div>';
+    bodyHTML += '</div></div>';
   }
 
   if (planDia.eventos?.length) {
