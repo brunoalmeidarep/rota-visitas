@@ -931,7 +931,8 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <div style="display:flex;align-items:center;gap:8px">
       <div class="search-inner" style="flex:1" id="search-inner-box">
         <span>🔍</span>
-        <input type="search" id="search-input" placeholder="Buscar cliente..." oninput="renderList()" style="flex:1">
+        <input type="search" id="search-input" placeholder="Buscar cliente..." oninput="onBuscaInput()" style="flex:1">
+        <button id="search-clear-btn" onclick="limparBusca();renderList()" style="display:none;background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:0 2px;line-height:1;flex-shrink:0" title="Limpar busca">×</button>
         <div id="cidade-ativa-tag" style="display:none;align-items:center;gap:4px">
           <div style="width:1px;height:16px;background:var(--border)"></div>
           <span id="cidade-ativa-nome" class="cidade-ativa-tag" onclick="limparFiltroCidade()"></span>
@@ -5629,8 +5630,23 @@ function abrirFiltroHeader(status) {
   if (lista) lista.scrollTop = 0;
 }
 
+function limparBusca() {
+  const inp = document.getElementById('search-input');
+  const btn = document.getElementById('search-clear-btn');
+  if (inp) inp.value = '';
+  if (btn) btn.style.display = 'none';
+}
+
+function onBuscaInput() {
+  const inp = document.getElementById('search-input');
+  const btn = document.getElementById('search-clear-btn');
+  if (btn) btn.style.display = inp?.value ? 'block' : 'none';
+  renderList();
+}
+
 function filtrarStatus(btn, status) {
   activeFilter = status || null;
+  limparBusca();
   sincronizarPillStatus();
   renderList();
   const lista = document.getElementById('client-list');
@@ -8388,7 +8404,7 @@ if ('serviceWorker' in navigator) {
 
   <!-- NAVBAR -->
   <nav class="navbar">
-    <button class="nav-item active" id="nav-list" onclick="showScreen('list')"><span class="nav-icon">💼</span><span class="nav-label">Carteira</span></button>
+    <button class="nav-item active" id="nav-list" onclick="showScreen('list');limparBusca();renderList()"><span class="nav-icon">💼</span><span class="nav-label">Carteira</span></button>
     <button class="nav-item" id="nav-map" onclick="showScreen('map')"><span class="nav-icon">🗺️</span><span class="nav-label">Mapa</span></button>
     <button class="nav-item" id="nav-planner" onclick="showScreen('planner')"><span class="nav-icon">📅</span><span class="nav-label">Planner</span></button>
     <button class="nav-item" id="nav-report" onclick="showScreen('report')"><span class="nav-icon">📈</span><span class="nav-label">Relatório</span></button>
