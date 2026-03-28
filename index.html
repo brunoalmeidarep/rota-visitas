@@ -1413,6 +1413,13 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 <div class="toast" id="toast"></div>
 
 <script>
+// ── DETECÇÃO DE DISPOSITIVO ─────────────────────────────
+(function() {
+  if (window.innerWidth > 768 && !localStorage.getItem('force_mobile')) {
+    window.location.replace('desktop.html');
+  }
+})();
+
 // ── CONFIG ─────────────────────────────────────────────
 let SCRIPT_URL  = 'https://script.google.com/macros/s/AKfycbyGXXcYVzmMjbJzYWLjVg9nDIiCurp2jmU37jqJh_f6w1HtNoHrs9_5W4pAlrqH7f0pXg/exec';
 let clientes    = [];
@@ -8551,5 +8558,12 @@ if ('serviceWorker' in navigator) {
         <button class="planner-modal-salvar" onclick="salvarEventoPlanner()">Salvar</button>
       </div>
     </div>
+<!-- Botão versão desktop -->
+<div style="position:fixed;bottom:64px;right:10px;z-index:900">
+  <a href="desktop.html" onclick="localStorage.removeItem('force_mobile')"
+     style="font-size:11px;color:var(--text3);text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 9px;display:block;opacity:0.55;">
+    🖥 Desktop
+  </a>
+</div>
 </body>
 </html>
