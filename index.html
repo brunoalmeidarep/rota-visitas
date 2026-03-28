@@ -3175,7 +3175,9 @@ function openPerfil(id) {
     if (!visitas.length) return;
     if (!historicoVisitas[id]) historicoVisitas[id] = [];
     visitas.forEach(v => {
-      const jaExiste = historicoVisitas[id].some(h => h.data === v.data && h.hora === v.hora);
+      const jaExiste = historicoVisitas[id].some(h =>
+        (h.id && h.id === v.id) || (!h.id && h.data === v.data && h.hora === v.hora)
+      );
       if (!jaExiste) historicoVisitas[id].push(v);
     });
     renderHistorico(id, c);
@@ -3376,6 +3378,7 @@ async function fazerCheckin() {
   if (feedback) feedback.textContent = '';
 
   const docUrl = await anexoUploadAll('ci', tipoVisita + '_' + perfilId + '_' + dataHoje);
+  const repId = await getRepId();
 
   const payload = {
     id_cliente: String(perfilId),
@@ -3384,7 +3387,7 @@ async function fazerCheckin() {
     data: dataHoje,
     hora: hora,
     obs: obs,
-    rep_id: await getRepId(),
+    rep_id: repId,
     tipo: tipoVisita === 'whatsapp' ? 'whatsapp' : 'visita',
     pedido_tipo: pedidoTipo !== 'nenhum' ? pedidoTipo : null,
     pedido_valor: valor,
@@ -3398,21 +3401,67 @@ async function fazerCheckin() {
     status_orcamento: pedidoTipo === 'orcamento' ? orcStatus : null,
   };
 
-  const { data: savedData, error } = await sb.from('visitas').insert(payload).select().maybeSingle();
-
-  if (error) {
-    showToast('❌ Erro ao registrar: ' + (error.message || error.code), true);
-    if (btn) btn.disabled = false;
-    return;
+  // Verifica se já existe visita do dia para este cliente (evita duplicata)
+  let existingVisita = null;
+  if (tipoVisita !== 'whatsapp') {
+    const { data: rows } = await sb.from('visitas')
+      .select('id, hora, hora_edicao')
+      .eq('id_cliente', String(perfilId))
+      .eq('rep_id', repId)
+      .eq('data', dataHoje)
+      .neq('tipo', 'whatsapp')
+      .limit(1);
+    existingVisita = rows?.[0] || null;
   }
 
-  const visitaObj = { ...payload, id: savedData?.id, hoje: tipoVisita === 'visita' };
+  let savedData;
+  if (existingVisita) {
+    // UPDATE — preserva hora original do primeiro check-in
+    const updateFields = {
+      obs, pedido_tipo: payload.pedido_tipo, pedido_valor: valor,
+      pedido_representada: representadaNome, orcamento_status: payload.orcamento_status,
+      valor_pedido: valor, representada_id: representadaId,
+      status_orcamento: payload.status_orcamento,
+    };
+    if (docUrl) { updateFields.pedido_url_doc = docUrl; updateFields.doc_url = docUrl; }
+    const { data: upd, error: updErr } = await sb.from('visitas')
+      .update(updateFields).eq('id', existingVisita.id).eq('rep_id', repId)
+      .select().maybeSingle();
+    if (updErr) {
+      showToast('❌ Erro ao atualizar: ' + (updErr.message || updErr.code), true);
+      if (btn) btn.disabled = false; return;
+    }
+    savedData = upd;
+    // Registra hora da edição (ignora erro se coluna não existir)
+    sb.from('visitas').update({ hora_edicao: hora }).eq('id', existingVisita.id);
+  } else {
+    // INSERT — primeiro check-in do dia
+    const { data: ins, error: insErr } = await sb.from('visitas').insert(payload).select().maybeSingle();
+    if (insErr) {
+      showToast('❌ Erro ao registrar: ' + (insErr.message || insErr.code), true);
+      if (btn) btn.disabled = false; return;
+    }
+    savedData = ins;
+  }
+
+  // hora exibida = original do check-in (não a da edição)
+  const horaExibida = existingVisita ? existingVisita.hora : hora;
+  const visitaObj = { ...payload, ...savedData, id: savedData?.id || existingVisita?.id,
+    hora: horaExibida, hora_edicao: existingVisita ? hora : null, hoje: tipoVisita === 'visita' };
+
   if (!historicoVisitas[perfilId]) historicoVisitas[perfilId] = [];
-  historicoVisitas[perfilId].unshift(visitaObj);
+  const cacheIdx = existingVisita
+    ? historicoVisitas[perfilId].findIndex(v => String(v.id) === String(existingVisita.id))
+    : -1;
+  if (cacheIdx >= 0) {
+    Object.assign(historicoVisitas[perfilId][cacheIdx], visitaObj);
+  } else {
+    historicoVisitas[perfilId].unshift(visitaObj);
+  }
 
   if (tipoVisita === 'visita') {
     c.visitadoHoje = true;
-    c.horaHoje = hora;
+    c.horaHoje = horaExibida; // mantém hora original do primeiro check-in
     c.ultimaObs = obs;
     salvarHistoricoLocal(perfilId, dataHoje, hora, obs);
     mostrarResumoHoje(c, visitaObj);
@@ -4133,6 +4182,27 @@ function renderHistorico(id, c) {
     return;
   }
 
+  // Deduplica por data: uma entrada por dia
+  // Preserva hora do primeiro check-in; usa campos mais recentes para obs/valor
+  const byDate = {};
+  items.forEach(v => {
+    const k = v.data;
+    if (!byDate[k]) { byDate[k] = { ...v }; return; }
+    const cur = byDate[k];
+    const curHora = cur.hora || '99:99';
+    const vHora   = v.hora   || '99:99';
+    const earliest = vHora <= curHora ? v : cur;
+    const latest   = vHora <= curHora ? cur : v;
+    // Mantém hora mais cedo (check-in original) e dados do mais recente
+    byDate[k] = {
+      ...latest,
+      hora: earliest.hora,
+      hora_edicao: latest.hora_edicao || v.hora_edicao || cur.hora_edicao ||
+                   (earliest.hora && latest.hora && earliest.hora !== latest.hora ? latest.hora : null),
+    };
+  });
+  items = Object.values(byDate);
+
   items.sort((a, b) => (b.data + (b.hora||'')).localeCompare(a.data + (a.hora||'')));
 
   container.innerHTML = items.map((v, i) => {
@@ -4179,6 +4249,9 @@ function renderHistorico(id, c) {
 
     const label = isHoje ? 'Hoje' : formatDate(v.data);
     const horaStr = v.hora && v.hora !== '00:00' ? ` · ${v.hora}` : '';
+    const editadoStr = v.hora_edicao && v.hora_edicao !== v.hora
+      ? `<span style="font-size:10px;color:var(--text3);margin-left:6px">editado às ${v.hora_edicao}</span>`
+      : '';
     const valor = v.pedido_valor || v.valor_pedido;
     const valorStr = valor ? ` · <strong style="color:var(--green)">R$ ${parseFloat(valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>` : '';
     const repStr = v.pedido_representada ? `<span style="font-size:11px;color:var(--text3);margin-left:4px">· ${v.pedido_representada}</span>` : '';
@@ -4204,7 +4277,7 @@ function renderHistorico(id, c) {
     <div class="historico-item" ${clickable}>
       <div class="hist-dot ${dotClass}">${emoji}</div>
       <div class="hist-content">
-        <div class="hist-data">${label}${horaStr}${badge}${valorStr}${repStr}${docBtn}${v.id ? '' : editBtn}</div>
+        <div class="hist-data">${label}${horaStr}${editadoStr}${badge}${valorStr}${repStr}${docBtn}${v.id ? '' : editBtn}</div>
         ${obsHtml}
         ${v.id ? '' : converterBtn+perdidoBtn}
       </div>
