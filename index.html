@@ -2925,6 +2925,44 @@ async function salvarEdicaoCliente() {
   const cnpj      = document.getElementById('c-cnpj').value.trim();
   const segmento  = document.getElementById('c-segmento').value;
 
+  const fbEl2 = document.getElementById('cadastro-feedback');
+  const btnSalvar2 = document.getElementById('btn-salvar-cliente');
+  if (fbEl2) { fbEl2.textContent = '⏳ Salvando...'; fbEl2.style.display = 'block'; }
+  if (btnSalvar2) btnSalvar2.disabled = true;
+
+  // Salva no Supabase ANTES de atualizar cache local e fechar
+  if (sb && currentUser) {
+    const repId = await getRepId();
+    const nomeExibir = fantasia || razao || c.nome;
+    const nomeNovo = comprador ? `${nomeExibir} (${comprador})` : nomeExibir;
+    const { error } = await sb.from('clientes')
+      .update({
+        nome:         nomeNovo,
+        razao_social: razao,
+        fantasia,
+        comprador,
+        telefone:     tel,
+        cidade:       cidade || c.cidade,
+        endereco,
+        cnpj,
+        cep,
+        segmento,
+        lat:          coordsCapturadas ? coordsCapturadas.lat : c.lat,
+        lng:          coordsCapturadas ? coordsCapturadas.lng : c.lng,
+      })
+      .eq('id', String(editandoClienteId))
+      .eq('rep_id', repId);
+
+    if (error) {
+      console.log('salvarEdicaoCliente erro Supabase:', error);
+      showToast('❌ Erro ao salvar: ' + (error.message || error.code), true);
+      if (fbEl2) fbEl2.style.display = 'none';
+      if (btnSalvar2) btnSalvar2.disabled = false;
+      return;
+    }
+  }
+
+  // Supabase confirmou — atualiza cache local
   const nomeExibir = fantasia || razao || c.nome;
   c.nome        = comprador ? `${nomeExibir} (${comprador})` : nomeExibir;
   c.razaoSocial = razao;
@@ -2936,43 +2974,12 @@ async function salvarEdicaoCliente() {
   c.cnpj        = cnpj;
   c.segmento    = segmento;
   c.cep         = cep;
+  if (coordsCapturadas) { c.lat = coordsCapturadas.lat; c.lng = coordsCapturadas.lng; }
 
-  if (coordsCapturadas) {
-    c.lat = coordsCapturadas.lat;
-    c.lng = coordsCapturadas.lng;
-  }
-
-  const idSalvo = editandoClienteId;
   renderList();
   if (gmap) renderMapMarkers();
-  // Feedback e fecha após 1.5s
-  const fbEl2 = document.getElementById('cadastro-feedback');
-  const btnSalvar2 = document.getElementById('btn-salvar-cliente');
   if (fbEl2) { fbEl2.textContent = '✓ Dados atualizados'; fbEl2.style.display = 'block'; }
-  if (btnSalvar2) btnSalvar2.disabled = true;
-  setTimeout(() => { closeCadastro(); if (btnSalvar2) btnSalvar2.disabled = false; }, 1500);
-
-  // Tenta salvar no Supabase se tabela clientes existir
-  if (sb) {
-    try {
-      await sb.from('clientes').upsert({
-        id:          idSalvo,
-        nome:        c.nome,
-        razao_social: razao,
-        fantasia,
-        comprador,
-        telefone:    tel,
-        cidade:      c.cidade,
-        endereco,
-        cnpj,
-        cep:         c.cep,
-        segmento,
-        lat:         c.lat,
-        lng:         c.lng,
-        rep_id:      currentRep?.id,
-      }, { onConflict: 'id' });
-    } catch(e) { /* tabela pode não existir ainda */ }
-  }
+  setTimeout(() => { closeCadastro(); if (btnSalvar2) btnSalvar2.disabled = false; }, 1200);
 }
 
 // Abre cadastro no modo edição
