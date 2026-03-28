@@ -1522,13 +1522,31 @@ async function carregarRepresentante() {
       }
     } else {
       // primeiro login: cria linha em representantes automaticamente
-      const { data: novo } = await sb.from('representantes').insert({
+      const { data: novo, error: insErr } = await sb.from('representantes').insert({
         email:   currentUser.email,
         nome:    currentUser.email.split('@')[0],
         auth_id: currentUser.id,
         ativo:   true,
       }).select().maybeSingle();
-      currentRep = novo || null;
+
+      if (novo) {
+        currentRep = novo;
+      } else {
+        // INSERT falhou (ex: email já existe por cadastro manual sem auth_id, ou política RLS)
+        // Tenta buscar pelo auth_id que acabamos de definir
+        const { data: porAuth } = await sb.from('representantes')
+          .select('*').eq('auth_id', currentUser.id).maybeSingle();
+        if (porAuth) {
+          currentRep = porAuth;
+        } else {
+          // Tenta vincular auth_id ao registro existente com esse email
+          const { data: upd } = await sb.from('representantes')
+            .update({ auth_id: currentUser.id })
+            .eq('email', currentUser.email)
+            .select().maybeSingle();
+          currentRep = upd || null;
+        }
+      }
     }
   } catch(e) {
     currentRep = null;
@@ -1800,11 +1818,8 @@ async function loadClientes() {
       return;
     }
 
-    // Conta total sem filtro para diagnóstico
-    const { count: totalGeral } = await sb.from('clientes').select('*', { count: 'exact', head: true });
-
     if (!data || !data.length) {
-      if (listEl) listEl.innerHTML = `<div class="empty">❌ DIAG: 0 clientes com rep_id=${currentRep.id} | total na tabela sem filtro=${totalGeral}</div>`;
+      if (listEl) listEl.innerHTML = `<div class="empty">📋 Nenhum cliente cadastrado ainda.<br><span style="font-size:13px;color:var(--text3)">Importe sua carteira em ⚙️ Configurações → Importar Clientes</span></div>`;
       return;
     }
 
@@ -2364,7 +2379,7 @@ function abrirRepDetalhe(tipo) {
       return '<div style="background:var(--surface);padding:10px 14px;border-bottom:2px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
           '<div><div style="font-size:14px;font-weight:700;color:var(--text)">🏢 ' + nome + '</div><div style="font-size:12px;color:var(--text3)">' + g.count + ' registro(s)</div></div>' +
           '<div style="font-size:16px;font-weight:800;color:var(--green)">' + totalStr + '</div>' +
-        '</div>' + renderDetalheLista(g.rows, true);
+        '</div>' + renderDetalheListaComEditRep(g.rows);
     }).join('');
     if (!html) html = '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum registro no período</div>';
   }
@@ -2482,6 +2497,66 @@ function renderGrupoOrcamentos(titulo, lista, cor) {
   if (!lista.length) return '';
   return '<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:' + cor + ';text-transform:uppercase">' + titulo + ' (' + lista.length + ')</div>' +
     renderDetalheLista(lista, true);
+}
+
+// ── EDITAR REPRESENTADA DE VISITA (no relatório) ──────
+let _editRepVisitaId = null;
+
+function abrirEditarRepresentadaVisita(visitaId, repIdAtual) {
+  _editRepVisitaId = visitaId;
+  const sel = document.getElementById('modal-rep-sel');
+  sel.innerHTML = '<option value="">Sem empresa</option>' +
+    representadasCache.map(r =>
+      `<option value="${r.id}"${String(r.id) === String(repIdAtual) ? ' selected' : ''}>${r.nome}</option>`
+    ).join('');
+  document.getElementById('modal-editar-rep-visita').style.display = 'flex';
+}
+
+function fecharModalEditarRepVisita() {
+  document.getElementById('modal-editar-rep-visita').style.display = 'none';
+  _editRepVisitaId = null;
+}
+
+async function salvarRepresentadaVisitaModal() {
+  if (!_editRepVisitaId) return;
+  const sel = document.getElementById('modal-rep-sel');
+  const repId = sel.value || null;
+  const repNome = repId ? (representadasCache.find(r => String(r.id) === String(repId))?.nome || null) : null;
+  try {
+    const { error } = await sb.from('visitas').update({
+      representada_id: repId,
+      representada_nome: repNome
+    }).eq('id', _editRepVisitaId).eq('rep_id', await getRepId());
+    if (error) throw error;
+    showToast('✓ Representada atualizada');
+    fecharModalEditarRepVisita();
+    carregarPeriodoRelatorio();
+  } catch(e) { showToast('❌ Erro ao salvar', true); }
+}
+
+function renderDetalheListaComEditRep(rows) {
+  if (!rows.length) return '<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">Nenhum registro</div>';
+  return rows.map((v, i) => {
+    const nomeBase = (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim();
+    const dataFmt = v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
+    const hora = v.hora && v.hora !== '00:00' ? ' ' + v.hora : '';
+    const cidade = (v.cidade || '').replace(' - SC','').replace(' - PR','').trim();
+    const obs = v.obs ? v.obs.slice(0,60) + (v.obs.length > 60 ? '…' : '') : '';
+    const bg = i % 2 === 0 ? 'var(--card)' : 'var(--bg)';
+    const tipo = v.tipo || 'visita';
+    const icone = tipo === 'orcamento' ? '📋' : tipo === 'remoto' ? '📦' : '🤝';
+    const valorStr = v.valor_pedido ? '<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px">R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</div>' : '';
+    return '<div style="display:flex;align-items:flex-start;padding:12px 14px;background:' + bg + ';border-bottom:1px solid var(--border);gap:10px">' +
+      '<div style="font-size:16px;margin-top:1px">' + icone + '</div>' +
+      '<div style="flex:1;min-width:0" onclick="fecharRepDetalhe();openPerfil(' + v.id_cliente + ')">' +
+        '<div style="font-size:14px;font-weight:600;color:var(--text)">' + nomeBase + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 ' + cidade + ' · ' + dataFmt + hora + '</div>' +
+        (obs ? '<div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.4">' + obs + '</div>' : '') +
+      '</div>' +
+      valorStr +
+      (v.id ? '<button onclick="abrirEditarRepresentadaVisita(' + v.id + ',\'' + (v.representada_id||'') + '\')" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text3);padding:4px;flex-shrink:0;margin-top:-2px" title="Editar representada">✏️</button>' : '') +
+    '</div>';
+  }).join('');
 }
 
 function exportarPDFDetalhe() {
@@ -3191,10 +3266,15 @@ function openPerfil(id) {
     if (!visitas.length) return;
     if (!historicoVisitas[id]) historicoVisitas[id] = [];
     visitas.forEach(v => {
-      const jaExiste = historicoVisitas[id].some(h =>
+      const idx = historicoVisitas[id].findIndex(h =>
         (h.id && h.id === v.id) || (!h.id && h.data === v.data && h.hora === v.hora)
       );
-      if (!jaExiste) historicoVisitas[id].push(v);
+      if (idx >= 0) {
+        // Substitui entrada local (sem id) pelo registro do Supabase (com id) para que o click funcione
+        if (!historicoVisitas[id][idx].id) historicoVisitas[id][idx] = v;
+      } else {
+        historicoVisitas[id].push(v);
+      }
     });
     renderHistorico(id, c);
     // Reavalia visitado hoje com dados do Supabase
@@ -7821,6 +7901,7 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('screen-empresas')?.style.display === 'flex') { closeEmpresas(); return; }
     if (document.getElementById('screen-segmentos')?.style.display === 'flex') { closeSegmentos(); return; }
     if (document.getElementById('screen-importar')?.style.display === 'flex') { closeImportar(); return; }
+    if (document.getElementById('modal-editar-rep-visita')?.style.display === 'flex') { fecharModalEditarRepVisita(); return; }
     if (document.getElementById('rep-detalhe')?.classList.contains('open')) { fecharRepDetalhe(); return; }
   }
 });
@@ -8541,6 +8622,21 @@ if ('serviceWorker' in navigator) {
         <div class="cidade-filtro-lista" id="cidade-filtro-lista"></div>
       </div>
     </div>
+<!-- MODAL EDITAR REPRESENTADA DE VISITA -->
+<div id="modal-editar-rep-visita" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1200;align-items:center;justify-content:center;padding:24px;" onclick="fecharModalEditarRepVisita()">
+  <div style="background:var(--surface);border-radius:20px;padding:24px;width:100%;max-width:360px;" onclick="event.stopPropagation()">
+    <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px;">🏢 Editar Representada</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:8px;">Selecione a representada correta:</div>
+    <select id="modal-rep-sel" style="width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-family:inherit;font-size:14px;margin-bottom:18px;">
+      <option value="">Sem empresa</option>
+    </select>
+    <div style="display:flex;gap:10px;">
+      <button onclick="fecharModalEditarRepVisita()" style="flex:1;padding:12px;background:var(--card);color:var(--text2);border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Cancelar</button>
+      <button onclick="salvarRepresentadaVisitaModal()" style="flex:1;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- POP-UP LEMBRETES -->
 <div id="popup-lembrete" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px);">
   <div style="background:var(--surface);border-radius:20px;padding:24px;width:100%;max-width:360px;max-height:70vh;overflow-y:auto;">
