@@ -54,6 +54,7 @@
     <div id="header-right">
       <span id="header-user"></span>
       <button class="hdr-btn primary" onclick="openCadastro()">+ Novo cliente</button>
+      <button class="hdr-btn" onclick="localStorage.setItem('force_mobile','1');window.location.href='index.html'" title="Acessar a versão para celular">📱 Versão Mobile</button>
       <button class="hdr-btn danger" onclick="fazerLogout()">Sair</button>
     </div>
   </header>
@@ -277,12 +278,5 @@
 <!-- JS principal -->
 <script src="desktop.js"></script>
 
-<!-- Botão versão mobile -->
-<div style="position:fixed;bottom:16px;right:14px;z-index:900">
-  <a href="index.html" onclick="localStorage.setItem('force_mobile','1')"
-     style="font-size:11px;color:#888;text-decoration:none;background:#fff;border:1px solid #ddd;border-radius:8px;padding:4px 9px;display:block;opacity:0.55;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-    📱 Mobile
-  </a>
-</div>
 </body>
 </html>

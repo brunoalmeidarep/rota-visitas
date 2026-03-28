@@ -8502,6 +8502,13 @@ if ('serviceWorker' in navigator) {
             <div><div class="config-item-nome">Versão do aplicativo</div><div class="config-item-sub">Minha Rota RP v1.0</div></div>
           </div>
         </div>
+        <div class="config-item" onclick="localStorage.removeItem('force_mobile');window.location.href='desktop.html'">
+          <div class="config-item-left">
+            <div class="config-item-icon">🖥️</div>
+            <div><div class="config-item-nome">Versão Desktop</div><div class="config-item-sub">Acessar a versão completa para computador</div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </div>
         <div class="config-item danger" onclick="closeConfig();fazerLogout()">
           <div class="config-item-left">
             <div class="config-item-icon">⏻</div>
@@ -8558,12 +8565,5 @@ if ('serviceWorker' in navigator) {
         <button class="planner-modal-salvar" onclick="salvarEventoPlanner()">Salvar</button>
       </div>
     </div>
-<!-- Botão versão desktop -->
-<div style="position:fixed;bottom:64px;right:10px;z-index:900">
-  <a href="desktop.html" onclick="localStorage.removeItem('force_mobile')"
-     style="font-size:11px;color:var(--text3);text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 9px;display:block;opacity:0.55;">
-    🖥 Desktop
-  </a>
-</div>
 </body>
 </html>
