@@ -1015,7 +1015,6 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <button class="fin-tab active" id="fin-tab-lancamentos" onclick="setFinTab('lancamentos')">💰 Lançamentos</button>
     <button class="fin-tab" id="fin-tab-impostos" onclick="setFinTab('impostos')">📋 Impostos</button>
     <button class="fin-tab" id="fin-tab-resumo" onclick="setFinTab('resumo')">📊 Resumo</button>
-    <button class="fin-tab" id="fin-tab-bonificacoes" onclick="setFinTab('bonificacoes')">🎁 Bonif.</button>
     <button class="fin-tab" id="fin-tab-compromissos" onclick="setFinTab('compromissos')">📅 Comprom.</button>
   </div>
 
@@ -1056,12 +1055,6 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <button class="fin-periodo-tab active" onclick="setFinPeriodoResumo('mes')">Mês</button>
     </div>
     <div id="fin-resumo-conteudo"></div>
-  </div>
-
-  <!-- Bonificações -->
-  <div id="fin-wrap-bonificacoes" style="display:none;flex:1;overflow-y:auto;padding:10px 12px 80px;">
-    <div id="fin-bonif-filtro" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
-    <div id="fin-bonif-lista"></div>
   </div>
 
   <!-- Compromissos -->
@@ -1505,6 +1498,14 @@ function parseMoeda(el) {
   if (!el) return 0;
   const v = (el.value || '').replace(/\./g, '').replace(',', '.');
   return parseFloat(v) || 0;
+}
+// Formata valor como "R$ 5.000,00"
+function formatarMoeda(valor) {
+  return 'R$ ' + (parseFloat(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+// Formata número sem prefixo R$: "5.000,00"
+function fmtNum(valor) {
+  return (parseFloat(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 async function carregarRepresentante() {
@@ -2218,7 +2219,7 @@ function renderReport() {
   const rows = getRowsFiltradas();
   const totalVisitas = rows.length;
   const totalVendas = rows.reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
-  const totalVendasStr = 'R$ ' + totalVendas.toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const totalVendasStr = formatarMoeda(totalVendas);
   const orcAbertos = rows.filter(v => v.tipo==='orcamento' && (!v.status_orcamento||v.status_orcamento==='aberto')).length;
   const orcTotal = rows.filter(v => v.tipo==='orcamento').length;
 
@@ -2291,7 +2292,17 @@ function renderReport() {
             '<div style="font-size:22px">🏢</div>' +
             '<div style="flex:1;min-width:0">' +
               '<div style="font-size:14px;font-weight:700;color:var(--text)">Por Representada</div>' +
-              '<div class="rep-card-sub">'+(topRepNome ? topRepNome+' — R$ '+topRep[1].total.toLocaleString('pt-BR',{minimumFractionDigits:2}) : 'Ver detalhes')+'</div>' +
+              '<div class="rep-card-sub">'+(topRepNome ? topRepNome+' — '+formatarMoeda(topRep[1].total) : 'Ver detalhes')+'</div>' +
+            '</div>' +
+            '<div style="color:var(--text3);font-size:20px">›</div>' +
+          '</div>' +
+        '</button>' +
+        '<button class="rep-card rep-card-full" onclick="abrirRepDetalhe(\'bonificacoes\')">' +
+          '<div style="display:flex;align-items:center;gap:12px">' +
+            '<div style="font-size:22px">🎁</div>' +
+            '<div style="flex:1;min-width:0">' +
+              '<div style="font-size:14px;font-weight:700;color:var(--text)">Bonificações</div>' +
+              '<div class="rep-card-sub">Ver pendentes por representada</div>' +
             '</div>' +
             '<div style="color:var(--text3);font-size:20px">›</div>' +
           '</div>' +
@@ -2319,7 +2330,7 @@ function abrirRepDetalhe(tipo) {
     const totalVendas = comPedido.reduce((s,v) => s + parseFloat(v.valor_pedido), 0);
     html = '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
       '<span style="font-size:13px;color:var(--text2)">' + comPedido.length + ' pedido(s)</span>' +
-      '<span class="rep-total-val" style="font-size:20px">R$ ' + totalVendas.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</span>' +
+      '<span class="rep-total-val" style="font-size:20px">' + formatarMoeda(totalVendas) + '</span>' +
     '</div>' + renderDetalheLista(comPedido, true);
   } else if (tipo === 'orcamentos') {
     const abertos = rows.filter(v => v.tipo === 'orcamento' && (!v.status_orcamento || v.status_orcamento === 'aberto'));
@@ -2371,13 +2382,18 @@ function abrirRepDetalhe(tipo) {
     html = sorted.map(([rid, g]) => {
       const rep = representadasCache.find(r => String(r.id) === rid);
       const nome = rep ? rep.nome : 'Sem empresa';
-      const totalStr = g.total > 0 ? 'R$ ' + g.total.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
+      const totalStr = g.total > 0 ? formatarMoeda(g.total) : '—';
       return '<div style="background:var(--surface);padding:10px 14px;border-bottom:2px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
           '<div><div style="font-size:14px;font-weight:700;color:var(--text)">🏢 ' + nome + '</div><div style="font-size:12px;color:var(--text3)">' + g.count + ' registro(s)</div></div>' +
           '<div style="font-size:16px;font-weight:800;color:var(--green)">' + totalStr + '</div>' +
         '</div>' + renderDetalheListaComEditRep(g.rows);
     }).join('');
     if (!html) html = '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum registro no período</div>';
+  } else if (tipo === 'bonificacoes') {
+    finBonifRepFiltro = null;
+    document.getElementById('rep-detalhe-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)"><div class="spinner" style="margin:0 auto 12px"></div>Carregando...</div>';
+    carregarBonifFin().then(() => _renderBonifBody(document.getElementById('rep-detalhe-body')));
+    return;
   }
 
   document.getElementById('rep-detalhe-body').innerHTML = html || '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum registro</div>';
@@ -2386,6 +2402,72 @@ function abrirRepDetalhe(tipo) {
 function fecharRepDetalhe() {
   document.getElementById('rep-detalhe').classList.remove('open');
   repDetalheAtual = null;
+}
+
+function filtrarBonifRelatorio(rep) {
+  finBonifRepFiltro = rep;
+  _renderBonifBody(document.getElementById('rep-detalhe-body'));
+}
+
+function _renderBonifBody(container) {
+  if (!container) return;
+  const reps = [...new Set(bonificacoesFinCache.map(b => b.representada_nome).filter(Boolean))];
+  const filtroHtml =
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 4px;">' +
+    `<button class="fin-periodo-tab${!finBonifRepFiltro?' active':''}" onclick="filtrarBonifRelatorio(null)">Todas</button>` +
+    reps.map(r => `<button class="fin-periodo-tab${finBonifRepFiltro===r?' active':''}" onclick="filtrarBonifRelatorio('${r.replace(/'/g,"\\'")}')">${r}</button>`).join('') +
+    '</div>';
+
+  const items = finBonifRepFiltro
+    ? bonificacoesFinCache.filter(b => b.representada_nome === finBonifRepFiltro)
+    : bonificacoesFinCache;
+
+  if (!items.length) {
+    container.innerHTML = filtroHtml + '<div style="text-align:center;padding:40px 16px;color:var(--text3);font-size:14px;">Nenhuma bonificação registrada.</div>';
+    return;
+  }
+
+  const totalGeral = items.reduce((s,b) => s+(b.valor_total||0), 0);
+  const totalRecebido = items.reduce((s,b) => s+(b.parcelas||[]).filter(p=>p.recebido).reduce((a,p)=>a+(p.valor||0),0), 0);
+  const totalPendente = totalGeral - totalRecebido;
+
+  let html = filtroHtml +
+    `<div style="display:flex;gap:8px;padding:8px 12px 4px;">
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--blue)">${formatarMoeda(totalGeral)}</div><div class="fin-resumo-lbl">Total</div></div>
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--green)">${formatarMoeda(totalRecebido)}</div><div class="fin-resumo-lbl">Recebido</div></div>
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">${formatarMoeda(totalPendente)}</div><div class="fin-resumo-lbl">Pendente</div></div>
+    </div>
+    <div style="padding:6px 12px 80px;">`;
+
+  html += items.map(b => {
+    const parcelas = b.parcelas || [];
+    const recebido = parcelas.filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
+    const pendente = (b.valor_total||0) - recebido;
+    const pct = b.valor_total ? Math.round(recebido/b.valor_total*100) : 0;
+    const statusStr = b.status==='concluida'
+      ? '<span style="color:var(--green);font-weight:700">✓ Concluída</span>'
+      : '<span style="color:var(--orange);font-weight:700">Em andamento</span>';
+    return `<div class="fin-card" style="margin-bottom:10px;">
+      <div class="fin-item" style="align-items:flex-start;">
+        <div class="fin-item-info" style="flex:1">
+          <div class="fin-item-desc">${b.motivo}</div>
+          <div class="fin-item-sub">${[b.cliente_nome, b.representada_nome].filter(Boolean).join(' · ')}</div>
+          <div class="bonif-progress-bar" style="margin-top:5px"><div class="bonif-progress-fill" style="width:${pct}%"></div></div>
+          <div style="font-size:11px;display:flex;gap:10px;margin-top:3px">
+            <span style="color:var(--green)">✓ ${formatarMoeda(recebido)}</span>
+            ${pendente>0?`<span style="color:var(--orange)">pendente ${formatarMoeda(pendente)}</span>`:''}
+          </div>
+        </div>
+        <div style="text-align:right;margin-left:10px">
+          <div style="font-size:14px;font-weight:800;white-space:nowrap">${formatarMoeda(b.valor_total||0)}</div>
+          <div style="font-size:11px;margin-top:4px">${parcelas.length}× · ${statusStr}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  html += '</div>';
+  container.innerHTML = html;
 }
 
 function renderDetalheLista(rows, showValor) {
@@ -2406,7 +2488,7 @@ function renderDetalheLista(rows, showValor) {
         '<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 ' + cidade + ' · ' + dataFmt + hora + '</div>' +
         (obs ? '<div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.4">' + obs + '</div>' : '') +
       '</div>' +
-      (showValor && v.valor_pedido ? '<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px">R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</div>' : '') +
+      (showValor && v.valor_pedido ? '<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px">' + formatarMoeda(v.valor_pedido) + '</div>' : '') +
     '</div>';
   }).join('');
 }
@@ -2541,7 +2623,7 @@ function renderDetalheListaComEditRep(rows) {
     const bg = i % 2 === 0 ? 'var(--card)' : 'var(--bg)';
     const tipo = v.tipo || 'visita';
     const icone = tipo === 'orcamento' ? '📋' : tipo === 'remoto' ? '📦' : '🤝';
-    const valorStr = v.valor_pedido ? '<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px">R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</div>' : '';
+    const valorStr = v.valor_pedido ? '<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px">' + formatarMoeda(v.valor_pedido) + '</div>' : '';
     return '<div style="display:flex;align-items:flex-start;padding:12px 14px;background:' + bg + ';border-bottom:1px solid var(--border);gap:10px">' +
       '<div style="font-size:16px;margin-top:1px">' + icone + '</div>' +
       '<div style="flex:1;min-width:0" onclick="fecharRepDetalhe();openPerfil(' + v.id_cliente + ')">' +
@@ -3836,8 +3918,8 @@ function renderGastos() {
   }
   const total = gastosClienteAtual.reduce((s,g) => s+(g.valor||0), 0);
   const totalMes = gastosClienteAtual.filter(g => { const d=new Date(g.data); return d.getFullYear()===anoAtual && d.getMonth()===mesAtual; }).reduce((s,g)=>s+(g.valor||0),0);
-  document.getElementById('gc-total').textContent = 'R$ '+total.toFixed(2).replace('.',',');
-  document.getElementById('gc-mes').textContent = 'R$ '+totalMes.toFixed(2).replace('.',',');
+  document.getElementById('gc-total').textContent = formatarMoeda(total);
+  document.getElementById('gc-mes').textContent = formatarMoeda(totalMes);
   document.getElementById('gc-qtd').textContent = gastosClienteAtual.length;
   const el = document.getElementById('gc-list');
   if (!el) return;
@@ -3863,7 +3945,7 @@ function renderGastos() {
             <div class="gc-item-desc">${item.descricao||'Sem descrição'}</div>
             <div class="gc-item-meta"><span>${dataPt}</span>${parseDocUrls(item.url_comprovante).length?'<span>📎 NF</span>':''}</div>
           </div>
-          <div class="gc-item-val">R$ ${(item.valor||0).toFixed(2).replace('.',',')}</div>
+          <div class="gc-item-val">${formatarMoeda(item.valor||0)}</div>
         </div>
         ${exp?`<div class="gc-item-actions">
           ${parseDocUrls(item.url_comprovante).map((u,i,arr)=>`<button class="gc-item-action-btn" onclick="window.open('${u}','_blank')">📎 Ver NF${arr.length>1?' '+(i+1):''}</button>`).join('')}
@@ -3921,7 +4003,7 @@ async function carregarGastosResumoPerfil() {
   const { data } = await sb.from('financeiro').select('valor').eq('rep_id', currentRep.id).eq('categoria', 'clientes').eq('cliente_id', String(perfilId));
   if (!data || !data.length) { sub.textContent = 'Nenhum registro'; return; }
   const total = data.reduce((s,g)=>s+(g.valor||0),0);
-  sub.textContent = 'R$ '+total.toFixed(2).replace('.',',')+' · '+data.length+' reg.';
+  sub.textContent = formatarMoeda(total)+' · '+data.length+' reg.';
 }
 
 // ── BONIFICAÇÕES ─────────────────────────────────────
@@ -3984,7 +4066,7 @@ function bonifAtualizarParcelas() {
   const prev = document.getElementById('bonif-parcelas-preview');
   if (!prev) return;
   if (!val) { prev.textContent = ''; return; }
-  prev.textContent = bonifQtd+'x de R$ '+(val/bonifQtd).toFixed(2).replace('.',',');
+  prev.textContent = bonifQtd+'x de '+formatarMoeda(val/bonifQtd);
 }
 
 async function carregarBonificacoes() {
@@ -4017,12 +4099,12 @@ function renderBonificacoes() {
             <div class="gc-item-meta">${b.representada_nome?`<span>${b.representada_nome}</span>`:''}<span>${parcelas.length}x</span></div>
             <div class="bonif-progress-bar"><div class="bonif-progress-fill" style="width:${pct}%"></div></div>
             <div style="font-size:11px;display:flex;gap:10px;margin-top:2px">
-              <span style="color:var(--green)">✓ R$ ${recebido.toFixed(2).replace('.',',')}</span>
-              ${pendente>0?`<span style="color:var(--orange)">pendente R$ ${pendente.toFixed(2).replace('.',',')}</span>`:''}
+              <span style="color:var(--green)">✓ ${formatarMoeda(recebido)}</span>
+              ${pendente>0?`<span style="color:var(--orange)">pendente ${formatarMoeda(pendente)}</span>`:''}
             </div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-left:10px">
-            <div style="font-size:13px;font-weight:800;white-space:nowrap">R$ ${(b.valor_total||0).toFixed(2).replace('.',',')}</div>
+            <div style="font-size:13px;font-weight:800;white-space:nowrap">${formatarMoeda(b.valor_total||0)}</div>
             <div style="display:flex;gap:6px">
               <button class="gestao-btn-sm" style="font-size:11px;padding:3px 8px" onclick="event.stopPropagation();editarBonificacao('${b.id}')">✏️</button>
               <button class="gestao-btn-sm danger" style="font-size:11px;padding:3px 8px" onclick="event.stopPropagation();deletarBonificacao('${b.id}')">🗑</button>
@@ -4034,7 +4116,7 @@ function renderBonificacoes() {
           const hoje = new Date().toISOString().split('T')[0];
           return `<div class="bonif-parcela-row">
             <div class="bonif-parcela-num">${i+1}.</div>
-            <div class="bonif-parcela-val">R$ ${(p.valor||0).toFixed(2).replace('.',',')}</div>
+            <div class="bonif-parcela-val">${formatarMoeda(p.valor||0)}</div>
             ${p.recebido
               ?`<div style="font-size:11px;font-weight:600;color:var(--green)">✓ ${p.data_recebimento?new Date(p.data_recebimento+'T12:00:00').toLocaleDateString('pt-BR'):''}</div>`
               : marcando
@@ -4183,7 +4265,7 @@ async function carregarBonifResumoPerfil() {
   data.forEach(b => (b.parcelas||[]).forEach(p => { if(!p.recebido) pendente+=(p.valor||0); }));
   sub.textContent = data.length+' bonificaç'+(data.length===1?'ão':'ões');
   if (badge) {
-    if (pendente>0) { badge.textContent='R$ '+pendente.toFixed(2).replace('.',','); badge.style.display='inline-flex'; }
+    if (pendente>0) { badge.textContent=formatarMoeda(pendente); badge.style.display='inline-flex'; }
     else badge.style.display='none';
   }
 }
@@ -6457,14 +6539,13 @@ let hotelEstrelas = 0;
 
 function setFinTab(tab) {
   finTab = tab;
-  ['lancamentos','impostos','resumo','bonificacoes','compromissos'].forEach(t => {
-    document.getElementById(`fin-tab-${t}`).classList.toggle('active', t===tab);
-    document.getElementById(`fin-wrap-${t}`).style.display = t===tab ? (t==='lancamentos'?'flex':'block') : 'none';
+  ['lancamentos','impostos','resumo','compromissos'].forEach(t => {
+    document.getElementById(`fin-tab-${t}`)?.classList.toggle('active', t===tab);
+    document.getElementById(`fin-wrap-${t}`)?.style && (document.getElementById(`fin-wrap-${t}`).style.display = t===tab ? (t==='lancamentos'?'flex':'block') : 'none');
   });
   if (tab==='lancamentos') carregarLancamentos().then(renderLancamentos);
   if (tab==='impostos') carregarImpostos().then(renderImpostos);
   if (tab==='resumo') carregarLancamentos().then(renderResumoFin);
-  if (tab==='bonificacoes') carregarBonifFin().then(renderBonifFin);
   if (tab==='compromissos') carregarCompromissos().then(renderCompromissos);
   document.getElementById('fin-fab-btn').style.display = tab==='lancamentos' ? 'flex' : 'none';
 }
@@ -6514,7 +6595,7 @@ function renderLancamentos() {
 
   if (receitas.length) {
     const totalReceitas = receitas.reduce((s, l) => s + Number(l.valor), 0);
-    html += `<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.3px;padding:10px 2px 6px;">📈 Receitas · R$ ${totalReceitas.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>`;
+    html += `<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.3px;padding:10px 2px 6px;">📈 Receitas · ${formatarMoeda(totalReceitas)}</div>`;
 
     // Agrupa por categoria
     const gruposRec = {};
@@ -6545,7 +6626,7 @@ function renderLancamentos() {
                 ${sub ? `<div class="fin-item-sub">${sub}</div>` : ''}
               </div>
               <div style="display:flex;align-items:center;gap:8px;">
-                <div class="fin-item-val receita">+R$${Number(l.valor).toFixed(2).replace('.',',')}</div>
+                <div class="fin-item-val receita">+${formatarMoeda(l.valor)}</div>
                 <button onclick="excluirLancamento('${l.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;">×</button>
               </div>
             </div>`;
@@ -6575,7 +6656,7 @@ function renderLancamentos() {
               <div class="fin-item-sub">${sub}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-              <div class="fin-item-val gasto">-R$${Number(l.valor).toFixed(2).replace('.',',')}</div>
+              <div class="fin-item-val gasto">-${formatarMoeda(l.valor)}</div>
               <button onclick="excluirLancamento('${l.id}')" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;">×</button>
             </div>
           </div>`;
@@ -6598,17 +6679,17 @@ function _htmlCompromissosResumo(ini, fim) {
   var html = '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;padding:12px 2px 8px;">Compromissos do período</div>';
   if (parcelasM.length) {
     html += '<div class="fin-card" style="margin-bottom:8px;">';
-    html += '<div class="fin-item"><div class="fin-item-info"><div class="fin-item-desc">📋 Parcelas do mês</div></div><div class="fin-item-val gasto">-R$' + totParcM.toFixed(2).replace('.',',') + '</div></div>';
+    html += '<div class="fin-item"><div class="fin-item-info"><div class="fin-item-desc">📋 Parcelas do mês</div></div><div class="fin-item-val gasto">-' + formatarMoeda(totParcM) + '</div></div>';
     parcelasM.forEach(function(c) {
-      html += '<div class="fin-item"><div class="fin-item-info"><div style="font-size:13px;color:var(--text2)">' + c.descricao + '</div><div class="fin-item-sub">' + (c.categoria||'') + ' · ' + (c.parcela_atual||1) + '/' + c.total_parcelas + '</div></div><div class="fin-item-val gasto">-R$' + (c.valor_parcela||0).toFixed(2).replace('.',',') + '</div></div>';
+      html += '<div class="fin-item"><div class="fin-item-info"><div style="font-size:13px;color:var(--text2)">' + c.descricao + '</div><div class="fin-item-sub">' + (c.categoria||'') + ' · ' + (c.parcela_atual||1) + '/' + c.total_parcelas + '</div></div><div class="fin-item-val gasto">-' + formatarMoeda(c.valor_parcela||0) + '</div></div>';
     });
     html += '</div>';
   }
   if (emprestiM.length) {
     html += '<div class="fin-card">';
-    html += '<div class="fin-item"><div class="fin-item-info"><div class="fin-item-desc">🏦 Empréstimos do mês</div></div><div class="fin-item-val gasto">-R$' + totEmpM.toFixed(2).replace('.',',') + '</div></div>';
+    html += '<div class="fin-item"><div class="fin-item-info"><div class="fin-item-desc">🏦 Empréstimos do mês</div></div><div class="fin-item-val gasto">-' + formatarMoeda(totEmpM) + '</div></div>';
     emprestiM.forEach(function(c) {
-      html += '<div class="fin-item"><div class="fin-item-info"><div style="font-size:13px;color:var(--text2)">' + c.descricao + '</div><div class="fin-item-sub">' + (c.banco||'') + ' · ' + (c.parcela_atual||1) + '/' + c.total_parcelas + '</div></div><div class="fin-item-val gasto">-R$' + (c.valor_parcela||0).toFixed(2).replace('.',',') + '</div></div>';
+      html += '<div class="fin-item"><div class="fin-item-info"><div style="font-size:13px;color:var(--text2)">' + c.descricao + '</div><div class="fin-item-sub">' + (c.banco||'') + ' · ' + (c.parcela_atual||1) + '/' + c.total_parcelas + '</div></div><div class="fin-item-val gasto">-' + formatarMoeda(c.valor_parcela||0) + '</div></div>';
     });
     html += '</div>';
   }
@@ -6630,11 +6711,11 @@ function renderResumoFin() {
   el.innerHTML = `
     <div class="fin-resumo-grid" style="margin-top:8px;">
       <div class="fin-resumo-card" style="grid-column:1/-1;">
-        <div class="fin-resumo-val" style="color:${resultado>=0?'var(--green)':'var(--red)'}">R$${Math.abs(resultado).toFixed(2).replace('.',',')}</div>
+        <div class="fin-resumo-val" style="color:${resultado>=0?'var(--green)':'var(--red)'}">${formatarMoeda(Math.abs(resultado))}</div>
         <div class="fin-resumo-lbl">${resultado>=0?'Lucro líquido':'Prejuízo'}</div>
       </div>
-      <div class="fin-resumo-card"><div class="fin-resumo-val" style="color:var(--green)">R$${receitas.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Receitas</div></div>
-      <div class="fin-resumo-card"><div class="fin-resumo-val" style="color:var(--red)">R$${gastos.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Gastos</div></div>
+      <div class="fin-resumo-card"><div class="fin-resumo-val" style="color:var(--green)">${formatarMoeda(receitas)}</div><div class="fin-resumo-lbl">Receitas</div></div>
+      <div class="fin-resumo-card"><div class="fin-resumo-val" style="color:var(--red)">${formatarMoeda(gastos)}</div><div class="fin-resumo-lbl">Gastos</div></div>
     </div>
     ${Object.keys(catGastos).length ? `
       <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;padding:12px 2px 8px;">Gastos por categoria</div>
@@ -6642,7 +6723,7 @@ function renderResumoFin() {
         ${Object.entries(catGastos).sort((a,b)=>b[1]-a[1]).map(([cat,val]) => `
           <div class="fin-item">
             <div class="fin-item-info"><div class="fin-item-desc">${cat}</div><div style="height:4px;background:var(--border);border-radius:2px;margin-top:4px;overflow:hidden;"><div style="height:100%;background:var(--red);width:${gastos>0?Math.min(100,val/gastos*100).toFixed(0):0}%;border-radius:2px;"></div></div></div>
-            <div class="fin-item-val gasto">R$${val.toFixed(2).replace('.',',')}</div>
+            <div class="fin-item-val gasto">${formatarMoeda(val)}</div>
           </div>
         `).join('')}
       </div>
@@ -6688,9 +6769,9 @@ function renderBonifFin() {
   const totalRecebido = items.reduce((s,b) => s + (b.parcelas||[]).filter(p=>p.recebido).reduce((a,p)=>a+(p.valor||0),0), 0);
   const totalPendente = totalGeral - totalRecebido;
   let html = `<div style="display:flex;gap:8px;margin-bottom:14px;">
-    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--blue)">R$${totalGeral.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Total</div></div>
-    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--green)">R$${totalRecebido.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Recebido</div></div>
-    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">R$${totalPendente.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Pendente</div></div>
+    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--blue)">${formatarMoeda(totalGeral)}</div><div class="fin-resumo-lbl">Total</div></div>
+    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--green)">${formatarMoeda(totalRecebido)}</div><div class="fin-resumo-lbl">Recebido</div></div>
+    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">${formatarMoeda(totalPendente)}</div><div class="fin-resumo-lbl">Pendente</div></div>
   </div>`;
   html += items.map(b => {
     const parcelas = b.parcelas || [];
@@ -6707,12 +6788,12 @@ function renderBonifFin() {
           <div class="fin-item-sub">${[b.cliente_nome, b.representada_nome].filter(Boolean).join(' · ')}</div>
           <div class="bonif-progress-bar" style="margin-top:5px"><div class="bonif-progress-fill" style="width:${pct}%"></div></div>
           <div style="font-size:11px;display:flex;gap:10px;margin-top:3px">
-            <span style="color:var(--green)">✓ R$ ${recebido.toFixed(2).replace('.',',')}</span>
-            ${pendente>0?`<span style="color:var(--orange)">pendente R$ ${pendente.toFixed(2).replace('.',',')}</span>`:''}
+            <span style="color:var(--green)">✓ ${formatarMoeda(recebido)}</span>
+            ${pendente>0?`<span style="color:var(--orange)">pendente ${formatarMoeda(pendente)}</span>`:''}
           </div>
         </div>
         <div style="text-align:right;margin-left:10px">
-          <div style="font-size:14px;font-weight:800;white-space:nowrap">R$ ${(b.valor_total||0).toFixed(2).replace('.',',')}</div>
+          <div style="font-size:14px;font-weight:800;white-space:nowrap">${formatarMoeda(b.valor_total||0)}</div>
           <div style="font-size:11px;margin-top:4px">${parcelas.length}x · ${statusStr}</div>
         </div>
       </div>
@@ -6775,13 +6856,13 @@ function renderCompromissos() {
     if (tipo === 'parcela') {
       const totalRestante = ativos.reduce((s,c) => s + Math.max(0,(c.total_parcelas||0)-(c.parcela_atual||1)+1)*(c.valor_parcela||0), 0);
       resumoEl.innerHTML = `
-        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--red)">R$${totalRestante.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Total restante</div></div>
-        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">R$${valEstesMes.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Este mês</div></div>`;
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--red)">${formatarMoeda(totalRestante)}</div><div class="fin-resumo-lbl">Total restante</div></div>
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">${formatarMoeda(valEstesMes)}</div><div class="fin-resumo-lbl">Este mês</div></div>`;
     } else {
       const saldoDevedor = ativos.reduce((s,c) => s + Math.max(0,(c.total_parcelas||0)-(c.parcela_atual||1)+1)*(c.valor_parcela||0), 0);
       resumoEl.innerHTML = `
-        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--red)">R$${saldoDevedor.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Saldo devedor</div></div>
-        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">R$${valEstesMes.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Este mês</div></div>`;
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--red)">${formatarMoeda(saldoDevedor)}</div><div class="fin-resumo-lbl">Saldo devedor</div></div>
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">${formatarMoeda(valEstesMes)}</div><div class="fin-resumo-lbl">Este mês</div></div>`;
     }
   }
 
@@ -6818,8 +6899,8 @@ function renderCompromissos() {
           <div style="font-size:11px;color:var(--text3);margin-top:3px;">${pagas}/${totalP} parcelas${!concluido?` · Próx.: ${vencBR}`:''}</div>
         </div>
         <div style="text-align:right;margin-left:12px;flex-shrink:0;">
-          <div style="font-size:14px;font-weight:800;">R$${(c.valor_parcela||0).toFixed(2).replace('.',',')}<span style="font-size:10px;font-weight:400;color:var(--text3)">/mês</span></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Restante: R$${saldoRest.toFixed(2).replace('.',',')}</div>
+          <div style="font-size:14px;font-weight:800;">${formatarMoeda(c.valor_parcela||0)}<span style="font-size:10px;font-weight:400;color:var(--text3)">/mês</span></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Restante: ${formatarMoeda(saldoRest)}</div>
           <div style="display:flex;gap:4px;margin-top:8px;justify-content:flex-end;">
             ${!concluido?`<button onclick="avancarParcelaComp('${c.id}')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;">✓ Pago</button>`:''}
             <button onclick="deletarCompromisso('${c.id}')" style="background:none;border:1.5px solid var(--border);border-radius:6px;padding:4px 9px;font-size:13px;color:var(--text3);cursor:pointer;">🗑</button>
