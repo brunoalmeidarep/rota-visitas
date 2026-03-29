@@ -6436,6 +6436,20 @@ async function deletarEmpresa(id) {
 
 const _SEGS_DEFAULT = ['Mat. Construção', 'Construtora', 'Tintas', 'Distribuidora'];
 
+function normalizarTexto(str) {
+  return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/gi, '').toLowerCase().trim();
+}
+
+function capitalizarSegmento(str) {
+  const s = (str || '').trim();
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function _segSimilar(nome) {
+  const n = normalizarTexto(nome);
+  return segmentosCache.find(s => normalizarTexto(s.nome) === n);
+}
+
 async function carregarSegmentos() {
   if (!currentUser) return;
   try {
@@ -6532,15 +6546,22 @@ function fecharNovoSegmentoInline() {
   if (inp) inp.value = '';
 }
 
-async function salvarNovoSegmentoInline() {
-  const nome = document.getElementById('novo-seg-inline-nome')?.value.trim();
-  if (!nome) return;
+async function salvarNovoSegmentoInline(forcar) {
+  const raw = document.getElementById('novo-seg-inline-nome')?.value.trim();
+  if (!raw) return;
+  const nome = capitalizarSegmento(raw);
+  if (!forcar) {
+    const similar = _segSimilar(nome);
+    if (similar) {
+      if (!confirm(`Já existe um segmento similar: "${similar.nome}". Deseja criar mesmo assim?`)) return;
+    }
+  }
   // Adiciona ao cache local imediatamente (independente do Supabase)
   if (!segmentosCache.find(s => s.nome === nome)) {
     segmentosCache.push({ id: 'local_' + Date.now(), nome });
     segmentosCache.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }
-  preencherSegmentosSelect(nome); // atualiza select e pré-seleciona o novo
+  preencherSegmentosSelect(nome);
   fecharNovoSegmentoInline();
   showToast('✓ Segmento criado');
   // Persiste no Supabase em background
@@ -6552,11 +6573,18 @@ async function salvarNovoSegmentoInline() {
   } catch(e) { console.error('salvarNovoSegmentoInline:', e); }
 }
 
-async function salvarSegmento() {
+async function salvarSegmento(forcar) {
   if (!currentUser) return;
-  const nome = document.getElementById('seg-mgmt-nome').value.trim();
-  if (!nome) { showToast('⚠️ Nome obrigatório', true); return; }
+  const raw = document.getElementById('seg-mgmt-nome').value.trim();
+  if (!raw) { showToast('⚠️ Nome obrigatório', true); return; }
+  const nome = capitalizarSegmento(raw);
   const id = document.getElementById('seg-mgmt-id').value;
+  if (!forcar && !id) {
+    const similar = _segSimilar(nome);
+    if (similar) {
+      if (!confirm(`Já existe um segmento similar: "${similar.nome}". Deseja criar mesmo assim?`)) return;
+    }
+  }
   // Atualiza cache local imediatamente
   if (id) {
     const s = segmentosCache.find(x => String(x.id) === String(id));
