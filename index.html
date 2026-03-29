@@ -1805,13 +1805,19 @@ async function loadClientes() {
   const listEl = document.getElementById('list');
   if (listEl) listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando carteira...</div>';
 
-  if (!currentUser || !currentRep) {
+  if (!currentUser) {
     if (listEl) listEl.innerHTML = '<div class="empty">❌ Erro ao carregar. Tente sair e entrar novamente.</div>';
     return;
   }
 
   try {
-    const { data, error } = await sb.from('clientes').select('*').eq('rep_id', currentRep.id).order('nome');
+    const repId = await getRepId();
+    if (!repId) {
+      if (listEl) listEl.innerHTML = '<div class="empty">❌ Erro ao carregar. Tente sair e entrar novamente.</div>';
+      return;
+    }
+
+    const { data, error } = await sb.from('clientes').select('*').eq('rep_id', repId).order('nome');
 
     if (error) {
       if (listEl) listEl.innerHTML = '<div class="empty">❌ Erro ao carregar clientes. Verifique sua conexão.</div>';
@@ -1819,6 +1825,7 @@ async function loadClientes() {
     }
 
     if (!data || !data.length) {
+      clientes = [];
       if (listEl) listEl.innerHTML = `<div class="empty">📋 Nenhum cliente cadastrado ainda.<br><span style="font-size:13px;color:var(--text3)">Importe sua carteira em ⚙️ Configurações → Importar Clientes</span></div>`;
       return;
     }
@@ -1828,7 +1835,7 @@ async function loadClientes() {
     renderList();
     if (gmap) renderMapMarkers();
   } catch(e) {
-    if (listEl) listEl.innerHTML = `<div class="empty">❌ DIAG catch: ${e.message}</div>`;
+    if (listEl) listEl.innerHTML = '<div class="empty">❌ Erro ao carregar clientes. Verifique sua conexão.</div>';
   }
 }
 
@@ -1963,15 +1970,11 @@ function showScreen(s) {
     }
   }
   if (s === 'map') {
-    setTimeout(() => {
-      // Se Maps API carregou mas initMap ainda não rodou (raro), inicializa agora
-      if (!gmap && typeof google !== 'undefined' && google.maps) {
-        window.initMap();
-      }
+    const _tryMap = (attempt) => {
+      if (!gmap && typeof google !== 'undefined' && google.maps) window.initMap();
       if (gmap) {
         google.maps.event.trigger(gmap, 'resize');
         renderMapMarkers();
-        // Aviso para novo usuário sem clientes
         if (!clientes.length) {
           const mapEl = document.getElementById('map');
           if (mapEl && !mapEl.querySelector('.map-empty-msg')) {
@@ -1987,8 +1990,11 @@ function showScreen(s) {
           const msg = mapEl?.querySelector('.map-empty-msg');
           if (msg) msg.remove();
         }
+      } else if (attempt < 5) {
+        setTimeout(() => _tryMap(attempt + 1), 1000);
       }
-    }, 50);
+    };
+    setTimeout(() => _tryMap(0), 50);
   }
 }
 
@@ -3023,6 +3029,7 @@ async function salvarCliente() {
   if (currentUser && sb) {
     try {
       const segmento = document.getElementById('c-segmento')?.value || '';
+      const repId = await getRepId();
       const { data: inserted } = await sb.from('clientes').insert({
         id:          novoId,
         nome:        nomeCompleto,
@@ -3040,7 +3047,7 @@ async function salvarCliente() {
         segmento,
         ultima_visita: null,
         ultima_obs:  '',
-        rep_id:      currentRep?.id,
+        rep_id:      repId,
       }).select().single();
       if (inserted && inserted.id) novoCliente.id = inserted.id;
     } catch(e) { console.log('salvarCliente Supabase erro:', e); }
@@ -4992,9 +4999,10 @@ async function salvarLembreteSupabase(clienteId, texto) {
   if (!currentUser) return;
   try {
     // Upsert — atualiza se já existe, insere se não
+    const repId = await getRepId();
     await sb.from('lembretes').upsert({
       id_cliente: String(clienteId),
-      rep_id: currentUser.id,
+      rep_id: repId,
       texto: texto,
       atualizado_em: new Date().toISOString()
     }, { onConflict: 'id_cliente,rep_id' });
@@ -5005,10 +5013,11 @@ async function salvarLembreteSupabase(clienteId, texto) {
 async function carregarLembretesSupabase() {
   if (!currentUser) return;
   try {
+    const repId = await getRepId();
     const { data } = await sb
       .from('lembretes')
       .select('*')
-      .eq('rep_id', currentUser.id);
+      .eq('rep_id', repId);
     if (!data) return;
     const lembretes = JSON.parse(localStorage.getItem('lembretes') || '{}');
     data.forEach(l => { lembretes[l.id_cliente] = l.texto; });
@@ -6428,13 +6437,15 @@ async function deletarEmpresa(id) {
 async function carregarSegmentos() {
   if (!currentUser) return;
   try {
-    const { data } = await sb.from('segmentos').select('*').eq('rep_id', currentUser.id).order('nome');
+    const repId = await getRepId();
+    if (!repId) return;
+    const { data } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
     const seen = new Set();
     segmentosCache = (data || []).filter(s => seen.has(s.nome) ? false : seen.add(s.nome));
     if (!segmentosCache.length) {
       const defaults = ['Mat. Construção', 'Construtora', 'Tintas', 'Distribuidora'];
-      await sb.from('segmentos').insert(defaults.map(nome => ({ nome, rep_id: currentUser.id })));
-      const { data: d2 } = await sb.from('segmentos').select('*').eq('rep_id', currentUser.id).order('nome');
+      await sb.from('segmentos').insert(defaults.map(nome => ({ nome, rep_id: repId })));
+      const { data: d2 } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
       segmentosCache = d2 || [];
     }
   } catch(e) { segmentosCache = []; }
@@ -6492,16 +6503,47 @@ function fecharFormSegmento() {
   if (form) form.style.display = 'none';
 }
 
+function mostrarNovoSegmentoInline() {
+  const el = document.getElementById('novo-segmento-inline');
+  if (el) { el.style.display = 'block'; document.getElementById('novo-seg-inline-nome')?.focus(); }
+}
+
+function fecharNovoSegmentoInline() {
+  const el = document.getElementById('novo-segmento-inline');
+  if (el) el.style.display = 'none';
+  const inp = document.getElementById('novo-seg-inline-nome');
+  if (inp) inp.value = '';
+}
+
+async function salvarNovoSegmentoInline() {
+  const nome = document.getElementById('novo-seg-inline-nome')?.value.trim();
+  if (!nome) return;
+  try {
+    const repId = await getRepId();
+    await sb.from('segmentos').insert({ nome, rep_id: repId });
+    await carregarSegmentos();
+    // Seleciona o novo segmento automaticamente
+    const sel = document.getElementById('c-segmento');
+    if (sel) {
+      const opt = Array.from(sel.options).find(o => o.value === nome);
+      if (opt) sel.value = nome;
+    }
+    fecharNovoSegmentoInline();
+    showToast('✓ Segmento criado');
+  } catch(e) { showToast('❌ Erro ao criar segmento', true); }
+}
+
 async function salvarSegmento() {
   if (!currentUser) return;
   const nome = document.getElementById('seg-mgmt-nome').value.trim();
   if (!nome) { showToast('⚠️ Nome obrigatório', true); return; }
   const id = document.getElementById('seg-mgmt-id').value;
+  const repId = await getRepId();
   try {
     if (id) {
-      await sb.from('segmentos').update({ nome }).eq('id', id).eq('rep_id', currentUser.id);
+      await sb.from('segmentos').update({ nome }).eq('id', id).eq('rep_id', repId);
     } else {
-      await sb.from('segmentos').insert({ nome, rep_id: currentUser.id });
+      await sb.from('segmentos').insert({ nome, rep_id: repId });
     }
     await carregarSegmentos();
     fecharFormSegmento();
@@ -6513,8 +6555,9 @@ async function salvarSegmento() {
 async function deletarSegmento(id) {
   const s = segmentosCache.find(x => String(x.id) === String(id));
   if (!s || !confirm(`Excluir "${s.nome}"?`)) return;
+  const repId = await getRepId();
   try {
-    await sb.from('segmentos').delete().eq('id', id).eq('rep_id', currentUser.id);
+    await sb.from('segmentos').delete().eq('id', id).eq('rep_id', repId);
     await carregarSegmentos();
     renderSegmentos();
     showToast('Segmento excluído');
@@ -7748,7 +7791,8 @@ function getTarefas() {
 async function sincronizarTarefasSupabase() {
   if (!currentUser) return;
   try {
-    const { data } = await sb.from('tarefas').select('*').eq('rep_id', currentUser.id);
+    const repId = await getRepId();
+    const { data } = await sb.from('tarefas').select('*').eq('rep_id', repId);
     if (data) {
       localStorage.setItem('tarefas_v2', JSON.stringify(data));
       if (currentScreen === 'tarefas') renderTarefas();
@@ -7761,7 +7805,8 @@ async function iniciarTarefas() {
   // Carrega do Supabase primeiro para ter dados frescos
   if (currentUser) {
     try {
-      const { data } = await sb.from('tarefas').select('*').eq('rep_id', currentUser.id);
+      const repId = await getRepId();
+      const { data } = await sb.from('tarefas').select('*').eq('rep_id', repId);
       if (data) localStorage.setItem('tarefas_v2', JSON.stringify(data));
     } catch(e) {}
   }
@@ -7786,9 +7831,10 @@ async function iniciarTarefas() {
 async function salvarTarefaSupabase(tarefa) {
   if (!currentUser) return;
   try {
+    const repId = await getRepId();
     await sb.from('tarefas').upsert({
       id: tarefa.id,
-      rep_id: currentUser.id,
+      rep_id: repId,
       texto: tarefa.texto,
       feita: tarefa.feita || false,
       data: tarefa.data,
@@ -7803,7 +7849,8 @@ async function salvarTarefaSupabase(tarefa) {
 async function deletarTarefaSupabase(id, data) {
   if (!currentUser) return;
   try {
-    await sb.from('tarefas').delete().eq('id', id).eq('rep_id', currentUser.id);
+    const repId = await getRepId();
+    await sb.from('tarefas').delete().eq('id', id).eq('rep_id', repId);
   } catch(e) {}
 }
 
@@ -7927,8 +7974,7 @@ function adicionarTarefa() {
     texto,
     feita: false,
     data: new Date().toISOString().slice(0,10),
-    hora: new Date().toTimeString().slice(0,5),
-    rep_id: currentUser?.id
+    hora: new Date().toTimeString().slice(0,5)
   };
   // Adiciona ao cache local imediatamente
   const local = getTarefas();
@@ -8484,9 +8530,19 @@ if ('serviceWorker' in navigator) {
         </div>
         <div class="campo-grupo">
           <label class="campo-label">Segmento</label>
-          <select class="campo-select" id="c-segmento">
-            <option value="">— Selecionar —</option>
-          </select>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <select class="campo-select" id="c-segmento" style="flex:1">
+              <option value="">— Selecionar —</option>
+            </select>
+            <button type="button" onclick="mostrarNovoSegmentoInline()" style="white-space:nowrap;background:var(--surface2);border:1.5px solid var(--border);color:var(--text1);border-radius:8px;padding:0 12px;height:40px;font-size:13px;cursor:pointer;">+ Novo</button>
+          </div>
+          <div id="novo-segmento-inline" style="display:none;margin-top:6px;">
+            <div style="display:flex;gap:6px;">
+              <input class="campo-input" id="novo-seg-inline-nome" placeholder="Nome do segmento" maxlength="40" style="flex:1;height:36px;" onkeydown="if(event.key==='Enter'){event.preventDefault();salvarNovoSegmentoInline();}">
+              <button type="button" onclick="salvarNovoSegmentoInline()" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:0 12px;font-size:13px;font-weight:700;cursor:pointer;height:36px;">✓</button>
+              <button type="button" onclick="fecharNovoSegmentoInline()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:0 10px;font-size:16px;color:var(--text3);cursor:pointer;height:36px;">×</button>
+            </div>
+          </div>
         </div>
         <div class="campo-grupo">
           <label class="campo-label">CNPJ</label>
