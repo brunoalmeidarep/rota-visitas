@@ -215,9 +215,8 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .historico-item { display:flex; gap:12px; margin-bottom:14px; position:relative; }
 .historico-item::before { content:''; position:absolute; left:15px; top:32px; bottom:-14px; width:1px; background:var(--border); }
 .historico-item:last-child::before { display:none; }
-.hist-dot { width:32px; height:32px; border-radius:50%; background:var(--card); border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; position:relative; z-index:1; }
-.hist-dot.hoje { border-color:var(--orange); background:var(--orange-bg); }
-.hist-dot.recente { border-color:var(--green); background:var(--green-bg); }
+.hist-dot { width:32px; height:32px; border-radius:50%; background:var(--green); border:2px solid transparent; flex-shrink:0; display:flex; align-items:center; justify-content:center; position:relative; z-index:1; }
+.hist-dot.hoje { border-color:var(--orange) !important; }
 .hist-content { flex:1; background:var(--card); border-radius:12px; padding:10px 12px; box-shadow:var(--shadow); }
 .hist-data { font-size:11px; font-weight:600; color:var(--text3); margin-bottom:4px; display:flex; justify-content:space-between; }
 .hist-obs { font-size:14px; color:var(--text); line-height:1.4; }
@@ -4872,8 +4871,8 @@ function renderHistorico(id, c) {
   const container = document.getElementById('p-historico');
   const visitas = historicoVisitas[id] || [];
 
-  // WhatsApp não conta como visita no histórico
-  let items = [...visitas].filter(v => (v.tipo || 'visita') !== 'whatsapp');
+  // Inclui presenciais e WhatsApp; exclui apenas itens sem tipo relevante
+  let items = [...visitas];
 
   // Adiciona última compra como referência se não vier do Supabase
   if (c.ultimaVisita && !items.some(v => v.data === c.ultimaVisita && v.compra)) {
@@ -4885,120 +4884,116 @@ function renderHistorico(id, c) {
     return;
   }
 
-  // Deduplica por data: uma entrada por dia
-  // Preserva hora do primeiro check-in; usa campos mais recentes para obs/valor
-  const byDate = {};
+  // Deduplica por data+tipoChave (presencial e whatsapp separados no mesmo dia)
+  const byKey = {};
   items.forEach(v => {
-    const k = v.data;
-    if (!byDate[k]) { byDate[k] = { ...v }; return; }
-    const cur = byDate[k];
+    const tipoKey = v.tipo === 'whatsapp' ? 'wa' : 'pres';
+    const k = (v.data || '') + '_' + tipoKey;
+    if (!byKey[k]) { byKey[k] = { ...v }; return; }
+    const cur = byKey[k];
     const curHora = cur.hora || '99:99';
     const vHora   = v.hora   || '99:99';
     const earliest = vHora <= curHora ? v : cur;
     const latest   = vHora <= curHora ? cur : v;
-    // Mantém hora mais cedo (check-in original) e dados do mais recente
-    byDate[k] = {
+    byKey[k] = {
       ...latest,
       hora: earliest.hora,
       hora_edicao: latest.hora_edicao || v.hora_edicao || cur.hora_edicao ||
                    (earliest.hora && latest.hora && earliest.hora !== latest.hora ? latest.hora : null),
     };
   });
-  items = Object.values(byDate);
-
+  items = Object.values(byKey);
   items.sort((a, b) => (b.data + (b.hora||'')).localeCompare(a.data + (a.hora||'')));
 
-  container.innerHTML = items.map((v, i) => {
-    const tipo = v.tipo || (v.compra ? 'compra' : 'visita');
-    const isHoje = !!v.hoje;
-    const dotClass = isHoje ? 'hoje' : (i === 0 ? 'recente' : '');
+  const SVG_MALETA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.51 16.49 1 14.64 1h-5.28C7.51 1 6 2.51 6 4.64c0 .48.11.92.18 1.36H4C2.9 6 2 6.9 2 8v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-5.36-3c.74 0 1.36.62 1.36 1.36 0 .48-.1.92-.18 1.64H8.18C8.1 5.28 8 4.84 8 4.36 8 3.62 8.62 3 9.36 3h5.28zM20 19H4V8h16v11z"/></svg>`;
+  const SVG_WA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><path fill="white" d="M24 4C12.97 4 4 12.97 4 24c0 3.6 1 7 2.7 9.9L4 44l10.4-2.7C17 43 20.4 44 24 44c11.03 0 20-8.97 20-20S35.03 4 24 4zm7.9 27.9c-.3.9-1.8 1.7-2.5 1.8-.6.1-1.4.1-2.3-.1-.5-.1-1.2-.4-2-.7-3.5-1.5-5.8-5-6-5.2-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.7 1.3-3.1.3-.3.8-.5 1.2-.5h.8c.3 0 .6.1.8.7.3.8 1 2.6 1.1 2.8.1.2.1.4 0 .7-.1.2-.2.4-.4.6-.2.2-.4.5-.5.6-.2.2-.3.4-.1.7.2.3 1 1.6 2.1 2.6 1.5 1.3 2.7 1.7 3.1 1.9.3.1.6.1.8-.1.3-.3.6-.7.9-1.1.2-.3.5-.3.8-.2.3.1 2 .9 2.3 1.1.3.2.6.3.7.4.1.3.1 1-.2 1.9z"/></svg>`;
 
-    // Ícone e badge por tipo
-    let emoji, badge, tipoLabel;
-    if (tipo === 'orcamento') {
-      const statusCor = {aberto:'var(--blue)',fechado:'var(--green)',perdido:'var(--red)'}[v.status_orcamento||'aberto'] || 'var(--blue)';
-      const statusLabel = {aberto:'Aberto',fechado:'Fechado',perdido:'Perdido'}[v.status_orcamento||'aberto'] || 'Aberto';
-      emoji = '💰'; tipoLabel = 'Orçamento';
-      badge = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${statusCor}22;color:${statusCor};margin-left:4px">${statusLabel}</span>`;
-    } else if (tipo === 'whatsapp') {
-      const hasOrder = v.pedido_tipo && v.pedido_tipo !== 'nenhum';
-      emoji = '💚'; tipoLabel = hasOrder ? (v.pedido_tipo === 'orcamento' ? 'Orçamento WhatsApp' : 'Pedido WhatsApp') : 'Contato WhatsApp';
-      badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(37,211,102,.12);color:#1a7a44;margin-left:4px">WhatsApp</span>';
-    } else if (tipo === 'pedido') {
-      emoji = '✅'; tipoLabel = 'Pedido';
-      badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:4px">Presencial</span>';
-    } else if (tipo === 'remoto') {
-      emoji = '✅'; tipoLabel = 'Pedido';
-      badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:4px">Pedido</span>';
-    } else if (v.compra) {
-      emoji = '🛒'; tipoLabel = 'Compra'; badge = '';
-    } else if (tipo === 'visita') {
-      const pt = v.pedido_tipo;
-      if (pt === 'pedido') {
-        emoji = '✅'; tipoLabel = 'Pedido';
-        badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:4px">Presencial</span>';
-      } else if (pt === 'orcamento') {
-        const sOrc = v.orcamento_status || v.status_orcamento || 'aberto';
-        const statusCor = {aberto:'var(--blue)',fechado:'var(--green)',perdido:'var(--red)'}[sOrc] || 'var(--blue)';
-        const statusLabel = {aberto:'Aberto',fechado:'Fechado',perdido:'Perdido'}[sOrc] || 'Aberto';
-        emoji = '💰'; tipoLabel = 'Orçamento';
-        badge = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${statusCor}22;color:${statusCor};margin-left:4px">${statusLabel}</span>`;
-      } else {
-        emoji = '🤝'; tipoLabel = 'Visita presencial'; badge = '';
-      }
+  container.innerHTML = items.map((v, i) => {
+    const tipo = v.tipo || 'visita';
+    const isWhatsApp = tipo === 'whatsapp';
+    const isHoje = !!v.hoje;
+
+    // Dot: maleta verde (presencial) ou ícone WhatsApp verde
+    const dotBgColor = isWhatsApp ? '#25D366' : 'var(--green)';
+    const dotSvg = isWhatsApp ? SVG_WA : SVG_MALETA;
+    const dotHojeClass = isHoje ? ' hoje' : '';
+
+    // Data e hora
+    const dataPt = v.data ? new Date(v.data + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+    const label = isHoje ? 'Hoje' : dataPt;
+    const horaStr = v.hora && v.hora !== '00:00' ? v.hora : '';
+    const dataHoraLabel = label + (horaStr ? ' · ' + horaStr : '');
+
+    // Tags à direita (coluna)
+    let tagsHtml = '';
+    if (isWhatsApp) {
+      tagsHtml += `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--purple-bg);color:var(--purple)">WhatsApp</span>`;
     } else {
-      emoji = isHoje ? '⭐' : '📋'; tipoLabel = 'Visita'; badge = '';
+      tagsHtml += `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--green-bg);color:var(--green)">Presencial</span>`;
+    }
+    if (v.retroativo) {
+      tagsHtml += `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--orange-bg);color:var(--orange)">Retroativo</span>`;
     }
 
-    const label = isHoje ? 'Hoje' : formatDate(v.data);
-    const horaStr = v.hora && v.hora !== '00:00' ? ` · ${v.hora}` : '';
-    const editadoStr = v.hora_edicao && v.hora_edicao !== v.hora
-      ? `<span style="font-size:10px;color:var(--text3);margin-left:6px">editado às ${v.hora_edicao}</span>`
-      : '';
+    // Pedido / Orçamento
+    const pt = v.pedido_tipo && v.pedido_tipo !== 'nenhum' ? v.pedido_tipo
+             : (tipo === 'pedido' || tipo === 'orcamento' || tipo === 'remoto') ? tipo : null;
+    let pedidoHtml = '';
+    if (pt) {
+      const rep = v.pedido_representada || '';
+      const valorRaw = parseFloat(v.pedido_valor) || parseFloat(v.valor_pedido) || 0;
+      if (pt === 'orcamento') {
+        const sOrc = v.orcamento_status || v.status_orcamento || 'aberto';
+        const sCor = {aberto:'var(--orange)',fechado:'var(--green)',perdido:'var(--red)'}[sOrc] || 'var(--orange)';
+        const sLabel = {aberto:'Aberto',fechado:'Fechado',perdido:'Perdido'}[sOrc] || 'Aberto';
+        pedidoHtml = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px">
+          <span style="font-size:13px;color:var(--text2)">📋 ${rep || 'Orçamento'}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:${sCor}22;color:${sCor};white-space:nowrap">${sLabel}</span>
+        </div>`;
+        if (valorRaw > 0) {
+          pedidoHtml += `<div style="text-align:right;margin-top:2px;font-size:12px;font-weight:600;color:var(--text2)">R$ ${valorRaw.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
+        }
+      } else {
+        pedidoHtml = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px">
+          <span style="font-size:13px;color:var(--text2)">💰 ${rep || 'Pedido'}</span>
+          ${valorRaw > 0 ? `<span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">R$ ${valorRaw.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>` : ''}
+        </div>`;
+      }
+    }
+
+    // Docs
     const docBtn = parseDocUrls(v.doc_url).map((u, idx2, arr) =>
-      `<a href="${u}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:4px;text-decoration:none" title="Abrir documento">📄${arr.length > 1 ? (idx2+1) : ''}</a>`
+      `<a href="${u}" target="_blank" style="color:var(--blue);font-size:12px;margin-left:4px;text-decoration:none">📄${arr.length > 1 ? (idx2+1) : ''}</a>`
     ).join('');
-    const editBtn = isHoje && tipo !== 'orcamento' && tipo !== 'remoto'
-      ? `<button onclick="editarObsHoje(${id},'${v.data}','${v.hora||''}')" style="background:none;border:none;font-size:13px;cursor:pointer;color:var(--text3);padding:0 2px">✏️</button>`
-      : '';
 
-    // Linha 2: badges de tipo + representada (apenas se relevante)
-    const repBadge = v.pedido_representada
-      ? `<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:var(--bg);color:var(--text2)">${v.pedido_representada}</span>`
-      : '';
-    const badgesHtml = (badge || repBadge)
-      ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${badge}${repBadge}</div>`
-      : '';
-
-    // Linha 3: valor — somente se existe pedido/orçamento com valor > 0
-    const hasPedidoTipo = (v.pedido_tipo && v.pedido_tipo !== 'nenhum')
-      || tipo === 'pedido' || tipo === 'orcamento' || tipo === 'remoto';
-    const valorRaw = hasPedidoTipo ? (parseFloat(v.pedido_valor) || parseFloat(v.valor_pedido) || 0) : 0;
-    const valorHtml = valorRaw > 0
-      ? `<div style="font-size:13px;font-weight:700;color:var(--green);margin-top:4px">R$ ${valorRaw.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
-      : '';
-
-    const isOrcAberto = tipo === 'orcamento' && (v.status_orcamento === 'aberto' || !v.status_orcamento) && v.id;
-    const converterBtn = isOrcAberto
-      ? `<button onclick="converterOrcamentoEmPedido(${v.id})" style="margin-top:6px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px">✓ Converter em Pedido</button>`
-      : '';
-    const perdidoBtn = isOrcAberto
-      ? `<button onclick="marcarOrcamentoPerdido(${v.id})" style="margin-top:6px;background:var(--red-bg);color:var(--red);border:1.5px solid var(--red);border-radius:8px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✗ Perdido</button>`
-      : '';
+    // Observações
+    const temConteudo = pt || v.obs;
     const obsHtml = v.obs
-      ? `<div class="hist-obs">${v.obs}</div>`
-      : `<div class="hist-obs-vazia">Sem observações</div>`;
+      ? `<div style="font-size:13px;color:var(--text2);margin-top:7px;line-height:1.45">${v.obs}</div>`
+      : (!temConteudo ? `<div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:5px">Sem observações</div>` : '');
 
-    const clickable = v.id ? `onclick="abrirDetalheVisita('${v.id}')" style="cursor:pointer" ontouchstart="lpStart(event,'${v.id}')" ontouchend="lpEnd()" ontouchmove="lpEnd()" onmousedown="lpStart(event,'${v.id}')" onmouseup="lpEnd()" onmouseleave="lpEnd()"` : '';
+    // Ações orçamento em aberto
+    const isOrcAberto = pt === 'orcamento' && (!v.orcamento_status || v.orcamento_status === 'aberto') && (!v.status_orcamento || v.status_orcamento === 'aberto') && v.id;
+    const acoesHtml = isOrcAberto ? `<div style="display:flex;gap:6px;margin-top:8px">
+      <button onclick="event.stopPropagation();converterOrcamentoEmPedido(${v.id})" style="flex:1;background:var(--green);color:#fff;border:none;border-radius:8px;padding:6px 8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">✓ Converter</button>
+      <button onclick="event.stopPropagation();marcarOrcamentoPerdido(${v.id})" style="flex:1;background:var(--red-bg);color:var(--red);border:1.5px solid var(--red);border-radius:8px;padding:6px 8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">✗ Perdido</button>
+    </div>` : '';
+
+    const clickable = v.id
+      ? `onclick="abrirDetalheVisita('${v.id}')" style="cursor:pointer" ontouchstart="lpStart(event,'${v.id}')" ontouchend="lpEnd()" ontouchmove="lpEnd()" onmousedown="lpStart(event,'${v.id}')" onmouseup="lpEnd()" onmouseleave="lpEnd()"`
+      : '';
+
     return `
     <div class="historico-item" ${clickable}>
-      <div class="hist-dot ${dotClass}">${emoji}</div>
+      <div class="hist-dot${dotHojeClass}" style="background:${dotBgColor};border-color:${isHoje?'var(--orange)':'transparent'}">${dotSvg}</div>
       <div class="hist-content">
-        <div class="hist-data">${label}${horaStr}${editadoStr}${docBtn}${v.id ? '' : editBtn}</div>
-        ${badgesHtml}
-        ${valorHtml}
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="font-size:12px;font-weight:600;color:var(--text3);line-height:1.3">${dataHoraLabel}${docBtn}</div>
+          <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;flex-shrink:0">${tagsHtml}</div>
+        </div>
+        ${pedidoHtml}
         ${obsHtml}
-        ${v.id ? '' : converterBtn+perdidoBtn}
+        ${acoesHtml}
       </div>
     </div>`;
   }).join('');
