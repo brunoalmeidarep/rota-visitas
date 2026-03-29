@@ -6556,21 +6556,40 @@ async function salvarNovoSegmentoInline(forcar) {
       if (!confirm(`Já existe um segmento similar: "${similar.nome}". Deseja criar mesmo assim?`)) return;
     }
   }
-  // Adiciona ao cache local imediatamente (independente do Supabase)
+
+  // Atualiza cache local e select imediatamente
   if (!segmentosCache.find(s => s.nome === nome)) {
     segmentosCache.push({ id: 'local_' + Date.now(), nome });
     segmentosCache.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }
   preencherSegmentosSelect(nome);
   fecharNovoSegmentoInline();
-  showToast('✓ Segmento criado');
-  // Persiste no Supabase em background
+
+  // Persiste no Supabase
   try {
     const repId = await getRepId();
-    const { error } = await sb.from('segmentos').insert({ nome, rep_id: repId });
-    if (error) console.error('salvarNovoSegmentoInline:', error);
-    else await carregarSegmentos().then(() => preencherSegmentosSelect(nome));
-  } catch(e) { console.error('salvarNovoSegmentoInline:', e); }
+    console.log('salvarNovoSegmentoInline: nome=', nome, 'repId=', repId);
+    if (!repId) {
+      console.log('salvarNovoSegmentoInline: repId nulo — segmento salvo só localmente');
+      showToast('✓ Segmento criado (sem conexão)');
+      return;
+    }
+    const { data, error } = await sb.from('segmentos').insert({ nome, rep_id: repId }).select().single();
+    if (error) {
+      console.log('salvarNovoSegmentoInline INSERT erro:', error.code, error.message);
+      showToast('✓ Segmento criado (salvo localmente)');
+    } else {
+      console.log('salvarNovoSegmentoInline INSERT ok:', data);
+      // Substitui entry local pelo registro real (com id do Supabase)
+      const idx = segmentosCache.findIndex(s => s.nome === nome && String(s.id).startsWith('local_'));
+      if (idx >= 0) segmentosCache[idx] = data;
+      preencherSegmentosSelect(nome);
+      showToast('✓ Segmento criado');
+    }
+  } catch(e) {
+    console.log('salvarNovoSegmentoInline exceção:', e);
+    showToast('✓ Segmento criado (salvo localmente)');
+  }
 }
 
 async function salvarSegmento(forcar) {
