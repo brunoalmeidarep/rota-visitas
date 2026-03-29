@@ -1026,6 +1026,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <button class="fin-periodo-tab" onclick="setFinPeriodo('hoje')">Hoje</button>
       <button class="fin-periodo-tab" onclick="setFinPeriodo('semana')">Semana</button>
       <button class="fin-periodo-tab active" onclick="setFinPeriodo('mes')">Mês</button>
+      <button class="fin-periodo-tab" onclick="setFinPeriodo('ano')">Ano</button>
     </div>
     <div class="fin-body" id="fin-lista-lancamentos"></div>
   </div>
@@ -1055,6 +1056,10 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <button class="fin-periodo-tab" onclick="setFinPeriodoResumo('hoje')">Hoje</button>
       <button class="fin-periodo-tab" onclick="setFinPeriodoResumo('semana')">Semana</button>
       <button class="fin-periodo-tab active" onclick="setFinPeriodoResumo('mes')">Mês</button>
+      <button class="fin-periodo-tab" onclick="setFinPeriodoResumo('ano')">Ano</button>
+    </div>
+    <div style="padding:6px 2px 2px;text-align:right;">
+      <button onclick="gerarPDFFinanceiro()" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">📄 Gerar PDF</button>
     </div>
     <div id="fin-resumo-conteudo"></div>
   </div>
@@ -6878,15 +6883,18 @@ function setFinTab(tab) {
 
 function setFinPeriodo(p) {
   finPeriodo = p;
-  document.querySelectorAll('#fin-wrap-lancamentos .fin-periodo-tab').forEach((b,i) => {
-    b.classList.toggle('active', ['hoje','semana','mes'][i]===p);
+  document.querySelectorAll('#fin-wrap-lancamentos .fin-periodo-tab').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick') === `setFinPeriodo('${p}')`);
   });
-  carregarLancamentos().then(renderLancamentos);
+  carregarLancamentos(p).then(renderLancamentos);
 }
 
 function setFinPeriodoResumo(p) {
   finPeriodoResumo = p;
-  carregarLancamentos().then(renderResumoFin);
+  document.querySelectorAll('#fin-wrap-resumo .fin-periodo-tab').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick') === `setFinPeriodoResumo('${p}')`);
+  });
+  carregarLancamentos(p).then(renderResumoFin);
 }
 
 function getDateRange(periodo) {
@@ -6894,13 +6902,15 @@ function getDateRange(periodo) {
   const ini = new Date(hoje);
   if (periodo==='hoje') { ini.setHours(0,0,0,0); }
   else if (periodo==='semana') { ini.setDate(hoje.getDate() - hoje.getDay()); ini.setHours(0,0,0,0); }
+  else if (periodo==='ano') { ini.setMonth(0); ini.setDate(1); ini.setHours(0,0,0,0); }
   else { ini.setDate(1); ini.setHours(0,0,0,0); }
   return { ini: ini.toISOString().split('T')[0], fim: hoje.toISOString().split('T')[0] };
 }
 
-async function carregarLancamentos() {
+async function carregarLancamentos(periodoOverride) {
   if (!currentRep) return;
-  const { ini, fim } = getDateRange(finPeriodo==='mes' ? 'mes' : finPeriodo);
+  const periodo = periodoOverride || finPeriodo;
+  const { ini, fim } = getDateRange(periodo);
   try {
     const { data } = await sb.from('financeiro').select('*').eq('rep_id', currentRep.id).gte('data', ini).lte('data', fim).order('data', { ascending: false });
     lancamentosCache = data || [];
@@ -7038,7 +7048,7 @@ function renderResumoFin() {
     <div class="fin-resumo-grid" style="margin-top:8px;">
       <div class="fin-resumo-card" style="grid-column:1/-1;">
         <div class="fin-resumo-val" style="color:${resultado>=0?'var(--green)':'var(--red)'}">${formatarMoeda(Math.abs(resultado))}</div>
-        <div class="fin-resumo-lbl">${resultado>=0?'Lucro líquido':'Prejuízo'}</div>
+        <div class="fin-resumo-lbl">${resultado>=0?'Lucro líquido':'Gastos'}</div>
       </div>
       <div class="fin-resumo-card"><div class="fin-resumo-val" style="color:var(--green)">${formatarMoeda(receitas)}</div><div class="fin-resumo-lbl">Receitas</div></div>
       <div class="fin-resumo-card"><div class="fin-resumo-val" style="color:var(--red)">${formatarMoeda(gastos)}</div><div class="fin-resumo-lbl">Gastos</div></div>
@@ -7061,6 +7071,153 @@ function renderResumoFin() {
 function formatarDataBR(dataStr) {
   const [y,m,d] = dataStr.split('-');
   return `${d}/${m}/${y}`;
+}
+
+async function gerarPDFFinanceiro() {
+  if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+    showToast('jsPDF não carregado', true); return;
+  }
+  const { jsPDF } = window.jspdf || window;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  let y = 0;
+
+  const periodoLabels = { hoje: 'Hoje', semana: 'Semana atual', mes: 'Mês atual', ano: 'Ano atual' };
+  const periodoLabel = periodoLabels[finPeriodoResumo] || 'Período';
+  const { ini, fim } = getDateRange(finPeriodoResumo);
+
+  // Header
+  doc.setFillColor(26, 58, 107);
+  doc.rect(0, 0, pw, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+  doc.text('Relatório Financeiro', 14, 11);
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+  doc.text(`${periodoLabel}  ·  ${formatarDataBR(ini)} a ${formatarDataBR(fim)}`, 14, 18);
+  const hoje = new Date();
+  doc.text(`Gerado em ${hoje.toLocaleDateString('pt-BR')}`, 14, 24);
+  doc.setTextColor(0, 0, 0);
+  y = 35;
+
+  // Filtra dados pelo período do resumo
+  const filtrados = lancamentosCache.filter(l => l.data >= ini && l.data <= fim);
+  const receitasItens = filtrados.filter(l => l.tipo === 'receita' && l.categoria !== 'bonificacao' && l.categoria !== 'Bonificação recebida');
+  const gastosItens = filtrados.filter(l => l.tipo === 'gasto');
+  const totalReceitas = receitasItens.reduce((s, l) => s + Number(l.valor), 0);
+  const totalGastos = gastosItens.reduce((s, l) => s + Number(l.valor), 0);
+  const resultado = totalReceitas - totalGastos;
+
+  // Cards de resumo
+  const cardW = (pw - 28 - 8) / 3;
+  const cardX = [14, 14 + cardW + 4, 14 + (cardW + 4) * 2];
+  const cardH = 22;
+
+  // Receitas (verde)
+  doc.setFillColor(230, 255, 240);
+  doc.roundedRect(cardX[0], y, cardW, cardH, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+  doc.setTextColor(0, 140, 60);
+  doc.text(formatarMoeda(totalReceitas), cardX[0] + cardW/2, y + 11, { align: 'center' });
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+  doc.text('Receitas', cardX[0] + cardW/2, y + 17, { align: 'center' });
+
+  // Gastos (vermelho)
+  doc.setFillColor(255, 235, 235);
+  doc.roundedRect(cardX[1], y, cardW, cardH, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+  doc.setTextColor(200, 30, 30);
+  doc.text(formatarMoeda(totalGastos), cardX[1] + cardW/2, y + 11, { align: 'center' });
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+  doc.text('Gastos', cardX[1] + cardW/2, y + 17, { align: 'center' });
+
+  // Resultado
+  doc.setFillColor(230, 242, 255);
+  doc.roundedRect(cardX[2], y, cardW, cardH, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+  doc.setTextColor(resultado >= 0 ? 0 : 200, resultado >= 0 ? 140 : 30, resultado >= 0 ? 60 : 30);
+  doc.text(formatarMoeda(Math.abs(resultado)), cardX[2] + cardW/2, y + 11, { align: 'center' });
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+  doc.text(resultado >= 0 ? 'Lucro líquido' : 'Gastos', cardX[2] + cardW/2, y + 17, { align: 'center' });
+
+  y += cardH + 10;
+  doc.setTextColor(0, 0, 0);
+
+  const addFooter = () => {
+    const total = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8); doc.setTextColor(140, 140, 140);
+      doc.text('Minha Rota RP · minharotarp.com.br', 14, ph - 6);
+      doc.text(`Página ${i} de ${total}`, pw - 14, ph - 6, { align: 'right' });
+    }
+  };
+
+  const addTable = (head, body, opts = {}) => {
+    if (typeof doc.autoTable === 'function') {
+      doc.autoTable({
+        head: [head], body,
+        startY: y,
+        margin: { left: 14, right: 14 },
+        headStyles: { fillColor: [26, 58, 107], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 9 },
+        alternateRowStyles: { fillColor: [245, 248, 255] },
+        footStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', fontSize: 9 },
+        ...opts
+      });
+      y = doc.lastAutoTable.finalY + 8;
+    } else {
+      // fallback text
+      body.forEach(row => {
+        if (y > ph - 20) { doc.addPage(); y = 20; }
+        doc.setFontSize(9);
+        doc.text(row.join('   '), 14, y);
+        y += 6;
+      });
+    }
+  };
+
+  // Tabela de Receitas
+  if (receitasItens.length) {
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 140, 60);
+    doc.text('📈 Receitas', 14, y); y += 5;
+    doc.setTextColor(0, 0, 0);
+    const recBody = receitasItens.map(l => [
+      l.descricao || l.cliente_nome || '-',
+      l.categoria || '-',
+      l.representada_nome || '-',
+      formatarDataBR(l.data),
+      formatarMoeda(Number(l.valor))
+    ]);
+    recBody.push([{ content: 'Total', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, formatarMoeda(totalReceitas)]);
+    addTable(['Descrição', 'Categoria', 'Representada', 'Data', 'Valor'], recBody, {
+      columnStyles: { 4: { halign: 'right' } }
+    });
+  }
+
+  // Tabela de Gastos
+  if (gastosItens.length) {
+    if (y > ph - 60) { doc.addPage(); y = 20; }
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(200, 30, 30);
+    doc.text('💸 Gastos', 14, y); y += 5;
+    doc.setTextColor(0, 0, 0);
+    const gasBody = gastosItens.map(l => [
+      l.descricao || l.cliente_nome || '-',
+      l.categoria || '-',
+      l.cliente_nome || '-',
+      formatarDataBR(l.data),
+      formatarMoeda(Number(l.valor))
+    ]);
+    gasBody.push([{ content: 'Total', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, formatarMoeda(totalGastos)]);
+    addTable(['Descrição', 'Categoria', 'Cliente', 'Data', 'Valor'], gasBody, {
+      columnStyles: { 4: { halign: 'right' } }
+    });
+  }
+
+  addFooter();
+  const nomeArq = `financeiro_${finPeriodoResumo}_${ini}_${fim}.pdf`;
+  doc.save(nomeArq);
+  showToast('✓ PDF gerado');
 }
 
 async function carregarBonifFin() {
