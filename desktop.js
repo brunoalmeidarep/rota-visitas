@@ -54,6 +54,26 @@ let relRowsAtual      = [];    // rows filtradas no período — compartilhadas 
 let relEstAtual       = {};    // { visitados, pctConv, totalVendas, totalVisitas }
 let novoSegInput  = '';
 
+// ── FINANÇAS ─────────────────────────────────────────────────────────
+let lancamentosCache  = [];
+let impostosCache     = [];
+let finTab            = 'lancamentos';
+let finPeriodo        = 'mes';
+let finPeriodoResumo  = 'mes';
+let lancTipoAtual     = 'gasto';
+let hotelEstrelas     = 0;
+const CATEGORIAS_RECEITA = ['Comissão', 'Bônus', 'Outros'];
+const CATEGORIAS_GASTO   = ['Combustível', 'Alimentação', 'Hospedagem', 'Clientes', 'Impostos', 'Outros'];
+
+// ── GASTOS / BONIFICAÇÕES ────────────────────────────────────────────
+let gastosClienteAtual = [];
+let gastosFiltro       = 'todos';
+let gastosExpandido    = null;
+let bonifAtual         = [];
+let bonifExpandido     = null;
+let bonifQtd           = 1;
+let representadasList  = [];
+
 // ── PLANNER ──────────────────────────────────────────────────────────
 let plannerMode    = false;
 let plannerSel     = new Map();  // id → { horTipo:'nenhum'|'obrigatorio'|'preferencial', horario:'HH:MM' }
@@ -135,6 +155,7 @@ async function mostrarApp() {
   await carregarRepresentante();
   await loadClientes();
   carregarLembretesSupabase();
+  carregarRepresentadasDesktop();
 }
 
 // Carrega a linha da tabela `representantes` pelo email — igual ao mobile
@@ -509,9 +530,33 @@ function renderDetail(c) {
       <div class="det-section-title">Histórico de visitas</div>
       <div id="historico-list"><div style="font-size:12px;color:var(--text3)">Carregando...</div></div>
     </div>
+
+    <!-- LINKS GASTOS / BONIFICAÇÕES -->
+    <div class="det-section">
+      <div class="det-section-title">Financeiro do cliente</div>
+      <div class="det-row-link" onclick="openGastosCliente()">
+        <span class="row-icon">💸</span>
+        <div class="row-body">
+          <div class="row-title">Gastos com cliente</div>
+          <div class="row-sub" id="p-gastos-sub">—</div>
+        </div>
+        <span class="row-chevron">›</span>
+      </div>
+      <div class="det-row-link" onclick="openBonificacoes()">
+        <span class="row-icon">🎁</span>
+        <div class="row-body">
+          <div class="row-title">Bonificações</div>
+          <div class="row-sub" id="p-bonif-sub">—</div>
+        </div>
+        <span id="p-bonif-badge" class="row-badge" style="display:none">R$ 0</span>
+        <span class="row-chevron">›</span>
+      </div>
+    </div>
   `;
 
   carregarHistorico(c.id);
+  carregarGastosResumoPerfil();
+  carregarBonifResumoPerfil();
 }
 
 function toggleCheckinForm() {
@@ -2492,5 +2537,707 @@ function exportarRotaGoogleMaps(orderedJSON) {
 
   if (truncado) {
     showToast(`Abrindo com ${MAX} de ${ordered.length} paradas (limite do Google Maps).`);
+  }
+}
+
+// ── FINANÇAS — funções ───────────────────────────────────────────────
+
+function initFinancas() {
+  setFinTab(finTab);
+}
+
+function setFinTab(tab) {
+  finTab = tab;
+  ['lancamentos','impostos','resumo'].forEach(t => {
+    document.getElementById(`fin-subtab-${t}`).classList.toggle('active', t === tab);
+    const wrap = document.getElementById(`fin-wrap-${t}`);
+    if (wrap) wrap.style.display = t === tab ? (t === 'lancamentos' ? 'flex' : 'block') : 'none';
+  });
+  const novoBtn = document.getElementById('fin-novo-btn');
+  if (novoBtn) novoBtn.style.display = tab === 'lancamentos' ? 'block' : 'none';
+  if (tab === 'lancamentos') carregarLancamentos().then(renderLancamentos);
+  if (tab === 'impostos')    carregarImpostos().then(renderImpostos);
+  if (tab === 'resumo')      carregarLancamentos().then(renderResumoFin);
+}
+
+function setFinPeriodo(p) {
+  finPeriodo = p;
+  document.querySelectorAll('#fin-periodo-bar .fin-periodo-tab').forEach((b, i) => {
+    b.classList.toggle('active', ['hoje','semana','mes'][i] === p);
+  });
+  carregarLancamentos().then(renderLancamentos);
+}
+
+function setFinPeriodoResumo(p) {
+  finPeriodoResumo = p;
+  document.querySelectorAll('#fin-resumo-periodo-bar .fin-periodo-tab').forEach((b, i) => {
+    b.classList.toggle('active', ['hoje','semana','mes'][i] === p);
+  });
+  carregarLancamentos().then(renderResumoFin);
+}
+
+function getDateRange(periodo) {
+  const hoje = new Date();
+  const ini  = new Date(hoje);
+  if (periodo === 'hoje')   { ini.setHours(0,0,0,0); }
+  else if (periodo === 'semana') { ini.setDate(hoje.getDate() - hoje.getDay()); ini.setHours(0,0,0,0); }
+  else { ini.setDate(1); ini.setHours(0,0,0,0); }
+  return { ini: ini.toISOString().split('T')[0], fim: hoje.toISOString().split('T')[0] };
+}
+
+async function carregarLancamentos() {
+  if (!currentRep) return;
+  const { ini, fim } = getDateRange(finTab === 'resumo' ? finPeriodoResumo : finPeriodo);
+  try {
+    const { data } = await sb.from('financeiro').select('*')
+      .eq('rep_id', currentRep.id).gte('data', ini).lte('data', fim)
+      .order('data', { ascending: false });
+    lancamentosCache = data || [];
+  } catch(e) { lancamentosCache = []; }
+}
+
+function renderLancamentos() {
+  const el = document.getElementById('fin-lista-lancamentos');
+  if (!el) return;
+  if (!lancamentosCache.length) {
+    el.innerHTML = '<div style="text-align:center;padding:48px 0;color:var(--text3);font-size:14px;">Nenhum lançamento no período.</div>';
+    return;
+  }
+  const grupos = {};
+  lancamentosCache.forEach(l => { if (!grupos[l.data]) grupos[l.data] = []; grupos[l.data].push(l); });
+  el.innerHTML = Object.entries(grupos).map(([data, items]) => {
+    const [y,m,d] = data.split('-');
+    const dataBR = `${d}/${m}/${y}`;
+    return `
+      <div class="fin-group-date">${dataBR}</div>
+      <div class="fin-card">
+        ${items.map(l => {
+          const isHosp = l.categoria === 'Hospedagem';
+          const desc = isHosp ? (l.hotel_nome || l.descricao || 'Hospedagem') : (l.descricao || l.categoria);
+          const sub  = isHosp
+            ? [l.hotel_cidade, l.hotel_estrelas ? '⭐'.repeat(l.hotel_estrelas) : ''].filter(Boolean).join(' · ')
+            : (l.categoria + (l.mes_referencia ? ' · '+l.mes_referencia : ''));
+          return `
+          <div class="fin-item">
+            <div class="fin-item-info">
+              <div class="fin-item-desc">${isHosp ? '🏨 ' : ''}${desc}</div>
+              <div class="fin-item-sub">${sub}</div>
+            </div>
+            <div style="display:flex;align-items:center">
+              <div class="fin-item-val ${l.tipo}">${l.tipo==='receita'?'+':'-'}R$ ${Number(l.valor).toFixed(2).replace('.',',')}</div>
+              <button class="fin-item-del" onclick="excluirLancamento('${l.id}')">×</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }).join('');
+}
+
+function renderResumoFin() {
+  const { ini, fim } = getDateRange(finPeriodoResumo);
+  const filtrados = lancamentosCache.filter(l => l.data >= ini && l.data <= fim);
+  const receitas  = filtrados.filter(l=>l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0);
+  const gastos    = filtrados.filter(l=>l.tipo==='gasto').reduce((s,l)=>s+Number(l.valor),0);
+  const resultado = receitas - gastos;
+  const catGastos = {};
+  filtrados.filter(l=>l.tipo==='gasto').forEach(l => { catGastos[l.categoria] = (catGastos[l.categoria]||0)+Number(l.valor); });
+  const el = document.getElementById('fin-resumo-conteudo');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="fin-resumo-grid">
+      <div class="fin-resumo-card">
+        <div class="fin-resumo-val" style="color:var(--green)">R$ ${receitas.toFixed(2).replace('.',',')}</div>
+        <div class="fin-resumo-lbl">Receitas</div>
+      </div>
+      <div class="fin-resumo-card">
+        <div class="fin-resumo-val" style="color:var(--red)">R$ ${gastos.toFixed(2).replace('.',',')}</div>
+        <div class="fin-resumo-lbl">Gastos</div>
+      </div>
+      <div class="fin-resumo-card">
+        <div class="fin-resumo-val" style="color:${resultado>=0?'var(--green)':'var(--red)'}">R$ ${Math.abs(resultado).toFixed(2).replace('.',',')}</div>
+        <div class="fin-resumo-lbl">${resultado>=0?'Lucro líquido':'Prejuízo'}</div>
+      </div>
+    </div>
+    ${Object.keys(catGastos).length ? `
+      <div class="fin-group-date" style="margin-top:8px">Gastos por categoria</div>
+      <div class="fin-card">
+        ${Object.entries(catGastos).sort((a,b)=>b[1]-a[1]).map(([cat,val]) => `
+          <div class="fin-item">
+            <div class="fin-item-info">
+              <div class="fin-item-desc">${cat}</div>
+              <div style="height:4px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden;">
+                <div style="height:100%;background:var(--red);width:${gastos>0?Math.min(100,val/gastos*100).toFixed(0):0}%;border-radius:2px;"></div>
+              </div>
+            </div>
+            <div class="fin-item-val gasto" style="margin-left:16px">R$ ${val.toFixed(2).replace('.',',')}</div>
+          </div>`).join('')}
+      </div>` : ''}`;
+}
+
+async function excluirLancamento(id) {
+  if (!confirm('Excluir este lançamento?')) return;
+  await sb.from('financeiro').delete().eq('id', id);
+  lancamentosCache = lancamentosCache.filter(l => l.id !== id);
+  renderLancamentos();
+  showToast('Lançamento excluído');
+}
+
+// Modal lançamento
+function abrirModalLancamento() {
+  lancTipoAtual = 'gasto';
+  document.getElementById('ln-btn-receita').className = 'lancamento-tipo-btn';
+  document.getElementById('ln-btn-gasto').className   = 'lancamento-tipo-btn ativo-gasto';
+  document.getElementById('ln-data').value      = new Date().toISOString().split('T')[0];
+  document.getElementById('ln-descricao').value = '';
+  document.getElementById('ln-valor').value     = '';
+  document.getElementById('ln-hotel-nome').value   = '';
+  document.getElementById('ln-hotel-cidade').value = '';
+  hotelEstrelas = 0;
+  document.querySelectorAll('#ln-estrelas-display span').forEach(s => s.textContent = '☆');
+  atualizarCategoriasLancamento();
+  document.getElementById('lancamento-modal').classList.add('open');
+}
+
+function fecharModalLancamento() {
+  document.getElementById('lancamento-modal').classList.remove('open');
+}
+
+function setLancTipo(tipo) {
+  lancTipoAtual = tipo;
+  document.getElementById('ln-btn-receita').className = `lancamento-tipo-btn ${tipo==='receita'?'ativo-receita':''}`;
+  document.getElementById('ln-btn-gasto').className   = `lancamento-tipo-btn ${tipo==='gasto'?'ativo-gasto':''}`;
+  atualizarCategoriasLancamento();
+}
+
+function atualizarCategoriasLancamento() {
+  const cats = lancTipoAtual === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_GASTO;
+  const sel  = document.getElementById('ln-categoria');
+  sel.innerHTML = '<option value="">Selecione...</option>' + cats.map(c => `<option>${c}</option>`).join('');
+  atualizarCamposLancamento();
+}
+
+function atualizarCamposLancamento() {
+  const cat    = document.getElementById('ln-categoria').value;
+  const isHosp = cat === 'Hospedagem';
+  document.getElementById('ln-representada-row').style.display   = cat==='Comissão' ? 'block' : 'none';
+  document.getElementById('ln-mes-row').style.display            = cat==='Comissão' ? 'block' : 'none';
+  document.getElementById('ln-cliente-row').style.display        = cat==='Clientes' ? 'block' : 'none';
+  document.getElementById('ln-hotel-nome-row').style.display     = isHosp ? 'block' : 'none';
+  document.getElementById('ln-hotel-cidade-row').style.display   = isHosp ? 'block' : 'none';
+  document.getElementById('ln-hotel-estrelas-row').style.display = isHosp ? 'block' : 'none';
+  const descLabel = document.getElementById('ln-descricao-label');
+  if (descLabel) descLabel.textContent = isHosp ? 'Observações (opcional)' : 'Descrição';
+  document.getElementById('ln-descricao').placeholder = isHosp ? 'Ex: Café da manhã ruim, quarto bom...' : 'Descreva o lançamento...';
+  if (cat === 'Comissão') {
+    document.getElementById('ln-representada').innerHTML =
+      '<option value="">Selecione...</option>' + representadasList.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+  }
+  if (cat === 'Clientes') {
+    document.getElementById('ln-cliente').innerHTML =
+      '<option value="">Nenhum</option>' + clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  }
+}
+
+function setHotelEstrelas(n) {
+  hotelEstrelas = n;
+  document.querySelectorAll('#ln-estrelas-display span').forEach((s, i) => { s.textContent = i < n ? '⭐' : '☆'; });
+}
+
+async function salvarLancamento() {
+  const cat   = document.getElementById('ln-categoria').value;
+  const desc  = document.getElementById('ln-descricao').value.trim();
+  const valor = parseFloat(document.getElementById('ln-valor').value);
+  const data  = document.getElementById('ln-data').value;
+  if (!cat)           { showToast('Selecione uma categoria', true); return; }
+  if (!valor || valor <= 0) { showToast('Informe o valor', true); return; }
+  if (!data)          { showToast('Informe a data', true); return; }
+  if (!currentRep)    return;
+  const payload = { tipo: lancTipoAtual, categoria: cat, descricao: desc||cat, valor, data, rep_id: currentRep.id };
+  if (cat === 'Comissão') {
+    payload.representada_id = document.getElementById('ln-representada').value || null;
+    payload.mes_referencia  = document.getElementById('ln-mes').value || null;
+  }
+  if (cat === 'Clientes') {
+    payload.cliente_id = document.getElementById('ln-cliente').value || null;
+  }
+  if (cat === 'Hospedagem') {
+    payload.hotel_nome    = document.getElementById('ln-hotel-nome').value.trim()   || null;
+    payload.hotel_cidade  = document.getElementById('ln-hotel-cidade').value.trim() || null;
+    payload.hotel_estrelas = hotelEstrelas || null;
+  }
+  const { error } = await sb.from('financeiro').insert(payload);
+  if (error) { showToast('Erro ao salvar', true); return; }
+  fecharModalLancamento();
+  showToast('✓ Lançamento salvo!');
+  await carregarLancamentos();
+  renderLancamentos();
+}
+
+// Impostos
+async function carregarImpostos() {
+  if (!currentRep) return;
+  try {
+    const { data } = await sb.from('impostos').select('*').eq('rep_id', currentRep.id).order('dia_vencimento');
+    impostosCache = data || [];
+  } catch(e) { impostosCache = []; }
+}
+
+function renderImpostos() {
+  const el = document.getElementById('fin-impostos-lista');
+  if (!el) return;
+  if (!impostosCache.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px;">Nenhum imposto cadastrado</div>';
+    return;
+  }
+  el.innerHTML = impostosCache.map(imp => `
+    <div class="fin-imposto-item">
+      <div>
+        <div class="fin-imposto-nome">${imp.nome}</div>
+        <div class="fin-imposto-dia">Vence todo dia ${imp.dia_vencimento}</div>
+      </div>
+      <button class="fin-imposto-del" onclick="excluirImposto('${imp.id}')">×</button>
+    </div>`).join('');
+}
+
+async function salvarImposto() {
+  const nome = document.getElementById('fin-imp-nome').value.trim();
+  const dia  = parseInt(document.getElementById('fin-imp-dia').value);
+  if (!nome)                   { showToast('Informe o nome', true); return; }
+  if (!dia || dia < 1 || dia > 31) { showToast('Dia inválido (1–31)', true); return; }
+  if (!currentRep) return;
+  const { error } = await sb.from('impostos').insert({ nome, dia_vencimento: dia, rep_id: currentRep.id });
+  if (error) { showToast('Erro ao salvar', true); return; }
+  document.getElementById('fin-imp-nome').value = '';
+  document.getElementById('fin-imp-dia').value  = '';
+  showToast('✓ Imposto salvo!');
+  await carregarImpostos();
+  renderImpostos();
+}
+
+async function excluirImposto(id) {
+  if (!confirm('Excluir este imposto?')) return;
+  await sb.from('impostos').delete().eq('id', id);
+  impostosCache = impostosCache.filter(i => i.id !== id);
+  renderImpostos();
+  showToast('Imposto removido');
+}
+
+// ── CONFIGURAÇÕES ────────────────────────────────────────────────────
+
+function toggleConfig() {
+  const panel = document.getElementById('config-panel');
+  if (panel.classList.contains('open')) closeConfig();
+  else openConfig();
+}
+
+function openConfig() {
+  // Preenche dados do usuário
+  document.getElementById('cfg-user-name').textContent  = currentRep?.nome  || '—';
+  document.getElementById('cfg-user-email').textContent = currentUser?.email || '—';
+  // Preenche campos do perfil
+  document.getElementById('cfg-endereco').value = currentRep?.endereco_base  || '';
+  document.getElementById('cfg-media').value    = currentRep?.media_carro    || 10;
+  document.getElementById('cfg-gasolina').value = currentRep?.preco_gasolina || 6.0;
+  document.getElementById('cfg-cep-status').textContent = '';
+  document.getElementById('config-panel').classList.add('open');
+  document.getElementById('config-backdrop').classList.add('open');
+}
+
+function closeConfig() {
+  document.getElementById('config-panel').classList.remove('open');
+  document.getElementById('config-backdrop').classList.remove('open');
+}
+
+async function cfgBuscarEndereco() {
+  const val = document.getElementById('cfg-endereco').value.trim();
+  const st  = document.getElementById('cfg-cep-status');
+  const cep = val.replace(/\D/g,'');
+  if (cep.length !== 8) { st.textContent = 'Digite um CEP válido (8 dígitos)'; st.style.color = 'var(--red)'; return; }
+  st.textContent = 'Buscando...'; st.style.color = 'var(--text3)';
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d = await r.json();
+    if (d.erro) { st.textContent = 'CEP não encontrado'; st.style.color = 'var(--red)'; return; }
+    document.getElementById('cfg-endereco').value = `${d.logradouro}, ${d.bairro}, ${d.localidade} - ${d.uf}`;
+    st.textContent = '✓ Endereço encontrado'; st.style.color = 'var(--green)';
+  } catch(e) { st.textContent = 'Erro ao buscar CEP'; st.style.color = 'var(--red)'; }
+}
+
+function exportCoords() {
+  const rows = clientes
+    .filter(c => c.lat && c.lng)
+    .map(c => `${c.id}\t${c.nome}\t${c.lat}\t${c.lng}`);
+  if (!rows.length) { showToast('Nenhuma coordenada para exportar', true); return; }
+  const blob = new Blob(['id\tnome\tlat\tlng\n' + rows.join('\n')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'coordenadas.tsv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast(`✓ ${rows.length} coordenadas exportadas`);
+}
+
+async function salvarConfigPerfil() {
+  if (!currentRep) return;
+  const endereco = document.getElementById('cfg-endereco').value.trim();
+  const media    = parseFloat(document.getElementById('cfg-media').value)    || 10;
+  const gasolina = parseFloat(document.getElementById('cfg-gasolina').value) || 6.0;
+  const { error } = await sb.from('representantes')
+    .update({ endereco_base: endereco, media_carro: media, preco_gasolina: gasolina })
+    .eq('id', currentRep.id);
+  if (error) { showToast('Erro ao salvar', true); return; }
+  currentRep.endereco_base  = endereco;
+  currentRep.media_carro    = media;
+  currentRep.preco_gasolina = gasolina;
+  showToast('✓ Perfil salvo!');
+}
+
+// ── GASTOS COM CLIENTE ────────────────────────────────────────────────
+
+async function carregarRepresentadasDesktop() {
+  if (!currentRep) return;
+  const { data } = await sb.from('representadas').select('id,nome').eq('rep_id', currentRep.id).order('nome');
+  representadasList = data || [];
+}
+
+function showDetailOverlay(panelId) {
+  document.getElementById('detail-empty').style.display = 'none';
+  document.getElementById('detail-body').style.display = 'none';
+  ['panel-gastos', 'panel-bonif'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === panelId ? 'flex' : 'none';
+  });
+}
+
+function fecharPainelDetalhe() {
+  ['panel-gastos', 'panel-bonif'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const c = clientes.find(x => x.id === activeId);
+  if (c) renderDetail(c);
+}
+
+function openGastosCliente() {
+  if (!activeId) return;
+  const c = clientes.find(x => x.id === activeId);
+  if (!c) return;
+  const nomeBase = c.nome.replace(/\s*\(.*?\)/, '').trim();
+  document.getElementById('gc-titulo').textContent = 'Gastos — ' + nomeBase;
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('gc-data').value = hoje;
+  document.getElementById('gc-form').style.display = 'none';
+  document.getElementById('gc-nf-label').textContent = 'Anexar NF (opcional)';
+  document.getElementById('gc-desc').value = '';
+  document.getElementById('gc-valor').value = '';
+  document.getElementById('gc-nf-input').value = '';
+  gastosFiltro = 'todos';
+  ['todos','mes','ano'].forEach(f => document.getElementById('gc-filter-'+f)?.classList.toggle('active', f==='todos'));
+  showDetailOverlay('panel-gastos');
+  carregarGastos();
+}
+
+function toggleGastoForm() {
+  const f = document.getElementById('gc-form');
+  if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+function gcNfSelecionada(input) {
+  const lbl = document.getElementById('gc-nf-label');
+  if (input.files[0]) lbl.textContent = '✓ ' + input.files[0].name;
+}
+
+function setGastoFilter(f) {
+  gastosFiltro = f;
+  ['todos','mes','ano'].forEach(id => document.getElementById('gc-filter-'+id)?.classList.toggle('active', id===f));
+  renderGastos();
+}
+
+async function carregarGastos() {
+  if (!currentRep || !activeId) return;
+  const gcList = document.getElementById('gc-list');
+  if (gcList) gcList.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Carregando...</div>';
+  const { data } = await sb.from('financeiro')
+    .select('*')
+    .eq('rep_id', currentRep.id)
+    .eq('categoria', 'clientes')
+    .eq('cliente_id', String(activeId))
+    .order('data', { ascending: false });
+  gastosClienteAtual = data || [];
+  renderGastos();
+}
+
+function renderGastos() {
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+  const mesAtual = hoje.getMonth();
+  let lista = gastosClienteAtual;
+  if (gastosFiltro === 'mes') {
+    lista = lista.filter(g => { const d = new Date(g.data); return d.getFullYear()===anoAtual && d.getMonth()===mesAtual; });
+  } else if (gastosFiltro === 'ano') {
+    lista = lista.filter(g => new Date(g.data).getFullYear()===anoAtual);
+  }
+  const total = gastosClienteAtual.reduce((s,g) => s+(g.valor||0), 0);
+  const totalMes = gastosClienteAtual.filter(g => { const d=new Date(g.data); return d.getFullYear()===anoAtual && d.getMonth()===mesAtual; }).reduce((s,g)=>s+(g.valor||0),0);
+  document.getElementById('gc-total').textContent = 'R$ '+total.toFixed(2).replace('.',',');
+  document.getElementById('gc-mes').textContent   = 'R$ '+totalMes.toFixed(2).replace('.',',');
+  document.getElementById('gc-qtd').textContent   = gastosClienteAtual.length;
+  const el = document.getElementById('gc-list');
+  if (!el) return;
+  if (!lista.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nenhum gasto registrado</div>'; return; }
+  const grupos = {};
+  lista.forEach(g => {
+    const d = new Date(g.data+'T12:00:00');
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const label = d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    if (!grupos[key]) grupos[key] = {label, items:[]};
+    grupos[key].items.push(g);
+  });
+  let html = '';
+  Object.keys(grupos).sort((a,b)=>b.localeCompare(a)).forEach(key => {
+    const g = grupos[key];
+    html += `<div class="gc-month-title">${g.label}</div>`;
+    g.items.forEach(item => {
+      const exp = gastosExpandido === item.id;
+      const dataPt = new Date(item.data+'T12:00:00').toLocaleDateString('pt-BR');
+      html += `<div class="gc-item">
+        <div class="gc-item-row" onclick="toggleGastoItem('${item.id}')">
+          <div class="gc-item-main">
+            <div class="gc-item-desc">${item.descricao||'Sem descrição'}</div>
+            <div class="gc-item-meta"><span>${dataPt}</span>${item.url_comprovante?'<span>📎 NF</span>':''}</div>
+          </div>
+          <div class="gc-item-val">R$ ${(item.valor||0).toFixed(2).replace('.',',')}</div>
+        </div>
+        ${exp?`<div class="gc-item-actions">
+          ${item.url_comprovante?`<button class="gc-item-action-btn" onclick="window.open('${item.url_comprovante}','_blank')">📎 Ver NF</button>`:''}
+          <button class="gc-item-action-btn danger" onclick="excluirGasto('${item.id}')">Excluir</button>
+        </div>
+        <div class="gc-item-footer">📊 Alimentou Finanças → Gastos com Clientes</div>`:''}
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+function toggleGastoItem(id) {
+  gastosExpandido = gastosExpandido === id ? null : id;
+  renderGastos();
+}
+
+async function salvarGasto() {
+  if (!activeId || !currentRep) return;
+  const c = clientes.find(x => x.id === activeId);
+  if (!c) return;
+  const descricao = document.getElementById('gc-desc').value.trim();
+  const valor     = parseFloat(document.getElementById('gc-valor').value);
+  const data      = document.getElementById('gc-data').value;
+  const nfFile    = document.getElementById('gc-nf-input').files[0];
+  if (!descricao) { showToast('Informe a descrição', true); return; }
+  if (!valor || isNaN(valor)) { showToast('Informe o valor', true); return; }
+  let url_comprovante = null;
+  if (nfFile) {
+    const path = `${currentRep.id}/gastos/${Date.now()}_${nfFile.name}`;
+    const { error: upErr } = await sb.storage.from('pedidos').upload(path, nfFile);
+    if (!upErr) {
+      const { data: urlData } = sb.storage.from('pedidos').getPublicUrl(path);
+      url_comprovante = urlData.publicUrl;
+    }
+  }
+  const { error } = await sb.from('financeiro').insert({
+    tipo: 'despesa', categoria: 'clientes',
+    descricao, valor, data: data || new Date().toISOString().split('T')[0],
+    cliente_id: String(activeId), cliente_nome: c.nome,
+    rep_id: currentRep.id,
+    url_comprovante
+  });
+  if (error) { showToast('Erro ao salvar', true); return; }
+  showToast('Gasto registrado');
+  document.getElementById('gc-form').style.display = 'none';
+  document.getElementById('gc-desc').value = '';
+  document.getElementById('gc-valor').value = '';
+  document.getElementById('gc-nf-input').value = '';
+  document.getElementById('gc-nf-label').textContent = 'Anexar NF (opcional)';
+  carregarGastos();
+}
+
+async function excluirGasto(id) {
+  if (!confirm('Excluir este gasto?')) return;
+  await sb.from('financeiro').delete().eq('id', id);
+  gastosClienteAtual = gastosClienteAtual.filter(g => g.id !== id);
+  gastosExpandido = null;
+  renderGastos();
+}
+
+async function carregarGastosResumoPerfil() {
+  if (!currentRep || !activeId) return;
+  const sub = document.getElementById('p-gastos-sub');
+  if (!sub) return;
+  const { data } = await sb.from('financeiro').select('valor').eq('rep_id', currentRep.id).eq('categoria', 'clientes').eq('cliente_id', String(activeId));
+  if (!data || !data.length) { sub.textContent = 'Nenhum gasto'; return; }
+  const total = data.reduce((s,g)=>s+(g.valor||0),0);
+  sub.textContent = data.length+' registro'+(data.length===1?'':'s')+' · R$ '+total.toFixed(2).replace('.',',');
+}
+
+// ── BONIFICAÇÕES ──────────────────────────────────────────────────────
+
+function openBonificacoes() {
+  if (!activeId) return;
+  const c = clientes.find(x => x.id === activeId);
+  if (!c) return;
+  const nomeBase = c.nome.replace(/\s*\(.*?\)/, '').trim();
+  document.getElementById('bonif-titulo').textContent = 'Bonificações — ' + nomeBase;
+  document.getElementById('bonif-form').style.display = 'none';
+  document.getElementById('bonif-motivo').value = '';
+  document.getElementById('bonif-valor').value = '';
+  document.getElementById('bonif-data').value = '';
+  document.getElementById('bonif-parcelas-preview').textContent = '';
+  setBonifQtd(1);
+  // preenche select de representadas
+  const sel = document.getElementById('bonif-representada');
+  sel.innerHTML = '<option value="">Selecionar empresa...</option>' +
+    representadasList.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+  showDetailOverlay('panel-bonif');
+  carregarBonificacoes();
+}
+
+function toggleBonifForm() {
+  const f = document.getElementById('bonif-form');
+  if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+function setBonifQtd(n) {
+  bonifQtd = n;
+  [1,2,3,4].forEach(i => document.getElementById('bonif-qtd-'+i)?.classList.toggle('active', i===n));
+  bonifAtualizarParcelas();
+}
+
+function bonifAtualizarParcelas() {
+  const total = parseFloat(document.getElementById('bonif-valor')?.value) || 0;
+  const el = document.getElementById('bonif-parcelas-preview');
+  if (!el) return;
+  if (!total) { el.textContent = ''; return; }
+  const parc = (total/bonifQtd).toFixed(2).replace('.',',');
+  el.textContent = `${bonifQtd}× de R$ ${parc}`;
+}
+
+async function carregarBonificacoes() {
+  if (!currentUser || !activeId) return;
+  const { data } = await sb.from('bonificacoes')
+    .select('*').eq('rep_id', currentUser.id).eq('cliente_id', String(activeId))
+    .order('created_at', { ascending: false });
+  bonifAtual = data || [];
+  renderBonificacoes();
+}
+
+function renderBonificacoes() {
+  const andamentoEl  = document.getElementById('bonif-andamento');
+  const concluidasEl = document.getElementById('bonif-concluidas');
+  if (!andamentoEl || !concluidasEl) return;
+  const andamento  = bonifAtual.filter(b => b.status === 'em_andamento');
+  const concluidas = bonifAtual.filter(b => b.status === 'concluida');
+  const renderLista = (lista, elId) => {
+    const el = document.getElementById(elId);
+    if (!lista.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 12px">Nenhuma</div>'; return; }
+    el.innerHTML = lista.map(b => {
+      const parcelas = b.parcelas || [];
+      const recebidas = parcelas.filter(p=>p.recebido).length;
+      const pct = parcelas.length ? Math.round(recebidas/parcelas.length*100) : 0;
+      const exp = bonifExpandido === b.id;
+      return `<div class="gc-item" style="margin-bottom:8px">
+        <div class="gc-item-row" onclick="toggleBonifItem('${b.id}')">
+          <div class="gc-item-main">
+            <div class="gc-item-desc">${b.motivo}</div>
+            <div class="gc-item-meta">
+              <span>${b.representada_nome||'Sem representada'}</span>
+              <span>${recebidas}/${parcelas.length} parcelas</span>
+            </div>
+            <div class="bonif-progress-bar"><div class="bonif-progress-fill" style="width:${pct}%"></div></div>
+          </div>
+          <div style="font-size:13px;font-weight:800;margin-left:8px;white-space:nowrap">R$ ${(b.valor_total||0).toFixed(2).replace('.',',')}</div>
+        </div>
+        ${exp?`<div>${parcelas.map((p,i)=>`
+          <div class="bonif-parcela-row">
+            <div class="bonif-parcela-num">${i+1}.</div>
+            <div class="bonif-parcela-val">R$ ${(p.valor||0).toFixed(2).replace('.',',')}</div>
+            ${p.recebido
+              ?`<div style="font-size:11px;font-weight:600;color:var(--green)">✓ ${p.data_recebimento?new Date(p.data_recebimento+'T12:00:00').toLocaleDateString('pt-BR'):''}</div>`
+              :`<button class="gestao-btn-sm" onclick="marcarParcelaRecebida('${b.id}',${i})">Marcar recebido</button>`}
+          </div>`).join('')}</div>`:''}
+      </div>`;
+    }).join('');
+  };
+  renderLista(andamento, 'bonif-andamento');
+  renderLista(concluidas, 'bonif-concluidas');
+}
+
+function toggleBonifItem(id) {
+  bonifExpandido = bonifExpandido === id ? null : id;
+  renderBonificacoes();
+}
+
+async function salvarBonificacao() {
+  if (!activeId || !currentUser) return;
+  const c = clientes.find(x => x.id === activeId);
+  if (!c) return;
+  const motivo       = document.getElementById('bonif-motivo').value.trim();
+  const valorTotal   = parseFloat(document.getElementById('bonif-valor').value);
+  const dataCombinada= document.getElementById('bonif-data').value;
+  const repSel       = document.getElementById('bonif-representada');
+  const representadaId   = repSel?.value || null;
+  const representadaNome = representadaId ? repSel?.options[repSel.selectedIndex]?.text : null;
+  if (!motivo) { showToast('Informe o motivo', true); return; }
+  if (!valorTotal || isNaN(valorTotal)) { showToast('Informe o valor', true); return; }
+  const parcValor = Math.round(valorTotal/bonifQtd*100)/100;
+  const parcelas  = Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
+  const { error } = await sb.from('bonificacoes').insert({
+    rep_id: currentUser.id,
+    cliente_id: String(activeId), cliente_nome: c.nome,
+    representada_id: representadaId||null,
+    representada_nome: representadaNome||null,
+    motivo, valor_total: valorTotal,
+    data_combinada: dataCombinada||null,
+    parcelas, status: 'em_andamento'
+  });
+  if (error) { showToast('Erro ao salvar', true); console.error(error); return; }
+  showToast('Bonificação registrada');
+  document.getElementById('bonif-form').style.display = 'none';
+  carregarBonificacoes();
+}
+
+async function marcarParcelaRecebida(bonifId, parcelaIdx) {
+  const bonif = bonifAtual.find(b => b.id === bonifId);
+  if (!bonif) return;
+  const parcelas   = bonif.parcelas.map((p,i) => i===parcelaIdx ? {...p, recebido:true, data_recebimento: new Date().toISOString().split('T')[0]} : p);
+  const novoStatus = parcelas.every(p=>p.recebido) ? 'concluida' : 'em_andamento';
+  await sb.from('bonificacoes').update({parcelas, status:novoStatus}).eq('id', bonifId);
+  if (currentRep) {
+    const c = clientes.find(x => x.id === activeId);
+    await sb.from('financeiro').insert({
+      tipo: 'receita', categoria: 'bonificacao',
+      descricao: `Bonif: ${bonif.motivo}${bonif.representada_nome?' ('+bonif.representada_nome+')':''} — parcela ${parcelaIdx+1}/${parcelas.length}`,
+      valor: parcelas[parcelaIdx].valor,
+      data: new Date().toISOString().split('T')[0],
+      cliente_id: String(activeId), cliente_nome: c?.nome||'',
+      representada_id: bonif.representada_id||null,
+      rep_id: currentRep.id
+    });
+  }
+  showToast('Parcela recebida!');
+  carregarBonificacoes();
+}
+
+async function carregarBonifResumoPerfil() {
+  if (!currentUser || !activeId) return;
+  const sub   = document.getElementById('p-bonif-sub');
+  const badge = document.getElementById('p-bonif-badge');
+  if (!sub) return;
+  const { data } = await sb.from('bonificacoes').select('parcelas,valor_total,status').eq('rep_id', currentUser.id).eq('cliente_id', String(activeId));
+  if (!data || !data.length) { sub.textContent = 'Nenhuma bonificação'; if(badge) badge.style.display='none'; return; }
+  let pendente = 0;
+  data.forEach(b => (b.parcelas||[]).forEach(p => { if(!p.recebido) pendente+=(p.valor||0); }));
+  sub.textContent = data.length+' bonificaç'+(data.length===1?'ão':'ões');
+  if (badge) {
+    if (pendente>0) { badge.textContent='R$ '+pendente.toFixed(2).replace('.',','); badge.style.display='inline-flex'; }
+    else badge.style.display='none';
   }
 }

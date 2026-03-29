@@ -54,6 +54,7 @@
     <div id="header-right">
       <span id="header-user"></span>
       <button class="hdr-btn primary" onclick="openCadastro()">+ Novo cliente</button>
+      <button class="hdr-btn" id="btn-config" onclick="toggleConfig()" title="Configurações">⚙</button>
       <button class="hdr-btn danger" onclick="fazerLogout()">Sair</button>
     </div>
   </header>
@@ -62,6 +63,7 @@
   <nav id="tab-bar">
     <button class="tab-btn active" data-tab="mapa"      onclick="showTab('mapa')">🗺 Mapa &amp; Lista</button>
     <button class="tab-btn"        data-tab="relatorio" onclick="showTab('relatorio')">📊 Relatório</button>
+    <button class="tab-btn"        data-tab="financas"  onclick="showTab('financas'); initFinancas()">💰 Finanças</button>
     <button class="tab-btn"        data-tab="tarefas"   onclick="showTab('tarefas'); renderTarefas()">📋 Tarefas</button>
     <button class="tab-btn"        data-tab="admin"     id="tab-admin-btn"
       onclick="showTab('admin'); carregarReps()" style="display:none">⚙ Admin</button>
@@ -124,6 +126,98 @@
         <div id="detail-body"></div>
         <!-- Resultado do planejamento de rota -->
         <div id="rota-result" style="display:none;flex-direction:column;flex:1;overflow:hidden;"></div>
+
+        <!-- PAINEL GASTOS COM CLIENTE -->
+        <div id="panel-gastos" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+          <div class="det-overlay-header">
+            <button class="det-overlay-back" onclick="fecharPainelDetalhe()">← Voltar</button>
+            <div class="det-overlay-titulo" id="gc-titulo">Gastos — Cliente</div>
+            <button class="det-overlay-action" onclick="toggleGastoForm()">+ Novo</button>
+          </div>
+          <div class="det-overlay-body">
+            <div class="gc-summary-row">
+              <div class="gc-summary-card"><div class="gc-summary-val" id="gc-total">R$ 0</div><div class="gc-summary-lbl">Total</div></div>
+              <div class="gc-summary-card"><div class="gc-summary-val" id="gc-mes">R$ 0</div><div class="gc-summary-lbl">Este mês</div></div>
+              <div class="gc-summary-card"><div class="gc-summary-val" id="gc-qtd">0</div><div class="gc-summary-lbl">Registros</div></div>
+            </div>
+            <div class="gc-filter-row">
+              <button class="gc-filter-pill active" id="gc-filter-todos" onclick="setGastoFilter('todos')">Todos</button>
+              <button class="gc-filter-pill" id="gc-filter-mes" onclick="setGastoFilter('mes')">Este mês</button>
+              <button class="gc-filter-pill" id="gc-filter-ano" onclick="setGastoFilter('ano')">Este ano</button>
+            </div>
+            <div class="gc-form-panel" id="gc-form" style="display:none">
+              <div class="gc-form-title">Novo gasto</div>
+              <div class="campo-grupo">
+                <label class="campo-label">Descrição *</label>
+                <input class="campo-input" id="gc-desc" placeholder="Ex: Almoço com cliente, Brinde...">
+              </div>
+              <div class="campo-grupo">
+                <label class="campo-label">Valor (R$) *</label>
+                <input class="campo-input" id="gc-valor" type="number" step="0.01" min="0" placeholder="0,00">
+              </div>
+              <div class="campo-grupo">
+                <label class="campo-label">Data</label>
+                <input class="campo-input" id="gc-data" type="date">
+              </div>
+              <div class="campo-grupo">
+                <label for="gc-nf-input" style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;font-size:13px;color:var(--text2)">
+                  <span>📎</span><span id="gc-nf-label">Anexar NF (opcional)</span>
+                </label>
+                <input type="file" id="gc-nf-input" accept=".pdf,image/*" style="display:none" onchange="gcNfSelecionada(this)">
+              </div>
+              <button class="det-btn primary" style="width:100%;margin-top:4px" onclick="salvarGasto()">Salvar</button>
+            </div>
+            <div id="gc-list"></div>
+          </div>
+        </div>
+
+        <!-- PAINEL BONIFICAÇÕES -->
+        <div id="panel-bonif" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+          <div class="det-overlay-header">
+            <button class="det-overlay-back" onclick="fecharPainelDetalhe()">← Voltar</button>
+            <div class="det-overlay-titulo" id="bonif-titulo">Bonificações — Cliente</div>
+            <button class="det-overlay-action" onclick="toggleBonifForm()">+ Nova</button>
+          </div>
+          <div class="det-overlay-body">
+            <div class="gc-form-panel" id="bonif-form" style="display:none">
+              <div class="gc-form-title">Nova bonificação</div>
+              <div class="campo-grupo">
+                <label class="campo-label">Representada</label>
+                <select class="campo-input" id="bonif-representada">
+                  <option value="">Selecionar empresa...</option>
+                </select>
+              </div>
+              <div class="campo-grupo">
+                <label class="campo-label">Motivo *</label>
+                <input class="campo-input" id="bonif-motivo" placeholder="Ex: Fachada, Uniforme, Aniversário...">
+              </div>
+              <div class="campo-grupo">
+                <label class="campo-label">Valor total (R$) *</label>
+                <input class="campo-input" id="bonif-valor" type="number" step="0.01" min="0" placeholder="0,00" oninput="bonifAtualizarParcelas()">
+              </div>
+              <div class="campo-grupo">
+                <label class="campo-label">Data combinada</label>
+                <input class="campo-input" id="bonif-data" type="date">
+              </div>
+              <div class="campo-grupo">
+                <label class="campo-label">Parcelas</label>
+                <div class="bonif-qtd-btns">
+                  <button class="bonif-qtd-btn active" id="bonif-qtd-1" onclick="setBonifQtd(1)">1×</button>
+                  <button class="bonif-qtd-btn" id="bonif-qtd-2" onclick="setBonifQtd(2)">2×</button>
+                  <button class="bonif-qtd-btn" id="bonif-qtd-3" onclick="setBonifQtd(3)">3×</button>
+                  <button class="bonif-qtd-btn" id="bonif-qtd-4" onclick="setBonifQtd(4)">4×</button>
+                </div>
+                <div id="bonif-parcelas-preview" style="font-size:12px;color:var(--text2);margin-top:4px"></div>
+              </div>
+              <button class="det-btn primary" style="width:100%;margin-top:4px" onclick="salvarBonificacao()">Salvar</button>
+            </div>
+            <div class="det-section-title" style="margin:0 0 8px">Em andamento</div>
+            <div id="bonif-andamento"></div>
+            <div class="det-section-title" style="margin:16px 0 8px">Concluídas</div>
+            <div id="bonif-concluidas"></div>
+          </div>
+        </div>
+
       </aside>
 
     </div><!-- /tab-mapa -->
@@ -153,6 +247,72 @@
         </div>
 
     </div><!-- /tab-relatorio -->
+
+    <!-- ── TAB FINANÇAS ──────────────────────────────────────────── -->
+    <div id="tab-financas" class="tab-pane" style="flex-direction:column">
+
+      <!-- Sub-tabs -->
+      <div id="fin-subtabs">
+        <button class="fin-subtab active" id="fin-subtab-lancamentos" onclick="setFinTab('lancamentos')">💰 Lançamentos</button>
+        <button class="fin-subtab"        id="fin-subtab-impostos"    onclick="setFinTab('impostos')">📋 Impostos</button>
+        <button class="fin-subtab"        id="fin-subtab-resumo"      onclick="setFinTab('resumo')">📊 Resumo</button>
+        <button class="fin-novo-btn" id="fin-novo-btn" onclick="abrirModalLancamento()">+ Novo lançamento</button>
+      </div>
+
+      <!-- LANÇAMENTOS -->
+      <div id="fin-wrap-lancamentos" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+        <div id="fin-periodo-bar">
+          <button class="fin-periodo-tab" onclick="setFinPeriodo('hoje')">Hoje</button>
+          <button class="fin-periodo-tab" onclick="setFinPeriodo('semana')">Semana</button>
+          <button class="fin-periodo-tab active" onclick="setFinPeriodo('mes')">Mês</button>
+        </div>
+        <div id="fin-lista-lancamentos" class="fin-scroll-body"></div>
+      </div>
+
+      <!-- IMPOSTOS -->
+      <div id="fin-wrap-impostos" style="display:none;flex:1;overflow:hidden;">
+        <div id="fin-impostos-layout">
+
+          <!-- Lista -->
+          <div class="fin-impostos-col">
+            <div class="fin-col-header">
+              <div class="fin-col-title">Impostos cadastrados</div>
+            </div>
+            <div id="fin-impostos-lista" class="fin-card"></div>
+          </div>
+
+          <!-- Formulário -->
+          <div class="fin-impostos-col">
+            <div class="fin-col-header">
+              <div class="fin-col-title">Novo imposto</div>
+            </div>
+            <div class="fin-card" style="padding:16px">
+              <div class="campo-grupo">
+                <label class="campo-label">Nome do imposto</label>
+                <input class="campo-input" id="fin-imp-nome" placeholder="Ex: DAS, IRRF, ISS...">
+              </div>
+              <div class="campo-grupo">
+                <label class="campo-label">Dia de vencimento</label>
+                <input class="campo-input" id="fin-imp-dia" type="number" min="1" max="31" placeholder="20">
+              </div>
+              <button class="cfg-save-btn" onclick="salvarImposto()">Salvar imposto</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RESUMO -->
+      <div id="fin-wrap-resumo" style="display:none;flex:1;overflow:hidden;">
+        <div id="fin-resumo-periodo-bar">
+          <button class="fin-periodo-tab" onclick="setFinPeriodoResumo('hoje')">Hoje</button>
+          <button class="fin-periodo-tab" onclick="setFinPeriodoResumo('semana')">Semana</button>
+          <button class="fin-periodo-tab active" onclick="setFinPeriodoResumo('mes')">Mês</button>
+        </div>
+        <div id="fin-resumo-conteudo" class="fin-scroll-body"></div>
+      </div>
+
+    </div><!-- /tab-financas -->
 
     <!-- ── TAB TAREFAS ───────────────────────────────────────────── -->
     <div id="tab-tarefas" class="tab-pane">
@@ -268,6 +428,141 @@
       <button class="btn-cancel-modal" onclick="closeCadastro()">Cancelar</button>
       <button class="btn-salvar-modal" id="btn-salvar-cad" onclick="salvarCliente()">Salvar cliente</button>
     </div>
+  </div>
+</div>
+
+<!-- ── MODAL LANÇAMENTO ───────────────────────────────────────────── -->
+<div id="lancamento-modal" onclick="if(event.target===this)fecharModalLancamento()">
+  <div class="lancamento-modal-box">
+    <div class="lancamento-modal-header">
+      <div class="lancamento-modal-title">💰 Novo Lançamento</div>
+      <button class="modal-close" onclick="fecharModalLancamento()">×</button>
+    </div>
+    <div class="lancamento-modal-body">
+      <div class="lancamento-tipo-row">
+        <button class="lancamento-tipo-btn" id="ln-btn-receita" onclick="setLancTipo('receita')">📈 Receita</button>
+        <button class="lancamento-tipo-btn ativo-gasto" id="ln-btn-gasto" onclick="setLancTipo('gasto')">📉 Gasto</button>
+      </div>
+      <div class="campo-grupo">
+        <label class="campo-label">Categoria</label>
+        <select class="campo-input" id="ln-categoria" onchange="atualizarCamposLancamento()">
+          <option value="">Selecione...</option>
+        </select>
+      </div>
+      <div id="ln-representada-row" style="display:none" class="campo-grupo">
+        <label class="campo-label">Representada</label>
+        <select class="campo-input" id="ln-representada"><option value="">Selecione...</option></select>
+      </div>
+      <div id="ln-mes-row" style="display:none" class="campo-grupo">
+        <label class="campo-label">Mês referência</label>
+        <input class="campo-input" id="ln-mes" type="month">
+      </div>
+      <div id="ln-cliente-row" style="display:none" class="campo-grupo">
+        <label class="campo-label">Cliente (opcional)</label>
+        <select class="campo-input" id="ln-cliente"><option value="">Nenhum</option></select>
+      </div>
+      <div id="ln-hotel-nome-row" style="display:none" class="campo-grupo">
+        <label class="campo-label">Nome do hotel</label>
+        <input class="campo-input" id="ln-hotel-nome" placeholder="Ex: Hotel Central">
+      </div>
+      <div id="ln-hotel-cidade-row" style="display:none" class="campo-grupo">
+        <label class="campo-label">Cidade</label>
+        <input class="campo-input" id="ln-hotel-cidade" placeholder="Ex: Jaraguá do Sul - SC">
+      </div>
+      <div id="ln-hotel-estrelas-row" style="display:none" class="campo-grupo">
+        <label class="campo-label">Avaliação</label>
+        <div id="ln-estrelas-display" style="font-size:24px;cursor:pointer;letter-spacing:4px;user-select:none;">
+          <span onclick="setHotelEstrelas(1)">☆</span><span onclick="setHotelEstrelas(2)">☆</span><span onclick="setHotelEstrelas(3)">☆</span><span onclick="setHotelEstrelas(4)">☆</span><span onclick="setHotelEstrelas(5)">☆</span>
+        </div>
+      </div>
+      <div class="campo-grupo">
+        <label class="campo-label" id="ln-descricao-label">Descrição</label>
+        <input class="campo-input" id="ln-descricao" placeholder="Descreva o lançamento...">
+      </div>
+      <div class="campo-grupo">
+        <label class="campo-label">Valor (R$)</label>
+        <input class="campo-input" id="ln-valor" type="number" step="0.01" min="0" placeholder="0,00">
+      </div>
+      <div class="campo-grupo">
+        <label class="campo-label">Data</label>
+        <input class="campo-input" id="ln-data" type="date">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="fecharModalLancamento()">Cancelar</button>
+      <button class="btn-salvar-modal" onclick="salvarLancamento()">Salvar lançamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAINEL DE CONFIGURAÇÕES ────────────────────────────────────── -->
+<div id="config-backdrop" onclick="closeConfig()"></div>
+<div id="config-panel">
+  <div id="config-header">
+    <div id="config-title">Configurações</div>
+    <button id="config-close" onclick="closeConfig()">×</button>
+  </div>
+  <div id="config-body">
+
+    <!-- Usuário -->
+    <div class="cfg-section">
+      <div class="cfg-section-title">Conta</div>
+      <div class="cfg-user-info">
+        <div class="cfg-user-name" id="cfg-user-name">—</div>
+        <div class="cfg-user-email" id="cfg-user-email">—</div>
+      </div>
+    </div>
+
+    <!-- Meu Perfil -->
+    <div class="cfg-section">
+      <div class="cfg-section-title">Meu Perfil</div>
+      <div class="campo-grupo">
+        <label class="campo-label">Endereço base (ponto de partida)</label>
+        <div style="display:flex;gap:6px">
+          <input class="campo-input" id="cfg-endereco" type="text" placeholder="Rua, nº, cidade — ou CEP">
+          <button class="cfg-cep-btn" id="cfg-cep-btn" onclick="cfgBuscarEndereco()">Buscar</button>
+        </div>
+        <div class="cfg-cep-status" id="cfg-cep-status"></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="campo-grupo" style="flex:1">
+          <label class="campo-label">Consumo (km/l)</label>
+          <input class="campo-input" id="cfg-media" type="number" step="0.1" min="1" placeholder="10">
+        </div>
+        <div class="campo-grupo" style="flex:1">
+          <label class="campo-label">Gasolina (R$/l)</label>
+          <input class="campo-input" id="cfg-gasolina" type="number" step="0.01" min="0" placeholder="6,00">
+        </div>
+      </div>
+      <button class="cfg-save-btn" onclick="salvarConfigPerfil()">Salvar perfil</button>
+    </div>
+
+    <!-- Ferramentas -->
+    <div class="cfg-section">
+      <div class="cfg-section-title">Ferramentas</div>
+      <div class="cfg-item" onclick="closeConfig();openCadastro()">
+        <span class="cfg-item-icon">➕</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Novo cliente</div>
+          <div class="cfg-item-sub">Adicionar à carteira</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
+      <div class="cfg-item" onclick="exportCoords();closeConfig()">
+        <span class="cfg-item-icon">📍</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Exportar coordenadas</div>
+          <div class="cfg-item-sub">Backup das localizações</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
+    </div>
+
+    <!-- Versão -->
+    <div class="cfg-section">
+      <div class="cfg-version">Minha Rota RP · v2.0 Desktop</div>
+    </div>
+
   </div>
 </div>
 
