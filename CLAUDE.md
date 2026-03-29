@@ -92,7 +92,7 @@ Usar a função getRepId() que faz cache desse valor.
 - Relatório: cards clicáveis, multi-select representadas, clientes (3x)
 - Planner: Hoje/Semana/Mês + card rotas
 - Rotas: multi-select cidades/clientes, algoritmo vizinho mais próximo, combustível, Google Maps
-- Finanças: gastos por categoria, receitas por tipo (Comissão/Reembolso/Bonificação), impostos
+- Finanças: gastos por categoria, receitas por tipo (Comissão/Reembolso/Bonificação), impostos, PDF por período, botão Ano, tabs corrigidas
 - Settings: Empresas, Segmentação, Importar Clientes, Meu Perfil, Calendário
 - Busca CNPJ (ReceitaWS) + CEP (ViaCEP)
 - Importação massa via .xlsx (SheetJS)
@@ -107,10 +107,8 @@ Usar a função getRepId() que faz cache desse valor.
 
 ## Pendências em andamento
 1. Foreign key empresas — corrigir com getRepId() para qualquer usuário
-2. Máscara de valor em todos os campos monetários
-3. Erro ao salvar gasto com cliente (tabela financeiro pode não existir no Supabase)
-4. Tela de detalhes do pedido/visita (clicar no histórico → editar/converter)
-5. Desktop.html — Victor desenvolvendo
+2. Tela de detalhes do pedido/visita (clicar no histórico → editar/converter)
+3. Desktop.html — Victor desenvolvendo
 
 ---
 
