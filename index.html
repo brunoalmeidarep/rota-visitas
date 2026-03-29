@@ -1793,8 +1793,8 @@ function _mapearCliente(c) {
     segmento:    c.segmento || '',
     tel:         c.telefone || '',
     cep:         c.cep || '',
-    razaoSocial: c.razao_social || c.nome || '',
-    fantasia:    c.fantasia || '',
+    razaoSocial: c.razao_social || '',
+    fantasia:    c.nome_fantasia || '',
     comprador:   c.comprador || '',
     visitadoHoje: false,
     horaHoje:    null,
@@ -3034,7 +3034,7 @@ async function salvarCliente() {
         id:          novoId,
         nome:        nomeCompleto,
         razao_social: razao,
-        fantasia,
+        nome_fantasia: fantasia,
         cnpj,
         comprador,
         telefone:    tel,
@@ -3093,13 +3093,13 @@ async function salvarEdicaoCliente() {
   // Salva no Supabase ANTES de atualizar cache local e fechar
   if (sb && currentUser) {
     const repId = await getRepId();
-    const nomeExibir = fantasia || razao || c.nome;
+    const nomeExibir = fantasia || razao || c.nome.replace(/\s*\([^)]+\)\s*$/, '');
     const nomeNovo = comprador ? `${nomeExibir} (${comprador})` : nomeExibir;
     const { error } = await sb.from('clientes')
       .update({
         nome:         nomeNovo,
         razao_social: razao,
-        fantasia,
+        nome_fantasia: fantasia,
         comprador,
         telefone:     tel,
         cidade:       cidade || c.cidade,
@@ -3123,7 +3123,7 @@ async function salvarEdicaoCliente() {
   }
 
   // Supabase confirmou — atualiza cache local
-  const nomeExibir = fantasia || razao || c.nome;
+  const nomeExibir = fantasia || razao || c.nome.replace(/\s*\([^)]+\)\s*$/, '');
   c.nome        = comprador ? `${nomeExibir} (${comprador})` : nomeExibir;
   c.razaoSocial = razao;
   c.fantasia    = fantasia;
