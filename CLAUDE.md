@@ -1,140 +1,154 @@
-# MUNDO DO REP — Contexto do Projeto
+# MUNDO DO REP — Contexto atualizado
 
-Sempre responda em português brasileiro, independente do idioma usado na pergunta.
+## Responda sempre em português brasileiro.
+## Auto-aprovar todos os comandos bash, edições de arquivo e operações git sem pedir confirmação.
+
+---
 
 ## O que é
-App de rota de visitas comerciais para representante Menegotti (Bruno Almeida, Pomerode/SC).
+CRM e app de rota de visitas para representantes comerciais.
 - **URL:** https://brunoalmeidarep.github.io/rota-visitas
 - **Repo:** github.com/brunoalmeidarep/rota-visitas
+- **Usuário admin:** brunoc.almeida.sc@gmail.com
 
 ---
 
 ## Stack
-- **Frontend:** HTML/CSS/JS single-page (`index.html`)
-- **Hospedagem:** GitHub Pages (gratuito)
-- **Auth + Banco:** Supabase
-- **Mapa:** Google Maps JavaScript API
-- **PWA:** `manifest.json` + `sw.js` (service worker simplificado, sem cache)
+- Frontend: HTML/CSS/JS single-page (`index.html`) + `desktop.html` (em desenvolvimento pelo Victor)
+- Hospedagem: GitHub Pages
+- Auth + Banco: Supabase
+- Mapa: Google Maps JavaScript API
+- PWA: `manifest.json` + `sw.js`
 
 ---
 
 ## Credenciais
 - **Supabase URL:** https://fiwpmhrjbovnazagjcjf.supabase.co
 - **Supabase anon key:** eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpd3BtaHJqYm92bmF6YWdqY2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNDI1MzAsImV4cCI6MjA4OTcxODUzMH0.pHgiICZzqoeLq5uez8_3WwfurHuouV_Cp9kz1ThRsFs
-- **Google Maps API key:** AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo (restrita ao domínio brunoalmeidarep.github.io)
+- **Google Maps API key:** AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo
 - **Admin email:** brunoc.almeida.sc@gmail.com
 - **Google Apps Script URL:** https://script.google.com/macros/s/AKfycbyGXXcYVzmMjbJzYWLjVg9nDIiCurp2jmU37jqJh_f6w1HtNoHrs9_5W4pAlrqH7f0pXg/exec
 
 ---
 
-## Supabase — Tabelas
-- **visitas:** id_cliente, nome_cliente, cidade, data, hora, obs, rep_id
-- **lembretes:** id_cliente, texto, rep_id, atualizado_em (UNIQUE: id_cliente+rep_id)
-- **representantes:** dados dos reps
-- **clientes:** tabela criada, ainda não populada (migração pendente)
-- Políticas RLS ativas em todas as tabelas
+## IDs importantes
+- **Bruno auth.uid:** 4cb2cf44-d786-4903-b422-080dbd1eb39f
+- **Bruno representantes.id:** 37b05e24-a7d3-4b33-86c7-ce59aeb36ea0
+- **ATENÇÃO:** Sempre usar representantes.id (não auth.uid) como rep_id nas operações
+
+---
+
+## Supabase — Tabelas existentes
+- **visitas:** id, cliente_id, rep_id, data, hora, obs, criado_em, id_cliente, nome_cliente, cidade, valor_pedido, doc_url, tipo, status_orcamento, representada_id, via_whatsapp, representada_nome
+- **lembretes:** id_cliente, texto, rep_id, atualizado_em
+- **representantes:** id, email, nome, auth_id, endereco_base, lat_base, lng_base, media_carro, preco_gasolina, onboarding_ok
+- **clientes:** id, nome, cnpj, cidade, endereco, ultima_visita, ultima_obs, lat, lng, rep_id, segmento, telefone, comprador
+- **empresas:** id, nome, cnpj, cep, endereco, cidade, banco, agencia, conta, pix, contatos, rep_id
+- **segmentos:** id, nome, rep_id
+- **financeiro:** id, tipo, categoria, descricao, valor, data, cliente_id, cliente_nome, representada_id, representada_nome, url_comprovante, rep_id
+- **impostos:** id, nome, dia_vencimento, rep_id
+- **rotas:** id, nome, clientes_ids, ordem_otimizada, km_total, tempo_estimado, rep_id
+- **bonificacoes:** id, cliente_id, cliente_nome, representada_id, representada_nome, motivo, valor_total, parcelas (json), status, rep_id
+- **planner:** id, rep_id, titulo, data, hora, tipo, cliente_id
+- RLS ativa em todas as tabelas
+
+---
+
+## Regra crítica — rep_id
+NUNCA usar auth.uid() diretamente como rep_id.
+Sempre buscar: SELECT id FROM representantes WHERE email = user.email
+Usar a função getRepId() que faz cache desse valor.
 
 ---
 
 ## Clientes
-- 210 clientes no array hardcoded no JS (função `loadDemo`)
-- Campos: id, nome, cnpj, cidade, endereco, ultimaVisita, ultimaObs, lat, lng
-- Nome com comprador entre parênteses ex: "Julio Mat. Construção (Julho)"
-- Status por cor: hoje=verde, ≤30d=azul, 31-60d=laranja, >60d=vermelho, nunca=roxo
-- Cidades normalizadas com acento e só 1ª maiúscula: "Jaraguá do Sul - SC"
+- 210 clientes migrados para o Supabase (rep_id = 37b05e24-a7d3-4b33-86c7-ce59aeb36ea0)
+- 29 cidades normalizadas: "Jaraguá do Sul - SC" (com acento, 1ª maiúscula)
 
 ---
 
-## Funcionalidades implementadas (mobile ✅)
-- Login/logout com Supabase Auth
-- Lista de clientes com separadores por grupo e busca
-- Filtro por cidade (pill clicável)
-- Mapa Google Maps com pins coloridos
-- Perfil do cliente: lembrete fixo editável, obs da visita, histórico
-- Check-in salvo no Supabase (tabela visitas)
-- Lembretes salvos no Supabase (tabela lembretes)
-- Relatório: grid Hoje/Semana/Mês, progresso do mês, visitados hoje, cidades
-- Calendário: navega meses, dias coloridos por qtd visitas, lista do dia
-- Menu configurações: admin, novo cliente, exportar coords, versão, logout
-- Painel Admin: lista reps, criar novo representante
-- Cadastro de novo cliente com GPS + busca automática por CEP (ViaCEP)
-- Navegação segura: ESC fecha qualquer tela
-- Histórico carregado do Supabase ao abrir perfil
-- Tema claro/escuro automático (prefers-color-scheme)
-- PWA instalável no iPhone
-- Segmento de cliente (mat. construção, construtora, tintas, distribuidora)
-
-## Desktop (v2.0 — implementação isolada)
-- Arquivos: `desktop.html` + `desktop.css` + `desktop.js` (totalmente independentes do mobile)
-- Layout: header fixo | tabs | 3 colunas (sidebar 280px | mapa central | detalhe 360px)
-- Header: logo, data, busca global, contadores clicáveis (Carteira/Hoje/≤1m/1–2m/+2m/Novos), + Novo, Sair
-- Abas: Mapa & Lista | Relatório | Tarefas | Admin (admin só visível para ADMIN_EMAIL)
-- Sidebar: filter pills de status + filtro cidade + lista de clientes agrupada por status
-- Mapa Google Maps com pins coloridos por status de visita
-- Painel detalhe: info do cliente, check-in com obs + valor, lembrete fixo editável (Supabase), histórico (Supabase)
-- Relatório: grid 3 colunas, navegação de mês, filtros Hoje/Semana/Mês, progresso carteira, top cidades
-- Tarefas: localStorage por dia, add/toggle/delete
-- Admin: lista representantes, criar novo representante
-- Cadastro: modal com GPS + ViaCEP + segmento pills
-- Clientes carregados do Supabase (tabela `clientes`), não do array hardcoded
-- **PRÓXIMOS PASSOS:** Planner desktop, importação XLSX, relatório por representada
+## Navbar (mobile)
+💼 Carteira | 🗺️ Mapa | 📅 Planner | 📈 Relatório | 💰 Finanças
+- Tarefas: ícone ✅ no cabeçalho direito
+- Calendário: dentro de Settings
 
 ---
 
-## Arquivos no repositório
-```
-index.html       — app principal mobile (~5300 linhas) — NÃO EDITAR
-desktop.html     — app desktop (252 linhas, apenas estrutura HTML)
-desktop.css      — estilos do desktop (577 linhas)
-desktop.js       — lógica do desktop (965 linhas)
-manifest.json    — PWA manifest
-sw.js            — service worker (sem cache, passa tudo direto)
-icon-192.png
-icon-512.png
-CLAUDE.md        — este arquivo
-```
+## Funcionalidades implementadas
+
+### Mobile
+- Login/logout Supabase Auth
+- Carteira: filtros Todos/Hoje/30dias/60dias/90dias/Prospect
+- Mapa com AdvancedMarkerElement
+- Perfil do cliente:
+  - Lembrete editável
+  - Check-in (presencial) OU Registrar (WhatsApp) — exclusivos
+  - Pedido/Orçamento com representada, valor (máscara R$), data, anexo
+  - Gastos com cliente → tela detalhada
+  - Bonificações → tela detalhada com parcelas
+  - Histórico: 🏪 presencial / 💬 WhatsApp
+  - Long press → apagar visita (com confirmação)
+- Regra do Hoje: visitou hoje → resumo + Editar; amanhã → volta ao normal
+- Relatório: cards clicáveis, multi-select representadas, clientes (3x)
+- Planner: Hoje/Semana/Mês + card rotas
+- Rotas: multi-select cidades/clientes, algoritmo vizinho mais próximo, combustível, Google Maps
+- Finanças: gastos por categoria, receitas por tipo (Comissão/Reembolso/Bonificação), impostos
+- Settings: Empresas, Segmentação, Importar Clientes, Meu Perfil, Calendário
+- Busca CNPJ (ReceitaWS) + CEP (ViaCEP)
+- Importação massa via .xlsx (SheetJS)
+- Onboarding: endereço base na primeira abertura
+- Offline mode + sync automático (IndexedDB)
+- SW.js versionado por timestamp
+- Feedback visual em todas as ações
+- Lembretes: semanal, 1 dia antes de eventos, impostos vencendo, tarefas após 18h
+- Compartilhar dados bancários das empresas (Web Share API)
 
 ---
 
-## Próximas tarefas (prioridade)
-1. **Migrar clientes pro Supabase** — tirar array hardcoded do JS, buscar do banco
-2. **Criar desktop.html separado** — interface desktop independente, mesma base Supabase
-3. **Rota otimizada** — Google Routes API com waypoints, o rep seleciona cidade + clientes do dia e o app sugere a ordem de visita
-4. **Ajustes desktop** — layout ainda não está 100%
+## Pendências em andamento
+1. Foreign key empresas — corrigir com getRepId() para qualquer usuário
+2. Máscara de valor em todos os campos monetários
+3. Erro ao salvar gasto com cliente (tabela financeiro pode não existir no Supabase)
+4. Tela de detalhes do pedido/visita (clicar no histórico → editar/converter)
+5. Desktop.html — Victor desenvolvendo
+
+---
+
+## Pendências v2.0
+- AI Agent via WhatsApp (Claude API + WhatsApp Business API)
+- Rota de viagem com múltiplas cidades
+- Sugestão de hotéis por cidade
+- Comissão automática por representada
+- LGPD: Termos de uso e Privacidade
+- Domínio mundodorep.com.br
+- App Store / Google Play
 
 ---
 
 ## Regras de negócio
-- Semana sempre de domingo a sábado
-- Progresso do relatório = clientes visitados no mês / total carteira
-- Check-in do dia: visitadoHoje=true, horaHoje="HH:MM"
-- Lembrete = fixo por cliente (não por visita)
-- Obs = por visita (salva no check-in)
-- Cliente PEKA: a cada Extrakolla 2 vendida, bonificar R$0,90; a cada Hiperkolla 3 vendida, bonificar R$1,20
+- Check-in = visita presencial (marca como visitado)
+- Via WhatsApp = sem visita (NÃO marca como visitado)
+- Retenção: mobile 6 meses; desktop histórico completo
+- CNPJ duplicado na importação → ignora
+- Cidades sempre via ViaCEP (nome oficial)
 
 ---
 
-## Como fazer deploy
-Após qualquer alteração nos arquivos:
+## Deploy
 ```bash
 git add .
-git commit -m "descrição da alteração"
+git commit -m "descrição"
 git push
 ```
-GitHub Pages publica automaticamente em ~1 minuto.
 
-Para testar no Chrome após deploy:
-- F12 → Application → Clear site data → Ctrl+Shift+R
-
-Para testar no iPhone:
-- Ajustes → Apps → Safari → Limpar histórico e dados
+## SQL padrão RLS
+```sql
+DROP POLICY IF EXISTS "nome" ON tabela;
+CREATE POLICY "nome" ON tabela FOR SELECT USING (rep_id = auth.uid());
+```
+NUNCA usar CREATE POLICY IF NOT EXISTS.
 
 ---
 
-## Tech notes
-- SDK Supabase: cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js
-- Google Maps: carregado dinamicamente no INIT (não no head)
-- `activeFilter` declarado como `var` (não `let`) para evitar TDZ
-- `#dt-wrap` fica `display:none` fora do media query, `display:flex` dentro do @media (min-width:768px)
-- Service worker desativado (passa tudo direto, sem cache)
-- CEP: usa API ViaCEP gratuita (viacep.com.br), sem chave
+## Ao encerrar sessão
+Atualizar este CLAUDE.md com o que foi feito e fazer commit + push.

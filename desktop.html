@@ -54,6 +54,7 @@
     <div id="header-right">
       <span id="header-user"></span>
       <button class="hdr-btn primary" onclick="openCadastro()">+ Novo cliente</button>
+      <button class="hdr-btn" onclick="localStorage.setItem('force_mobile','1');window.location.href='index.html'" title="Acessar a versão para celular">📱 Versão Mobile</button>
       <button class="hdr-btn" id="btn-config" onclick="toggleConfig()" title="Configurações">⚙</button>
       <button class="hdr-btn danger" onclick="fazerLogout()">Sair</button>
     </div>

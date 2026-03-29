@@ -37,6 +37,7 @@ const STATUS_BG = {
 let sb            = null;
 let currentUser   = null;
 let currentRep    = null;   // linha da tabela `representantes` — fonte do rep_id
+let _repIdCache   = null;
 let clientes      = [];
 let lembretes     = {};   // { clienteId: texto }
 let gmap          = null;
@@ -160,16 +161,41 @@ async function mostrarApp() {
 
 // Carrega a linha da tabela `representantes` pelo email — igual ao mobile
 async function carregarRepresentante() {
+  _repIdCache = null;
   try {
     const { data } = await sb
       .from('representantes')
       .select('*')
       .eq('email', currentUser.email)
       .maybeSingle();
-    currentRep = data || null;
+    if (data) {
+      currentRep = data;
+      if (!data.auth_id) {
+        await sb.from('representantes').update({ auth_id: currentUser.id }).eq('id', data.id);
+        currentRep.auth_id = currentUser.id;
+      }
+    } else {
+      const { data: novo } = await sb.from('representantes').insert({
+        email:   currentUser.email,
+        nome:    currentUser.email.split('@')[0],
+        auth_id: currentUser.id,
+        ativo:   true,
+      }).select().maybeSingle();
+      currentRep = novo || null;
+    }
   } catch(e) {
     currentRep = null;
   }
+  _repIdCache = currentRep?.id || null;
+}
+
+// Retorna o id correto de representantes para uso como rep_id
+// em tabelas com FK → representantes(id)
+async function getRepId() {
+  if (_repIdCache) return _repIdCache;
+  if (!currentRep) await carregarRepresentante();
+  _repIdCache = currentRep?.id || null;
+  return _repIdCache;
 }
 
 async function fazerLogin() {
@@ -186,15 +212,14 @@ async function fazerLogin() {
   }
 }
 
-function fazerLogout() { sb.auth.signOut(); }
+function fazerLogout() { _repIdCache = null; sb.auth.signOut(); }
 
 // ── CLIENTES ─────────────────────────────────────────────────────────
 async function loadClientes() {
   if (!currentUser) return;
 
-  // Usa o ID da tabela representantes (igual ao mobile).
-  // Se currentRep for nulo, cai de volta para o auth UID como último recurso.
-  const repId = currentRep?.id || currentUser.id;
+  // clientes.rep_id → auth.users(id), usa currentUser.id diretamente
+  const repId = currentUser.id;
 
   const listEl = document.getElementById('client-list');
   if (listEl) listEl.innerHTML = '<div class="list-empty">Carregando...</div>';
@@ -601,7 +626,7 @@ async function doCheckin(id) {
       cidade:       c.cidade,
       data, hora,
       obs:          obs || '',
-      rep_id:       currentRep?.id || currentUser.id,
+      rep_id:       currentUser.id,
       tipo:         'visita',
     };
     if (valor !== null) payload.valor_pedido = valor;
@@ -621,7 +646,7 @@ async function carregarHistorico(clienteId) {
       .from('visitas')
       .select('*')
       .eq('id_cliente', String(clienteId))
-      .eq('rep_id', currentRep?.id || currentUser.id)
+      .eq('rep_id', currentUser.id)
       .order('data', { ascending: false })
       .order('hora', { ascending: false })
       .limit(20);
@@ -670,7 +695,7 @@ async function salvarLembrete(clienteId) {
   try {
     await sb.from('lembretes').upsert({
       id_cliente:    String(clienteId),
-      rep_id:        currentRep?.id || currentUser.id,
+      rep_id:        currentUser.id,
       texto,
       atualizado_em: new Date().toISOString()
     }, { onConflict: 'id_cliente,rep_id' });
@@ -682,7 +707,7 @@ async function salvarLembrete(clienteId) {
 async function carregarLembretesSupabase() {
   if (!currentUser) return;
   try {
-    const { data } = await sb.from('lembretes').select('*').eq('rep_id', currentRep?.id || currentUser.id);
+    const { data } = await sb.from('lembretes').select('*').eq('rep_id', currentUser.id);
     if (!data) return;
     data.forEach(l => { lembretes[l.id_cliente] = l.texto; });
   } catch(e) {}
@@ -712,7 +737,7 @@ async function carregarRelatorio() {
   const fim = new Date(relAno, relMes + 1, 0).toISOString().slice(0, 10);
   try {
     const { data } = await sb.from('visitas').select('*')
-      .eq('rep_id', currentRep?.id || currentUser.id)
+      .eq('rep_id', currentUser.id)
       .gte('data', ini).lte('data', fim)
       .order('data', { ascending: false });
     visatasRel = data || [];
@@ -1204,7 +1229,7 @@ async function carregarMesAnteriorParaRadar() {
   const fim = new Date(anoAnt, mesAnt + 1, 0).toISOString().slice(0, 10);
   try {
     const { data } = await sb.from('visitas').select('*')
-      .eq('rep_id', currentRep?.id || currentUser.id)
+      .eq('rep_id', currentUser.id)
       .gte('data', ini).lte('data', fim);
     visatasRelAnterior = data || [];
   } catch(e) { visatasRelAnterior = []; }
@@ -1822,7 +1847,7 @@ async function salvarCliente() {
   btn.disabled = true; btn.textContent = 'Salvando...';
   try {
     const payload = {
-      rep_id:      currentRep?.id || currentUser.id,
+      rep_id:      currentUser.id,
       nome,
       razao_social: document.getElementById('cad-razao').value.trim() || nome,
       fantasia:     document.getElementById('cad-fantasia').value.trim(),
