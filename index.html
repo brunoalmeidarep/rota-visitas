@@ -359,6 +359,8 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .seg-input-novo { padding:7px 14px; border-radius:20px; border:1.5px solid var(--blue); font-size:12px; font-weight:600; font-family:inherit; background:var(--surface); color:var(--text); outline:none; width:160px; }
 .seg-input-novo::placeholder { color:var(--text3); font-weight:400; }
 .seg-tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:10px; background:var(--bg); color:var(--text3); margin-top:3px; display:inline-block; }
+.rep-pill { font-size:12px; font-weight:600; padding:5px 12px; border-radius:20px; border:1.5px solid var(--border); background:var(--surface2); color:var(--text2); cursor:pointer; transition:all .15s; }
+.rep-pill.rep-pill-ativa { background:var(--blue); border-color:var(--blue); color:#fff; }
 
 /* ── TAREFAS ─────────────────────────────────────────── */
 
@@ -1796,6 +1798,7 @@ function _mapearCliente(c) {
     razaoSocial: c.razao_social || '',
     fantasia:    c.nome_fantasia || '',
     comprador:   c.comprador || '',
+    representadasIds: Array.isArray(c.representadas_ids) ? c.representadas_ids : [],
     visitadoHoje: false,
     horaHoje:    null,
   };
@@ -2649,63 +2652,234 @@ function exportarPDFDetalhe() {
   }
   const { jsPDF } = window.jspdf || window;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
   const tipo = repDetalheAtual;
   const rows = getRowsFiltradas();
   const hoje = new Date();
+
   const _nm = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
   const nomeMesCap = _nm.charAt(0).toUpperCase() + _nm.slice(1);
-  const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Semana' : nomeMesCap;
-  const titulos = { visitas:'Visitas', vendas:'Vendas', orcamentos:'Orcamentos', conversao:'Conversao', empresa:'Por Representada' };
+  const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Esta semana' : nomeMesCap;
+  const titulos = { visitas:'Relatório de Visitas', vendas:'Relatório de Vendas', orcamentos:'Relatório de Orçamentos', conversao:'Relatório de Conversão', empresa:'Vendas por Representada', bonificacoes:'Relatório de Bonificações' };
+  const repNome = currentRep?.nome || '';
 
-  doc.setFontSize(14); doc.setFont('helvetica','bold');
-  doc.text('Relatorio: ' + (titulos[tipo] || tipo) + ' — ' + filtroLabel, 14, 15);
-  doc.setFontSize(9); doc.setFont('helvetica','normal');
-  doc.text('Gerado em: ' + hoje.toLocaleDateString('pt-BR') + ' as ' + hoje.toTimeString().slice(0,5), 14, 22);
+  const BLUE = [41, 98, 255];
+  const GREEN = [34, 197, 94];
+  const ORANGE = [234, 88, 12];
+  const RED = [220, 38, 38];
 
-  let headers, tableRows, startY = 28;
-  if (tipo === 'vendas') {
-    const cp = rows.filter(v => parseFloat(v.valor_pedido) > 0).sort((a,b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
-    const tot = cp.reduce((s,v) => s + parseFloat(v.valor_pedido), 0);
-    doc.setFont('helvetica','bold');
-    doc.text('Total: R$ ' + tot.toLocaleString('pt-BR',{minimumFractionDigits:2}), 14, 28);
-    startY = 34;
-    headers = [['Cliente','Data','Cidade','Pedido R$']];
-    tableRows = cp.map(v => [
-      (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim(),
-      v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR') : '',
-      (v.cidade || '').replace(' - SC','').replace(' - PR','').trim(),
-      'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2})
-    ]);
-  } else if (tipo === 'orcamentos') {
-    const orc = rows.filter(v => v.tipo === 'orcamento');
-    headers = [['Cliente','Data','Status','Valor']];
-    tableRows = orc.map(v => [
-      (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim(),
-      v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR') : '',
-      v.status_orcamento || 'aberto',
-      v.valor_pedido ? 'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'
-    ]);
-  } else {
-    headers = [['Cliente','Data','Tipo','Cidade','Obs.']];
-    tableRows = rows.map(v => [
-      (v.nome_cliente || '').replace(/\s*\([^)]*\)/,'').trim(),
-      v.data ? new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR') : '',
-      v.tipo || 'visita',
-      (v.cidade || '').replace(' - SC','').replace(' - PR','').trim(),
-      (v.obs || '').slice(0, 50)
-    ]);
-  }
+  // ── Cabeçalho azul ──────────────────────────────────────
+  doc.setFillColor(...BLUE);
+  doc.rect(0, 0, W, 32, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text(titulos[tipo] || tipo, 14, 13);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text((repNome ? repNome + ' · ' : '') + filtroLabel, 14, 21);
+  doc.text('Gerado em ' + hoje.toLocaleDateString('pt-BR') + ' às ' + hoje.toTimeString().slice(0, 5), 14, 27);
+  doc.setTextColor(0, 0, 0);
 
-  if (typeof doc.autoTable === 'function') {
-    doc.autoTable({ head: headers, body: tableRows, startY, styles:{fontSize:8}, headStyles:{fillColor:[41,98,255]} });
-  } else {
-    let y = startY;
-    doc.setFontSize(8);
-    tableRows.forEach(row => {
-      doc.text(row.join(' | ').slice(0,110), 14, y); y += 5;
-      if (y > 270) { doc.addPage(); y = 14; }
+  let y = 38;
+
+  // ── Helpers ─────────────────────────────────────────────
+  const _nc  = n => (n || '').replace(/\s*\([^)]*\)/, '').trim();
+  const _cid = c => (c || '').replace(/ - SC$| - PR$/, '').trim();
+  const _dt  = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+  const _val = v => v ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
+
+  const addCards = (cards) => {
+    const cw = (W - 28 - (cards.length - 1) * 3) / cards.length;
+    cards.forEach((card, i) => {
+      const x = 14 + i * (cw + 3);
+      doc.setFillColor(245, 248, 255);
+      doc.rect(x, y, cw, 17, 'F');
+      doc.setTextColor(...(card.color || BLUE));
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(card.value.length > 10 ? 9 : 12);
+      doc.text(card.value, x + cw / 2, y + 8, { align: 'center' });
+      doc.setTextColor(120, 120, 120);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.text(card.label, x + cw / 2, y + 14, { align: 'center' });
     });
+    doc.setTextColor(0, 0, 0);
+    y += 22;
+  };
+
+  const addTable = (head, body, opts) => {
+    if (typeof doc.autoTable !== 'function') {
+      doc.setFontSize(8);
+      body.forEach(row => {
+        doc.text(row.join(' | ').slice(0, 110), 14, y);
+        y += 5;
+        if (y > 270) { doc.addPage(); y = 14; }
+      });
+      return;
+    }
+    doc.autoTable({
+      head, body,
+      startY: y,
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      headStyles: { fillColor: BLUE, textColor: 255, fontSize: 8, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 253] },
+      margin: { left: 14, right: 14 },
+      ...opts,
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  };
+
+  const addSectionHeader = (label, color) => {
+    doc.setFillColor(...(color || [230, 238, 255]));
+    doc.rect(14, y, W - 28, 8, 'F');
+    doc.setTextColor(...(color ? [255,255,255] : BLUE));
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(label, 17, y + 5.5);
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+  };
+
+  // ── VISITAS ─────────────────────────────────────────────
+  if (tipo === 'visitas') {
+    const pres = rows.filter(v => v.tipo !== 'whatsapp').length;
+    const wpp  = rows.filter(v => v.tipo === 'whatsapp').length;
+    addCards([
+      { label: 'Total de Visitas', value: String(rows.length), color: BLUE },
+      { label: 'Presenciais',      value: String(pres), color: GREEN },
+      { label: 'WhatsApp',         value: String(wpp),  color: [21, 128, 61] },
+    ]);
+    const byCid = {};
+    rows.forEach(v => { const c = _cid(v.cidade) || 'Sem cidade'; if (!byCid[c]) byCid[c] = []; byCid[c].push(v); });
+    Object.entries(byCid).sort(([a],[b]) => a.localeCompare(b, 'pt-BR')).forEach(([cidade, cr]) => {
+      addTable(
+        [[{ content: '📍 ' + cidade + ' (' + cr.length + ')', colSpan: 4, styles: { fillColor: [230, 238, 255], textColor: BLUE, fontStyle: 'bold', fontSize: 8.5 } }],
+         ['Cliente', 'Data', 'Tipo', 'Observação']],
+        cr.map(v => [_nc(v.nome_cliente), _dt(v.data), v.tipo || 'visita', (v.obs || '').slice(0, 55)])
+      );
+    });
+    if (!rows.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma visita no período.', 14, y); }
+
+  // ── VENDAS ──────────────────────────────────────────────
+  } else if (tipo === 'vendas') {
+    const cp   = rows.filter(v => parseFloat(v.valor_pedido) > 0);
+    const tot  = cp.reduce((s, v) => s + parseFloat(v.valor_pedido), 0);
+    addCards([
+      { label: 'Total de Vendas', value: 'R$ ' + tot.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: GREEN },
+      { label: 'Nº de Pedidos',   value: String(cp.length), color: BLUE },
+    ]);
+    const byRep = {};
+    cp.forEach(v => {
+      const rn = v.representada_nome || 'Sem representada';
+      if (!byRep[rn]) byRep[rn] = { rows: [], total: 0 };
+      byRep[rn].rows.push(v);
+      byRep[rn].total += parseFloat(v.valor_pedido);
+    });
+    Object.entries(byRep).sort((a, b) => b[1].total - a[1].total).forEach(([rn, rd]) => {
+      addTable(
+        [[{ content: '🏢 ' + rn + ' — R$ ' + rd.total.toLocaleString('pt-BR', {minimumFractionDigits:2}), colSpan: 4, styles: { fillColor: [230, 238, 255], textColor: BLUE, fontStyle: 'bold', fontSize: 8.5 } }],
+         ['Cliente', 'Cidade', 'Data', 'Valor']],
+        rd.rows.sort((a, b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido))
+          .map(v => [_nc(v.nome_cliente), _cid(v.cidade), _dt(v.data), _val(v.valor_pedido)])
+      );
+    });
+    if (!cp.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma venda no período.', 14, y); }
+
+  // ── ORÇAMENTOS ──────────────────────────────────────────
+  } else if (tipo === 'orcamentos') {
+    const orc    = rows.filter(v => v.tipo === 'orcamento');
+    const abertos = orc.filter(v => !v.status_orcamento || v.status_orcamento === 'aberto');
+    const fechados = orc.filter(v => v.status_orcamento === 'fechado');
+    const perdidos = orc.filter(v => v.status_orcamento === 'perdido');
+    const totVal  = orc.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
+    addCards([
+      { label: 'Total',      value: String(orc.length),     color: BLUE },
+      { label: 'Em Aberto',  value: String(abertos.length), color: ORANGE },
+      { label: 'Fechados',   value: String(fechados.length),color: GREEN },
+      { label: 'Perdidos',   value: String(perdidos.length),color: RED },
+    ]);
+    const grupos = [
+      { label: 'Em Aberto', items: abertos, color: ORANGE },
+      { label: 'Fechados',  items: fechados, color: GREEN },
+      { label: 'Perdidos',  items: perdidos, color: RED },
+    ];
+    grupos.forEach(g => {
+      if (!g.items.length) return;
+      addTable(
+        [[{ content: g.label + ' (' + g.items.length + ')', colSpan: 4, styles: { fillColor: g.color, textColor: [255,255,255], fontStyle: 'bold', fontSize: 8.5 } }],
+         ['Cliente', 'Data', 'Valor', 'Observação']],
+        g.items.map(v => [_nc(v.nome_cliente), _dt(v.data), _val(v.valor_pedido), (v.obs || '').slice(0, 50)])
+      );
+    });
+    if (!orc.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum orçamento no período.', 14, y); }
+
+  // ── CONVERSÃO ───────────────────────────────────────────
+  } else if (tipo === 'conversao') {
+    const mesRef = relMes, anoRef = relAno;
+    const visitados = clientes.filter(c => {
+      if (repFiltroAtual === 'hoje') return c.visitadoHoje;
+      if (repFiltroAtual === 'semana') {
+        if (c.visitadoHoje) return true;
+        if (!c.ultimaVisita) return false;
+        const d = new Date(c.ultimaVisita + 'T00:00:00'), ini = new Date();
+        ini.setDate(ini.getDate() - ini.getDay()); ini.setHours(0,0,0,0);
+        return d >= ini;
+      }
+      if (c.visitadoHoje) return true;
+      if (!c.ultimaVisita) return false;
+      const d = new Date(c.ultimaVisita + 'T00:00:00');
+      return d.getMonth() === mesRef && d.getFullYear() === anoRef;
+    });
+    const nao = clientes.filter(c => !visitados.includes(c));
+    const pct = clientes.length ? Math.round(visitados.length / clientes.length * 100) : 0;
+    addCards([
+      { label: 'Taxa de Conversão', value: pct + '%',              color: [124, 58, 237] },
+      { label: 'Visitados',         value: String(visitados.length), color: GREEN },
+      { label: 'Pendentes',         value: String(nao.length),       color: RED },
+    ]);
+    if (visitados.length) addTable(
+      [[{ content: '✓ Visitados (' + visitados.length + ')', colSpan: 3, styles: { fillColor: GREEN, textColor: [255,255,255], fontStyle: 'bold', fontSize: 8.5 } }],
+       ['Cliente', 'Cidade', 'Última Visita']],
+      visitados.map(c => [_nc(c.nome), _cid(c.cidade), c.visitadoHoje ? 'Hoje' : _dt(c.ultimaVisita)])
+    );
+    if (nao.length) addTable(
+      [[{ content: '⏳ Não Visitados (' + nao.length + ')', colSpan: 3, styles: { fillColor: RED, textColor: [255,255,255], fontStyle: 'bold', fontSize: 8.5 } }],
+       ['Cliente', 'Cidade', 'Última Visita']],
+      nao.map(c => [_nc(c.nome), _cid(c.cidade), _dt(c.ultimaVisita) === '—' ? 'Nunca' : _dt(c.ultimaVisita)])
+    );
+
+  // ── BONIFICAÇÕES ────────────────────────────────────────
+  } else if (tipo === 'bonificacoes') {
+    const itens = bonificacoesFinCache || [];
+    const totG = itens.reduce((s, b) => s + (b.valor_total || 0), 0);
+    const totR = itens.reduce((s, b) => s + (b.parcelas || []).filter(p => p.recebido).reduce((a, p) => a + (p.valor || 0), 0), 0);
+    addCards([
+      { label: 'Total',    value: 'R$ ' + totG.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: BLUE },
+      { label: 'Recebido', value: 'R$ ' + totR.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: GREEN },
+      { label: 'Pendente', value: 'R$ ' + (totG - totR).toLocaleString('pt-BR', {minimumFractionDigits:2}), color: ORANGE },
+    ]);
+    addTable(
+      [['Cliente', 'Representada', 'Motivo', 'Total', 'Status']],
+      itens.map(b => {
+        const rec = (b.parcelas || []).filter(p => p.recebido).reduce((a, p) => a + (p.valor || 0), 0);
+        return [b.cliente_nome || '', b.representada_nome || '', (b.motivo || '').slice(0, 35), _val(b.valor_total), (b.valor_total - rec) > 0 ? 'Pendente' : 'Concluída'];
+      })
+    );
+    if (!itens.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma bonificação encontrada.', 14, y); }
   }
+
+  // ── Rodapé em todas as páginas ──────────────────────────
+  const totalPags = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPags; i++) {
+    doc.setPage(i);
+    const pH = doc.internal.pageSize.getHeight();
+    doc.setFontSize(7.5);
+    doc.setTextColor(160, 160, 160);
+    doc.text('mundodorep.com.br', 14, pH - 5);
+    doc.text('Página ' + i + ' de ' + totalPags, W - 14, pH - 5, { align: 'right' });
+  }
+
   doc.save('relatorio_' + tipo + '_' + filtroLabel.replace(/[\s/]/g, '_') + '.pdf');
 }
 
@@ -2941,6 +3115,7 @@ function openCadastro() {
   const segEl = document.getElementById('c-segmento');
   if (segEl) segEl.value = '';
   renderSegPills('');
+  preencherRepresentadasPills([]);
   document.getElementById('screen-cadastro').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   // Foca no primeiro campo
@@ -3029,6 +3204,7 @@ async function salvarCliente() {
   if (currentUser && sb) {
     try {
       const segmento = document.getElementById('c-segmento')?.value || '';
+      const representadasIds = getRepresentadasSelecionadas();
       const repId = await getRepId();
       const { data: inserted } = await sb.from('clientes').insert({
         id:          novoId,
@@ -3045,6 +3221,7 @@ async function salvarCliente() {
         lat,
         lng,
         segmento,
+        representadas_ids: representadasIds,
         ultima_visita: null,
         ultima_obs:  '',
         rep_id:      repId,
@@ -3084,6 +3261,7 @@ async function salvarEdicaoCliente() {
   const endereco  = document.getElementById('c-endereco').value.trim();
   const cnpj      = document.getElementById('c-cnpj').value.trim();
   const segmento  = document.getElementById('c-segmento').value;
+  const representadasIds = getRepresentadasSelecionadas();
 
   const fbEl2 = document.getElementById('cadastro-feedback');
   const btnSalvar2 = document.getElementById('btn-salvar-cliente');
@@ -3107,6 +3285,7 @@ async function salvarEdicaoCliente() {
         cnpj,
         cep,
         segmento,
+        representadas_ids: representadasIds,
         lat:          coordsCapturadas ? coordsCapturadas.lat : c.lat,
         lng:          coordsCapturadas ? coordsCapturadas.lng : c.lng,
       })
@@ -3133,6 +3312,7 @@ async function salvarEdicaoCliente() {
   c.endereco    = endereco;
   c.cnpj        = cnpj;
   c.segmento    = segmento;
+  c.representadasIds = representadasIds;
   c.cep         = cep;
   if (coordsCapturadas) { c.lat = coordsCapturadas.lat; c.lng = coordsCapturadas.lng; }
 
@@ -3182,6 +3362,7 @@ function editarCliente() {
   const seg = c.segmento || '';
   renderSegPills(seg);
   document.getElementById('c-segmento').value = seg;
+  preencherRepresentadasPills(c.representadasIds || []);
 
   // Pré-carrega coords se o cliente já tem localização
   coordsCapturadas = (c.lat && c.lng) ? { lat: c.lat, lng: c.lng } : null;
@@ -6269,6 +6450,29 @@ function preencherSelectRepresentadas() {
   if (val) sel.value = val;
 }
 
+function preencherRepresentadasPills(selecionados) {
+  const container = document.getElementById('c-representadas-pills');
+  if (!container) return;
+  if (!representadasCache.length) {
+    container.innerHTML = '<span style="font-size:13px;color:var(--text3)">Nenhuma representada cadastrada</span>';
+    return;
+  }
+  const ids = (selecionados || []).map(String);
+  container.innerHTML = representadasCache.map(r =>
+    `<button type="button" onclick="toggleRepresentadaCliente('${r.id}')" class="rep-pill${ids.includes(String(r.id)) ? ' rep-pill-ativa' : ''}" id="pill-rep-${r.id}">${r.nome}</button>`
+  ).join('');
+}
+
+function toggleRepresentadaCliente(id) {
+  document.getElementById('pill-rep-' + id)?.classList.toggle('rep-pill-ativa');
+}
+
+function getRepresentadasSelecionadas() {
+  return representadasCache
+    .filter(r => document.getElementById('pill-rep-' + r.id)?.classList.contains('rep-pill-ativa'))
+    .map(r => String(r.id));
+}
+
 async function openEmpresas() {
   document.getElementById('screen-empresas').style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -8626,6 +8830,12 @@ if ('serviceWorker' in navigator) {
         <div class="campo-grupo">
           <label class="campo-label">CNPJ</label>
           <input class="campo-input" id="c-cnpj" placeholder="00.000.000/0001-00">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Representadas</label>
+          <div id="c-representadas-pills" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px;align-items:center;">
+            <span style="font-size:13px;color:var(--text3)">Carregando...</span>
+          </div>
         </div>
         <div class="campo-grupo">
           <div class="loc-status" id="c-loc-status"></div>
