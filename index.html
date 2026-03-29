@@ -4955,15 +4955,29 @@ function renderHistorico(id, c) {
     const editadoStr = v.hora_edicao && v.hora_edicao !== v.hora
       ? `<span style="font-size:10px;color:var(--text3);margin-left:6px">editado às ${v.hora_edicao}</span>`
       : '';
-    const valor = v.pedido_valor || v.valor_pedido;
-    const valorStr = valor ? ` · <strong style="color:var(--green)">R$ ${parseFloat(valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>` : '';
-    const repStr = v.pedido_representada ? `<span style="font-size:11px;color:var(--text3);margin-left:4px">· ${v.pedido_representada}</span>` : '';
-    const docBtn = parseDocUrls(v.doc_url).map((u, i, arr) =>
-      `<a href="${u}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:4px;text-decoration:none" title="Abrir documento">📄${arr.length > 1 ? (i+1) : ''}</a>`
+    const docBtn = parseDocUrls(v.doc_url).map((u, idx2, arr) =>
+      `<a href="${u}" target="_blank" style="color:var(--blue);font-size:13px;margin-left:4px;text-decoration:none" title="Abrir documento">📄${arr.length > 1 ? (idx2+1) : ''}</a>`
     ).join('');
     const editBtn = isHoje && tipo !== 'orcamento' && tipo !== 'remoto'
       ? `<button onclick="editarObsHoje(${id},'${v.data}','${v.hora||''}')" style="background:none;border:none;font-size:13px;cursor:pointer;color:var(--text3);padding:0 2px">✏️</button>`
       : '';
+
+    // Linha 2: badges de tipo + representada (apenas se relevante)
+    const repBadge = v.pedido_representada
+      ? `<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:var(--bg);color:var(--text2)">${v.pedido_representada}</span>`
+      : '';
+    const badgesHtml = (badge || repBadge)
+      ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${badge}${repBadge}</div>`
+      : '';
+
+    // Linha 3: valor — somente se existe pedido/orçamento com valor > 0
+    const hasPedidoTipo = (v.pedido_tipo && v.pedido_tipo !== 'nenhum')
+      || tipo === 'pedido' || tipo === 'orcamento' || tipo === 'remoto';
+    const valorRaw = hasPedidoTipo ? (parseFloat(v.pedido_valor) || parseFloat(v.valor_pedido) || 0) : 0;
+    const valorHtml = valorRaw > 0
+      ? `<div style="font-size:13px;font-weight:700;color:var(--green);margin-top:4px">R$ ${valorRaw.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+      : '';
+
     const isOrcAberto = tipo === 'orcamento' && (v.status_orcamento === 'aberto' || !v.status_orcamento) && v.id;
     const converterBtn = isOrcAberto
       ? `<button onclick="converterOrcamentoEmPedido(${v.id})" style="margin-top:6px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px">✓ Converter em Pedido</button>`
@@ -4980,7 +4994,9 @@ function renderHistorico(id, c) {
     <div class="historico-item" ${clickable}>
       <div class="hist-dot ${dotClass}">${emoji}</div>
       <div class="hist-content">
-        <div class="hist-data">${label}${horaStr}${editadoStr}${badge}${valorStr}${repStr}${docBtn}${v.id ? '' : editBtn}</div>
+        <div class="hist-data">${label}${horaStr}${editadoStr}${docBtn}${v.id ? '' : editBtn}</div>
+        ${badgesHtml}
+        ${valorHtml}
         ${obsHtml}
         ${v.id ? '' : converterBtn+perdidoBtn}
       </div>
