@@ -2377,9 +2377,11 @@ function abrirRepDetalhe(tipo) {
       '<span class="rep-total-val" style="font-size:20px">' + formatarMoeda(totalVendas) + '</span>' +
     '</div>' + renderVendasDetalheLista(allPedidos);
   } else if (tipo === 'orcamentos') {
-    const abertos = rows.filter(v => v.tipo === 'orcamento' && (!v.status_orcamento || v.status_orcamento === 'aberto'));
-    const fechados = rows.filter(v => v.tipo === 'orcamento' && v.status_orcamento === 'fechado');
-    const perdidos = rows.filter(v => v.tipo === 'orcamento' && v.status_orcamento === 'perdido');
+    const isOrc = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
+    const statusOrc = v => v.status_orcamento || v.orcamento_status || 'aberto';
+    const abertos = rows.filter(v => isOrc(v) && (!statusOrc(v) || statusOrc(v) === 'aberto'));
+    const fechados = rows.filter(v => isOrc(v) && statusOrc(v) === 'fechado');
+    const perdidos = rows.filter(v => isOrc(v) && statusOrc(v) === 'perdido');
     html = renderGrupoOrcamentos('Em Aberto', abertos, 'var(--orange)') +
            renderGrupoOrcamentos('Fechados', fechados, 'var(--green)') +
            renderGrupoOrcamentos('Perdidos', perdidos, 'var(--red)');
@@ -3883,34 +3885,9 @@ function ciResetForm() {
 }
 
 function mostrarResumoHoje(c, visitaHoje) {
-  const hojeDiv = document.getElementById('p-visitado-hoje');
+  // Card removido — edição feita pelo histórico
   const formDiv = document.getElementById('p-form-checkin');
-  if (!hojeDiv || !formDiv) return;
-  if (!visitaHoje) {
-    hojeDiv.style.display = 'none';
-    formDiv.style.display = 'block';
-    return;
-  }
-  hojeDiv.style.display = 'block';
-  formDiv.style.display = 'none';
-  const horaEl = document.getElementById('p-hoje-hora');
-  const obsEl = document.getElementById('p-hoje-obs');
-  const pedEl = document.getElementById('p-hoje-pedido');
-  const iconEl = document.querySelector('#p-visitado-hoje .p-hoje-icon');
-  if (iconEl) iconEl.textContent = '🤝';
-  if (horaEl) horaEl.textContent = visitaHoje.hora ? `✓ Visitado às ${visitaHoje.hora}` : '✓ Visitado hoje';
-  if (obsEl) obsEl.textContent = visitaHoje.obs || '';
-  if (pedEl) {
-    const pt = visitaHoje.pedido_tipo || (visitaHoje.tipo !== 'visita' && visitaHoje.tipo !== 'whatsapp' ? visitaHoje.tipo : null);
-    if (pt && pt !== 'nenhum') {
-      const val = visitaHoje.pedido_valor || visitaHoje.valor_pedido;
-      const rep = visitaHoje.pedido_representada;
-      let txt = pt === 'orcamento' ? '📋 Orçamento' : '💰 Pedido';
-      if (rep) txt += ' · ' + rep;
-      if (val) txt += ' · R$ ' + parseFloat(val).toLocaleString('pt-BR', {minimumFractionDigits:2});
-      pedEl.textContent = txt;
-    } else { pedEl.textContent = ''; }
-  }
+  if (formDiv) formDiv.style.display = 'block';
 }
 
 function editarVisitaHoje() {
@@ -3994,7 +3971,7 @@ async function fazerCheckin() {
     registrado_em: isRetroativo ? new Date().toISOString() : null,
   };
 
-  // Verifica se já existe visita do dia para este cliente (evita duplicata)
+  // Verifica se já existe visita do dia para este cliente
   let existingVisita = null;
   if (tipoVisita !== 'whatsapp') {
     const { data: rows } = await sb.from('visitas')
@@ -4004,7 +3981,33 @@ async function fazerCheckin() {
       .eq('data', dataVisita)
       .neq('tipo', 'whatsapp')
       .limit(1);
-    existingVisita = rows?.[0] || null;
+    if (rows?.[0]) {
+      const confirmado = await new Promise(resolve => {
+        document.getElementById('dup-ci-overlay')?.remove();
+        document.getElementById('dup-ci-menu')?.remove();
+        const overlay = document.createElement('div');
+        overlay.className = 'hist-delete-overlay';
+        overlay.id = 'dup-ci-overlay';
+        const menu = document.createElement('div');
+        menu.className = 'hist-delete-menu';
+        menu.id = 'dup-ci-menu';
+        menu.innerHTML = `
+          <h3>⚠️ Visita já registrada</h3>
+          <p>Você já registrou uma visita hoje para este cliente. Deseja registrar outra mesmo assim?</p>
+          <div class="hist-delete-actions">
+            <button id="dup-cancelar" style="flex:1;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;">Cancelar</button>
+            <button id="dup-confirmar" style="flex:1;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Registrar mesmo assim</button>
+          </div>`;
+        document.body.appendChild(overlay);
+        document.body.appendChild(menu);
+        const fechar = (res) => { overlay.remove(); menu.remove(); resolve(res); };
+        overlay.onclick = () => fechar(false);
+        document.getElementById('dup-cancelar').onclick = () => fechar(false);
+        document.getElementById('dup-confirmar').onclick = () => fechar(true);
+      });
+      if (!confirmado) { if (btn) btn.disabled = false; return; }
+      // Usuário confirmou — força INSERT (não atualiza visita existente)
+    }
   }
 
   let savedData;
@@ -4355,6 +4358,43 @@ async function salvarEdicaoVisita() {
   fecharDetalheVisita();
   const c = clientes.find(x => x.id == perfilId);
   renderHistorico(perfilId, c);
+}
+
+async function excluirVisitaDetalhe() {
+  if (!dvVisitaAtual?.id || !currentUser) return;
+  const confirmado = await new Promise(resolve => {
+    document.getElementById('exc-visita-overlay')?.remove();
+    document.getElementById('exc-visita-menu')?.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'hist-delete-overlay';
+    overlay.id = 'exc-visita-overlay';
+    const menu = document.createElement('div');
+    menu.className = 'hist-delete-menu';
+    menu.id = 'exc-visita-menu';
+    menu.innerHTML = `
+      <h3>🗑 Excluir visita</h3>
+      <p>Tem certeza? Esta ação não pode ser desfeita.</p>
+      <div class="hist-delete-actions">
+        <button id="exc-cancelar" style="flex:1;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;">Cancelar</button>
+        <button id="exc-confirmar" style="flex:1;padding:11px;background:var(--red);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Excluir</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.body.appendChild(menu);
+    const fechar = (res) => { overlay.remove(); menu.remove(); resolve(res); };
+    overlay.onclick = () => fechar(false);
+    document.getElementById('exc-cancelar').onclick = () => fechar(false);
+    document.getElementById('exc-confirmar').onclick = () => fechar(true);
+  });
+  if (!confirmado) return;
+  const { error } = await sb.from('visitas').delete().eq('id', dvVisitaAtual.id).eq('rep_id', await getRepId());
+  if (error) { showToast('❌ Erro ao excluir', true); return; }
+  if (historicoVisitas[perfilId]) {
+    historicoVisitas[perfilId] = historicoVisitas[perfilId].filter(v => String(v.id) !== String(dvVisitaAtual.id));
+  }
+  showToast('✓ Visita excluída');
+  fecharDetalheVisita();
+  const c = clientes.find(x => x.id == perfilId);
+  if (c) renderHistorico(perfilId, c);
 }
 
 async function converterOrcamentoDV() {
@@ -4911,7 +4951,7 @@ function renderHistorico(id, c) {
   container.innerHTML = items.map((v, i) => {
     const tipo = v.tipo || 'visita';
     const isWhatsApp = tipo === 'whatsapp';
-    const isHoje = !!v.hoje;
+    const isHoje = v.data === dataHojeLocal();
 
     // Dot: maleta verde (presencial) ou ícone WhatsApp verde
     const dotBgColor = isWhatsApp ? '#25D366' : 'var(--green)';
@@ -5582,7 +5622,7 @@ async function carregarPeriodoRelatorio() {
 }
 
 function atualizarAvisoOrcamentos() {
-  const abertos = visatasDoRelatorio.filter(v => v.tipo === 'orcamento' && (!v.status_orcamento || v.status_orcamento === 'aberto'));
+  const abertos = visatasDoRelatorio.filter(v => (v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento') && (!(v.status_orcamento || v.orcamento_status) || (v.status_orcamento || v.orcamento_status) === 'aberto'));
   const navRep = document.getElementById('nav-report');
   if (!navRep) return;
   // Remove badge anterior
@@ -8877,19 +8917,6 @@ if ('serviceWorker' in navigator) {
         </div>
         <div class="lembrete-salvo" id="p-lembrete-salvo"></div>
 
-        <!-- Resumo se visitou hoje -->
-        <div id="p-visitado-hoje" style="display:none">
-          <div class="p-hoje-box">
-            <div class="p-hoje-icon">🤝</div>
-            <div class="p-hoje-info">
-              <div class="p-hoje-hora" id="p-hoje-hora">Visitado</div>
-              <div class="p-hoje-obs" id="p-hoje-obs"></div>
-              <div class="p-hoje-pedido" id="p-hoje-pedido"></div>
-            </div>
-            <button class="btn-edit-hoje" onclick="editarVisitaHoje()">Editar</button>
-          </div>
-        </div>
-
         <!-- Form check-in unificado -->
         <div id="p-form-checkin">
           <div class="perfil-section-title">Registrar visita</div>
@@ -9038,6 +9065,9 @@ if ('serviceWorker' in navigator) {
           <div style="display:flex;gap:8px;margin-top:8px">
             <button class="gestao-btn-sm" onclick="cancelarEdicaoVisita()" style="flex:1;padding:11px">Cancelar</button>
             <button class="pf-btn-registrar" onclick="salvarEdicaoVisita()" style="flex:2;margin-top:0">Salvar</button>
+          </div>
+          <div style="margin-top:14px;text-align:center">
+            <button onclick="excluirVisitaDetalhe()" style="background:none;border:none;color:var(--red);font-size:12px;cursor:pointer;padding:4px 8px;opacity:0.8">Excluir visita</button>
           </div>
         </div>
       </div>
