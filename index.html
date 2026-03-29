@@ -6434,21 +6434,38 @@ async function deletarEmpresa(id) {
 
 // ── SEGMENTOS ─────────────────────────────────────────
 
+const _SEGS_DEFAULT = ['Mat. Construção', 'Construtora', 'Tintas', 'Distribuidora'];
+
 async function carregarSegmentos() {
   if (!currentUser) return;
   try {
     const repId = await getRepId();
-    if (!repId) return;
-    const { data } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
-    const seen = new Set();
-    segmentosCache = (data || []).filter(s => seen.has(s.nome) ? false : seen.add(s.nome));
-    if (!segmentosCache.length) {
-      const defaults = ['Mat. Construção', 'Construtora', 'Tintas', 'Distribuidora'];
-      await sb.from('segmentos').insert(defaults.map(nome => ({ nome, rep_id: repId })));
-      const { data: d2 } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
-      segmentosCache = d2 || [];
+    if (!repId) {
+      if (!segmentosCache.length) segmentosCache = _SEGS_DEFAULT.map((nome, i) => ({ id: 'def_' + i, nome }));
+      preencherSegmentosSelect('');
+      return;
     }
-  } catch(e) { segmentosCache = []; }
+    const { data, error } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
+    if (error) throw error;
+    const seen = new Set();
+    const fromDb = (data || []).filter(s => seen.has(s.nome) ? false : seen.add(s.nome));
+    if (fromDb.length) {
+      segmentosCache = fromDb;
+    } else {
+      // Tenta inserir defaults; se falhar, usa em memória
+      const { error: insErr } = await sb.from('segmentos').insert(_SEGS_DEFAULT.map(nome => ({ nome, rep_id: repId })));
+      if (!insErr) {
+        const { data: d2 } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
+        segmentosCache = d2 && d2.length ? d2 : _SEGS_DEFAULT.map((nome, i) => ({ id: 'def_' + i, nome }));
+      } else {
+        console.error('carregarSegmentos insert defaults:', insErr);
+        if (!segmentosCache.length) segmentosCache = _SEGS_DEFAULT.map((nome, i) => ({ id: 'def_' + i, nome }));
+      }
+    }
+  } catch(e) {
+    console.error('carregarSegmentos:', e);
+    if (!segmentosCache.length) segmentosCache = _SEGS_DEFAULT.map((nome, i) => ({ id: 'def_' + i, nome }));
+  }
   preencherSegmentosSelect('');
 }
 
@@ -6518,19 +6535,21 @@ function fecharNovoSegmentoInline() {
 async function salvarNovoSegmentoInline() {
   const nome = document.getElementById('novo-seg-inline-nome')?.value.trim();
   if (!nome) return;
+  // Adiciona ao cache local imediatamente (independente do Supabase)
+  if (!segmentosCache.find(s => s.nome === nome)) {
+    segmentosCache.push({ id: 'local_' + Date.now(), nome });
+    segmentosCache.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+  preencherSegmentosSelect(nome); // atualiza select e pré-seleciona o novo
+  fecharNovoSegmentoInline();
+  showToast('✓ Segmento criado');
+  // Persiste no Supabase em background
   try {
     const repId = await getRepId();
-    await sb.from('segmentos').insert({ nome, rep_id: repId });
-    await carregarSegmentos();
-    // Seleciona o novo segmento automaticamente
-    const sel = document.getElementById('c-segmento');
-    if (sel) {
-      const opt = Array.from(sel.options).find(o => o.value === nome);
-      if (opt) sel.value = nome;
-    }
-    fecharNovoSegmentoInline();
-    showToast('✓ Segmento criado');
-  } catch(e) { showToast('❌ Erro ao criar segmento', true); }
+    const { error } = await sb.from('segmentos').insert({ nome, rep_id: repId });
+    if (error) console.error('salvarNovoSegmentoInline:', error);
+    else await carregarSegmentos().then(() => preencherSegmentosSelect(nome));
+  } catch(e) { console.error('salvarNovoSegmentoInline:', e); }
 }
 
 async function salvarSegmento() {
@@ -6538,18 +6557,31 @@ async function salvarSegmento() {
   const nome = document.getElementById('seg-mgmt-nome').value.trim();
   if (!nome) { showToast('⚠️ Nome obrigatório', true); return; }
   const id = document.getElementById('seg-mgmt-id').value;
+  // Atualiza cache local imediatamente
+  if (id) {
+    const s = segmentosCache.find(x => String(x.id) === String(id));
+    if (s) s.nome = nome;
+  } else if (!segmentosCache.find(s => s.nome === nome)) {
+    segmentosCache.push({ id: 'local_' + Date.now(), nome });
+    segmentosCache.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+  fecharFormSegmento();
+  renderSegmentos();
+  preencherSegmentosSelect('');
+  showToast(id ? '✓ Segmento atualizado' : '✓ Segmento criado');
+  // Persiste no Supabase em background
   const repId = await getRepId();
   try {
     if (id) {
-      await sb.from('segmentos').update({ nome }).eq('id', id).eq('rep_id', repId);
+      const { error } = await sb.from('segmentos').update({ nome }).eq('id', id).eq('rep_id', repId);
+      if (error) console.error('salvarSegmento update:', error);
     } else {
-      await sb.from('segmentos').insert({ nome, rep_id: repId });
+      const { error } = await sb.from('segmentos').insert({ nome, rep_id: repId });
+      if (error) console.error('salvarSegmento insert:', error);
     }
     await carregarSegmentos();
-    fecharFormSegmento();
     renderSegmentos();
-    showToast(id ? '✓ Segmento atualizado' : '✓ Segmento criado');
-  } catch(e) { showToast('❌ Erro ao salvar', true); console.log('salvarSegmento:', e); }
+  } catch(e) { console.error('salvarSegmento:', e); }
 }
 
 async function deletarSegmento(id) {
