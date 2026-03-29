@@ -631,6 +631,7 @@ async function doCheckin(id) {
     };
     if (valor !== null) payload.valor_pedido = valor;
     await sb.from('visitas').insert(payload);
+    await sb.from('clientes').update({ ultima_visita: data }).eq('id', String(c.id));
     showToast('✓ Visita registrada!');
   } catch(e) {
     showToast('⚠️ Salvo localmente', true);
@@ -2567,22 +2568,40 @@ function exportarRotaGoogleMaps(orderedJSON) {
 
 // ── FINANÇAS — funções ───────────────────────────────────────────────
 
+function dataHojeLocal() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function maskMoeda(el) {
+  let v = el.value.replace(/\D/g, '');
+  if (!v) { el.value = ''; return; }
+  el.value = (parseInt(v,10)/100).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+
+function parseMoeda(el) {
+  if (!el) return 0;
+  const v = (el.value||'').replace(/\./g,'').replace(',','.');
+  return parseFloat(v) || 0;
+}
+
 function initFinancas() {
   setFinTab(finTab);
 }
 
 function setFinTab(tab) {
   finTab = tab;
-  ['lancamentos','impostos','resumo'].forEach(t => {
-    document.getElementById(`fin-subtab-${t}`).classList.toggle('active', t === tab);
+  ['lancamentos','impostos','resumo','compromissos'].forEach(t => {
+    document.getElementById(`fin-subtab-${t}`)?.classList.toggle('active', t === tab);
     const wrap = document.getElementById(`fin-wrap-${t}`);
     if (wrap) wrap.style.display = t === tab ? (t === 'lancamentos' ? 'flex' : 'block') : 'none';
   });
   const novoBtn = document.getElementById('fin-novo-btn');
   if (novoBtn) novoBtn.style.display = tab === 'lancamentos' ? 'block' : 'none';
-  if (tab === 'lancamentos') carregarLancamentos().then(renderLancamentos);
-  if (tab === 'impostos')    carregarImpostos().then(renderImpostos);
-  if (tab === 'resumo')      carregarLancamentos().then(renderResumoFin);
+  if (tab === 'lancamentos')  carregarLancamentos().then(renderLancamentos);
+  if (tab === 'impostos')     carregarImpostos().then(renderImpostos);
+  if (tab === 'resumo')       carregarLancamentos().then(renderResumoFin);
+  if (tab === 'compromissos') carregarCompromissos().then(renderCompromissos);
 }
 
 function setFinPeriodo(p) {
@@ -3146,9 +3165,9 @@ function bonifAtualizarParcelas() {
 }
 
 async function carregarBonificacoes() {
-  if (!currentUser || !activeId) return;
+  if (!currentRep || !activeId) return;
   const { data } = await sb.from('bonificacoes')
-    .select('*').eq('rep_id', currentUser.id).eq('cliente_id', String(activeId))
+    .select('*').eq('rep_id', currentRep.id).eq('cliente_id', String(activeId))
     .order('created_at', { ascending: false });
   bonifAtual = data || [];
   renderBonificacoes();
@@ -3215,7 +3234,7 @@ async function salvarBonificacao() {
   const parcValor = Math.round(valorTotal/bonifQtd*100)/100;
   const parcelas  = Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
   const { error } = await sb.from('bonificacoes').insert({
-    rep_id: currentUser.id,
+    rep_id: currentRep.id,
     cliente_id: String(activeId), cliente_nome: c.nome,
     representada_id: representadaId||null,
     representada_nome: representadaNome||null,
@@ -3256,7 +3275,7 @@ async function carregarBonifResumoPerfil() {
   const sub   = document.getElementById('p-bonif-sub');
   const badge = document.getElementById('p-bonif-badge');
   if (!sub) return;
-  const { data } = await sb.from('bonificacoes').select('parcelas,valor_total,status').eq('rep_id', currentUser.id).eq('cliente_id', String(activeId));
+  const { data } = await sb.from('bonificacoes').select('parcelas,valor_total,status').eq('rep_id', currentRep.id).eq('cliente_id', String(activeId));
   if (!data || !data.length) { sub.textContent = 'Nenhuma bonificação'; if(badge) badge.style.display='none'; return; }
   let pendente = 0;
   data.forEach(b => (b.parcelas||[]).forEach(p => { if(!p.recebido) pendente+=(p.valor||0); }));
@@ -3265,4 +3284,184 @@ async function carregarBonifResumoPerfil() {
     if (pendente>0) { badge.textContent='R$ '+pendente.toFixed(2).replace('.',','); badge.style.display='inline-flex'; }
     else badge.style.display='none';
   }
+}
+
+// ── COMPROMISSOS (Parcelas / Empréstimos) ─────────────────────────────
+
+let compromissosCache = [];
+let compSubTab = 'parcelas';
+
+async function carregarCompromissos() {
+  if (!currentRep) return;
+  try {
+    const { data } = await sb.from('compromissos').select('*')
+      .eq('rep_id', currentRep.id).order('created_at', { ascending: true });
+    compromissosCache = data || [];
+  } catch(e) { compromissosCache = []; }
+}
+
+function calcProximoVencimento(dataInicio, parcelaAtual) {
+  const [y, m, d] = dataInicio.split('-').map(Number);
+  const date = new Date(y, m - 1 + (parcelaAtual - 1), d);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function setCompSubTab(tab) {
+  compSubTab = tab;
+  ['parcelas','emprestimos'].forEach(t => {
+    document.getElementById(`comp-tab-${t}`)?.classList.toggle('active', t === tab);
+  });
+  if (document.getElementById('comp-form')?.style.display === 'block') _atualizarFormCompCampos();
+  renderCompromissos();
+}
+
+function _atualizarFormCompCampos() {
+  const tipoParcela = compSubTab === 'parcelas';
+  document.getElementById('comp-campo-categoria').style.display     = tipoParcela ? 'block' : 'none';
+  document.getElementById('comp-campo-banco').style.display         = tipoParcela ? 'none'  : 'block';
+  document.getElementById('comp-campo-valor-parcela').style.display = tipoParcela ? 'none'  : 'block';
+  document.getElementById('comp-campo-taxa').style.display          = tipoParcela ? 'none'  : 'block';
+  document.getElementById('comp-form-titulo').textContent = tipoParcela ? 'Nova Parcela' : 'Novo Empréstimo';
+}
+
+function renderCompromissos() {
+  const tipo = compSubTab === 'parcelas' ? 'parcela' : 'emprestimo';
+  const items = compromissosCache.filter(c => c.tipo === tipo);
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear(), mesAtual = hoje.getMonth() + 1;
+
+  const resumoEl = document.getElementById('comp-resumo');
+  if (resumoEl) {
+    const ativos = items.filter(c => (c.parcela_atual||1) <= (c.total_parcelas||0));
+    const estesMes = ativos.filter(c => {
+      if (!c.data_inicio) return false;
+      const v = calcProximoVencimento(c.data_inicio, c.parcela_atual||1);
+      const [vy,vm] = v.split('-').map(Number);
+      return vy === anoAtual && vm === mesAtual;
+    });
+    const valEstesMes = estesMes.reduce((s,c) => s+(c.valor_parcela||0), 0);
+    const totalRestante = ativos.reduce((s,c) => s + Math.max(0,(c.total_parcelas||0)-(c.parcela_atual||1)+1)*(c.valor_parcela||0), 0);
+    if (tipo === 'parcela') {
+      resumoEl.innerHTML = `
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--red)">R$ ${totalRestante.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Total restante</div></div>
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">R$ ${valEstesMes.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Este mês</div></div>`;
+    } else {
+      resumoEl.innerHTML = `
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--red)">R$ ${totalRestante.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Saldo devedor</div></div>
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">R$ ${valEstesMes.toFixed(2).replace('.',',')}</div><div class="fin-resumo-lbl">Este mês</div></div>`;
+    }
+  }
+
+  const lista = document.getElementById('comp-lista');
+  if (!lista) return;
+  if (!items.length) {
+    lista.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--text3);font-size:13px;">${tipo==='parcela'?'Nenhuma parcela cadastrada.':'Nenhum empréstimo cadastrado.'}</div>`;
+    return;
+  }
+  lista.innerHTML = items.map(c => {
+    const totalP = c.total_parcelas || 1;
+    const atual  = c.parcela_atual || 1;
+    const pagas  = atual - 1;
+    const pct    = Math.min(100, Math.round(pagas / totalP * 100));
+    const restantes = Math.max(0, totalP - atual + 1);
+    const saldoRest = restantes * (c.valor_parcela||0);
+    const concluido = atual > totalP;
+    const venc   = (!concluido && c.data_inicio) ? calcProximoVencimento(c.data_inicio, atual) : null;
+    const [vy,vm] = venc ? venc.split('-').map(Number) : [0,0];
+    const venceEsteMes = vy===anoAtual && vm===mesAtual;
+    const [vy2,vm2,vd2] = venc ? venc.split('-') : ['','',''];
+    const vencBR = venc ? `${vd2}/${vm2}/${vy2}` : '—';
+    return `<div class="fin-card" style="margin-bottom:10px;${concluido?'opacity:.55':''}">
+      <div class="fin-item" style="align-items:flex-start;padding:12px 14px;">
+        <div class="fin-item-info" style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+            <span class="fin-item-desc">${c.descricao}</span>
+            ${venceEsteMes?'<span style="background:var(--orange);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;">Este mês</span>':''}
+            ${concluido?'<span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;">✓ Quitado</span>':''}
+          </div>
+          <div class="fin-item-sub">${tipo==='parcela'?(c.categoria||''):(c.banco||'')}${(tipo==='emprestimo'&&c.taxa_juros)?` · ${c.taxa_juros}% a.m.`:''}</div>
+          <div class="bonif-progress-bar" style="margin-top:5px"><div class="bonif-progress-fill" style="width:${pct}%"></div></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px;">${pagas}/${totalP} parcelas${!concluido?` · Próx.: ${vencBR}`:''}</div>
+        </div>
+        <div style="text-align:right;margin-left:16px;flex-shrink:0;">
+          <div style="font-size:14px;font-weight:800;">R$ ${(c.valor_parcela||0).toFixed(2).replace('.',',')}<span style="font-size:10px;font-weight:400;color:var(--text3)">/mês</span></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Restante: R$ ${saldoRest.toFixed(2).replace('.',',')}</div>
+          <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;">
+            ${!concluido?`<button onclick="avancarParcelaComp('${c.id}')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">✓ Pago</button>`:''}
+            <button onclick="deletarCompromisso('${c.id}')" style="background:none;border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;color:var(--text3);cursor:pointer;">🗑</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirFormCompromisso() {
+  document.getElementById('comp-form').style.display = 'block';
+  document.getElementById('comp-add-btn').style.display = 'none';
+  const di = document.getElementById('comp-data-inicio');
+  if (di && !di.value) di.value = dataHojeLocal();
+  const pa = document.getElementById('comp-parcela-atual');
+  if (pa && !pa.value) pa.value = '1';
+  _atualizarFormCompCampos();
+}
+
+function fecharFormCompromisso() {
+  document.getElementById('comp-form').style.display = 'none';
+  document.getElementById('comp-add-btn').style.display = 'block';
+}
+
+async function salvarCompromisso() {
+  const tipo          = compSubTab === 'parcelas' ? 'parcela' : 'emprestimo';
+  const desc          = document.getElementById('comp-desc')?.value.trim();
+  const totalParcelas = parseInt(document.getElementById('comp-total-parcelas')?.value) || 0;
+  const parcelaAtual  = parseInt(document.getElementById('comp-parcela-atual')?.value) || 1;
+  const dataInicio    = document.getElementById('comp-data-inicio')?.value;
+  const valorTotal    = parseMoeda(document.getElementById('comp-valor-total'));
+  if (!desc || !totalParcelas || !dataInicio) { showToast('Preencha os campos obrigatórios', true); return; }
+  let valorParcela;
+  if (tipo === 'parcela') {
+    valorParcela = valorTotal ? valorTotal / totalParcelas : 0;
+    if (!valorParcela) { showToast('Informe o valor total', true); return; }
+  } else {
+    valorParcela = parseMoeda(document.getElementById('comp-valor-parcela'));
+    if (!valorParcela) { showToast('Informe o valor da parcela', true); return; }
+  }
+  const payload = {
+    rep_id: currentRep.id, tipo, descricao: desc,
+    total_parcelas: totalParcelas, parcela_atual: parcelaAtual,
+    valor_parcela: valorParcela, valor_total: valorTotal || (valorParcela * totalParcelas),
+    data_inicio: dataInicio,
+  };
+  if (tipo === 'parcela') {
+    payload.categoria = document.getElementById('comp-categoria')?.value || null;
+  } else {
+    payload.banco = document.getElementById('comp-banco')?.value.trim() || null;
+    const taxaStr = (document.getElementById('comp-taxa')?.value || '').replace(',','.');
+    payload.taxa_juros = taxaStr ? parseFloat(taxaStr) : null;
+  }
+  const { error } = await sb.from('compromissos').insert(payload);
+  if (error) { showToast('Erro ao salvar', true); console.error(error); return; }
+  showToast('✓ Compromisso salvo');
+  fecharFormCompromisso();
+  await carregarCompromissos();
+  renderCompromissos();
+}
+
+async function deletarCompromisso(id) {
+  if (!confirm('Excluir este compromisso?')) return;
+  await sb.from('compromissos').delete().eq('id', id);
+  compromissosCache = compromissosCache.filter(c => c.id !== id);
+  renderCompromissos();
+  showToast('Compromisso excluído');
+}
+
+async function avancarParcelaComp(id) {
+  const c = compromissosCache.find(x => x.id === id);
+  if (!c) return;
+  const nova = (c.parcela_atual||1) + 1;
+  await sb.from('compromissos').update({ parcela_atual: nova }).eq('id', id);
+  c.parcela_atual = nova;
+  renderCompromissos();
+  showToast('✓ Parcela marcada como paga');
 }

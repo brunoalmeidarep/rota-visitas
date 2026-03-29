@@ -256,7 +256,8 @@
       <div id="fin-subtabs">
         <button class="fin-subtab active" id="fin-subtab-lancamentos" onclick="setFinTab('lancamentos')">💰 Lançamentos</button>
         <button class="fin-subtab"        id="fin-subtab-impostos"    onclick="setFinTab('impostos')">📋 Impostos</button>
-        <button class="fin-subtab"        id="fin-subtab-resumo"      onclick="setFinTab('resumo')">📊 Resumo</button>
+        <button class="fin-subtab"        id="fin-subtab-resumo"       onclick="setFinTab('resumo')">📊 Resumo</button>
+        <button class="fin-subtab"        id="fin-subtab-compromissos" onclick="setFinTab('compromissos')">📅 Compromissos</button>
         <button class="fin-novo-btn" id="fin-novo-btn" onclick="abrirModalLancamento()">+ Novo lançamento</button>
       </div>
 
@@ -300,6 +301,42 @@
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- COMPROMISSOS -->
+      <div id="fin-wrap-compromissos" style="display:none;flex:1;overflow:hidden;">
+        <div id="fin-comp-subtabs" style="display:flex;gap:6px;padding:10px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
+          <button class="fin-periodo-tab active" id="comp-tab-parcelas"   onclick="setCompSubTab('parcelas')">📋 Parcelas</button>
+          <button class="fin-periodo-tab"        id="comp-tab-emprestimos" onclick="setCompSubTab('emprestimos')">🏦 Empréstimos</button>
+          <button class="fin-novo-btn" style="margin-left:auto" id="comp-add-btn" onclick="abrirFormCompromisso()">+ Adicionar</button>
+        </div>
+        <div class="fin-scroll-body">
+          <div id="comp-resumo" style="display:flex;gap:12px;margin-bottom:16px;"></div>
+          <div id="comp-lista"></div>
+          <div id="comp-form" style="display:none;background:var(--surface);border-radius:14px;padding:16px;border:1px solid var(--border);margin-top:8px;">
+            <div style="font-size:14px;font-weight:700;margin-bottom:12px;" id="comp-form-titulo">Nova Parcela</div>
+            <div class="campo-grupo"><label class="campo-label">Descrição *</label><input class="campo-input" id="comp-desc" placeholder="Ex: Notebook, Financiamento carro..."></div>
+            <div id="comp-campo-categoria" class="campo-grupo"><label class="campo-label">Categoria</label>
+              <select class="campo-input" id="comp-categoria">
+                <option value="">Selecione...</option>
+                <option>Carro</option><option>Casa</option><option>Eletrônico</option><option>Saúde</option><option>Outros</option>
+              </select>
+            </div>
+            <div id="comp-campo-banco" style="display:none" class="campo-grupo"><label class="campo-label">Banco / Financeira</label><input class="campo-input" id="comp-banco" placeholder="Ex: Banco do Brasil..."></div>
+            <div class="campo-grupo"><label class="campo-label">Valor total</label><input class="campo-input" id="comp-valor-total" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)"></div>
+            <div style="display:flex;gap:8px" class="campo-grupo">
+              <div style="flex:1"><label class="campo-label">Nº de parcelas *</label><input class="campo-input" id="comp-total-parcelas" type="number" min="1" placeholder="12"></div>
+              <div style="flex:1"><label class="campo-label">Parcela atual</label><input class="campo-input" id="comp-parcela-atual" type="number" min="1" placeholder="1"></div>
+            </div>
+            <div id="comp-campo-valor-parcela" style="display:none" class="campo-grupo"><label class="campo-label">Valor da parcela *</label><input class="campo-input" id="comp-valor-parcela" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)"></div>
+            <div id="comp-campo-taxa" style="display:none" class="campo-grupo"><label class="campo-label">Taxa de juros a.m. (opcional)</label><input class="campo-input" id="comp-taxa" inputmode="decimal" placeholder="Ex: 1,5"></div>
+            <div class="campo-grupo"><label class="campo-label">Data da primeira parcela *</label><input class="campo-input" id="comp-data-inicio" type="date"></div>
+            <div class="modal-footer" style="padding:0;margin-top:4px">
+              <button class="btn-cancel-modal" onclick="fecharFormCompromisso()">Cancelar</button>
+              <button class="btn-salvar-modal" onclick="salvarCompromisso()">Salvar</button>
+            </div>
+          </div>
         </div>
       </div>
 
