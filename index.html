@@ -962,9 +962,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <span style="font-size:10px;font-weight:600;color:var(--text3);white-space:nowrap;align-self:center;flex-shrink:0">Última visita:</span>
     <button class="seg-pill-filtro active" id="pill-todos" onclick="filtrarStatus(this,'')">Todos</button>
     <button class="seg-pill-filtro" id="pill-today" onclick="filtrarStatus(this,'today')">Hoje</button>
+    <button class="seg-pill-filtro" id="pill-semana" onclick="filtrarStatus(this,'semana')">Semana</button>
     <button class="seg-pill-filtro" id="pill-green" onclick="filtrarStatus(this,'green')">30 dias</button>
     <button class="seg-pill-filtro" id="pill-blue" onclick="filtrarStatus(this,'blue')">60 dias</button>
-    <button class="seg-pill-filtro" id="pill-recentes" onclick="filtrarStatus(this,'recentes')">Recentes</button>
     <button class="seg-pill-filtro" id="pill-purple" onclick="filtrarStatus(this,'purple')">Prospect</button>
   </div>
 
@@ -1446,7 +1446,7 @@ const LABEL_ZOOM = 11;
 var activeFilter = null;
 let currentScreen = 'list';
 let searchQuery = '';
-const STATUS_LABEL = { today:'Hoje', green:'30 dias', blue:'60 dias', red:'90 dias', purple:'Prospect', recentes:'Recentes' };
+const STATUS_LABEL = { today:'Hoje', semana:'Semana', green:'30 dias', blue:'60 dias', red:'90 dias', purple:'Prospect' };
 const STATUS_COLOR = { today:'var(--green)', green:'var(--blue)', blue:'var(--orange)', red:'var(--red)', purple:'var(--purple)' };
 const PIN_COLOR    = { today:'#fbbf24', green:'#4ade80', blue:'#60a5fa', red:'#f87171', purple:'#c084fc' };
 
@@ -2084,16 +2084,27 @@ function renderList() {
     filtered = filtered.filter(c => c.cidade.replace(' - SC','').replace(' - PR','').trim() === cidadeFiltro);
   }
 
-  const toShow = activeFilter === 'recentes'
-    ? filtered.filter(c => c.ultimaVisita || c.visitadoHoje)
-    : (activeFilter ? filtered.filter(c => getStatus(c) === activeFilter) : filtered);
+  let toShow;
+  if (activeFilter === 'semana') {
+    const agora = new Date();
+    const dSem = agora.getDay(); // 0=dom
+    const iniSem = new Date(agora); iniSem.setDate(agora.getDate() - dSem); iniSem.setHours(0,0,0,0);
+    const iniSemStr = iniSem.toISOString().slice(0,10);
+    toShow = filtered.filter(c => {
+      if (c.visitadoHoje) return true;
+      if (!c.ultimaVisita) return false;
+      return c.ultimaVisita >= iniSemStr;
+    });
+  } else {
+    toShow = activeFilter ? filtered.filter(c => getStatus(c) === activeFilter) : filtered;
+  }
 
   // Mostra/esconde barra de filtro ativo
   const filterBar = document.getElementById('active-filter-bar');
   if (filterBar) {
     if (activeFilter) {
-      const labels = {today:'Hoje',green:'30 dias',blue:'60 dias',recentes:'Recentes',purple:'Prospect'};
-      const cores = {today:'var(--green)',green:'var(--blue)',blue:'var(--orange)',recentes:'var(--blue)',purple:'var(--purple)'};
+      const labels = {today:'Hoje',semana:'Semana',green:'30 dias',blue:'60 dias',purple:'Prospect'};
+      const cores = {today:'var(--green)',semana:'var(--green)',green:'var(--blue)',blue:'var(--orange)',purple:'var(--purple)'};
       filterBar.style.display = 'flex';
       filterBar.innerHTML = '<span style="font-size:12px;color:var(--text2)">Filtrando: <strong style="color:' + cores[activeFilter] + '">' + labels[activeFilter] + '</strong></span>' +
         '<button onclick="limparFiltro()" style="background:none;border:none;font-size:12px;font-weight:700;color:var(--blue);cursor:pointer;padding:0;font-family:inherit">✕ Ver todos</button>';
@@ -2112,13 +2123,13 @@ function renderList() {
   });
 
   let out = '';
-  if (activeFilter === 'recentes') {
+  if (activeFilter === 'semana') {
     toShow.sort((a, b) => {
       const da = a.visitadoHoje ? Date.now() : new Date(a.ultimaVisita || 0).getTime();
       const db = b.visitadoHoje ? Date.now() : new Date(b.ultimaVisita || 0).getTime();
       return db - da;
     });
-    out = '<div class="date-separator">Visitados recentemente (' + toShow.length + ')</div>' + toShow.map(cardHTML).join('');
+    out = '<div class="date-separator">Visitados esta semana (' + toShow.length + ')</div>' + toShow.map(cardHTML).join('');
   } else {
     const order = { today:0, green:1, blue:2, red:3, purple:4 };
     toShow.sort((a,b) => {
@@ -2352,7 +2363,7 @@ function abrirRepDetalhe(tipo) {
   overlay.classList.add('open');
   const rows = getRowsFiltradas();
   const hoje = new Date();
-  const titulos = { visitas:'Visitas', vendas:'Vendas', orcamentos:'Orçamentos', conversao:'Conversão', empresa:'Por Representada' };
+  const titulos = { visitas:'Visitas', vendas:'Vendas', orcamentos:'Orçamentos', conversao:'Conversão', empresa:'Por Representada', bonificacoes:'Bonificações', gastos_clientes:'Gastos com Clientes' };
   document.getElementById('rep-detalhe-title').textContent = titulos[tipo] || tipo;
   let html = '';
 
@@ -2612,9 +2623,9 @@ function _renderBonifBody(container) {
 
   let html = filtroHtml +
     `<div style="display:flex;gap:8px;padding:8px 12px 4px;">
-      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--blue)">${formatarMoeda(totalGeral)}</div><div class="fin-resumo-lbl">Total</div></div>
-      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--green)">${formatarMoeda(totalRecebido)}</div><div class="fin-resumo-lbl">Recebido</div></div>
-      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">${formatarMoeda(totalPendente)}</div><div class="fin-resumo-lbl">Pendente</div></div>
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--blue);font-size:16px;white-space:nowrap">${formatarMoeda(totalGeral)}</div><div class="fin-resumo-lbl">Total</div></div>
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--green);font-size:16px;white-space:nowrap">${formatarMoeda(totalRecebido)}</div><div class="fin-resumo-lbl">Recebido</div></div>
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange);font-size:16px;white-space:nowrap">${formatarMoeda(totalPendente)}</div><div class="fin-resumo-lbl">Pendente</div></div>
     </div>
     <div style="padding:6px 12px 80px;">`;
 
@@ -6409,7 +6420,7 @@ function filtrarStatus(btn, status) {
 }
 
 function sincronizarPillStatus() {
-  const map = { '': 'pill-todos', today: 'pill-today', green: 'pill-green', blue: 'pill-blue', recentes: 'pill-recentes', purple: 'pill-purple' };
+  const map = { '': 'pill-todos', today: 'pill-today', semana: 'pill-semana', green: 'pill-green', blue: 'pill-blue', purple: 'pill-purple' };
   document.querySelectorAll('.seg-pill-filtro').forEach(b => b.classList.remove('active'));
   const key = activeFilter || '';
   const pillId = map[key];
