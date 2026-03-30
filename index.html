@@ -3572,6 +3572,7 @@ function editarCliente() {
   if (!perfilId) return;
   const c = clientes.find(x => x.id == perfilId);
   if (!c) return;
+  fecharVerDados();
 
   editandoClienteId = perfilId;
 
@@ -8972,7 +8973,6 @@ if ('serviceWorker' in navigator) {
       <div class="perfil-header">
         <div class="perfil-top-row">
           <button class="perfil-back" onclick="closePerfil()">← Voltar</button>
-          <button class="btn-editar-perfil" onclick="editarCliente()">✏️ Editar</button>
         </div>
         <div class="perfil-nome" id="p-nome"></div>
         <div class="perfil-sub" id="p-sub"></div>
