@@ -675,6 +675,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .btn-checkin-unico { width:100%; background:var(--green); color:#fff; border:none; border-radius:12px; padding:14px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; margin-top:4px; }
 .btn-checkin-unico:disabled { opacity:.6; cursor:default; }
 .btn-checkin-unico.modo-wa { background:#25D366; }
+.btn-checkin-unico.visitado-hoje { background:#1a5c2a; cursor:default; }
 .p-hoje-box { background:var(--green-bg); border:1.5px solid var(--green); border-radius:14px; padding:14px 16px; margin-bottom:12px; display:flex; align-items:flex-start; gap:10px; }
 .p-hoje-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
 .p-hoje-info { flex:1; min-width:0; }
@@ -3854,6 +3855,8 @@ function openPerfil(id) {
   document.getElementById('p-lembrete-salvo').textContent = lembretes[id] ? '✓ lembrete salvo' : '';
 
   // Verifica se visitou hoje (data local)
+  perfilVisitadoHoje = false;
+  perfilHoraHoje = '';
   const dataHoje = dataHojeLocal();
   const histLocal = historicoVisitas[id] || [];
   const visitaHojeCache = histLocal.find(v => v.data === dataHoje && v.tipo !== 'whatsapp');
@@ -3928,21 +3931,37 @@ let ciTipoAtual = 'pedido';
 
 // ── MODO PRESENCIAL / WHATSAPP ────────────────────────
 let ciModoAtual = 'presencial';
+let perfilVisitadoHoje = false;
+let perfilHoraHoje = '';
+
+// ── PEDIDOS DA VISITA ──────────────────────────────
+let dvPedidosCache = [];
+let dvPedidoEditando = null;
+let epTipoAtual = 'pedido';
+let epStatusAtual = 'aberto';
+
+function _atualizarBtnCheckin() {
+  const btnMain = document.getElementById('p-btn-checkin');
+  if (!btnMain) return;
+  if (perfilVisitadoHoje && ciModoAtual === 'presencial') {
+    btnMain.textContent = perfilHoraHoje ? `✓ Visitado às ${perfilHoraHoje}` : '✓ Visitado hoje';
+    btnMain.classList.add('visitado-hoje');
+    btnMain.classList.remove('modo-wa');
+  } else if (ciModoAtual === 'whatsapp') {
+    btnMain.textContent = '📋 Registrar';
+    btnMain.classList.remove('visitado-hoje');
+    btnMain.classList.add('modo-wa');
+  } else {
+    btnMain.textContent = '✓ Check-in';
+    btnMain.classList.remove('visitado-hoje', 'modo-wa');
+  }
+}
 
 function ciSetModo(modo, btn) {
   ciModoAtual = modo;
   ['ci-modo-presencial','ci-modo-whatsapp'].forEach(id => document.getElementById(id)?.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const btnMain = document.getElementById('p-btn-checkin');
-  if (btnMain) {
-    if (modo === 'presencial') {
-      btnMain.textContent = '✓ Check-in';
-      btnMain.classList.remove('modo-wa');
-    } else {
-      btnMain.textContent = '📋 Registrar';
-      btnMain.classList.add('modo-wa');
-    }
-  }
+  _atualizarBtnCheckin();
 }
 
 function ciSetTipo(tipo, btn) {
@@ -3969,8 +3988,7 @@ function ciResetForm() {
   ciModoAtual = 'presencial';
   ['ci-modo-presencial','ci-modo-whatsapp'].forEach(id =>
     document.getElementById(id)?.classList.toggle('active', id === 'ci-modo-presencial'));
-  const btnMain = document.getElementById('p-btn-checkin');
-  if (btnMain) { btnMain.textContent = '✓ Check-in'; btnMain.classList.remove('modo-wa'); }
+  _atualizarBtnCheckin();
 
   // Reset obs
   const obs = document.getElementById('p-obs');
@@ -4000,9 +4018,11 @@ function ciResetForm() {
 }
 
 function mostrarResumoHoje(c, visitaHoje) {
-  // Card removido — edição feita pelo histórico
   const formDiv = document.getElementById('p-form-checkin');
   if (formDiv) formDiv.style.display = 'block';
+  perfilVisitadoHoje = !!visitaHoje;
+  perfilHoraHoje = visitaHoje?.hora || c?.horaHoje || '';
+  _atualizarBtnCheckin();
 }
 
 function editarVisitaHoje() {
@@ -4424,53 +4444,49 @@ async function _dvCarregarGastos(clienteId) {
 
 function fecharDetalheVisita() {
   document.getElementById('screen-visita-detalhe').style.display = 'none';
+  const excluirBtn = document.getElementById('dv-header-excluir');
+  if (excluirBtn) excluirBtn.style.display = 'none';
   dvVisitaAtual = null;
+  dvPedidosCache = [];
   if (dvOrigemTela === 'report') { showScreen('report'); }
   dvOrigemTela = null;
 }
 
-function ativarEdicaoVisita() {
+async function ativarEdicaoVisita() {
   if (!dvVisitaAtual) return;
   const v = dvVisitaAtual;
   const obsEl = document.getElementById('dv-edit-obs');
   if (obsEl) obsEl.value = v.obs || '';
-  const val = v.pedido_valor || v.valor_pedido;
-  const valEl = document.getElementById('dv-edit-valor');
-  if (valEl && val) valEl.value = parseFloat(val).toFixed(2).replace('.', ',');
-  const repSel = document.getElementById('dv-edit-representada');
-  if (repSel) {
-    repSel.innerHTML = '<option value="">Selecione...</option>' +
-      representadasCache.map(r => `<option value="${r.id}"${v.representada_id===r.id?' selected':''}>${r.nome}</option>`).join('');
-  }
+  // Carrega pedidos da visita
+  const loadEl = document.getElementById('dv-pedidos-lista');
+  if (loadEl) loadEl.innerHTML = '<div style="text-align:center;padding:16px;font-size:13px;color:var(--text3)">Carregando...</div>';
+  await dvCarregarPedidos(v.id);
+  dvRenderPedidos();
   document.getElementById('dv-modo-ver').style.display = 'none';
   document.getElementById('dv-modo-editar').style.display = 'block';
+  const excluirBtn = document.getElementById('dv-header-excluir');
+  if (excluirBtn) excluirBtn.style.display = 'block';
 }
 
 function cancelarEdicaoVisita() {
   document.getElementById('dv-modo-ver').style.display = 'block';
   document.getElementById('dv-modo-editar').style.display = 'none';
+  const excluirBtn = document.getElementById('dv-header-excluir');
+  if (excluirBtn) excluirBtn.style.display = 'none';
 }
 
 async function salvarEdicaoVisita() {
   if (!dvVisitaAtual?.id || !currentUser) return;
   const obs = document.getElementById('dv-edit-obs')?.value.trim() || '';
-  const valEl = document.getElementById('dv-edit-valor');
-  const valor = valEl?.value ? parseMoeda(valEl) : null;
-  const repSel = document.getElementById('dv-edit-representada');
-  const representadaId = repSel?.value || null;
-  const representadaNome = representadaId ? repSel.options[repSel.selectedIndex].text : null;
-  const updates = { obs };
-  if (valor) { updates.pedido_valor = valor; updates.valor_pedido = valor; }
-  if (representadaId) { updates.representada_id = representadaId; updates.pedido_representada = representadaNome; }
-  const { error } = await sb.from('visitas').update(updates).eq('id', dvVisitaAtual.id).eq('rep_id', await getRepId());
+  const { error } = await sb.from('visitas').update({ obs }).eq('id', dvVisitaAtual.id).eq('rep_id', await getRepId());
   if (error) { showToast('❌ Erro ao salvar', true); return; }
-  Object.assign(dvVisitaAtual, updates);
+  Object.assign(dvVisitaAtual, { obs });
   if (historicoVisitas[perfilId]) {
     const idx = historicoVisitas[perfilId].findIndex(v => String(v.id) === String(dvVisitaAtual.id));
-    if (idx >= 0) Object.assign(historicoVisitas[perfilId][idx], updates);
+    if (idx >= 0) Object.assign(historicoVisitas[perfilId][idx], { obs });
   }
-  showToast('✓ Visita atualizada');
-  fecharDetalheVisita();
+  showToast('✓ Observação salva');
+  cancelarEdicaoVisita();
   const c = clientes.find(x => x.id == perfilId);
   renderHistorico(perfilId, c);
 }
@@ -4510,6 +4526,214 @@ async function excluirVisitaDetalhe() {
   fecharDetalheVisita();
   const c = clientes.find(x => x.id == perfilId);
   if (c) renderHistorico(perfilId, c);
+}
+
+// ── PEDIDOS DA VISITA ─────────────────────────────────
+
+async function dvCarregarPedidos(visitaId) {
+  dvPedidosCache = [];
+  if (!visitaId || !currentUser) return;
+  try {
+    const repId = await getRepId();
+    const { data, error } = await sb.from('pedidos')
+      .select('*').eq('visita_id', visitaId).eq('rep_id', repId)
+      .order('created_at', { ascending: true });
+    if (!error && data) dvPedidosCache = data;
+  } catch(e) {}
+  // Fallback legado: se tabela vazia mas visita tem pedido, exibe como card legado
+  if (!dvPedidosCache.length && dvVisitaAtual) {
+    const v = dvVisitaAtual;
+    const pt = v.pedido_tipo && v.pedido_tipo !== 'nenhum' ? v.pedido_tipo : null;
+    if (pt) {
+      dvPedidosCache = [{
+        id: '_legado_' + visitaId,
+        visita_id: visitaId,
+        tipo: pt,
+        representada_id: v.representada_id,
+        representada_nome: v.pedido_representada || v.representada_nome,
+        valor: parseFloat(v.pedido_valor || v.valor_pedido) || null,
+        status: v.orcamento_status || v.status_orcamento || 'aberto',
+        _legado: true
+      }];
+    }
+  }
+}
+
+function dvRenderPedidos() {
+  const el = document.getElementById('dv-pedidos-lista');
+  if (!el) return;
+  if (!dvPedidosCache.length) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;font-size:13px;color:var(--text3)">Nenhum pedido registrado</div>';
+    return;
+  }
+  el.innerHTML = dvPedidosCache.map(p => {
+    const isPedido = p.tipo !== 'orcamento';
+    const val = parseFloat(p.valor) || 0;
+    const rep = p.representada_nome || '';
+    const isOrcAberto = !isPedido && (!p.status || p.status === 'aberto');
+    const sCor = {aberto:'var(--orange)',fechado:'var(--green)',perdido:'var(--red)'}[p.status] || 'var(--orange)';
+    const sLabel = {aberto:'Aberto',fechado:'Fechado',perdido:'Perdido'}[p.status] || 'Aberto';
+    return `<div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:${isPedido?'var(--green-bg)':'rgba(255,165,0,.12)'};color:${isPedido?'var(--green)':'var(--orange)'}">${isPedido?'💰 Pedido':'📋 Orçamento'}</span>
+          ${!isPedido?`<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:${sCor}22;color:${sCor}">${sLabel}</span>`:''}
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button onclick="event.stopPropagation();dvEditarPedido('${p.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-family:inherit;font-size:12px;cursor:pointer;color:var(--text2)">✏️</button>
+          <button onclick="event.stopPropagation();dvDeletarPedido('${p.id}')" style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:4px 10px;font-family:inherit;font-size:12px;cursor:pointer;color:var(--red)">×</button>
+        </div>
+      </div>
+      ${rep ? `<div style="font-size:13px;color:var(--text2);margin-bottom:2px">${rep}</div>` : ''}
+      ${val > 0 ? `<div style="font-size:15px;font-weight:700;color:var(--green)">R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>` : ''}
+      ${isOrcAberto ? `<button onclick="event.stopPropagation();dvConverterPedido('${p.id}')" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px">✓ Virar pedido</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function dvAdicionarPedido() {
+  abrirModalEditarPedido(null);
+}
+
+function dvEditarPedido(pedidoId) {
+  const p = dvPedidosCache.find(x => String(x.id) === String(pedidoId));
+  if (p) abrirModalEditarPedido(p);
+}
+
+async function dvDeletarPedido(pedidoId) {
+  const confirmado = await new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'hist-delete-overlay';
+    const menu = document.createElement('div');
+    menu.className = 'hist-delete-menu';
+    menu.innerHTML = `
+      <h3>🗑 Apagar pedido</h3>
+      <p>Tem certeza? Esta ação não pode ser desfeita.</p>
+      <div class="hist-delete-actions">
+        <button id="dp-cancelar" style="flex:1;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;">Cancelar</button>
+        <button id="dp-confirmar" style="flex:1;padding:11px;background:var(--red);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Apagar</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.body.appendChild(menu);
+    const fechar = (res) => { overlay.remove(); menu.remove(); resolve(res); };
+    overlay.onclick = () => fechar(false);
+    document.getElementById('dp-cancelar').onclick = () => fechar(false);
+    document.getElementById('dp-confirmar').onclick = () => fechar(true);
+  });
+  if (!confirmado) return;
+  const p = dvPedidosCache.find(x => String(x.id) === String(pedidoId));
+  if (p && !p._legado) {
+    const { error } = await sb.from('pedidos').delete().eq('id', pedidoId).eq('rep_id', await getRepId());
+    if (error) { showToast('❌ Erro ao apagar pedido', true); return; }
+  } else if (p?._legado && dvVisitaAtual?.id) {
+    await sb.from('visitas').update({
+      pedido_tipo: null, pedido_valor: null, valor_pedido: null,
+      representada_id: null, pedido_representada: null, orcamento_status: null, status_orcamento: null
+    }).eq('id', dvVisitaAtual.id).eq('rep_id', await getRepId());
+  }
+  dvPedidosCache = dvPedidosCache.filter(x => String(x.id) !== String(pedidoId));
+  dvRenderPedidos();
+  showToast('✓ Pedido removido');
+}
+
+async function dvConverterPedido(pedidoId) {
+  const p = dvPedidosCache.find(x => String(x.id) === String(pedidoId));
+  if (!p) return;
+  const updates = { tipo: 'pedido', status: 'fechado' };
+  const repId = await getRepId();
+  if (!p._legado) {
+    const { error } = await sb.from('pedidos').update(updates).eq('id', pedidoId).eq('rep_id', repId);
+    if (error) { showToast('❌ Erro ao converter', true); return; }
+  } else if (dvVisitaAtual?.id) {
+    await sb.from('visitas').update({ pedido_tipo: 'pedido', orcamento_status: 'fechado', status_orcamento: 'fechado' })
+      .eq('id', dvVisitaAtual.id).eq('rep_id', repId);
+  }
+  Object.assign(p, updates);
+  dvRenderPedidos();
+  showToast('✓ Convertido em pedido!');
+}
+
+function abrirModalEditarPedido(pedido) {
+  dvPedidoEditando = pedido;
+  epTipoAtual = pedido?.tipo || 'pedido';
+  epStatusAtual = pedido?.status || 'aberto';
+  const repSel = document.getElementById('ep-representada');
+  if (repSel) {
+    repSel.innerHTML = '<option value="">Selecione...</option>' +
+      representadasCache.map(r => `<option value="${r.id}"${pedido?.representada_id===r.id?' selected':''}>${r.nome}</option>`).join('');
+  }
+  const valEl = document.getElementById('ep-valor');
+  if (valEl) valEl.value = pedido?.valor ? parseFloat(pedido.valor).toFixed(2).replace('.',',') : '';
+  ['ep-tipo-pedido','ep-tipo-orcamento'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+  document.getElementById(epTipoAtual === 'orcamento' ? 'ep-tipo-orcamento' : 'ep-tipo-pedido')?.classList.add('active');
+  ['ep-status-aberto','ep-status-fechado','ep-status-perdido'].forEach(id => {
+    document.getElementById(id)?.classList.toggle('active', id === 'ep-status-' + epStatusAtual);
+  });
+  const statusGrupo = document.getElementById('ep-status-grupo');
+  if (statusGrupo) statusGrupo.style.display = epTipoAtual === 'orcamento' ? 'flex' : 'none';
+  document.getElementById('modal-editar-pedido').style.display = 'flex';
+}
+
+function fecharModalEditarPedido() {
+  document.getElementById('modal-editar-pedido').style.display = 'none';
+  dvPedidoEditando = null;
+}
+
+function epSetTipo(tipo) {
+  epTipoAtual = tipo;
+  ['ep-tipo-pedido','ep-tipo-orcamento'].forEach(id =>
+    document.getElementById(id)?.classList.toggle('active', id === 'ep-tipo-' + tipo));
+  const statusGrupo = document.getElementById('ep-status-grupo');
+  if (statusGrupo) statusGrupo.style.display = tipo === 'orcamento' ? 'flex' : 'none';
+}
+
+function epSetStatus(status) {
+  epStatusAtual = status;
+  ['ep-status-aberto','ep-status-fechado','ep-status-perdido'].forEach(id =>
+    document.getElementById(id)?.classList.toggle('active', id === 'ep-status-' + status));
+}
+
+async function salvarModalEditarPedido() {
+  if (!dvVisitaAtual?.id || !currentUser) return;
+  const repSel = document.getElementById('ep-representada');
+  const representadaId = repSel?.value || null;
+  const representadaNome = representadaId ? repSel.options[repSel.selectedIndex].text : null;
+  const valEl = document.getElementById('ep-valor');
+  const valor = valEl?.value ? parseMoeda(valEl) : null;
+  const repId = await getRepId();
+  const pedidoData = {
+    visita_id: dvVisitaAtual.id,
+    rep_id: repId,
+    representada_id: representadaId,
+    representada_nome: representadaNome,
+    tipo: epTipoAtual,
+    valor: valor,
+    status: epTipoAtual === 'orcamento' ? epStatusAtual : 'fechado',
+  };
+  if (dvPedidoEditando && !dvPedidoEditando._legado) {
+    // UPDATE pedido existente
+    const { error } = await sb.from('pedidos').update(pedidoData).eq('id', dvPedidoEditando.id).eq('rep_id', repId);
+    if (error) { showToast('❌ Erro ao salvar', true); return; }
+    Object.assign(dvPedidoEditando, pedidoData);
+  } else if (dvPedidoEditando?._legado) {
+    // Pedido legado: INSERT na tabela pedidos e limpa da visita
+    const { data, error } = await sb.from('pedidos').insert(pedidoData).select().maybeSingle();
+    if (error) { showToast('❌ Erro ao salvar', true); return; }
+    dvPedidosCache = dvPedidosCache.filter(p => !p._legado);
+    if (data) dvPedidosCache.push(data);
+    await sb.from('visitas').update({
+      pedido_tipo: null, pedido_valor: null, valor_pedido: null,
+      representada_id: null, pedido_representada: null, orcamento_status: null, status_orcamento: null
+    }).eq('id', dvVisitaAtual.id).eq('rep_id', repId);
+  } else {
+    // INSERT novo pedido
+    const { data, error } = await sb.from('pedidos').insert(pedidoData).select().maybeSingle();
+    if (error) { showToast('❌ Erro ao salvar', true); return; }
+    if (data) dvPedidosCache.push(data);
+  }
+  fecharModalEditarPedido();
+  dvRenderPedidos();
+  showToast('✓ Pedido salvo');
 }
 
 async function converterOrcamentoDV() {
@@ -8699,7 +8923,11 @@ async function salvarNovaRota() {
     km_total: Math.round(kmTotal * 10) / 10,
     tempo_estimado: Math.round(tempoEstimado),
     status: fonte === 'google' ? 'otimizada' : 'ativa',
-    rep_id: currentRep.id
+    rep_id: currentRep.id,
+    tipo_partida: rotaPartidaTipo,
+    ponto_partida: endPartida,
+    tipo_chegada: rotaChegadaTipo,
+    ponto_chegada: endChegada
   });
 
   if (btn) { btn.disabled = false; btn.textContent = 'Criar Rota'; }
@@ -8755,6 +8983,13 @@ function abrirDetalheRota(id) {
 
   const clientesDaRota = (rota.ordem_otimizada || rota.clientes_ids || []).map(id => clientes.find(c => String(c.id) === id)).filter(Boolean);
 
+  const startIcon = {casa:'🏠', gps:'📍', outro:'✏️'}[rota.tipo_partida] || '🏠';
+  const startLabel = rota.tipo_partida === 'casa' ? 'Endereço base' : (rota.tipo_partida === 'gps' ? 'Localização GPS' : 'Endereço personalizado');
+  const startAddr = rota.ponto_partida || currentRep?.endereco_base || '';
+  const endIcon = {casa:'🏠', hotel:'🏨', outra:'✏️'}[rota.tipo_chegada] || '🏠';
+  const endLabel = rota.tipo_chegada === 'casa' ? 'Endereço base' : (rota.tipo_chegada === 'hotel' ? 'Hotel' : 'Endereço personalizado');
+  const endAddr = rota.ponto_chegada || (rota.tipo_chegada === 'casa' ? currentRep?.endereco_base : '') || '';
+
   document.getElementById('rota-detalhe-title').textContent = rota.nome;
   document.getElementById('rota-detalhe-body').innerHTML = `
     <div class="rota-resumo-bar">
@@ -8762,7 +8997,7 @@ function abrirDetalheRota(id) {
       <div class="rota-resumo-item"><div class="rota-resumo-val">${litros.toFixed(1)}L</div><div class="rota-resumo-lbl">combustível</div></div>
       <div class="rota-resumo-item"><div class="rota-resumo-val">R$${custo.toFixed(0)}</div><div class="rota-resumo-lbl">custo est.</div></div>
     </div>
-    ${currentRep?.endereco_base ? `<div style="background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)"><div style="width:28px;height:28px;border-radius:50%;background:var(--green);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">🏠</div><div><div style="font-size:14px;font-weight:600;color:var(--text)">Saída: Endereço base</div><div style="font-size:11px;color:var(--text3)">${currentRep.endereco_base}</div></div></div>` : ''}
+    ${startAddr ? `<div style="background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)"><div style="width:28px;height:28px;border-radius:50%;background:var(--green);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${startIcon}</div><div><div style="font-size:14px;font-weight:600;color:var(--text)">Início: ${startLabel}</div><div style="font-size:11px;color:var(--text3)">${startAddr}</div></div></div>` : ''}
     ${clientesDaRota.map((c,i) => `
       <div class="rota-trecho">
         <div class="rota-trecho-num">${i+1}</div>
@@ -8772,6 +9007,7 @@ function abrirDetalheRota(id) {
         </div>
       </div>
     `).join('')}
+    ${endAddr ? `<div style="background:var(--card);border-radius:12px;padding:12px 14px;margin-top:4px;margin-bottom:4px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)"><div style="width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${endIcon}</div><div><div style="font-size:14px;font-weight:600;color:var(--text)">Fim: ${endLabel}</div><div style="font-size:11px;color:var(--text3)">${endAddr}</div></div></div>` : ''}
     <button onclick="abrirGoogleMapsRota('${rota.id}')" style="width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;">↗ Abrir no Google Maps</button>
   `;
   el.classList.add('open');
@@ -8787,9 +9023,23 @@ function abrirGoogleMapsRota(id) {
   const ids = rota.ordem_otimizada || rota.clientes_ids || [];
   const pts = ids.map(cid => clientes.find(c => String(c.id) === cid)).filter(c => c && c.lat && c.lng);
   if (!pts.length) { showToast('Sem coordenadas para esta rota'); return; }
-  const origin = currentRep?.endereco_base ? encodeURIComponent(currentRep.endereco_base) : `${pts[0].lat},${pts[0].lng}`;
-  const dest = `${pts[pts.length-1].lat},${pts[pts.length-1].lng}`;
-  const waypoints = pts.slice(0,-1).map(c => `${c.lat},${c.lng}`).join('|');
+  // Ponto de partida: usa o salvo na rota, senão endereço base, senão primeiro cliente
+  let origin;
+  if (rota.ponto_partida) {
+    origin = encodeURIComponent(rota.ponto_partida);
+  } else if (currentRep?.endereco_base) {
+    origin = encodeURIComponent(currentRep.endereco_base);
+  } else {
+    origin = `${pts[0].lat},${pts[0].lng}`;
+  }
+  // Ponto de chegada: usa o salvo na rota, senão último cliente
+  let dest;
+  if (rota.ponto_chegada) {
+    dest = encodeURIComponent(rota.ponto_chegada);
+  } else {
+    dest = `${pts[pts.length-1].lat},${pts[pts.length-1].lng}`;
+  }
+  const waypoints = pts.map(c => `${c.lat},${c.lng}`).join('|');
   const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints?'&waypoints='+waypoints:''}&travelmode=driving`;
   window.open(url, '_blank');
 }
@@ -9136,6 +9386,7 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('screen-empresas')?.style.display === 'flex') { closeEmpresas(); return; }
     if (document.getElementById('screen-segmentos')?.style.display === 'flex') { closeSegmentos(); return; }
     if (document.getElementById('screen-importar')?.style.display === 'flex') { closeImportar(); return; }
+    if (document.getElementById('modal-editar-pedido')?.style.display === 'flex') { fecharModalEditarPedido(); return; }
     if (document.getElementById('modal-editar-rep-visita')?.style.display === 'flex') { fecharModalEditarRepVisita(); return; }
     if (document.getElementById('rep-detalhe')?.classList.contains('open')) { fecharRepDetalhe(); return; }
   }
@@ -9345,7 +9596,9 @@ if ('serviceWorker' in navigator) {
           <div class="gestao-titulo" id="dv-titulo" style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Detalhes da visita</div>
           <div id="dv-subtitulo" style="font-size:11px;color:var(--text3);margin-top:1px"></div>
         </div>
-        <div style="width:70px"></div>
+        <div style="width:70px;display:flex;justify-content:flex-end">
+          <button id="dv-header-excluir" onclick="excluirVisitaDetalhe()" style="display:none;background:none;border:none;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;padding:4px 6px">🗑 Excluir</button>
+        </div>
       </div>
       <div class="gestao-body">
         <div class="gc-form-panel" id="dv-modo-ver">
@@ -9397,22 +9650,14 @@ if ('serviceWorker' in navigator) {
             <label class="campo-label">Observações</label>
             <textarea class="campo-input" id="dv-edit-obs" style="min-height:80px;resize:none"></textarea>
           </div>
-          <div class="campo-grupo">
-            <label class="campo-label">Valor (R$)</label>
-            <input class="campo-input" id="dv-edit-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
+          <div style="margin-bottom:14px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px">Pedidos / Orçamentos</div>
+            <div id="dv-pedidos-lista"></div>
+            <button onclick="dvAdicionarPedido()" style="width:100%;background:var(--surface);border:1.5px dashed var(--border);border-radius:10px;padding:10px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;margin-top:4px">+ Adicionar pedido</button>
           </div>
-          <div class="campo-grupo">
-            <label class="campo-label">Representada</label>
-            <select class="campo-input" id="dv-edit-representada">
-              <option value="">Selecione...</option>
-            </select>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="display:flex;gap:8px;margin-top:4px">
             <button class="gestao-btn-sm" onclick="cancelarEdicaoVisita()" style="flex:1;padding:11px">Cancelar</button>
-            <button class="pf-btn-registrar" onclick="salvarEdicaoVisita()" style="flex:2;margin-top:0">Salvar</button>
-          </div>
-          <div style="margin-top:14px;text-align:center">
-            <button onclick="excluirVisitaDetalhe()" style="background:none;border:none;color:var(--red);font-size:12px;cursor:pointer;padding:4px 8px;opacity:0.8">Excluir visita</button>
+            <button class="pf-btn-registrar" onclick="salvarEdicaoVisita()" style="flex:2;margin-top:0">Salvar obs.</button>
           </div>
         </div>
       </div>
@@ -9961,6 +10206,42 @@ if ('serviceWorker' in navigator) {
     <div style="display:flex;gap:10px;">
       <button onclick="fecharModalEditarRepVisita()" style="flex:1;padding:12px;background:var(--card);color:var(--text2);border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Cancelar</button>
       <button onclick="salvarRepresentadaVisitaModal()" style="flex:1;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PEDIDO/ORÇAMENTO -->
+<div id="modal-editar-pedido" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1300;align-items:center;justify-content:center;padding:24px;" onclick="fecharModalEditarPedido()">
+  <div style="background:var(--surface);border-radius:20px;padding:20px;width:100%;max-width:400px;" onclick="event.stopPropagation()">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px">Pedido / Orçamento</div>
+    <div class="campo-grupo">
+      <label class="campo-label">Tipo</label>
+      <div style="display:flex;gap:8px">
+        <button class="ci-tipo-pill active" id="ep-tipo-pedido" onclick="epSetTipo('pedido')" style="flex:1">💰 Pedido</button>
+        <button class="ci-tipo-pill" id="ep-tipo-orcamento" onclick="epSetTipo('orcamento')" style="flex:1">📋 Orçamento</button>
+      </div>
+    </div>
+    <div class="campo-grupo">
+      <label class="campo-label">Representada</label>
+      <select class="campo-input" id="ep-representada">
+        <option value="">Selecione...</option>
+      </select>
+    </div>
+    <div class="campo-grupo">
+      <label class="campo-label">Valor (R$)</label>
+      <input class="campo-input" id="ep-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
+    </div>
+    <div id="ep-status-grupo" style="display:none;flex-direction:column;gap:6px;margin-bottom:14px">
+      <label class="campo-label">Status do Orçamento</label>
+      <div style="display:flex;gap:6px">
+        <button class="ci-tipo-pill active" id="ep-status-aberto" onclick="epSetStatus('aberto')" style="flex:1">Aberto</button>
+        <button class="ci-tipo-pill" id="ep-status-fechado" onclick="epSetStatus('fechado')" style="flex:1">Fechado</button>
+        <button class="ci-tipo-pill" id="ep-status-perdido" onclick="epSetStatus('perdido')" style="flex:1">Perdido</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="gestao-btn-sm" onclick="fecharModalEditarPedido()" style="flex:1;padding:11px">Cancelar</button>
+      <button class="pf-btn-registrar" onclick="salvarModalEditarPedido()" style="flex:2;margin-top:0">Salvar</button>
     </div>
   </div>
 </div>

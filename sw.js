@@ -1,4 +1,4 @@
-// Service worker — sempre network, sem cache, auto-update imediato
+// Service worker — sempre network, sem cache, auto-update imediato — v20260330
 self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', e => {
