@@ -1001,9 +1001,10 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <!-- RELATÓRIO -->
     <div class="screen" id="screen-report">
       <div class="rep-filtro-tabs" id="rep-filtro-tabs">
-        <button class="rep-filtro-tab active" id="rep-tab-mes" onclick="setRepFiltro('mes',this)">📅 Mês</button>
-        <button class="rep-filtro-tab" id="rep-tab-semana" onclick="setRepFiltro('semana',this)">📆 Semana</button>
         <button class="rep-filtro-tab" id="rep-tab-hoje" onclick="setRepFiltro('hoje',this)">📌 Hoje</button>
+        <button class="rep-filtro-tab" id="rep-tab-semana" onclick="setRepFiltro('semana',this)">📆 Semana</button>
+        <button class="rep-filtro-tab active" id="rep-tab-mes" onclick="setRepFiltro('mes',this)">📅 Mês</button>
+        <button class="rep-filtro-tab" id="rep-tab-ano" onclick="setRepFiltro('ano',this)">📆 Ano</button>
       </div>
       <div class="rep-body" id="rep-body">
         <!-- preenchido por renderReport() -->
@@ -2220,6 +2221,8 @@ function getRowsFiltradas() {
     const dSem = hoje.getDay();
     const iniSem = new Date(hoje); iniSem.setDate(hoje.getDate() - dSem); iniSem.setHours(0,0,0,0);
     rows = visatasDoRelatorio.filter(v => v.data >= iniSem.toISOString().slice(0,10) && v.data <= hojStr);
+  } else if (repFiltroAtual === 'ano') {
+    rows = [...visatasAnoCache];
   } else {
     rows = [...visatasDoRelatorio];
   }
@@ -2267,9 +2270,6 @@ function renderReport() {
   const _isOrc = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
   const orcAbertos = rows.filter(v => _isOrc(v) && (!v.status_orcamento||v.status_orcamento==='aberto')).length;
   const orcTotal = rows.filter(v => _isOrc(v)).length;
-  // Conversão = orçamentos convertidos em pedido
-  const convertidos = rows.filter(v => _isOrc(v) && (v.status_orcamento === 'fechado' || v.orcamento_status === 'fechado')).length;
-  const pctConv = orcTotal > 0 ? Math.round(convertidos/orcTotal*100) : 0;
 
   // Top representada
   const byRep = {};
@@ -2281,7 +2281,7 @@ function renderReport() {
   const topRep = Object.entries(byRep).sort((a,b) => b[1].total-a[1].total)[0];
   const topRepNome = topRep ? (representadasCache.find(r => String(r.id)===topRep[0])?.nome || 'Sem empresa') : null;
 
-  const filtroLabel = repFiltroAtual==='hoje'?'Hoje':repFiltroAtual==='semana'?'Semana':nomeMesCap;
+  const filtroLabel = repFiltroAtual==='hoje'?'Hoje':repFiltroAtual==='semana'?'Semana':repFiltroAtual==='ano'?String(anoRef):nomeMesCap;
 
   const navegador = repFiltroAtual==='mes' ?
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
@@ -2310,12 +2310,6 @@ function renderReport() {
           '<div class="rep-card-val" style="color:'+(orcAbertos>0?'var(--orange)':'var(--text)')+'">'+orcTotal+'</div>' +
           '<div class="rep-card-label">Orçamentos</div>' +
           '<div class="rep-card-sub">'+orcAbertos+' em aberto</div>' +
-        '</button>' +
-        '<button class="rep-card" onclick="abrirRepDetalhe(\'conversao\')">' +
-          '<div class="rep-card-icon">📊</div>' +
-          '<div class="rep-card-val" style="color:var(--purple)">'+pctConv+'%</div>' +
-          '<div class="rep-card-label">Conversão</div>' +
-          '<div class="rep-card-sub">'+convertidos+' / '+orcTotal+' orçamentos</div>' +
         '</button>' +
         '<button class="rep-card rep-card-full" onclick="abrirRepDetalhe(\'empresa\')">' +
           '<div style="display:flex;align-items:center;gap:12px">' +
@@ -2359,7 +2353,7 @@ function abrirRepDetalhe(tipo) {
   overlay.classList.add('open');
   const rows = getRowsFiltradas();
   const hoje = new Date();
-  const titulos = { visitas:'Visitas', vendas:'Vendas', orcamentos:'Orçamentos', conversao:'Conversão', empresa:'Por Representada', bonificacoes:'Bonificações', gastos_clientes:'Gastos com Clientes' };
+  const titulos = { visitas:'Visitas', vendas:'Vendas', orcamentos:'Orçamentos', empresa:'Por Representada', bonificacoes:'Bonificações', gastos_clientes:'Gastos com Clientes' };
   document.getElementById('rep-detalhe-title').textContent = titulos[tipo] || tipo;
   let html = '';
 
@@ -2384,33 +2378,9 @@ function abrirRepDetalhe(tipo) {
       '<span class="rep-total-val" style="font-size:20px">' + formatarMoeda(totalVendas) + '</span>' +
     '</div>' + renderVendasDetalheLista(allPedidos);
   } else if (tipo === 'orcamentos') {
-    const isOrc = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
-    const statusOrc = v => v.status_orcamento || v.orcamento_status || 'aberto';
-    const abertos = rows.filter(v => isOrc(v) && (!statusOrc(v) || statusOrc(v) === 'aberto'));
-    const fechados = rows.filter(v => isOrc(v) && statusOrc(v) === 'fechado');
-    const perdidos = rows.filter(v => isOrc(v) && statusOrc(v) === 'perdido');
-    html = renderGrupoOrcamentos('Em Aberto', abertos, 'var(--orange)') +
-           renderGrupoOrcamentos('Fechados', fechados, 'var(--green)') +
-           renderGrupoOrcamentos('Perdidos', perdidos, 'var(--red)');
-    if (!html) html = '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum orçamento no período</div>';
-  } else if (tipo === 'conversao') {
-    const _isOrcConv = v => (v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento');
-    const orcConvertidos = rows.filter(v => _isOrcConv(v) && (v.status_orcamento === 'fechado' || v.orcamento_status === 'fechado'));
-    const totalOrc = rows.filter(v => _isOrcConv(v)).length;
-    const pct = totalOrc > 0 ? Math.round(orcConvertidos.length / totalOrc * 100) : 0;
-    html = '<div style="padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-        '<span style="font-size:13px;color:var(--text2)">' + orcConvertidos.length + ' de ' + totalOrc + ' orçamentos convertidos</span>' +
-        '<span style="font-size:18px;font-weight:800;color:var(--purple)">' + pct + '%</span>' +
-      '</div>' +
-      '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--purple);border-radius:4px"></div></div>' +
-    '</div>';
-    if (!orcConvertidos.length) {
-      html += '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum orçamento convertido no período</div>';
-    } else {
-      html += '<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase">✅ Convertidos em pedido (' + orcConvertidos.length + ')</div>';
-      html += renderDetalheLista(orcConvertidos, true);
-    }
+    document.getElementById('rep-detalhe-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)"><div class="spinner" style="margin:0 auto 12px"></div>Carregando...</div>';
+    _carregarOrcamentosRelatorio(_orcFiltroAtual);
+    return;
   } else if (tipo === 'empresa') {
     const grupos = {};
     rows.forEach(v => {
@@ -2514,8 +2484,8 @@ async function _carregarGastosRelatorio(periodo) {
   const clisUnicos = new Set(gastos.map(g=>g.cliente_id).filter(Boolean)).size;
 
   const filtroHtml = `<div style="display:flex;gap:6px;padding:10px 12px 4px;">` +
-    ['hoje','semana','mes'].map(p =>
-      `<button class="fin-periodo-tab${_gastosRelFiltro===p?' active':''}" onclick="_carregarGastosRelatorio('${p}')">${{hoje:'Hoje',semana:'Semana',mes:'Mês'}[p]}</button>`
+    ['hoje','semana','mes','ano'].map(p =>
+      `<button class="fin-periodo-tab${_gastosRelFiltro===p?' active':''}" onclick="_carregarGastosRelatorio('${p}')">${{hoje:'Hoje',semana:'Semana',mes:'Mês',ano:'Ano'}[p]}</button>`
     ).join('') + '</div>';
 
   if (!gastos.length) {
@@ -2620,6 +2590,65 @@ function _renderBonifBody(container) {
 
   html += '</div>';
   container.innerHTML = html;
+}
+
+let _orcFiltroAtual = 'mes';
+async function _carregarOrcamentosRelatorio(periodo) {
+  _orcFiltroAtual = periodo;
+  const body = document.getElementById('rep-detalhe-body');
+  if (!body || !currentRep) return;
+  body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)"><div class="spinner" style="margin:0 auto 12px"></div>Carregando...</div>';
+  const { ini, fim } = getDateRange(periodo);
+  const { data } = await sb.from('visitas').select('*').eq('rep_id', currentRep.id).gte('data', ini).lte('data', fim).order('data', { ascending: false });
+  const isOrc = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
+  const statusOrc = v => v.status_orcamento || v.orcamento_status || 'aberto';
+  const orc = (data || []).filter(v => isOrc(v));
+  window._orcamentosRelatorioCache = orc;
+  const abertos = orc.filter(v => !statusOrc(v) || statusOrc(v) === 'aberto');
+  const fechados = orc.filter(v => statusOrc(v) === 'fechado');
+  const perdidos = orc.filter(v => statusOrc(v) === 'perdido');
+  const taxa = orc.length > 0 ? Math.round(fechados.length / orc.length * 100) : 0;
+  const filtroHtml = `<div style="display:flex;gap:6px;padding:10px 12px 4px;">` +
+    ['hoje','semana','mes','ano'].map(p =>
+      `<button class="fin-periodo-tab${_orcFiltroAtual===p?' active':''}" onclick="_carregarOrcamentosRelatorio('${p}')">${{hoje:'Hoje',semana:'Semana',mes:'Mês',ano:'Ano'}[p]}</button>`
+    ).join('') + '</div>';
+  if (!orc.length) {
+    body.innerHTML = filtroHtml + '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum orçamento no período</div>';
+    return;
+  }
+  let html = filtroHtml +
+    `<div style="display:flex;gap:6px;padding:8px 12px 4px;">
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange);font-size:16px">${abertos.length}</div><div class="fin-resumo-lbl">Em aberto</div></div>
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--green);font-size:16px">${fechados.length}</div><div class="fin-resumo-lbl">Fechados</div></div>
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--red);font-size:16px">${perdidos.length}</div><div class="fin-resumo-lbl">Perdidos</div></div>
+      <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--blue);font-size:16px">${taxa}%</div><div class="fin-resumo-lbl">Conversão</div></div>
+    </div>`;
+  const renderItemOrc = (v, i) => {
+    const bg = i % 2 === 0 ? 'var(--card)' : 'var(--bg)';
+    const nome = (v.nome_cliente || '').replace(/\s*\([^)]*\)/, '').trim();
+    const rep = v.representada_nome || v.pedido_representada || '';
+    const val = parseFloat(v.valor_pedido) > 0 ? formatarMoeda(v.valor_pedido) : '';
+    const dt = v.data ? new Date(v.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
+    const obs = v.obs ? v.obs.slice(0,80)+(v.obs.length>80?'…':'') : '';
+    return `<div style="display:flex;align-items:flex-start;padding:11px 14px;background:${bg};border-bottom:1px solid var(--border);gap:10px" onclick="fecharRepDetalhe();openPerfil(${v.id_cliente||v.cliente_id})">
+      <div style="font-size:16px;margin-top:1px">📋</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;color:var(--text)">${nome}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${[rep,dt].filter(Boolean).join(' · ')}</div>
+        ${obs ? `<div style="font-size:12px;color:var(--text2);margin-top:3px;line-height:1.4">${obs}</div>` : ''}
+      </div>
+      ${val ? `<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px;white-space:nowrap">${val}</div>` : ''}
+    </div>`;
+  };
+  const renderGrupoOrc = (titulo, lista, cor) => {
+    if (!lista.length) return '';
+    return `<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:${cor};text-transform:uppercase">${titulo} (${lista.length})</div>` +
+      lista.map((v,i) => renderItemOrc(v,i)).join('');
+  };
+  html += renderGrupoOrc('Em Aberto', abertos, 'var(--orange)') +
+          renderGrupoOrc('Fechados', fechados, 'var(--green)') +
+          renderGrupoOrc('Perdidos', perdidos, 'var(--red)');
+  body.innerHTML = html;
 }
 
 function renderDetalheLista(rows, showValor) {
@@ -2851,22 +2880,23 @@ function exportarPDFDetalhe() {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
   const tipo = repDetalheAtual;
-  const rows = getRowsFiltradas();
+  const rows = (tipo === 'orcamentos') ? (window._orcamentosRelatorioCache || []) : getRowsFiltradas();
   const hoje = new Date();
 
   const _nm = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
   const nomeMesCap = _nm.charAt(0).toUpperCase() + _nm.slice(1);
-  const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Esta semana' : nomeMesCap;
-  const titulos = { visitas:'Relatório de Visitas', vendas:'Relatório de Vendas', orcamentos:'Relatório de Orçamentos', conversao:'Relatório de Conversão', empresa:'Vendas por Representada', bonificacoes:'Relatório de Bonificações', gastos_clientes:'Relatório de Gastos com Clientes' };
+  const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Esta semana' : repFiltroAtual === 'ano' ? String(relAno) : nomeMesCap;
+  const titulos = { visitas:'Relatório de Visitas', vendas:'Relatório de Vendas', orcamentos:'Relatório de Orçamentos', empresa:'Vendas por Representada', bonificacoes:'Relatório de Bonificações', gastos_clientes:'Relatório de Gastos com Clientes' };
   const repNome = currentRep?.nome || '';
 
-  const BLUE = [41, 98, 255];
-  const GREEN = [34, 197, 94];
+  const HDR  = [26, 58, 107];
+  const BLUE = [26, 58, 107];
+  const GREEN  = [22, 163, 74];
   const ORANGE = [234, 88, 12];
-  const RED = [220, 38, 38];
+  const RED    = [220, 38, 38];
 
-  // ── Cabeçalho azul ──────────────────────────────────────
-  doc.setFillColor(...BLUE);
+  // ── Cabeçalho azul padrão ───────────────────────────────
+  doc.setFillColor(...HDR);
   doc.rect(0, 0, W, 32, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
@@ -2885,31 +2915,34 @@ function exportarPDFDetalhe() {
   const _cid = c => (c || '').replace(/ - SC$| - PR$/, '').trim();
   const _dt  = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
   const _val = v => v ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
+  const _str = s => String(s || '—');
 
   const addCards = (cards) => {
     const cw = (W - 28 - (cards.length - 1) * 3) / cards.length;
     cards.forEach((card, i) => {
       const x = 14 + i * (cw + 3);
       doc.setFillColor(245, 248, 255);
-      doc.rect(x, y, cw, 17, 'F');
+      doc.rect(x, y, cw, 18, 'F');
       doc.setTextColor(...(card.color || BLUE));
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(card.value.length > 10 ? 9 : 12);
-      doc.text(card.value, x + cw / 2, y + 8, { align: 'center' });
+      const fs = card.value.length > 13 ? 7 : card.value.length > 9 ? 9 : 12;
+      doc.setFontSize(fs);
+      doc.text(card.value, x + cw / 2, y + 9, { align: 'center' });
       doc.setTextColor(120, 120, 120);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.text(card.label, x + cw / 2, y + 14, { align: 'center' });
+      doc.setFontSize(6.5);
+      doc.text(card.label, x + cw / 2, y + 15, { align: 'center' });
     });
     doc.setTextColor(0, 0, 0);
-    y += 22;
+    y += 23;
   };
 
   const addTable = (head, body, opts) => {
     if (typeof doc.autoTable !== 'function') {
       doc.setFontSize(8);
       body.forEach(row => {
-        doc.text(row.join(' | ').slice(0, 110), 14, y);
+        const flat = row.map(c => (typeof c === 'object' ? (c.content||'') : c));
+        doc.text(flat.join(' | ').slice(0, 110), 14, y);
         y += 5;
         if (y > 270) { doc.addPage(); y = 14; }
       });
@@ -2919,7 +2952,7 @@ function exportarPDFDetalhe() {
       head, body,
       startY: y,
       styles: { fontSize: 7.5, cellPadding: 2 },
-      headStyles: { fillColor: BLUE, textColor: 255, fontSize: 8, fontStyle: 'bold' },
+      headStyles: { fillColor: HDR, textColor: 255, fontSize: 8, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 253] },
       margin: { left: 14, right: 14 },
       ...opts,
@@ -2927,15 +2960,16 @@ function exportarPDFDetalhe() {
     y = doc.lastAutoTable.finalY + 6;
   };
 
-  const addSectionHeader = (label, color) => {
-    doc.setFillColor(...(color || [230, 238, 255]));
-    doc.rect(14, y, W - 28, 8, 'F');
-    doc.setTextColor(...(color ? [255,255,255] : BLUE));
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text(label, 17, y + 5.5);
-    doc.setTextColor(0, 0, 0);
-    y += 10;
+  const addFooterRodape = () => {
+    const totalPags = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPags; i++) {
+      doc.setPage(i);
+      const pH = doc.internal.pageSize.getHeight();
+      doc.setFontSize(7.5);
+      doc.setTextColor(160, 160, 160);
+      doc.text('mundodorep.com.br', 14, pH - 5);
+      doc.text('Página ' + i + ' de ' + totalPags, W - 14, pH - 5, { align: 'right' });
+    }
   };
 
   // ── VISITAS ─────────────────────────────────────────────
@@ -2944,19 +2978,20 @@ function exportarPDFDetalhe() {
     const wpp  = rows.filter(v => v.tipo === 'whatsapp').length;
     addCards([
       { label: 'Total de Visitas', value: String(rows.length), color: BLUE },
-      { label: 'Presenciais',      value: String(pres), color: GREEN },
-      { label: 'WhatsApp',         value: String(wpp),  color: [21, 128, 61] },
+      { label: 'Presenciais',      value: String(pres),        color: GREEN },
+      { label: 'WhatsApp',         value: String(wpp),         color: [21, 128, 61] },
     ]);
     const byCid = {};
     rows.forEach(v => { const c = _cid(v.cidade) || 'Sem cidade'; if (!byCid[c]) byCid[c] = []; byCid[c].push(v); });
     Object.entries(byCid).sort(([a],[b]) => a.localeCompare(b, 'pt-BR')).forEach(([cidade, cr]) => {
       addTable(
         [[{ content: '📍 ' + cidade + ' (' + cr.length + ')', colSpan: 5, styles: { fillColor: [230, 238, 255], textColor: BLUE, fontStyle: 'bold', fontSize: 8.5 } }],
-         ['Cliente', 'Data', 'Tipo', 'Representada / Valor', 'Observação']],
+         ['Cliente', 'Data/Hora', 'Tipo', 'Representada / Valor', 'Observação']],
         cr.map(v => {
           const tipoLabel = v.tipo === 'whatsapp' ? 'WhatsApp' : v.pedido_tipo === 'pedido' ? 'Pedido' : v.pedido_tipo === 'orcamento' ? 'Orçamento' : 'Visita';
+          const dataHora = _dt(v.data) + (v.hora && v.hora !== '00:00' ? ' ' + v.hora : '');
           const repVal = [v.representada_nome || v.pedido_representada, parseFloat(v.valor_pedido||0) > 0 ? _val(v.valor_pedido) : ''].filter(Boolean).join(' · ');
-          return [_nc(v.nome_cliente), _dt(v.data), tipoLabel, repVal, (v.obs || '').slice(0, 40)];
+          return [_nc(v.nome_cliente), dataHora, tipoLabel, repVal, (v.obs || '').slice(0, 40)];
         })
       );
     });
@@ -2964,18 +2999,17 @@ function exportarPDFDetalhe() {
 
   // ── VENDAS ──────────────────────────────────────────────
   } else if (tipo === 'vendas') {
-    const cp   = rows.filter(v => parseFloat(v.valor_pedido) > 0);
-    const tot  = cp.reduce((s, v) => s + parseFloat(v.valor_pedido), 0);
+    const cp  = rows.filter(v => parseFloat(v.valor_pedido) > 0);
+    const tot = cp.reduce((s, v) => s + parseFloat(v.valor_pedido), 0);
     addCards([
       { label: 'Total de Vendas', value: 'R$ ' + tot.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: GREEN },
       { label: 'Nº de Pedidos',   value: String(cp.length), color: BLUE },
     ]);
     const byRep = {};
     cp.forEach(v => {
-      const rn = v.representada_nome || 'Sem representada';
+      const rn = v.representada_nome || v.pedido_representada || 'Sem representada';
       if (!byRep[rn]) byRep[rn] = { rows: [], total: 0 };
-      byRep[rn].rows.push(v);
-      byRep[rn].total += parseFloat(v.valor_pedido);
+      byRep[rn].rows.push(v); byRep[rn].total += parseFloat(v.valor_pedido);
     });
     Object.entries(byRep).sort((a, b) => b[1].total - a[1].total).forEach(([rn, rd]) => {
       addTable(
@@ -2985,21 +3019,26 @@ function exportarPDFDetalhe() {
           .map(v => [_nc(v.nome_cliente), _cid(v.cidade), _dt(v.data), _val(v.valor_pedido)])
       );
     });
+    // Total geral rodapé
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    doc.text('Total geral: R$ ' + tot.toLocaleString('pt-BR', {minimumFractionDigits:2}), W - 14, Math.min(y, 270), { align: 'right' });
+    doc.setFont('helvetica', 'normal');
     if (!cp.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma venda no período.', 14, y); }
 
   // ── ORÇAMENTOS ──────────────────────────────────────────
   } else if (tipo === 'orcamentos') {
-    const _isOrcPdf = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
-    const orc    = rows.filter(v => _isOrcPdf(v));
-    const abertos = orc.filter(v => !v.status_orcamento || v.status_orcamento === 'aberto');
-    const fechados = orc.filter(v => v.status_orcamento === 'fechado');
-    const perdidos = orc.filter(v => v.status_orcamento === 'perdido');
-    const totVal  = orc.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
+    const isOrcPdf = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
+    const statusOrcPdf = v => v.status_orcamento || v.orcamento_status || 'aberto';
+    const orc     = rows.filter(v => isOrcPdf(v));
+    const abertos = orc.filter(v => !statusOrcPdf(v) || statusOrcPdf(v) === 'aberto');
+    const fechados = orc.filter(v => statusOrcPdf(v) === 'fechado');
+    const perdidos = orc.filter(v => statusOrcPdf(v) === 'perdido');
+    const taxaConv = orc.length > 0 ? Math.round(fechados.length / orc.length * 100) : 0;
     addCards([
-      { label: 'Total',      value: String(orc.length),     color: BLUE },
-      { label: 'Em Aberto',  value: String(abertos.length), color: ORANGE },
-      { label: 'Fechados',   value: String(fechados.length),color: GREEN },
-      { label: 'Perdidos',   value: String(perdidos.length),color: RED },
+      { label: 'Em Aberto',        value: String(abertos.length), color: ORANGE },
+      { label: 'Fechados',         value: String(fechados.length), color: GREEN },
+      { label: 'Perdidos',         value: String(perdidos.length), color: RED },
+      { label: 'Taxa de Conversão', value: taxaConv + '%',         color: BLUE },
     ]);
     const grupos = [
       { label: 'Em Aberto', items: abertos, color: ORANGE },
@@ -3009,29 +3048,12 @@ function exportarPDFDetalhe() {
     grupos.forEach(g => {
       if (!g.items.length) return;
       addTable(
-        [[{ content: g.label + ' (' + g.items.length + ')', colSpan: 4, styles: { fillColor: g.color, textColor: [255,255,255], fontStyle: 'bold', fontSize: 8.5 } }],
-         ['Cliente', 'Data', 'Valor', 'Observação']],
-        g.items.map(v => [_nc(v.nome_cliente), _dt(v.data), _val(v.valor_pedido), (v.obs || '').slice(0, 50)])
+        [[{ content: g.label + ' (' + g.items.length + ')', colSpan: 5, styles: { fillColor: g.color, textColor: [255,255,255], fontStyle: 'bold', fontSize: 8.5 } }],
+         ['Cliente', 'Representada', 'Data', 'Valor', 'Observação']],
+        g.items.map(v => [_nc(v.nome_cliente), _str(v.representada_nome || v.pedido_representada), _dt(v.data), _val(v.valor_pedido), (v.obs || '').slice(0, 40)])
       );
     });
     if (!orc.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum orçamento no período.', 14, y); }
-
-  // ── CONVERSÃO ───────────────────────────────────────────
-  } else if (tipo === 'conversao') {
-    const _isOrcC = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
-    const orcConv = rows.filter(v => _isOrcC(v) && (v.status_orcamento === 'fechado' || v.orcamento_status === 'fechado'));
-    const totalOrcC = rows.filter(v => _isOrcC(v)).length;
-    const pct = totalOrcC > 0 ? Math.round(orcConv.length / totalOrcC * 100) : 0;
-    addCards([
-      { label: 'Taxa de Conversão', value: pct + '%',           color: [124, 58, 237] },
-      { label: 'Convertidos',       value: String(orcConv.length), color: GREEN },
-      { label: 'Total Orçamentos',  value: String(totalOrcC),   color: BLUE },
-    ]);
-    if (orcConv.length) addTable(
-      [['Cliente', 'Cidade', 'Data', 'Representada', 'Valor']],
-      orcConv.map(v => [_nc(v.nome_cliente), _cid(v.cidade), _dt(v.data), v.representada_nome || v.pedido_representada || '—', _val(v.valor_pedido)])
-    );
-    if (!orcConv.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum orçamento convertido no período.', 14, y); }
 
   // ── BONIFICAÇÕES ────────────────────────────────────────
   } else if (tipo === 'bonificacoes') {
@@ -3043,14 +3065,25 @@ function exportarPDFDetalhe() {
       { label: 'Recebido', value: 'R$ ' + totR.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: GREEN },
       { label: 'Pendente', value: 'R$ ' + (totG - totR).toLocaleString('pt-BR', {minimumFractionDigits:2}), color: ORANGE },
     ]);
-    if (itens.length) addTable(
-      [['Cliente', 'Representada', 'Motivo', 'Total', 'Recebido', 'Pendente', 'Status']],
-      itens.map(b => {
-        const rec = (b.parcelas || []).filter(p => p.recebido).reduce((a, p) => a + (p.valor || 0), 0);
-        const pend = (b.valor_total || 0) - rec;
-        return [b.cliente_nome || '', b.representada_nome || '', (b.motivo || '').slice(0, 28), _val(b.valor_total), _val(rec), _val(pend), pend > 0 ? 'Pendente' : 'Concluída'];
-      })
-    );
+    // Agrupa por representada
+    const byRepBonif = {};
+    itens.forEach(b => {
+      const rn = b.representada_nome || 'Sem representada';
+      if (!byRepBonif[rn]) byRepBonif[rn] = [];
+      byRepBonif[rn].push(b);
+    });
+    Object.entries(byRepBonif).forEach(([rn, bItens]) => {
+      addTable(
+        [[{ content: '🏢 ' + rn, colSpan: 6, styles: { fillColor: [230, 238, 255], textColor: BLUE, fontStyle: 'bold', fontSize: 8.5 } }],
+         ['Cliente', 'Motivo', 'Parcelas', 'Progresso', 'Pendente', 'Total']],
+        bItens.map(b => {
+          const rec = (b.parcelas || []).filter(p => p.recebido).reduce((a, p) => a + (p.valor || 0), 0);
+          const pend = (b.valor_total || 0) - rec;
+          const pct = b.valor_total ? Math.round(rec / b.valor_total * 100) : 0;
+          return [_str(b.cliente_nome), (b.motivo || '').slice(0, 25), String((b.parcelas||[]).length) + 'x', pct + '%', _val(pend), _val(b.valor_total)];
+        })
+      );
+    });
     if (!itens.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma bonificação encontrada.', 14, y); }
 
   // ── GASTOS COM CLIENTES ─────────────────────────────────
@@ -3063,42 +3096,31 @@ function exportarPDFDetalhe() {
       { label: 'Clientes',        value: String(clisUnicosG), color: BLUE },
     ]);
     if (gastos.length) {
-      const porCliente = {};
+      // Agrupa por categoria
+      const porCat = {};
       gastos.forEach(g => {
-        const k = g.cliente_nome || g.cliente_id || 'Sem cliente';
-        if (!porCliente[k]) porCliente[k] = [];
-        porCliente[k].push(g);
+        const k = _str(g.categoria) || 'Sem categoria';
+        if (!porCat[k]) porCat[k] = [];
+        porCat[k].push(g);
       });
-      Object.entries(porCliente).sort((a,b) => b[1].reduce((s,g)=>s+(g.valor||0),0) - a[1].reduce((s,g)=>s+(g.valor||0),0)).forEach(([cliente, itensG]) => {
-        const totalCliente = itensG.reduce((s,g) => s+(g.valor||0), 0);
+      Object.entries(porCat).sort((a,b) => b[1].reduce((s,g)=>s+(g.valor||0),0) - a[1].reduce((s,g)=>s+(g.valor||0),0)).forEach(([cat, itensG]) => {
+        const totalCat = itensG.reduce((s,g) => s+(g.valor||0), 0);
         addTable(
-          [[{ content: cliente + ' — R$ ' + totalCliente.toLocaleString('pt-BR',{minimumFractionDigits:2}), colSpan: 3, styles: { fillColor: [255,240,240], textColor: [180,30,30], fontStyle: 'bold', fontSize: 8.5 } }],
-           ['Data', 'Descrição', 'Valor']],
-          itensG.map(g => [_dt(g.data), g.descricao || g.categoria || '—', 'R$ ' + (g.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})])
+          [[{ content: cat + ' — R$ ' + totalCat.toLocaleString('pt-BR',{minimumFractionDigits:2}), colSpan: 4, styles: { fillColor: [255,240,240], textColor: [180,30,30], fontStyle: 'bold', fontSize: 8.5 } }],
+           ['Cliente', 'Descrição', 'Data', 'Valor']],
+          itensG.map(g => [_str(g.cliente_nome || g.cliente_id), _str(g.descricao || g.categoria), _dt(g.data), 'R$ ' + (g.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})])
         );
       });
-      // Rodapé total
-      if (y < 260) {
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-        doc.text('Total: R$ ' + totalGastos.toLocaleString('pt-BR',{minimumFractionDigits:2}), W - 14, y, { align: 'right' });
-        doc.setFont('helvetica', 'normal');
-      }
+      // Rodapé total do período
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+      doc.text('Total do período: R$ ' + totalGastos.toLocaleString('pt-BR',{minimumFractionDigits:2}), W - 14, Math.min(y, 270), { align: 'right' });
+      doc.setFont('helvetica', 'normal');
     } else {
       doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum gasto registrado no período.', 14, y);
     }
   }
 
-  // ── Rodapé em todas as páginas ──────────────────────────
-  const totalPags = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= totalPags; i++) {
-    doc.setPage(i);
-    const pH = doc.internal.pageSize.getHeight();
-    doc.setFontSize(7.5);
-    doc.setTextColor(160, 160, 160);
-    doc.text('mundodorep.com.br', 14, pH - 5);
-    doc.text('Página ' + i + ' de ' + totalPags, W - 14, pH - 5, { align: 'right' });
-  }
-
+  addFooterRodape();
   doc.save('relatorio_' + tipo + '_' + filtroLabel.replace(/[\s/]/g, '_') + '.pdf');
 }
 
@@ -5647,16 +5669,35 @@ async function carregarLembretesSupabase() {
 let relMes = new Date().getMonth();
 let relAno = new Date().getFullYear();
 let visatasDoRelatorio = [];
-let repFiltroAtual = 'mes'; // 'mes' | 'semana' | 'hoje'
+let repFiltroAtual = 'mes'; // 'mes' | 'semana' | 'hoje' | 'ano'
 let repRepresentadasFiltro = []; // [] = todas
 let repFiltroDropdownOpen = false;
 let repDetalheAtual = null;
+let visatasAnoCache = [];
+let visatasAnoLoaded = false;
 
 function setRepFiltro(filtro, btn) {
   repFiltroAtual = filtro;
   document.querySelectorAll('.rep-filtro-tab').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
+  if (filtro === 'ano' && !visatasAnoLoaded) {
+    document.getElementById('rep-body').innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner" style="margin:0 auto"></div></div>';
+    carregarVisitasAno().then(() => renderReport());
+    return;
+  }
   renderReport();
+}
+
+async function carregarVisitasAno() {
+  if (!currentUser) return;
+  try {
+    const anoAtual = new Date().getFullYear();
+    const { data } = await sb.from('visitas').select('*').eq('rep_id', await getRepId())
+      .gte('data', anoAtual + '-01-01').lte('data', new Date().toISOString().slice(0,10))
+      .order('data', { ascending: false });
+    visatasAnoCache = data || [];
+    visatasAnoLoaded = true;
+  } catch(e) { visatasAnoCache = []; }
 }
 
 // Carrega visitas do período selecionado
@@ -7580,7 +7621,7 @@ async function gerarPDFFinanceiro() {
     for (let i = 1; i <= total; i++) {
       doc.setPage(i);
       doc.setFontSize(8); doc.setTextColor(140, 140, 140);
-      doc.text('Minha Rota RP · minharotarp.com.br', 14, ph - 6);
+      doc.text('mundodorep.com.br', 14, ph - 6);
       doc.text(`Página ${i} de ${total}`, pw - 14, ph - 6, { align: 'right' });
     }
   };
