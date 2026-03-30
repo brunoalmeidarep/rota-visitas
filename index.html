@@ -2879,6 +2879,7 @@ function exportarPDFDetalhe() {
   const { jsPDF } = window.jspdf || window;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
   const tipo = repDetalheAtual;
   const rows = (tipo === 'orcamentos') ? (window._orcamentosRelatorioCache || []) : getRowsFiltradas();
   const hoje = new Date();
@@ -2889,121 +2890,202 @@ function exportarPDFDetalhe() {
   const titulos = { visitas:'Relatório de Visitas', vendas:'Relatório de Vendas', orcamentos:'Relatório de Orçamentos', empresa:'Vendas por Representada', bonificacoes:'Relatório de Bonificações', gastos_clientes:'Relatório de Gastos com Clientes' };
   const repNome = currentRep?.nome || '';
 
-  const HDR  = [26, 58, 107];
-  const BLUE = [26, 58, 107];
-  const GREEN  = [22, 163, 74];
-  const ORANGE = [234, 88, 12];
-  const RED    = [220, 38, 38];
+  // ── Paleta ──────────────────────────────────────────────
+  const C_HDR    = [26, 58, 107];
+  const C_BLUE   = [0, 122, 255];
+  const C_GREEN  = [22, 163, 74];
+  const C_ORANGE = [234, 88, 12];
+  const C_RED    = [220, 38, 38];
+  const C_GRAY   = [120, 120, 120];
+  const C_WHITE  = [255, 255, 255];
+  const ML = 14; const MR = 14; const CW = W - ML - MR;
 
-  // ── Cabeçalho azul padrão ───────────────────────────────
-  doc.setFillColor(...HDR);
-  doc.rect(0, 0, W, 32, 'F');
-  doc.setTextColor(255, 255, 255);
+  // ── Cabeçalho azul escuro ───────────────────────────────
+  doc.setFillColor(...C_HDR);
+  doc.rect(0, 0, W, 38, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text(titulos[tipo] || tipo, 14, 13);
-  doc.setFontSize(9);
+  doc.setFontSize(16);
+  doc.setTextColor(...C_WHITE);
+  doc.text(titulos[tipo] || tipo, ML, 15);
   doc.setFont('helvetica', 'normal');
-  doc.text((repNome ? repNome + ' · ' : '') + filtroLabel, 14, 21);
-  doc.text('Gerado em ' + hoje.toLocaleDateString('pt-BR') + ' às ' + hoje.toTimeString().slice(0, 5), 14, 27);
+  doc.setFontSize(9);
+  doc.setTextColor(190, 210, 240);
+  doc.text((repNome ? repNome + ' · ' : '') + filtroLabel, ML, 24);
+  doc.setFontSize(8);
+  doc.setTextColor(163, 183, 220);
+  doc.text('Gerado em ' + hoje.toLocaleDateString('pt-BR') + ' às ' + hoje.toTimeString().slice(0, 5), ML, 32);
   doc.setTextColor(0, 0, 0);
 
-  let y = 38;
+  let y = 46;
 
-  // ── Helpers ─────────────────────────────────────────────
+  // ── Helpers: formatos ───────────────────────────────────
   const _nc  = n => (n || '').replace(/\s*\([^)]*\)/, '').trim();
   const _cid = c => (c || '').replace(/ - SC$| - PR$/, '').trim();
-  const _dt  = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
-  const _val = v => v ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
-  const _str = s => String(s || '—');
+  const _dt  = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '--';
+  const _val = v => v ? 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '--';
+  const _str = s => String(s || '--');
+  const _cut = (s, max) => s && s.length > max ? s.slice(0, max) + '...' : (s || '');
 
-  const addCards = (cards) => {
-    const cw = (W - 28 - (cards.length - 1) * 3) / cards.length;
+  const checkPage = (needed) => {
+    if (y + needed > H - 18) { doc.addPage(); y = 14; }
+  };
+
+  // ── Helper: cards de resumo ─────────────────────────────
+  const addSummaryCards = (cards) => {
+    const n = cards.length;
+    const cardW = (CW - (n - 1) * 4) / n;
     cards.forEach((card, i) => {
-      const x = 14 + i * (cw + 3);
-      doc.setFillColor(245, 248, 255);
-      doc.rect(x, y, cw, 18, 'F');
-      doc.setTextColor(...(card.color || BLUE));
+      const x = ML + i * (cardW + 4);
+      const c = card.color;
+      doc.setFillColor(Math.round(c[0]*0.08+247*0.92), Math.round(c[1]*0.08+249*0.92), Math.round(c[2]*0.08+252*0.92));
+      doc.roundedRect(x, y, cardW, 20, 2, 2, 'F');
+      doc.setFillColor(...c);
+      doc.rect(x, y, 3, 20, 'F');
+      doc.setTextColor(...c);
       doc.setFont('helvetica', 'bold');
-      const fs = card.value.length > 13 ? 7 : card.value.length > 9 ? 9 : 12;
+      const fs = card.value.length > 14 ? 7 : card.value.length > 10 ? 9 : 12;
       doc.setFontSize(fs);
-      doc.text(card.value, x + cw / 2, y + 9, { align: 'center' });
-      doc.setTextColor(120, 120, 120);
+      doc.text(card.value, x + cardW / 2, y + 9, { align: 'center' });
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
-      doc.text(card.label, x + cw / 2, y + 15, { align: 'center' });
+      doc.setTextColor(...C_GRAY);
+      doc.text(card.label, x + cardW / 2, y + 16.5, { align: 'center' });
     });
     doc.setTextColor(0, 0, 0);
-    y += 23;
+    y += 26;
   };
 
-  const addTable = (head, body, opts) => {
-    if (typeof doc.autoTable !== 'function') {
-      doc.setFontSize(8);
-      body.forEach(row => {
-        const flat = row.map(c => (typeof c === 'object' ? (c.content||'') : c));
-        doc.text(flat.join(' | ').slice(0, 110), 14, y);
-        y += 5;
-        if (y > 270) { doc.addPage(); y = 14; }
-      });
-      return;
+  // ── Helper: cabeçalho de seção ─────────────────────────
+  const addSectionHeader = (label, color) => {
+    checkPage(14);
+    doc.setFillColor(...color);
+    doc.roundedRect(ML, y, CW, 7, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...C_WHITE);
+    doc.text(label.toUpperCase(), ML + 6, y + 4.9);
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+  };
+
+  // ── Helper: card de item ────────────────────────────────
+  const addItemCard = ({ title, subtitle, right, rightColor, badge, badgeColor, obs }) => {
+    const lineCount = 1 + (subtitle ? 1 : 0) + (obs ? 1 : 0);
+    const cardH = 5 + lineCount * 6 + 2;
+    checkPage(cardH + 3);
+    doc.setDrawColor(215, 225, 242);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(ML, y, CW, cardH, 2, 2, 'S');
+    // Título
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(30, 30, 30);
+    doc.text(_cut(title, 65), ML + 5, y + 7);
+    // Valor à direita (exclusivo com badge)
+    if (right) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...(rightColor || C_GREEN));
+      doc.text(right, ML + CW - 4, y + 7, { align: 'right' });
+    } else if (badge) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      const bc = badgeColor || C_BLUE;
+      const bw = doc.getTextWidth(badge) + 6;
+      const bx = ML + CW - bw - 4;
+      doc.setFillColor(Math.round(bc[0]*0.12+243*0.88), Math.round(bc[1]*0.12+243*0.88), Math.round(bc[2]*0.12+243*0.88));
+      doc.roundedRect(bx, y + 2, bw, 5, 1, 1, 'F');
+      doc.setTextColor(...bc);
+      doc.text(badge, bx + bw / 2, y + 5.9, { align: 'center' });
     }
-    doc.autoTable({
-      head, body,
-      startY: y,
-      styles: { fontSize: 7.5, cellPadding: 2 },
-      headStyles: { fillColor: HDR, textColor: 255, fontSize: 8, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 253] },
-      margin: { left: 14, right: 14 },
-      ...opts,
-    });
-    y = doc.lastAutoTable.finalY + 6;
+    let ly = y + 7 + 6;
+    if (subtitle) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...C_GRAY);
+      doc.text(_cut(subtitle, 88), ML + 5, ly);
+      ly += 6;
+    }
+    if (obs) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 100, 100);
+      doc.text(_cut(obs, 95), ML + 5, ly);
+    }
+    doc.setTextColor(0, 0, 0);
+    y += cardH + 3;
   };
 
+  // ── Helper: card de total ───────────────────────────────
+  const addTotalCard = (label, value, color) => {
+    checkPage(18);
+    doc.setFillColor(Math.round(color[0]*0.1+245*0.9), Math.round(color[1]*0.1+248*0.9), Math.round(color[2]*0.1+252*0.9));
+    doc.roundedRect(ML, y, CW, 14, 2, 2, 'F');
+    doc.setFillColor(...color);
+    doc.rect(ML, y, 3, 14, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...C_GRAY);
+    doc.text(label, ML + 10, y + 6);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...color);
+    doc.text(value, ML + CW - 4, y + 9.5, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+    y += 18;
+  };
+
+  // ── Helper: rodapé ─────────────────────────────────────
   const addFooterRodape = () => {
     const totalPags = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPags; i++) {
       doc.setPage(i);
       const pH = doc.internal.pageSize.getHeight();
+      doc.setFillColor(245, 248, 252);
+      doc.rect(0, pH - 12, W, 12, 'F');
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
-      doc.setTextColor(160, 160, 160);
-      doc.text('mundodorep.com.br', 14, pH - 5);
-      doc.text('Página ' + i + ' de ' + totalPags, W - 14, pH - 5, { align: 'right' });
+      doc.setTextColor(...C_GRAY);
+      doc.text('Minha Rota RP · minharotarp.com.br', ML, pH - 4.5);
+      doc.text('Pagina ' + i + ' de ' + totalPags, W - MR, pH - 4.5, { align: 'right' });
     }
   };
 
+  // ══════════════════════════════════════════════════════
   // ── VISITAS ─────────────────────────────────────────────
   if (tipo === 'visitas') {
     const pres = rows.filter(v => v.tipo !== 'whatsapp').length;
     const wpp  = rows.filter(v => v.tipo === 'whatsapp').length;
-    addCards([
-      { label: 'Total de Visitas', value: String(rows.length), color: BLUE },
-      { label: 'Presenciais',      value: String(pres),        color: GREEN },
-      { label: 'WhatsApp',         value: String(wpp),         color: [21, 128, 61] },
+    addSummaryCards([
+      { label: 'Total de Visitas', value: String(rows.length), color: C_BLUE },
+      { label: 'Presenciais',      value: String(pres),        color: C_GREEN },
+      { label: 'WhatsApp',         value: String(wpp),         color: [37, 155, 80] },
     ]);
     const byCid = {};
     rows.forEach(v => { const c = _cid(v.cidade) || 'Sem cidade'; if (!byCid[c]) byCid[c] = []; byCid[c].push(v); });
     Object.entries(byCid).sort(([a],[b]) => a.localeCompare(b, 'pt-BR')).forEach(([cidade, cr]) => {
-      addTable(
-        [[{ content: '📍 ' + cidade + ' (' + cr.length + ')', colSpan: 5, styles: { fillColor: [230, 238, 255], textColor: BLUE, fontStyle: 'bold', fontSize: 8.5 } }],
-         ['Cliente', 'Data/Hora', 'Tipo', 'Representada / Valor', 'Observação']],
-        cr.map(v => {
-          const tipoLabel = v.tipo === 'whatsapp' ? 'WhatsApp' : v.pedido_tipo === 'pedido' ? 'Pedido' : v.pedido_tipo === 'orcamento' ? 'Orçamento' : 'Visita';
-          const dataHora = _dt(v.data) + (v.hora && v.hora !== '00:00' ? ' ' + v.hora : '');
-          const repVal = [v.representada_nome || v.pedido_representada, parseFloat(v.valor_pedido||0) > 0 ? _val(v.valor_pedido) : ''].filter(Boolean).join(' · ');
-          return [_nc(v.nome_cliente), dataHora, tipoLabel, repVal, (v.obs || '').slice(0, 40)];
-        })
-      );
+      addSectionHeader(cidade + ' (' + cr.length + ' visita' + (cr.length !== 1 ? 's' : '') + ')', C_HDR);
+      cr.forEach(v => {
+        const tipoLabel = v.tipo === 'whatsapp' ? 'WhatsApp' : v.pedido_tipo === 'pedido' ? 'Pedido' : v.pedido_tipo === 'orcamento' ? 'Orcamento' : 'Presencial';
+        const badgeColor = v.tipo === 'whatsapp' ? [37,155,80] : v.pedido_tipo === 'pedido' ? C_GREEN : v.pedido_tipo === 'orcamento' ? C_ORANGE : C_BLUE;
+        const repVal = [v.representada_nome || v.pedido_representada, parseFloat(v.valor_pedido||0) > 0 ? _val(v.valor_pedido) : ''].filter(Boolean).join(' · ');
+        addItemCard({
+          title: _nc(v.nome_cliente),
+          subtitle: _dt(v.data) + (v.hora && v.hora !== '00:00' ? ' · ' + v.hora : '') + (repVal ? ' · ' + repVal : ''),
+          badge: tipoLabel, badgeColor,
+          obs: _cut(v.obs || '', 90),
+        });
+      });
     });
-    if (!rows.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma visita no período.', 14, y); }
+    if (!rows.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma visita no periodo.', ML, y); }
 
   // ── VENDAS ──────────────────────────────────────────────
-  } else if (tipo === 'vendas') {
+  } else if (tipo === 'vendas' || tipo === 'empresa') {
     const cp  = rows.filter(v => parseFloat(v.valor_pedido) > 0);
     const tot = cp.reduce((s, v) => s + parseFloat(v.valor_pedido), 0);
-    addCards([
-      { label: 'Total de Vendas', value: 'R$ ' + tot.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: GREEN },
-      { label: 'Nº de Pedidos',   value: String(cp.length), color: BLUE },
+    addSummaryCards([
+      { label: 'Total de Vendas', value: 'R$ ' + tot.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: C_GREEN },
+      { label: 'Pedidos',         value: String(cp.length), color: C_BLUE },
     ]);
     const byRep = {};
     cp.forEach(v => {
@@ -3012,111 +3094,130 @@ function exportarPDFDetalhe() {
       byRep[rn].rows.push(v); byRep[rn].total += parseFloat(v.valor_pedido);
     });
     Object.entries(byRep).sort((a, b) => b[1].total - a[1].total).forEach(([rn, rd]) => {
-      addTable(
-        [[{ content: '🏢 ' + rn + ' — R$ ' + rd.total.toLocaleString('pt-BR', {minimumFractionDigits:2}), colSpan: 4, styles: { fillColor: [230, 238, 255], textColor: BLUE, fontStyle: 'bold', fontSize: 8.5 } }],
-         ['Cliente', 'Cidade', 'Data', 'Valor']],
-        rd.rows.sort((a, b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido))
-          .map(v => [_nc(v.nome_cliente), _cid(v.cidade), _dt(v.data), _val(v.valor_pedido)])
-      );
+      addSectionHeader(rn + ' -- R$ ' + rd.total.toLocaleString('pt-BR', {minimumFractionDigits:2}), C_HDR);
+      rd.rows.sort((a, b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido)).forEach(v => {
+        addItemCard({
+          title: _nc(v.nome_cliente),
+          subtitle: _cid(v.cidade) + ' · ' + _dt(v.data),
+          right: _val(v.valor_pedido), rightColor: C_GREEN,
+        });
+      });
     });
-    // Total geral rodapé
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-    doc.text('Total geral: R$ ' + tot.toLocaleString('pt-BR', {minimumFractionDigits:2}), W - 14, Math.min(y, 270), { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    if (!cp.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma venda no período.', 14, y); }
+    if (cp.length) addTotalCard('Total geral do periodo', 'R$ ' + tot.toLocaleString('pt-BR', {minimumFractionDigits:2}), C_GREEN);
+    if (!cp.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma venda no periodo.', ML, y); }
 
   // ── ORÇAMENTOS ──────────────────────────────────────────
   } else if (tipo === 'orcamentos') {
-    const isOrcPdf = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
+    const isOrcPdf    = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
     const statusOrcPdf = v => v.status_orcamento || v.orcamento_status || 'aberto';
     const orc     = rows.filter(v => isOrcPdf(v));
     const abertos = orc.filter(v => !statusOrcPdf(v) || statusOrcPdf(v) === 'aberto');
     const fechados = orc.filter(v => statusOrcPdf(v) === 'fechado');
     const perdidos = orc.filter(v => statusOrcPdf(v) === 'perdido');
     const taxaConv = orc.length > 0 ? Math.round(fechados.length / orc.length * 100) : 0;
-    addCards([
-      { label: 'Em Aberto',        value: String(abertos.length), color: ORANGE },
-      { label: 'Fechados',         value: String(fechados.length), color: GREEN },
-      { label: 'Perdidos',         value: String(perdidos.length), color: RED },
-      { label: 'Taxa de Conversão', value: taxaConv + '%',         color: BLUE },
+    addSummaryCards([
+      { label: 'Em Aberto',         value: String(abertos.length), color: C_ORANGE },
+      { label: 'Fechados',          value: String(fechados.length), color: C_GREEN },
+      { label: 'Perdidos',          value: String(perdidos.length), color: C_RED },
+      { label: 'Taxa de Conversao', value: taxaConv + '%',          color: C_BLUE },
     ]);
-    const grupos = [
-      { label: 'Em Aberto', items: abertos, color: ORANGE },
-      { label: 'Fechados',  items: fechados, color: GREEN },
-      { label: 'Perdidos',  items: perdidos, color: RED },
-    ];
-    grupos.forEach(g => {
+    [
+      { label: 'Em Aberto', items: abertos, color: C_ORANGE },
+      { label: 'Fechados',  items: fechados, color: C_GREEN },
+      { label: 'Perdidos',  items: perdidos, color: C_RED },
+    ].forEach(g => {
       if (!g.items.length) return;
-      addTable(
-        [[{ content: g.label + ' (' + g.items.length + ')', colSpan: 5, styles: { fillColor: g.color, textColor: [255,255,255], fontStyle: 'bold', fontSize: 8.5 } }],
-         ['Cliente', 'Representada', 'Data', 'Valor', 'Observação']],
-        g.items.map(v => [_nc(v.nome_cliente), _str(v.representada_nome || v.pedido_representada), _dt(v.data), _val(v.valor_pedido), (v.obs || '').slice(0, 40)])
-      );
+      addSectionHeader(g.label + ' (' + g.items.length + ')', g.color);
+      g.items.forEach(v => {
+        const repNm = _str(v.representada_nome || v.pedido_representada);
+        addItemCard({
+          title: _nc(v.nome_cliente),
+          subtitle: repNm + ' · ' + _dt(v.data) + (parseFloat(v.valor_pedido||0) > 0 ? ' · ' + _val(v.valor_pedido) : ''),
+          badge: g.label, badgeColor: g.color,
+          obs: _cut(v.obs || '', 90),
+        });
+      });
     });
-    if (!orc.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum orçamento no período.', 14, y); }
+    if (!orc.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum orcamento no periodo.', ML, y); }
 
   // ── BONIFICAÇÕES ────────────────────────────────────────
   } else if (tipo === 'bonificacoes') {
     const itens = bonificacoesFinCache || [];
     const totG = itens.reduce((s, b) => s + (b.valor_total || 0), 0);
     const totR = itens.reduce((s, b) => s + (b.parcelas || []).filter(p => p.recebido).reduce((a, p) => a + (p.valor || 0), 0), 0);
-    addCards([
-      { label: 'Total',    value: 'R$ ' + totG.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: BLUE },
-      { label: 'Recebido', value: 'R$ ' + totR.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: GREEN },
-      { label: 'Pendente', value: 'R$ ' + (totG - totR).toLocaleString('pt-BR', {minimumFractionDigits:2}), color: ORANGE },
+    addSummaryCards([
+      { label: 'Total',    value: 'R$ ' + totG.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: C_BLUE },
+      { label: 'Recebido', value: 'R$ ' + totR.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: C_GREEN },
+      { label: 'Pendente', value: 'R$ ' + (totG - totR).toLocaleString('pt-BR', {minimumFractionDigits:2}), color: C_ORANGE },
     ]);
-    // Agrupa por representada
     const byRepBonif = {};
-    itens.forEach(b => {
-      const rn = b.representada_nome || 'Sem representada';
-      if (!byRepBonif[rn]) byRepBonif[rn] = [];
-      byRepBonif[rn].push(b);
-    });
+    itens.forEach(b => { const rn = b.representada_nome || 'Sem representada'; if (!byRepBonif[rn]) byRepBonif[rn] = []; byRepBonif[rn].push(b); });
     Object.entries(byRepBonif).forEach(([rn, bItens]) => {
-      addTable(
-        [[{ content: '🏢 ' + rn, colSpan: 6, styles: { fillColor: [230, 238, 255], textColor: BLUE, fontStyle: 'bold', fontSize: 8.5 } }],
-         ['Cliente', 'Motivo', 'Parcelas', 'Progresso', 'Pendente', 'Total']],
-        bItens.map(b => {
-          const rec = (b.parcelas || []).filter(p => p.recebido).reduce((a, p) => a + (p.valor || 0), 0);
-          const pend = (b.valor_total || 0) - rec;
-          const pct = b.valor_total ? Math.round(rec / b.valor_total * 100) : 0;
-          return [_str(b.cliente_nome), (b.motivo || '').slice(0, 25), String((b.parcelas||[]).length) + 'x', pct + '%', _val(pend), _val(b.valor_total)];
-        })
-      );
+      addSectionHeader(rn, C_HDR);
+      bItens.forEach(b => {
+        const rec  = (b.parcelas || []).filter(p => p.recebido).reduce((a, p) => a + (p.valor || 0), 0);
+        const pend = (b.valor_total || 0) - rec;
+        const pct  = b.valor_total ? Math.round(rec / b.valor_total * 100) : 0;
+        const cardH = 32;
+        checkPage(cardH + 3);
+        doc.setDrawColor(215, 225, 242);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(ML, y, CW, cardH, 2, 2, 'S');
+        // Título + total
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(30, 30, 30);
+        doc.text(_cut(_nc(b.cliente_nome), 58), ML + 5, y + 7);
+        doc.setTextColor(...C_BLUE);
+        doc.text(_val(b.valor_total), ML + CW - 4, y + 7, { align: 'right' });
+        // Motivo
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...C_GRAY);
+        doc.text(_cut(b.motivo || '--', 72), ML + 5, y + 13.5);
+        // Info parcelas
+        doc.text(String((b.parcelas||[]).length) + 'x parcela' + ((b.parcelas||[]).length !== 1 ? 's' : '') + ' · ' + pct + '% recebido', ML + 5, y + 20);
+        // Barra de progresso
+        const barX = ML + 5; const barW = CW - 10; const barY = y + 22.5;
+        doc.setFillColor(215, 225, 242);
+        doc.roundedRect(barX, barY, barW, 3, 1, 1, 'F');
+        if (pct > 0) { doc.setFillColor(...C_GREEN); doc.roundedRect(barX, barY, Math.max(barW * pct / 100, 1), 3, 1, 1, 'F'); }
+        // Pendente
+        if (pend > 0) {
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...C_RED);
+          doc.text('Pendente: ' + _val(pend), ML + 5, y + 29.5);
+        }
+        doc.setTextColor(0, 0, 0);
+        y += cardH + 3;
+      });
     });
-    if (!itens.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma bonificação encontrada.', 14, y); }
+    if (!itens.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma bonificacao encontrada.', ML, y); }
 
   // ── GASTOS COM CLIENTES ─────────────────────────────────
   } else if (tipo === 'gastos_clientes') {
     const gastos = window._gastosRelatorioCache || [];
     const totalGastos = gastos.reduce((s,g) => s + (g.valor||0), 0);
-    const clisUnicosG = new Set(gastos.map(g=>g.cliente_nome||g.cliente_id).filter(Boolean)).size;
-    addCards([
-      { label: 'Total de Gastos', value: 'R$ ' + totalGastos.toLocaleString('pt-BR',{minimumFractionDigits:2}), color: RED },
-      { label: 'Clientes',        value: String(clisUnicosG), color: BLUE },
+    const clisUnicosG = new Set(gastos.map(g => g.cliente_nome || g.cliente_id).filter(Boolean)).size;
+    addSummaryCards([
+      { label: 'Total de Gastos', value: 'R$ ' + totalGastos.toLocaleString('pt-BR',{minimumFractionDigits:2}), color: C_RED },
+      { label: 'Clientes',        value: String(clisUnicosG), color: C_BLUE },
     ]);
     if (gastos.length) {
-      // Agrupa por categoria
       const porCat = {};
-      gastos.forEach(g => {
-        const k = _str(g.categoria) || 'Sem categoria';
-        if (!porCat[k]) porCat[k] = [];
-        porCat[k].push(g);
-      });
-      Object.entries(porCat).sort((a,b) => b[1].reduce((s,g)=>s+(g.valor||0),0) - a[1].reduce((s,g)=>s+(g.valor||0),0)).forEach(([cat, itensG]) => {
-        const totalCat = itensG.reduce((s,g) => s+(g.valor||0), 0);
-        addTable(
-          [[{ content: cat + ' — R$ ' + totalCat.toLocaleString('pt-BR',{minimumFractionDigits:2}), colSpan: 4, styles: { fillColor: [255,240,240], textColor: [180,30,30], fontStyle: 'bold', fontSize: 8.5 } }],
-           ['Cliente', 'Descrição', 'Data', 'Valor']],
-          itensG.map(g => [_str(g.cliente_nome || g.cliente_id), _str(g.descricao || g.categoria), _dt(g.data), 'R$ ' + (g.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})])
-        );
-      });
-      // Rodapé total do período
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-      doc.text('Total do período: R$ ' + totalGastos.toLocaleString('pt-BR',{minimumFractionDigits:2}), W - 14, Math.min(y, 270), { align: 'right' });
-      doc.setFont('helvetica', 'normal');
+      gastos.forEach(g => { const k = _str(g.categoria) || 'Sem categoria'; if (!porCat[k]) porCat[k] = []; porCat[k].push(g); });
+      Object.entries(porCat)
+        .sort((a,b) => b[1].reduce((s,g)=>s+(g.valor||0),0) - a[1].reduce((s,g)=>s+(g.valor||0),0))
+        .forEach(([cat, itensG]) => {
+          const totalCat = itensG.reduce((s,g) => s+(g.valor||0), 0);
+          addSectionHeader(cat + ' -- R$ ' + totalCat.toLocaleString('pt-BR',{minimumFractionDigits:2}), C_RED);
+          itensG.forEach(g => {
+            addItemCard({
+              title: _str(g.cliente_nome || g.cliente_id),
+              subtitle: _str(g.descricao || g.categoria) + ' · ' + _dt(g.data),
+              right: 'R$ ' + (g.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2}),
+              rightColor: C_RED,
+            });
+          });
+        });
+      addTotalCard('Total do periodo', 'R$ ' + totalGastos.toLocaleString('pt-BR',{minimumFractionDigits:2}), C_RED);
     } else {
-      doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum gasto registrado no período.', 14, y);
+      doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum gasto registrado no periodo.', ML, y);
     }
   }
 
