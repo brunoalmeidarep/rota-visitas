@@ -1801,7 +1801,8 @@ function lastVisitText(c) {
   const n = diasDesde(c.ultimaVisita);
   if (n === null) return { text:'Nunca visitado', cls:'none' };
   const s = getStatus(c);
-  return { text:`${formatDate(c.ultimaVisita)} (${n}d)`, cls:s };
+  const diasTexto = n > 60 ? '61+ dias' : `${n} dias`;
+  return { text:`${formatDate(c.ultimaVisita)} (${diasTexto})`, cls:s };
 }
 
 // ── CLIENTES (Supabase) ───────────────────────────────
@@ -2264,26 +2265,12 @@ function renderReport() {
   const totalVisitas = rows.length;
   const totalVendas = rows.reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
   const totalVendasStr = formatarMoeda(totalVendas);
-  const orcAbertos = rows.filter(v => v.tipo==='orcamento' && (!v.status_orcamento||v.status_orcamento==='aberto')).length;
-  const orcTotal = rows.filter(v => v.tipo==='orcamento').length;
-
-  // Conversão
-  const visitados = clientes.filter(c => {
-    if (repFiltroAtual==='hoje') return c.visitadoHoje;
-    if (repFiltroAtual==='semana') {
-      if (c.visitadoHoje) return true;
-      if (!c.ultimaVisita) return false;
-      const d = new Date(c.ultimaVisita+'T00:00:00');
-      const dSem = hoje.getDay();
-      const iniSem = new Date(hoje); iniSem.setDate(hoje.getDate()-dSem); iniSem.setHours(0,0,0,0);
-      return d >= iniSem;
-    }
-    if (c.visitadoHoje) return true;
-    if (!c.ultimaVisita) return false;
-    const d = new Date(c.ultimaVisita+'T00:00:00');
-    return d.getMonth()===mesRef && d.getFullYear()===anoRef;
-  }).length;
-  const pctConv = clientes.length ? Math.round(visitados/clientes.length*100) : 0;
+  const _isOrc = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
+  const orcAbertos = rows.filter(v => _isOrc(v) && (!v.status_orcamento||v.status_orcamento==='aberto')).length;
+  const orcTotal = rows.filter(v => _isOrc(v)).length;
+  // Conversão = orçamentos convertidos em pedido
+  const convertidos = rows.filter(v => _isOrc(v) && (v.status_orcamento === 'fechado' || v.orcamento_status === 'fechado')).length;
+  const pctConv = orcTotal > 0 ? Math.round(convertidos/orcTotal*100) : 0;
 
   // Top representada
   const byRep = {};
@@ -2329,7 +2316,7 @@ function renderReport() {
           '<div class="rep-card-icon">📊</div>' +
           '<div class="rep-card-val" style="color:var(--purple)">'+pctConv+'%</div>' +
           '<div class="rep-card-label">Conversão</div>' +
-          '<div class="rep-card-sub">'+visitados+' / '+clientes.length+' clientes</div>' +
+          '<div class="rep-card-sub">'+convertidos+' / '+orcTotal+' orçamentos</div>' +
         '</button>' +
         '<button class="rep-card rep-card-full" onclick="abrirRepDetalhe(\'empresa\')">' +
           '<div style="display:flex;align-items:center;gap:12px">' +
@@ -2408,56 +2395,21 @@ function abrirRepDetalhe(tipo) {
            renderGrupoOrcamentos('Perdidos', perdidos, 'var(--red)');
     if (!html) html = '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum orçamento no período</div>';
   } else if (tipo === 'conversao') {
-    const mesRef = relMes, anoRef = relAno;
-    const visitadosList = clientes.filter(c => {
-      if (repFiltroAtual === 'hoje') return c.visitadoHoje;
-      if (repFiltroAtual === 'semana') {
-        if (c.visitadoHoje) return true;
-        if (!c.ultimaVisita) return false;
-        const d = new Date(c.ultimaVisita + 'T00:00:00');
-        const dSem = hoje.getDay();
-        const iniSem = new Date(hoje); iniSem.setDate(hoje.getDate() - dSem); iniSem.setHours(0,0,0,0);
-        return d >= iniSem;
-      }
-      if (c.visitadoHoje) return true;
-      if (!c.ultimaVisita) return false;
-      const d = new Date(c.ultimaVisita + 'T00:00:00');
-      return d.getMonth() === mesRef && d.getFullYear() === anoRef;
-    });
-    const naoVisitados = clientes.filter(c => !visitadosList.includes(c));
-    const pct = clientes.length ? Math.round(visitadosList.length / clientes.length * 100) : 0;
+    const _isOrcConv = v => (v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento');
+    const orcConvertidos = rows.filter(v => _isOrcConv(v) && (v.status_orcamento === 'fechado' || v.orcamento_status === 'fechado'));
+    const totalOrc = rows.filter(v => _isOrcConv(v)).length;
+    const pct = totalOrc > 0 ? Math.round(orcConvertidos.length / totalOrc * 100) : 0;
     html = '<div style="padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-        '<span style="font-size:13px;color:var(--text2)">' + visitadosList.length + ' de ' + clientes.length + ' clientes</span>' +
+        '<span style="font-size:13px;color:var(--text2)">' + orcConvertidos.length + ' de ' + totalOrc + ' orçamentos convertidos</span>' +
         '<span style="font-size:18px;font-weight:800;color:var(--purple)">' + pct + '%</span>' +
       '</div>' +
       '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--purple);border-radius:4px"></div></div>' +
-    '</div>' +
-    '<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase">Visitados (' + visitadosList.length + ')</div>' +
-    visitadosList.map((c,i) => rowClienteDetalheComVisitas(c, i, mesRef, anoRef, repFiltroAtual)).join('') +
-    (naoVisitados.length ? '<div style="padding:8px 14px 4px;margin-top:4px;font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase">Pendentes (' + naoVisitados.length + ')</div>' +
-    naoVisitados.map((c,i) => rowClienteDetalhe(c, i, false)).join('') : '');
-    // Orçamentos em aberto
-    const orcAbertos = rows.filter(v => (v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento') && (!v.orcamento_status || v.orcamento_status === 'aberto') && (!v.status_orcamento || v.status_orcamento === 'aberto'));
-    const orcConvertidos = rows.filter(v => (v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento') && (v.orcamento_status === 'fechado' || v.status_orcamento === 'fechado'));
-    if (orcAbertos.length) {
-      html += '<div style="padding:8px 14px 4px;margin-top:8px;font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase">📋 Orçamentos em aberto (' + orcAbertos.length + ')</div>';
-      html += orcAbertos.map((v,i) => {
-        const bg = i%2===0?'var(--card)':'var(--bg)';
-        const nomeBase = (v.nome_cliente||'').replace(/\s*\([^)]*\)/,'').trim();
-        const dataFmt = v.data?new Date(v.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
-        const val = v.valor_pedido ? ' · R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-        return `<div style="display:flex;align-items:center;padding:10px 14px;background:${bg};border-bottom:1px solid var(--border);gap:8px">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${nomeBase}</div>
-            <div style="font-size:11px;color:var(--text3)">${dataFmt}${val}</div>
-          </div>
-          ${v.id?`<button onclick="converterOrcamentoEmPedido('${v.id}')" style="padding:5px 10px;background:var(--green);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">✓ Converter</button>`:''}
-        </div>`;
-      }).join('');
-    }
-    if (orcConvertidos.length) {
-      html += '<div style="padding:8px 14px 4px;margin-top:4px;font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase">✅ Convertidos em pedido (' + orcConvertidos.length + ')</div>';
+    '</div>';
+    if (!orcConvertidos.length) {
+      html += '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum orçamento convertido no período</div>';
+    } else {
+      html += '<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase">✅ Convertidos em pedido (' + orcConvertidos.length + ')</div>';
       html += renderDetalheLista(orcConvertidos, true);
     }
   } else if (tipo === 'empresa') {
@@ -2558,6 +2510,7 @@ async function _carregarGastosRelatorio(periodo) {
     .gte('data', ini).lte('data', fim)
     .order('data', { ascending: false });
   const gastos = data || [];
+  window._gastosRelatorioCache = gastos;
   const total = gastos.reduce((s,g)=>s+(g.valor||0),0);
   const clisUnicos = new Set(gastos.map(g=>g.cliente_id).filter(Boolean)).size;
 
@@ -2905,7 +2858,7 @@ function exportarPDFDetalhe() {
   const _nm = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
   const nomeMesCap = _nm.charAt(0).toUpperCase() + _nm.slice(1);
   const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Esta semana' : nomeMesCap;
-  const titulos = { visitas:'Relatório de Visitas', vendas:'Relatório de Vendas', orcamentos:'Relatório de Orçamentos', conversao:'Relatório de Conversão', empresa:'Vendas por Representada', bonificacoes:'Relatório de Bonificações' };
+  const titulos = { visitas:'Relatório de Visitas', vendas:'Relatório de Vendas', orcamentos:'Relatório de Orçamentos', conversao:'Relatório de Conversão', empresa:'Vendas por Representada', bonificacoes:'Relatório de Bonificações', gastos_clientes:'Relatório de Gastos com Clientes' };
   const repNome = currentRep?.nome || '';
 
   const BLUE = [41, 98, 255];
@@ -2999,9 +2952,13 @@ function exportarPDFDetalhe() {
     rows.forEach(v => { const c = _cid(v.cidade) || 'Sem cidade'; if (!byCid[c]) byCid[c] = []; byCid[c].push(v); });
     Object.entries(byCid).sort(([a],[b]) => a.localeCompare(b, 'pt-BR')).forEach(([cidade, cr]) => {
       addTable(
-        [[{ content: '📍 ' + cidade + ' (' + cr.length + ')', colSpan: 4, styles: { fillColor: [230, 238, 255], textColor: BLUE, fontStyle: 'bold', fontSize: 8.5 } }],
-         ['Cliente', 'Data', 'Tipo', 'Observação']],
-        cr.map(v => [_nc(v.nome_cliente), _dt(v.data), v.tipo || 'visita', (v.obs || '').slice(0, 55)])
+        [[{ content: '📍 ' + cidade + ' (' + cr.length + ')', colSpan: 5, styles: { fillColor: [230, 238, 255], textColor: BLUE, fontStyle: 'bold', fontSize: 8.5 } }],
+         ['Cliente', 'Data', 'Tipo', 'Representada / Valor', 'Observação']],
+        cr.map(v => {
+          const tipoLabel = v.tipo === 'whatsapp' ? 'WhatsApp' : v.pedido_tipo === 'pedido' ? 'Pedido' : v.pedido_tipo === 'orcamento' ? 'Orçamento' : 'Visita';
+          const repVal = [v.representada_nome || v.pedido_representada, parseFloat(v.valor_pedido||0) > 0 ? _val(v.valor_pedido) : ''].filter(Boolean).join(' · ');
+          return [_nc(v.nome_cliente), _dt(v.data), tipoLabel, repVal, (v.obs || '').slice(0, 40)];
+        })
       );
     });
     if (!rows.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma visita no período.', 14, y); }
@@ -3033,7 +2990,8 @@ function exportarPDFDetalhe() {
 
   // ── ORÇAMENTOS ──────────────────────────────────────────
   } else if (tipo === 'orcamentos') {
-    const orc    = rows.filter(v => v.tipo === 'orcamento');
+    const _isOrcPdf = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
+    const orc    = rows.filter(v => _isOrcPdf(v));
     const abertos = orc.filter(v => !v.status_orcamento || v.status_orcamento === 'aberto');
     const fechados = orc.filter(v => v.status_orcamento === 'fechado');
     const perdidos = orc.filter(v => v.status_orcamento === 'perdido');
@@ -3061,38 +3019,20 @@ function exportarPDFDetalhe() {
 
   // ── CONVERSÃO ───────────────────────────────────────────
   } else if (tipo === 'conversao') {
-    const mesRef = relMes, anoRef = relAno;
-    const visitados = clientes.filter(c => {
-      if (repFiltroAtual === 'hoje') return c.visitadoHoje;
-      if (repFiltroAtual === 'semana') {
-        if (c.visitadoHoje) return true;
-        if (!c.ultimaVisita) return false;
-        const d = new Date(c.ultimaVisita + 'T00:00:00'), ini = new Date();
-        ini.setDate(ini.getDate() - ini.getDay()); ini.setHours(0,0,0,0);
-        return d >= ini;
-      }
-      if (c.visitadoHoje) return true;
-      if (!c.ultimaVisita) return false;
-      const d = new Date(c.ultimaVisita + 'T00:00:00');
-      return d.getMonth() === mesRef && d.getFullYear() === anoRef;
-    });
-    const nao = clientes.filter(c => !visitados.includes(c));
-    const pct = clientes.length ? Math.round(visitados.length / clientes.length * 100) : 0;
+    const _isOrcC = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
+    const orcConv = rows.filter(v => _isOrcC(v) && (v.status_orcamento === 'fechado' || v.orcamento_status === 'fechado'));
+    const totalOrcC = rows.filter(v => _isOrcC(v)).length;
+    const pct = totalOrcC > 0 ? Math.round(orcConv.length / totalOrcC * 100) : 0;
     addCards([
-      { label: 'Taxa de Conversão', value: pct + '%',              color: [124, 58, 237] },
-      { label: 'Visitados',         value: String(visitados.length), color: GREEN },
-      { label: 'Pendentes',         value: String(nao.length),       color: RED },
+      { label: 'Taxa de Conversão', value: pct + '%',           color: [124, 58, 237] },
+      { label: 'Convertidos',       value: String(orcConv.length), color: GREEN },
+      { label: 'Total Orçamentos',  value: String(totalOrcC),   color: BLUE },
     ]);
-    if (visitados.length) addTable(
-      [[{ content: '✓ Visitados (' + visitados.length + ')', colSpan: 3, styles: { fillColor: GREEN, textColor: [255,255,255], fontStyle: 'bold', fontSize: 8.5 } }],
-       ['Cliente', 'Cidade', 'Última Visita']],
-      visitados.map(c => [_nc(c.nome), _cid(c.cidade), c.visitadoHoje ? 'Hoje' : _dt(c.ultimaVisita)])
+    if (orcConv.length) addTable(
+      [['Cliente', 'Cidade', 'Data', 'Representada', 'Valor']],
+      orcConv.map(v => [_nc(v.nome_cliente), _cid(v.cidade), _dt(v.data), v.representada_nome || v.pedido_representada || '—', _val(v.valor_pedido)])
     );
-    if (nao.length) addTable(
-      [[{ content: '⏳ Não Visitados (' + nao.length + ')', colSpan: 3, styles: { fillColor: RED, textColor: [255,255,255], fontStyle: 'bold', fontSize: 8.5 } }],
-       ['Cliente', 'Cidade', 'Última Visita']],
-      nao.map(c => [_nc(c.nome), _cid(c.cidade), _dt(c.ultimaVisita) === '—' ? 'Nunca' : _dt(c.ultimaVisita)])
-    );
+    if (!orcConv.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum orçamento convertido no período.', 14, y); }
 
   // ── BONIFICAÇÕES ────────────────────────────────────────
   } else if (tipo === 'bonificacoes') {
@@ -3104,14 +3044,49 @@ function exportarPDFDetalhe() {
       { label: 'Recebido', value: 'R$ ' + totR.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: GREEN },
       { label: 'Pendente', value: 'R$ ' + (totG - totR).toLocaleString('pt-BR', {minimumFractionDigits:2}), color: ORANGE },
     ]);
-    addTable(
-      [['Cliente', 'Representada', 'Motivo', 'Total', 'Status']],
+    if (itens.length) addTable(
+      [['Cliente', 'Representada', 'Motivo', 'Total', 'Recebido', 'Pendente', 'Status']],
       itens.map(b => {
         const rec = (b.parcelas || []).filter(p => p.recebido).reduce((a, p) => a + (p.valor || 0), 0);
-        return [b.cliente_nome || '', b.representada_nome || '', (b.motivo || '').slice(0, 35), _val(b.valor_total), (b.valor_total - rec) > 0 ? 'Pendente' : 'Concluída'];
+        const pend = (b.valor_total || 0) - rec;
+        return [b.cliente_nome || '', b.representada_nome || '', (b.motivo || '').slice(0, 28), _val(b.valor_total), _val(rec), _val(pend), pend > 0 ? 'Pendente' : 'Concluída'];
       })
     );
     if (!itens.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma bonificação encontrada.', 14, y); }
+
+  // ── GASTOS COM CLIENTES ─────────────────────────────────
+  } else if (tipo === 'gastos_clientes') {
+    const gastos = window._gastosRelatorioCache || [];
+    const totalGastos = gastos.reduce((s,g) => s + (g.valor||0), 0);
+    const clisUnicosG = new Set(gastos.map(g=>g.cliente_nome||g.cliente_id).filter(Boolean)).size;
+    addCards([
+      { label: 'Total de Gastos', value: 'R$ ' + totalGastos.toLocaleString('pt-BR',{minimumFractionDigits:2}), color: RED },
+      { label: 'Clientes',        value: String(clisUnicosG), color: BLUE },
+    ]);
+    if (gastos.length) {
+      const porCliente = {};
+      gastos.forEach(g => {
+        const k = g.cliente_nome || g.cliente_id || 'Sem cliente';
+        if (!porCliente[k]) porCliente[k] = [];
+        porCliente[k].push(g);
+      });
+      Object.entries(porCliente).sort((a,b) => b[1].reduce((s,g)=>s+(g.valor||0),0) - a[1].reduce((s,g)=>s+(g.valor||0),0)).forEach(([cliente, itensG]) => {
+        const totalCliente = itensG.reduce((s,g) => s+(g.valor||0), 0);
+        addTable(
+          [[{ content: cliente + ' — R$ ' + totalCliente.toLocaleString('pt-BR',{minimumFractionDigits:2}), colSpan: 3, styles: { fillColor: [255,240,240], textColor: [180,30,30], fontStyle: 'bold', fontSize: 8.5 } }],
+           ['Data', 'Descrição', 'Valor']],
+          itensG.map(g => [_dt(g.data), g.descricao || g.categoria || '—', 'R$ ' + (g.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})])
+        );
+      });
+      // Rodapé total
+      if (y < 260) {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+        doc.text('Total: R$ ' + totalGastos.toLocaleString('pt-BR',{minimumFractionDigits:2}), W - 14, y, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+      }
+    } else {
+      doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhum gasto registrado no período.', 14, y);
+    }
   }
 
   // ── Rodapé em todas as páginas ──────────────────────────
