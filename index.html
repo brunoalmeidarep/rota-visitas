@@ -1801,8 +1801,7 @@ function lastVisitText(c) {
   const n = diasDesde(c.ultimaVisita);
   if (n === null) return { text:'Nunca visitado', cls:'none' };
   const s = getStatus(c);
-  const diasTexto = n > 60 ? '61+ dias' : `${n} dias`;
-  return { text:`${formatDate(c.ultimaVisita)} (${diasTexto})`, cls:s };
+  return { text:`${formatDate(c.ultimaVisita)} (${n} dias)`, cls:s };
 }
 
 // ── CLIENTES (Supabase) ───────────────────────────────
