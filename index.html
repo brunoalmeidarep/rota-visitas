@@ -188,19 +188,29 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 #screen-perfil,#screen-cadastro,#screen-admin,#screen-importar { display:none; flex-direction:column; height:100%; background:var(--bg); position:fixed; top:0;left:0;right:0;bottom:0; z-index:500; animation:slideIn .22s ease; }
 @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
 .perfil-header,.cadastro-header,.admin-header { background:var(--surface); padding:12px 16px 14px; flex-shrink:0; box-shadow:0 1px 0 var(--border); }
-.perfil-back { background:none; border:none; color:var(--blue); font-family:inherit; font-size:15px; font-weight:500; cursor:pointer; padding:0; margin-bottom:10px; display:flex; align-items:center; gap:4px; }
-.perfil-badge { display:inline-block; font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; margin-bottom:6px; }
-.perfil-nome { font-size:20px; font-weight:700; color:var(--text); margin-bottom:3px; }
-.perfil-comprador { font-size:13px; color:var(--text2); margin-bottom:3px; }
-.perfil-cidade-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.perfil-cidade { font-size:12px; color:var(--text3); }
+.perfil-top-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.perfil-back { background:none; border:none; color:var(--blue); font-family:inherit; font-size:15px; font-weight:500; cursor:pointer; padding:0; display:flex; align-items:center; gap:4px; }
 .btn-editar-perfil { background:none; border:1.5px solid var(--border); border-radius:8px; padding:4px 10px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; flex-shrink:0; }
-.perfil-meta { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
-.perfil-meta span { font-size:11px; background:var(--bg); border-radius:8px; padding:4px 9px; color:var(--text2); font-weight:500; }
-.btn-maps-full { width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:12px; padding:10px 16px; font-family:inherit; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; margin-top:4px; }
+.perfil-nome { font-size:20px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.perfil-sub { font-size:13px; color:var(--text2); margin-bottom:10px; }
+.perfil-datas-row { display:flex; align-items:center; gap:12px; }
+.perfil-data-item { flex:1; min-width:0; }
+.perfil-data-label { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; margin-bottom:2px; }
+.perfil-data-val { font-size:13px; font-weight:600; color:var(--text); }
+.btn-ver-dados { background:none; border:none; color:var(--blue); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; padding:0; white-space:nowrap; flex-shrink:0; }
+.btn-maps-full { width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:12px; padding:10px 16px; font-family:inherit; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:14px; }
 .btn-checkin-perfil { width:100%; background:var(--blue); color:#fff; border:none; border-radius:12px; padding:13px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:14px; }
 .btn-checkin-perfil:disabled { background:var(--bg); color:var(--text3); cursor:default; }
 .perfil-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:32px; }
+/* ── VER DADOS ─────────────────────────────────────── */
+#screen-ver-dados { display:none; flex-direction:column; height:100%; background:var(--bg); position:fixed; top:0;left:0;right:0;bottom:0; z-index:600; animation:slideIn .22s ease; }
+.ver-dados-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:32px; }
+.ver-dados-row { background:var(--card); border-radius:12px; padding:12px 14px; margin-bottom:8px; box-shadow:var(--shadow); }
+.ver-dados-label { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+.ver-dados-val { font-size:15px; color:var(--text); font-weight:500; }
+.ver-dados-val a { color:var(--blue); text-decoration:none; }
+.ver-dados-pills { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.ver-dados-pill { font-size:12px; background:var(--bg); border:1.5px solid var(--border); border-radius:20px; padding:4px 10px; color:var(--text2); font-weight:500; }
 .perfil-section-title { font-size:11px; font-weight:700; color:var(--text3); letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; margin-top:16px; }
 .perfil-section-title:first-child { margin-top:0; }
 .lembrete-box { background:rgba(255,149,0,.07); border:1px solid rgba(255,149,0,.2); border-radius:12px; padding:12px 14px; margin-bottom:4px; display:flex; gap:8px; }
@@ -3716,16 +3726,17 @@ function openPerfil(id) {
   const c = clientes.find(x => x.id == id);
   if (!c) return;
 
-  // Nome e comprador
+  // Nome, comprador, cidade
   const matchComp = c.nome.match(/^(.*?)\s*\(([^)]+)\)(.*)$/);
   const nomeEmpresa = matchComp ? (matchComp[1] + matchComp[3]).trim() : c.nome;
-  const comprador   = matchComp ? matchComp[2] : null;
+  const comprador   = matchComp ? matchComp[2] : (c.comprador || null);
   document.getElementById('p-nome').textContent = nomeEmpresa;
-  const pComp = document.getElementById('p-comprador');
-  if (comprador) { pComp.innerHTML = `<span>👤</span> ${comprador}`; pComp.style.display = 'flex'; }
-  else pComp.style.display = 'none';
-
-  document.getElementById('p-cidade').textContent = c.cidade;
+  const subParts = [];
+  if (comprador) subParts.push('👤 ' + comprador);
+  if (c.cidade) subParts.push(c.cidade);
+  document.getElementById('p-sub').textContent = subParts.join(' · ');
+  document.getElementById('p-ultima-visita').textContent = '—';
+  document.getElementById('p-ultima-compra').textContent = '—';
 
   // Populate representadas select
   const ciRepSel = document.getElementById('ci-representada');
@@ -3744,13 +3755,6 @@ function openPerfil(id) {
   document.getElementById('p-lembrete').value = lembretes[id] || '';
   document.getElementById('p-lembrete-salvo').textContent = lembretes[id] ? '✓ lembrete salvo' : '';
 
-  // Meta info
-  const meta = document.getElementById('p-meta');
-  meta.innerHTML = '';
-  if (c.cnpj) meta.innerHTML += `<span>🔢 ${c.cnpj}</span>`;
-  if (c.endereco) meta.innerHTML += `<span>📍 ${c.endereco}</span>`;
-  if (c.ultimaVisita) meta.innerHTML += `<span>🗓 Última compra: ${formatDate(c.ultimaVisita)}</span>`;
-
   // Verifica se visitou hoje (data local)
   const dataHoje = dataHojeLocal();
   const histLocal = historicoVisitas[id] || [];
@@ -3765,6 +3769,7 @@ function openPerfil(id) {
 
   // Histórico
   renderHistorico(id, c);
+  atualizarUltimasDatas(id);
   buscarHistoricoSupabase(id).then(visitas => {
     if (!visitas.length) return;
     if (!historicoVisitas[id]) historicoVisitas[id] = [];
@@ -3780,6 +3785,7 @@ function openPerfil(id) {
       }
     });
     renderHistorico(id, c);
+    atualizarUltimasDatas(id);
     // Reavalia visitado hoje com dados do Supabase
     const vHoje = historicoVisitas[id].find(v => v.data === dataHoje && v.tipo !== 'whatsapp');
     if (vHoje && !c.visitadoHoje) mostrarResumoHoje(c, vHoje);
@@ -4422,8 +4428,61 @@ async function perdidoDV() {
 
 function closePerfil() {
   document.getElementById('screen-perfil').style.display = 'none';
+  document.getElementById('screen-ver-dados').style.display = 'none';
   document.body.style.overflow = '';
   perfilId = null;
+}
+
+function atualizarUltimasDatas(id) {
+  const hist = historicoVisitas[id] || [];
+  const sorted = [...hist].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  const presenciais = sorted.filter(v => v.tipo !== 'whatsapp');
+  const compras = sorted.filter(v => parseFloat(v.pedido_valor || v.valor_pedido || 0) > 0);
+  document.getElementById('p-ultima-visita').textContent = presenciais[0] ? formatDate(presenciais[0].data) : '—';
+  document.getElementById('p-ultima-compra').textContent = compras[0] ? formatDate(compras[0].data) : '—';
+}
+
+function abrirVerDados() {
+  if (!perfilId) return;
+  const c = clientes.find(x => x.id == perfilId);
+  if (!c) return;
+  const matchComp = c.nome.match(/^(.*?)\s*\(([^)]+)\)(.*)$/);
+  const nomeEmpresa = matchComp ? (matchComp[1] + matchComp[3]).trim() : c.nome;
+  const comprador = matchComp ? matchComp[2] : (c.comprador || '');
+  document.getElementById('vd-nome').textContent = nomeEmpresa || '—';
+  const vdComp = document.getElementById('vd-comprador');
+  vdComp.textContent = comprador || '—';
+  document.getElementById('vd-row-comprador').style.display = comprador ? '' : 'none';
+  const telEl = document.getElementById('vd-telefone');
+  if (c.telefone) { telEl.href = 'tel:' + c.telefone; telEl.textContent = c.telefone; }
+  else { telEl.href = '#'; telEl.textContent = '—'; }
+  document.getElementById('vd-row-telefone').style.display = c.telefone ? '' : 'none';
+  document.getElementById('vd-cnpj').textContent = c.cnpj || '—';
+  document.getElementById('vd-row-cnpj').style.display = c.cnpj ? '' : 'none';
+  const endParts = [c.endereco, c.cidade].filter(Boolean);
+  document.getElementById('vd-endereco').textContent = endParts.join(' — ') || '—';
+  document.getElementById('vd-segmento').textContent = c.segmento || '—';
+  document.getElementById('vd-row-segmento').style.display = c.segmento ? '' : 'none';
+  // Representadas: unique names from history
+  const hist = historicoVisitas[perfilId] || [];
+  const repsSet = new Set();
+  hist.forEach(v => { if (v.representada_nome) repsSet.add(v.representada_nome); });
+  const vdReps = document.getElementById('vd-representadas');
+  vdReps.innerHTML = repsSet.size > 0
+    ? [...repsSet].map(r => `<span class="ver-dados-pill">${r}</span>`).join('')
+    : '<span style="font-size:14px;color:var(--text3)">—</span>';
+  document.getElementById('vd-row-representadas').style.display = repsSet.size > 0 ? '' : 'none';
+  // Últimas datas
+  const sorted = [...hist].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  const presenciais = sorted.filter(v => v.tipo !== 'whatsapp');
+  const compras = sorted.filter(v => parseFloat(v.pedido_valor || v.valor_pedido || 0) > 0);
+  document.getElementById('vd-ultima-visita').textContent = presenciais[0] ? formatDate(presenciais[0].data) : '—';
+  document.getElementById('vd-ultima-compra').textContent = compras[0] ? formatDate(compras[0].data) : '—';
+  document.getElementById('screen-ver-dados').style.display = 'flex';
+}
+
+function fecharVerDados() {
+  document.getElementById('screen-ver-dados').style.display = 'none';
 }
 
 // ── GASTOS COM CLIENTE ───────────────────────────────
@@ -8856,6 +8915,7 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('screen-visita-detalhe')?.style.display === 'flex') { fecharDetalheVisita(); return; }
     if (document.getElementById('screen-bonificacoes')?.style.display === 'flex') { closeBonificacoes(); return; }
     if (document.getElementById('screen-gastos-cliente')?.style.display === 'flex') { closeGastosCliente(); return; }
+    if (document.getElementById('screen-ver-dados')?.style.display === 'flex') { fecharVerDados(); return; }
     if (document.getElementById('screen-perfil')?.style.display === 'flex') { closePerfil(); return; }
     if (document.getElementById('screen-cadastro')?.style.display === 'flex') { closeCadastro(); return; }
     if (document.getElementById('screen-admin')?.style.display === 'flex') { closeAdmin(); return; }
@@ -8910,18 +8970,26 @@ if ('serviceWorker' in navigator) {
     <!-- TELA DE PERFIL -->
     <div id="screen-perfil">
       <div class="perfil-header">
-        <button class="perfil-back" onclick="closePerfil()">← Voltar</button>
-        <div class="perfil-badge" id="p-badge"></div>
-        <div class="perfil-nome" id="p-nome"></div>
-        <div class="perfil-comprador" id="p-comprador"></div>
-        <div class="perfil-cidade-row">
-          <div class="perfil-cidade" id="p-cidade"></div>
+        <div class="perfil-top-row">
+          <button class="perfil-back" onclick="closePerfil()">← Voltar</button>
           <button class="btn-editar-perfil" onclick="editarCliente()">✏️ Editar</button>
         </div>
-        <div class="perfil-meta" id="p-meta"></div>
-        <button class="btn-maps-full" onclick="openMapsPerfil()">↗ Abrir no Maps</button>
+        <div class="perfil-nome" id="p-nome"></div>
+        <div class="perfil-sub" id="p-sub"></div>
+        <div class="perfil-datas-row">
+          <div class="perfil-data-item">
+            <div class="perfil-data-label">Última visita</div>
+            <div class="perfil-data-val" id="p-ultima-visita">—</div>
+          </div>
+          <div class="perfil-data-item">
+            <div class="perfil-data-label">Última compra</div>
+            <div class="perfil-data-val" id="p-ultima-compra">—</div>
+          </div>
+          <button class="btn-ver-dados" onclick="abrirVerDados()">Ver dados →</button>
+        </div>
       </div>
       <div class="perfil-body">
+        <button class="btn-maps-full" onclick="openMapsPerfil()">↗ Abrir no Maps</button>
         <div class="lembrete-box">
           <div class="lembrete-icon">📌</div>
           <textarea id="p-lembrete" placeholder="Adicionar lembrete fixo..." onblur="salvarLembrete()"></textarea>
@@ -9002,6 +9070,54 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
 
+    <!-- TELA VER DADOS DO CLIENTE -->
+    <div id="screen-ver-dados">
+      <div class="perfil-header">
+        <div class="perfil-top-row">
+          <button class="perfil-back" onclick="fecharVerDados()">← Voltar</button>
+          <button class="btn-editar-perfil" onclick="editarCliente()">✏️ Editar</button>
+        </div>
+        <div style="font-size:17px;font-weight:700;color:var(--text)">Dados do cliente</div>
+      </div>
+      <div class="ver-dados-body">
+        <div class="ver-dados-row">
+          <div class="ver-dados-label">Razão social</div>
+          <div class="ver-dados-val" id="vd-nome"></div>
+        </div>
+        <div class="ver-dados-row" id="vd-row-comprador">
+          <div class="ver-dados-label">Comprador</div>
+          <div class="ver-dados-val" id="vd-comprador"></div>
+        </div>
+        <div class="ver-dados-row" id="vd-row-telefone">
+          <div class="ver-dados-label">Telefone</div>
+          <div class="ver-dados-val"><a id="vd-telefone" href="#">—</a></div>
+        </div>
+        <div class="ver-dados-row" id="vd-row-cnpj">
+          <div class="ver-dados-label">CNPJ</div>
+          <div class="ver-dados-val" id="vd-cnpj"></div>
+        </div>
+        <div class="ver-dados-row" id="vd-row-endereco">
+          <div class="ver-dados-label">Endereço</div>
+          <div class="ver-dados-val" id="vd-endereco"></div>
+        </div>
+        <div class="ver-dados-row" id="vd-row-segmento">
+          <div class="ver-dados-label">Segmento</div>
+          <div class="ver-dados-val" id="vd-segmento"></div>
+        </div>
+        <div class="ver-dados-row" id="vd-row-representadas">
+          <div class="ver-dados-label">Representadas</div>
+          <div class="ver-dados-pills" id="vd-representadas"></div>
+        </div>
+        <div class="ver-dados-row">
+          <div class="ver-dados-label">Última visita presencial</div>
+          <div class="ver-dados-val" id="vd-ultima-visita">—</div>
+        </div>
+        <div class="ver-dados-row">
+          <div class="ver-dados-label">Última compra</div>
+          <div class="ver-dados-val" id="vd-ultima-compra">—</div>
+        </div>
+      </div>
+    </div>
 
     <!-- TELA DETALHE VISITA -->
     <div id="screen-visita-detalhe">
