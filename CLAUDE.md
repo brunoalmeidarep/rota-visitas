@@ -86,10 +86,17 @@ Usar a função getRepId() que faz cache desse valor.
   - Pedido/Orçamento com representada, valor (máscara R$), data, anexo
   - Gastos com cliente → tela detalhada
   - Bonificações → tela detalhada com parcelas
-  - Histórico: 🏪 presencial / 💬 WhatsApp
+  - Histórico: 🏪 presencial / 💬 WhatsApp (SVG inline, layout 3 colunas)
   - Long press → apagar visita (com confirmação)
+- Perfil do cliente: cabeçalho limpo (Voltar | Nome | Comprador·Cidade | Última visita + Última compra | Ver dados →)
+  - Tela "Ver dados": razão social, comprador, telefone clicável, CNPJ, endereço, segmento, representadas (pills), datas
+  - Botão ✏️ Editar apenas dentro de "Ver dados"
 - Regra do Hoje: visitou hoje → resumo + Editar; amanhã → volta ao normal
+- Carteira: badges de tempo com palavra "dias" completa (ex: "30 dias", "75 dias")
 - Relatório: cards clicáveis, multi-select representadas, clientes (3x)
+  - Conversão = orçamentos convertidos em pedido (status=fechado), não mais visitados/clientes
+  - Orçamentos: filtro corrigido (tipo='visita' + pedido_tipo='orcamento')
+  - PDFs: Visitas (agrupado cidade, com representada/valor), Bonificações (recebido/pendente), Gastos com Clientes (agrupado cliente, total rodapé)
 - Planner: Hoje/Semana/Mês + card rotas
 - Rotas: multi-select cidades/clientes, algoritmo vizinho mais próximo, combustível, Google Maps
 - Finanças: gastos por categoria, receitas por tipo (Comissão/Reembolso/Bonificação), impostos, PDF por período, botão Ano, tabs corrigidas
