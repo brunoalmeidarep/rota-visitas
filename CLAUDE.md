@@ -39,7 +39,8 @@ CRM e app de rota de visitas para representantes comerciais.
 ---
 
 ## Supabase — Tabelas existentes
-- **visitas:** id, cliente_id, rep_id, data, hora, obs, criado_em, id_cliente, nome_cliente, cidade, valor_pedido, doc_url, tipo, status_orcamento, representada_id, via_whatsapp, representada_nome
+- **visitas:** id, cliente_id, rep_id, data, hora, obs, criado_em, id_cliente, nome_cliente, cidade, valor_pedido, doc_url, tipo, status_orcamento, representada_id, via_whatsapp, representada_nome, pedido_tipo, pedido_valor, pedido_representada, pedido_url_doc, orcamento_status, hora_edicao, retroativo, registrado_em
+- **pedidos:** id, visita_id, rep_id, representada_id, representada_nome, tipo, valor, status, doc_url, created_at — CRIAR SE NÃO EXISTIR (ver SQL abaixo)
 - **lembretes:** id_cliente, texto, rep_id, atualizado_em
 - **representantes:** id, email, nome, auth_id, endereco_base, lat_base, lng_base, media_carro, preco_gasolina, onboarding_ok
 - **clientes:** id, nome, cnpj, cidade, endereco, ultima_visita, ultima_obs, lat, lng, rep_id, segmento, telefone, comprador
@@ -47,10 +48,26 @@ CRM e app de rota de visitas para representantes comerciais.
 - **segmentos:** id, nome, rep_id
 - **financeiro:** id, tipo, categoria, descricao, valor, data, cliente_id, cliente_nome, representada_id, representada_nome, url_comprovante, rep_id
 - **impostos:** id, nome, dia_vencimento, rep_id
-- **rotas:** id, nome, clientes_ids, ordem_otimizada, km_total, tempo_estimado, rep_id
+- **rotas:** id, nome, clientes_ids, ordem_otimizada, km_total, tempo_estimado, rep_id, tipo_partida, ponto_partida, tipo_chegada, ponto_chegada
 - **bonificacoes:** id, cliente_id, cliente_nome, representada_id, representada_nome, motivo, valor_total, parcelas (json), status, rep_id
 - **planner:** id, rep_id, titulo, data, hora, tipo, cliente_id
 - RLS ativa em todas as tabelas
+
+### SQL para criar tabela pedidos (executar no Supabase se ainda não criada):
+```sql
+CREATE TABLE IF NOT EXISTS pedidos (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  visita_id uuid REFERENCES visitas(id) ON DELETE CASCADE,
+  rep_id uuid REFERENCES representantes(id),
+  representada_id uuid, representada_nome text,
+  tipo text DEFAULT 'pedido', valor numeric,
+  status text DEFAULT 'fechado', doc_url text,
+  created_at timestamp with time zone DEFAULT now()
+);
+ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "rep acessa seus pedidos" ON pedidos FOR ALL
+  USING (rep_id = (SELECT id FROM representantes WHERE auth_id = auth.uid()));
+```
 
 ---
 
@@ -83,15 +100,22 @@ Usar a função getRepId() que faz cache desse valor.
 - Perfil do cliente:
   - Lembrete editável
   - Check-in (presencial) OU Registrar (WhatsApp) — exclusivos
-  - Pedido/Orçamento com representada, valor (máscara R$), data, anexo
+  - Botão check-in: verde escuro (#1a5c2a) com "✓ Visitado às HH:MM" após visita do dia
+  - Múltiplos pedidos/orçamentos no check-in: lista com "+ Adicionar", cards com × remover e "Converter em pedido" (orçamento)
   - Gastos com cliente → tela detalhada
   - Bonificações → tela detalhada com parcelas
   - Histórico: 🏪 presencial / 💬 WhatsApp (SVG inline, layout 3 colunas)
+  - Clicar no histórico → tela detalhe da visita com edição de obs + lista de pedidos em cards
   - Long press → apagar visita (com confirmação)
 - Perfil do cliente: cabeçalho limpo (Voltar | Nome | Comprador·Cidade | Última visita + Última compra | Ver dados →)
   - Tela "Ver dados": razão social, comprador, telefone clicável, CNPJ, endereço, segmento, representadas (pills), datas
   - Botão ✏️ Editar apenas dentro de "Ver dados"
-- Regra do Hoje: visitou hoje → resumo + Editar; amanhã → volta ao normal
+- Tela detalhe da visita:
+  - Modo ver: badges, data/hora, obs, pedidos, docs, bonificações, gastos
+  - Modo editar: obs + lista de pedidos em cards (editar ✏️, deletar ×, converter orçamento)
+  - Modal editar pedido: tipo (Pedido/Orçamento), representada, valor, status só para orçamento
+  - Botão "🗑 Excluir" no cabeçalho (só no modo edição)
+- Regra do Hoje: visitou hoje → botão fica verde escuro; amanhã → volta ao normal
 - Carteira: badges de tempo com palavra "dias" completa (ex: "30 dias", "75 dias")
 - Relatório: cards clicáveis, multi-select representadas, clientes (3x)
   - Conversão = orçamentos convertidos em pedido (status=fechado), não mais visitados/clientes
@@ -99,6 +123,10 @@ Usar a função getRepId() que faz cache desse valor.
   - PDFs: Visitas (agrupado cidade, com representada/valor), Bonificações (recebido/pendente), Gastos com Clientes (agrupado cliente, total rodapé)
 - Planner: Hoje/Semana/Mês + card rotas
 - Rotas: multi-select cidades/clientes, algoritmo vizinho mais próximo, combustível, Google Maps
+  - Ponto de partida: 🏠 Casa / 📍 GPS / ✏️ Outro
+  - Ponto de chegada: 🏠 Casa / 🏨 Hotel / ✏️ Outro
+  - Detalhe da rota: ícone início + paradas numeradas + ícone fim
+  - Google Maps URL usa ponto_partida e ponto_chegada salvos
 - Finanças: gastos por categoria, receitas por tipo (Comissão/Reembolso/Bonificação), impostos, PDF por período, botão Ano, tabs corrigidas
 - Settings: Empresas, Segmentação, Importar Clientes, Meu Perfil, Calendário
 - Busca CNPJ (ReceitaWS) + CEP (ViaCEP)
@@ -114,7 +142,7 @@ Usar a função getRepId() que faz cache desse valor.
 
 ## Pendências em andamento
 1. Foreign key empresas — corrigir com getRepId() para qualquer usuário
-2. Tela de detalhes do pedido/visita (clicar no histórico → editar/converter)
+2. Criar tabela `pedidos` no Supabase (SQL acima) para ativar múltiplos pedidos por visita
 3. Desktop.html — Victor desenvolvendo
 
 ---
