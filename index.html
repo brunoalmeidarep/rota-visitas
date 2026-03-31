@@ -3939,6 +3939,9 @@ let dvPedidosCache = [];
 let dvPedidoEditando = null;
 let epTipoAtual = 'pedido';
 let epStatusAtual = 'aberto';
+let ciPedidosLista = [];    // pedidos do check-in em andamento
+let epContexto = 'editar';  // 'checkin' | 'editar'
+let epPedidoIdx = -1;       // índice em ciPedidosLista ao editar item existente
 
 function _atualizarBtnCheckin() {
   const btnMain = document.getElementById('p-btn-checkin');
@@ -3981,6 +3984,71 @@ function ciSetStatus(status, btn) {
 }
 
 
+// ── MÚLTIPLOS PEDIDOS NO CHECK-IN ────────────────────
+
+function ciRenderPedidos() {
+  const el = document.getElementById('ci-pedidos-lista');
+  if (!el) return;
+  if (!ciPedidosLista.length) {
+    el.innerHTML = '<div style="text-align:center;padding:10px 0 4px;font-size:13px;color:var(--text3)">Nenhum pedido adicionado</div>';
+    return;
+  }
+  el.innerHTML = ciPedidosLista.map((p, i) => {
+    const isPedido = p.tipo !== 'orcamento';
+    const val = parseFloat(p.valor) || 0;
+    const sCor = {aberto:'var(--orange)',fechado:'var(--green)',perdido:'var(--red)'}[p.status] || 'var(--orange)';
+    const sLabel = {aberto:'Aberto',fechado:'Fechado',perdido:'Perdido'}[p.status] || 'Aberto';
+    return `<div style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);display:flex;align-items:flex-start;gap:8px">
+      <div style="flex:1">
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;background:${isPedido?'var(--green-bg)':'rgba(255,165,0,.12)'};color:${isPedido?'var(--green)':'var(--orange)'}">${isPedido?'💰 Pedido':'📋 Orçamento'}</span>
+          ${!isPedido?`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;background:${sCor}22;color:${sCor}">${sLabel}</span>`:''}
+        </div>
+        ${p.representada_nome?`<div style="font-size:13px;color:var(--text2)">${p.representada_nome}</div>`:''}
+        ${val>0?`<div style="font-size:14px;font-weight:700;color:var(--green)">R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>`:''}
+        ${!isPedido?`<button onclick="ciConverterPedido(${i})" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;margin-top:6px">✓ Converter em pedido</button>`:''}
+      </div>
+      <button onclick="ciRemoverPedido(${i})" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0">×</button>
+    </div>`;
+  }).join('');
+}
+
+function ciAdicionarPedido() {
+  epContexto = 'checkin';
+  epPedidoIdx = -1;
+  abrirModalEditarPedido(null);
+}
+
+function ciRemoverPedido(idx) {
+  ciPedidosLista.splice(idx, 1);
+  ciRenderPedidos();
+}
+
+function ciConverterPedido(idx) {
+  if (!ciPedidosLista[idx]) return;
+  ciPedidosLista[idx].tipo = 'pedido';
+  ciPedidosLista[idx].status = 'fechado';
+  ciRenderPedidos();
+}
+
+async function ciSalvarPedidosSupabase(visitaId, repId, pedidos) {
+  if (!pedidos.length || !visitaId) return;
+  try {
+    const rows = pedidos.map(p => ({
+      visita_id: visitaId,
+      rep_id: repId,
+      representada_id: p.representada_id || null,
+      representada_nome: p.representada_nome || null,
+      tipo: p.tipo,
+      valor: p.valor || null,
+      status: p.tipo === 'orcamento' ? (p.status || 'aberto') : 'fechado',
+    }));
+    await sb.from('pedidos').insert(rows);
+  } catch(e) {
+    console.warn('pedidos table not available yet:', e);
+  }
+}
+
 function ciResetForm() {
   // Reset anexos
   anexoReset('ci');
@@ -3994,23 +4062,10 @@ function ciResetForm() {
   const obs = document.getElementById('p-obs');
   if (obs) obs.value = '';
 
-  // Reset tipo — padrão 'nenhum'
-  ciTipoAtual = 'nenhum';
-  ['nenhum','pedido','orcamento'].forEach(t => document.getElementById('ci-'+t)?.classList.toggle('active', t==='nenhum'));
-  const campos = document.getElementById('ci-pedido-campos');
-  if (campos) campos.style.display = 'none';
-  const statusGrupo = document.getElementById('ci-status-grupo');
-  if (statusGrupo) statusGrupo.style.display = 'none';
-  const hidden = document.getElementById('ci-status');
-  if (hidden) hidden.value = 'aberto';
-  ['ci-status-aberto','ci-status-fechado','ci-status-perdido'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.toggle('active', id === 'ci-status-aberto');
-  });
-  const repSel = document.getElementById('ci-representada');
-  if (repSel) repSel.value = '';
-  const valEl = document.getElementById('ci-valor');
-  if (valEl) valEl.value = '';
+  // Reset lista de pedidos do check-in
+  ciPedidosLista = [];
+  ciRenderPedidos();
+
   const fb = document.getElementById('ci-feedback');
   if (fb) fb.textContent = '';
   const dataEl = document.getElementById('ci-data-visita');
@@ -4070,13 +4125,13 @@ async function fazerCheckin() {
   const dataVisita = dataVisitaEl?.value || dataHoje;
   const isRetroativo = dataVisita !== dataHoje;
   const obs = document.getElementById('p-obs')?.value.trim() || '';
-  const pedidoTipo = ciTipoAtual;
-  const orcStatus = document.getElementById('ci-status')?.value || 'aberto';
-  const repSel = document.getElementById('ci-representada');
-  const representadaId = repSel?.value || null;
-  const representadaNome = representadaId ? repSel.options[repSel.selectedIndex].text : null;
-  const valEl = document.getElementById('ci-valor');
-  const valor = valEl?.value ? parseMoeda(valEl) : null;
+  // Pega primeiro pedido da lista para campos legados da tabela visitas
+  const priPed = ciPedidosLista[0] || null;
+  const pedidoTipo = priPed ? priPed.tipo : 'nenhum';
+  const representadaId = priPed?.representada_id || null;
+  const representadaNome = priPed?.representada_nome || null;
+  const valor = priPed?.valor || null;
+  const orcStatus = priPed?.status || 'aberto';
   if (btn) { btn.disabled = true; }
   if (feedback) feedback.textContent = '';
 
@@ -4173,6 +4228,10 @@ async function fazerCheckin() {
       if (btn) btn.disabled = false; return;
     }
     savedData = ins;
+    // Salvar todos os pedidos na tabela pedidos (graceful fail se não existir)
+    if (ciPedidosLista.length > 0 && savedData?.id) {
+      ciSalvarPedidosSupabase(savedData.id, repId, ciPedidosLista);
+    }
   }
 
   // hora exibida = original do check-in (não a da edição)
@@ -4586,16 +4645,18 @@ function dvRenderPedidos() {
       </div>
       ${rep ? `<div style="font-size:13px;color:var(--text2);margin-bottom:2px">${rep}</div>` : ''}
       ${val > 0 ? `<div style="font-size:15px;font-weight:700;color:var(--green)">R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>` : ''}
-      ${isOrcAberto ? `<button onclick="event.stopPropagation();dvConverterPedido('${p.id}')" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px">✓ Virar pedido</button>` : ''}
+      ${isOrcAberto ? `<button onclick="event.stopPropagation();dvConverterPedido('${p.id}')" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px">✓ Converter em pedido</button>` : ''}
     </div>`;
   }).join('');
 }
 
 function dvAdicionarPedido() {
+  epContexto = 'editar';
   abrirModalEditarPedido(null);
 }
 
 function dvEditarPedido(pedidoId) {
+  epContexto = 'editar';
   const p = dvPedidosCache.find(x => String(x.id) === String(pedidoId));
   if (p) abrirModalEditarPedido(p);
 }
@@ -4694,12 +4755,33 @@ function epSetStatus(status) {
 }
 
 async function salvarModalEditarPedido() {
-  if (!dvVisitaAtual?.id || !currentUser) return;
   const repSel = document.getElementById('ep-representada');
   const representadaId = repSel?.value || null;
   const representadaNome = representadaId ? repSel.options[repSel.selectedIndex].text : null;
   const valEl = document.getElementById('ep-valor');
   const valor = valEl?.value ? parseMoeda(valEl) : null;
+
+  // Contexto CHECK-IN: adiciona/atualiza na lista local sem ir ao banco
+  if (epContexto === 'checkin') {
+    const item = {
+      tipo: epTipoAtual,
+      representada_id: representadaId,
+      representada_nome: representadaNome,
+      valor: valor,
+      status: epTipoAtual === 'orcamento' ? epStatusAtual : 'fechado',
+    };
+    if (epPedidoIdx >= 0) {
+      ciPedidosLista[epPedidoIdx] = item;
+    } else {
+      ciPedidosLista.push(item);
+    }
+    fecharModalEditarPedido();
+    ciRenderPedidos();
+    showToast('✓ Pedido adicionado');
+    return;
+  }
+
+  if (!dvVisitaAtual?.id || !currentUser) return;
   const repId = await getRepId();
   const pedidoData = {
     visita_id: dvVisitaAtual.id,
@@ -9473,39 +9555,17 @@ if ('serviceWorker' in navigator) {
               <button class="ci-modo-pill active" id="ci-modo-presencial" onclick="ciSetModo('presencial',this)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.51 16.49 1 14.64 1h-5.28C7.51 1 6 2.51 6 4.64c0 .48.11.92.18 1.36H4C2.9 6 2 6.9 2 8v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-5.36-3c.74 0 1.36.62 1.36 1.36 0 .48-.1.92-.18 1.64H8.18C8.1 5.28 8 4.84 8 4.36 8 3.62 8.62 3 9.36 3h5.28zM20 19H4V8h16v11z"/></svg> Presencial</button>
               <button class="ci-modo-pill" id="ci-modo-whatsapp" onclick="ciSetModo('whatsapp',this)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22" height="22"><circle cx="24" cy="24" r="24" fill="#25D366"/><path fill="white" d="M24 8C15.2 8 8 15.2 8 24c0 3.6 1.1 7 3 9.8L8 40l6.5-1.9C16.9 39.3 20.4 40 24 40c8.8 0 16-7.2 16-16S32.8 8 24 8zm7.9 21.9c-.3.9-1.8 1.7-2.5 1.8-.6.1-1.4.1-2.3-.1-.5-.1-1.2-.4-2-.7-3.5-1.5-5.8-5-6-5.2-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.7 1.3-3.1.3-.3.8-.5 1.2-.5h.8c.3 0 .6.1.8.7.3.8 1 2.6 1.1 2.8.1.2.1.4 0 .7-.1.2-.2.4-.4.6-.2.2-.4.5-.5.6-.2.2-.3.4-.1.7.2.3 1 1.6 2.1 2.6 1.5 1.3 2.7 1.7 3.1 1.9.3.1.6.1.8-.1.3-.3.6-.7.9-1.1.2-.3.5-.3.8-.2.3.1 2 .9 2.3 1.1.3.2.6.3.7.4.1.3.1 1-.2 1.9z"/></svg> WhatsApp</button>
             </div>
-            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tipo de pedido (opcional)</div>
-            <div class="ci-tipo-row">
-              <button class="ci-tipo-pill active" id="ci-nenhum" onclick="ciSetTipo('nenhum',this)">Sem pedido</button>
-              <button class="ci-tipo-pill" id="ci-pedido" onclick="ciSetTipo('pedido',this)">💰 Pedido</button>
-              <button class="ci-tipo-pill" id="ci-orcamento" onclick="ciSetTipo('orcamento',this)">📋 Orçamento</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Pedidos (opcional)</div>
+              <button onclick="ciAdicionarPedido()" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">+ Adicionar</button>
             </div>
-            <div id="ci-status-grupo" style="display:none;margin-bottom:12px">
-              <div class="pf-status-row">
-                <button class="seg-pill-select active" id="ci-status-aberto" onclick="ciSetStatus('aberto',this)">🔵 Aberto</button>
-                <button class="seg-pill-select" id="ci-status-fechado" onclick="ciSetStatus('fechado',this)">✅ Fechado</button>
-                <button class="seg-pill-select" id="ci-status-perdido" onclick="ciSetStatus('perdido',this)">❌ Perdido</button>
-                <input type="hidden" id="ci-status" value="aberto">
-              </div>
-            </div>
-            <div id="ci-pedido-campos" style="display:none">
-              <div class="pf-row">
-                <select class="pf-select" id="ci-representada">
-                  <option value="">🏢 Representada (opcional)</option>
-                </select>
-              </div>
-              <div class="pf-row">
-                <div class="pf-valor-wrap">
-                  <span class="pf-valor-pre">R$</span>
-                  <input id="ci-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
-                </div>
-              </div>
-              <div class="pf-row">
-                <label class="pedido-file-btn" for="ci-doc-input" style="display:flex;align-items:center;gap:8px;">
-                  <span>📎</span><span>Anexar documentos (opcional)</span>
-                </label>
-                <input type="file" id="ci-doc-input" accept=".pdf,image/*" multiple style="display:none" onchange="anexoAdd('ci', this)">
-                <div id="anexos-ci"></div>
-              </div>
+            <div id="ci-pedidos-lista" style="margin-bottom:8px"></div>
+            <div class="pf-row" style="margin-bottom:4px">
+              <label class="pedido-file-btn" for="ci-doc-input" style="display:flex;align-items:center;gap:8px;">
+                <span>📎</span><span>Anexar documentos (opcional)</span>
+              </label>
+              <input type="file" id="ci-doc-input" accept=".pdf,image/*" multiple style="display:none" onchange="anexoAdd('ci', this)">
+              <div id="anexos-ci"></div>
             </div>
             <div class="ci-data-row">
               <div class="ci-data-label">Data da visita</div>
