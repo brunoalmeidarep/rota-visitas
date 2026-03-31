@@ -2266,7 +2266,8 @@ function renderReport() {
 
   const rows = getRowsFiltradas();
   const totalVisitas = rows.length;
-  const totalVendas = rows.reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
+  const _isPedido = v => { const pt = v.pedido_tipo || v.tipo; return pt === 'pedido' || pt === 'remoto'; };
+  const totalVendas = rows.filter(_isPedido).reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
   const totalVendasStr = formatarMoeda(totalVendas);
   const _isOrc = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
   const orcAbertos = rows.filter(v => _isOrc(v) && (!v.status_orcamento||v.status_orcamento==='aberto')).length;
@@ -2363,21 +2364,9 @@ function abrirRepDetalhe(tipo) {
     window._visitasPeriodoFiltro = repFiltroAtual;
     html = _renderVisitasDetalheComFiltro(rows, repFiltroAtual);
   } else if (tipo === 'vendas') {
-    const allPedidos = rows.filter(v => parseFloat(v.valor_pedido) > 0).sort((a,b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
-    const repsVendas = [...new Set(allPedidos.map(v=>v.pedido_representada||v.representada_nome).filter(Boolean))];
-    const filtroRepHtml = repsVendas.length > 1
-      ? '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 4px;">' +
-        `<button class="fin-periodo-tab active" id="vnd-rep-todas" onclick="filtrarVendasRep(null)">Todas</button>` +
-        repsVendas.map(r=>`<button class="fin-periodo-tab" id="vnd-rep-${r.replace(/\s/g,'_')}" onclick="filtrarVendasRep('${r.replace(/'/g,"\\'")}')">` + r + '</button>').join('') +
-        '</div>' : '';
-    window._vendasTodas = allPedidos;
-    window._vendasRepFiltro = null;
-    const totalVendas = allPedidos.reduce((s,v) => s + parseFloat(v.valor_pedido), 0);
-    html = filtroRepHtml +
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
-      '<span style="font-size:13px;color:var(--text2)">' + allPedidos.length + ' pedido(s)</span>' +
-      '<span class="rep-total-val" style="font-size:20px">' + formatarMoeda(totalVendas) + '</span>' +
-    '</div>' + renderVendasDetalheLista(allPedidos);
+    document.getElementById('rep-detalhe-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)"><div class="spinner" style="margin:0 auto 12px"></div>Carregando...</div>';
+    _carregarVendasRelatorio();
+    return;
   } else if (tipo === 'orcamentos') {
     document.getElementById('rep-detalhe-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)"><div class="spinner" style="margin:0 auto 12px"></div>Carregando...</div>';
     _carregarOrcamentosRelatorio(_orcFiltroAtual);
@@ -2594,6 +2583,62 @@ function _renderBonifBody(container) {
 }
 
 let _orcFiltroAtual = 'mes';
+async function _carregarVendasRelatorio() {
+  const body = document.getElementById('rep-detalhe-body');
+  if (!body || !currentRep) return;
+  const rows = getRowsFiltradas();
+  const repId = currentRep.id;
+
+  // Base: visitas onde pedido_tipo = pedido/remoto com valor > 0
+  const _isPedidoRow = v => { const pt = v.pedido_tipo || v.tipo; return (pt === 'pedido' || pt === 'remoto') && parseFloat(v.valor_pedido) > 0; };
+  let allPedidos = rows.filter(_isPedidoRow);
+
+  // Expande com pedidos da tabela pedidos (múltiplos por visita)
+  try {
+    const visitaIds = rows.filter(v => v.id).map(v => v.id);
+    if (visitaIds.length > 0) {
+      const { data: peds } = await sb.from('pedidos').select('*')
+        .in('visita_id', visitaIds).eq('rep_id', repId).eq('tipo', 'pedido');
+      if (peds && peds.length > 0) {
+        const visitasComTabela = new Set(peds.map(p => String(p.visita_id)));
+        // Remove linhas de visitas que têm entradas na tabela pedidos (evita duplicata)
+        allPedidos = allPedidos.filter(v => !visitasComTabela.has(String(v.id)));
+        // Adiciona uma linha por pedido da tabela
+        peds.forEach(p => {
+          const parentVisita = rows.find(v => String(v.id) === String(p.visita_id));
+          if (!parentVisita || !parseFloat(p.valor) > 0) return;
+          allPedidos.push({
+            ...parentVisita,
+            pedido_tipo: p.tipo,
+            pedido_valor: p.valor,
+            valor_pedido: p.valor,
+            representada_id: p.representada_id,
+            pedido_representada: p.representada_nome,
+            representada_nome: p.representada_nome,
+          });
+        });
+      }
+    }
+  } catch(e) {}
+
+  allPedidos.sort((a,b) => parseFloat(b.valor_pedido||0) - parseFloat(a.valor_pedido||0));
+  const repsVendas = [...new Set(allPedidos.map(v=>v.pedido_representada||v.representada_nome).filter(Boolean))];
+  const filtroRepHtml = repsVendas.length > 1
+    ? '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 4px;">' +
+      `<button class="fin-periodo-tab active" id="vnd-rep-todas" onclick="filtrarVendasRep(null)">Todas</button>` +
+      repsVendas.map(r=>`<button class="fin-periodo-tab" id="vnd-rep-${r.replace(/\s/g,'_')}" onclick="filtrarVendasRep('${r.replace(/'/g,"\\'")}')">` + r + '</button>').join('') +
+      '</div>' : '';
+  window._vendasTodas = allPedidos;
+  window._vendasRepFiltro = null;
+  const totalVendas = allPedidos.reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
+  const html = filtroRepHtml +
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
+    '<span style="font-size:13px;color:var(--text2)">' + allPedidos.length + ' pedido(s)</span>' +
+    '<span class="rep-total-val" style="font-size:20px">' + formatarMoeda(totalVendas) + '</span>' +
+    '</div>' + renderVendasDetalheLista(allPedidos);
+  body.innerHTML = html || '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum pedido no período</div>';
+}
+
 async function _carregarOrcamentosRelatorio(periodo) {
   _orcFiltroAtual = periodo;
   const body = document.getElementById('rep-detalhe-body');
@@ -2603,7 +2648,34 @@ async function _carregarOrcamentosRelatorio(periodo) {
   const { data } = await sb.from('visitas').select('*').eq('rep_id', currentRep.id).gte('data', ini).lte('data', fim).order('data', { ascending: false });
   const isOrc = v => v.tipo === 'orcamento' || v.pedido_tipo === 'orcamento';
   const statusOrc = v => v.status_orcamento || v.orcamento_status || 'aberto';
-  const orc = (data || []).filter(v => isOrc(v));
+  let orc = (data || []).filter(v => isOrc(v));
+
+  // Expande com orçamentos da tabela pedidos (múltiplos por visita)
+  try {
+    const visitaIds = (data||[]).filter(v => v.id).map(v => v.id);
+    if (visitaIds.length > 0) {
+      const { data: peds } = await sb.from('pedidos').select('*')
+        .in('visita_id', visitaIds).eq('rep_id', currentRep.id).eq('tipo', 'orcamento');
+      if (peds && peds.length > 0) {
+        const visitasComTabela = new Set(peds.map(p => String(p.visita_id)));
+        orc = orc.filter(v => !visitasComTabela.has(String(v.id)));
+        peds.forEach(p => {
+          const parentVisita = (data||[]).find(v => String(v.id) === String(p.visita_id));
+          if (!parentVisita) return;
+          orc.push({
+            ...parentVisita,
+            pedido_tipo: p.tipo,
+            valor_pedido: p.valor,
+            representada_id: p.representada_id,
+            representada_nome: p.representada_nome,
+            pedido_representada: p.representada_nome,
+            orcamento_status: p.status,
+            status_orcamento: p.status,
+          });
+        });
+      }
+    }
+  } catch(e) {}
   window._orcamentosRelatorioCache = orc;
   const abertos = orc.filter(v => !statusOrc(v) || statusOrc(v) === 'aberto');
   const fechados = orc.filter(v => statusOrc(v) === 'fechado');
@@ -4257,7 +4329,7 @@ async function fazerCheckin() {
     if (!isRetroativo) mostrarResumoHoje(c, visitaObj);
     renderList();
     if (gmap) renderMapMarkers();
-    showToast('✓ Check-in — ' + hora);
+    showToast(existingVisita ? '✓ Visita atualizada — ' + hora : '✓ Check-in — ' + hora);
   } else {
     ciResetForm();
     showToast('✓ Registrado via WhatsApp');
@@ -4266,6 +4338,12 @@ async function fazerCheckin() {
   renderHistorico(perfilId, c);
   if (currentScreen === 'report') carregarPeriodoRelatorio();
   if (btn) btn.disabled = false;
+  // Re-busca do Supabase para garantir _pedidos atualizados no histórico
+  buscarHistoricoSupabase(perfilId).then(visitas => {
+    historicoVisitas[perfilId] = visitas;
+    const cAtual = clientes.find(x => x.id == perfilId);
+    if (cAtual) renderHistorico(perfilId, cAtual);
+  });
 }
 
 // ── LONG PRESS HISTÓRICO ──────────────────────────────
@@ -4816,6 +4894,14 @@ async function salvarModalEditarPedido() {
   fecharModalEditarPedido();
   dvRenderPedidos();
   showToast('✓ Pedido salvo');
+  // Atualiza histórico com os pedidos salvos
+  if (perfilId) {
+    buscarHistoricoSupabase(perfilId).then(visitas => {
+      historicoVisitas[perfilId] = visitas;
+      const cAtual = clientes.find(x => x.id == perfilId);
+      if (cAtual) renderHistorico(perfilId, cAtual);
+    });
+  }
 }
 
 async function converterOrcamentoDV() {
@@ -5388,8 +5474,8 @@ function renderHistorico(id, c) {
   // Inclui presenciais e WhatsApp; exclui apenas itens sem tipo relevante
   let items = [...visitas];
 
-  // Adiciona última compra como referência se não vier do Supabase
-  if (c.ultimaVisita && !items.some(v => v.data === c.ultimaVisita && v.compra)) {
+  // Adiciona última compra como referência APENAS se não houver entrada real do Supabase para essa data
+  if (c.ultimaVisita && !items.some(v => v.data === c.ultimaVisita && !v.compra)) {
     items.push({ data: c.ultimaVisita, obs: c.obsUltimaCompra || c.ultimaObs || '', compra: true, hoje: false });
   }
 
@@ -5409,8 +5495,10 @@ function renderHistorico(id, c) {
     const vHora   = v.hora   || '99:99';
     const earliest = vHora <= curHora ? v : cur;
     const latest   = vHora <= curHora ? cur : v;
+    // Preserva o id: se um tem id e o outro não, usa o que tem id como base
+    const baseForMerge = (v.id && !cur.id) ? v : (cur.id && !v.id) ? cur : latest;
     byKey[k] = {
-      ...latest,
+      ...baseForMerge,
       hora: earliest.hora,
       hora_edicao: latest.hora_edicao || v.hora_edicao || cur.hora_edicao ||
                    (earliest.hora && latest.hora && earliest.hora !== latest.hora ? latest.hora : null),
@@ -5449,29 +5537,35 @@ function renderHistorico(id, c) {
       tagsHtml += `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--orange-bg);color:var(--orange)">Retroativo</span>`;
     }
 
-    // Pedido / Orçamento
-    const pt = v.pedido_tipo && v.pedido_tipo !== 'nenhum' ? v.pedido_tipo
-             : (tipo === 'pedido' || tipo === 'orcamento' || tipo === 'remoto') ? tipo : null;
+    // Pedido / Orçamento — suporte a múltiplos pedidos via _pedidos[]
     let pedidoHtml = '';
-    if (pt) {
-      const rep = v.pedido_representada || '';
-      const valorRaw = parseFloat(v.pedido_valor) || parseFloat(v.valor_pedido) || 0;
+    const _renderUmPedido = (pt, rep, valorRaw, sOrc) => {
       if (pt === 'orcamento') {
-        const sOrc = v.orcamento_status || v.status_orcamento || 'aberto';
         const sCor = {aberto:'var(--orange)',fechado:'var(--green)',perdido:'var(--red)'}[sOrc] || 'var(--orange)';
         const sLabel = {aberto:'Aberto',fechado:'Fechado',perdido:'Perdido'}[sOrc] || 'Aberto';
-        pedidoHtml = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px">
+        let h = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px">
           <span style="font-size:13px;color:var(--text2)">📋 ${rep || 'Orçamento'}</span>
           <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:${sCor}22;color:${sCor};white-space:nowrap">${sLabel}</span>
         </div>`;
-        if (valorRaw > 0) {
-          pedidoHtml += `<div style="text-align:right;margin-top:2px;font-size:12px;font-weight:600;color:var(--text2)">R$ ${valorRaw.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
-        }
+        if (valorRaw > 0) h += `<div style="text-align:right;margin-top:2px;font-size:12px;font-weight:600;color:var(--text2)">R$ ${valorRaw.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
+        return h;
       } else {
-        pedidoHtml = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px">
+        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px">
           <span style="font-size:13px;color:var(--text2)">💰 ${rep || 'Pedido'}</span>
           ${valorRaw > 0 ? `<span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">R$ ${valorRaw.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>` : ''}
         </div>`;
+      }
+    };
+    if (v._pedidos && v._pedidos.length > 0) {
+      // Múltiplos pedidos da tabela pedidos
+      pedidoHtml = v._pedidos.map(p =>
+        _renderUmPedido(p.tipo, p.representada_nome || '', parseFloat(p.valor)||0, p.status||'aberto')
+      ).join('');
+    } else {
+      const pt = v.pedido_tipo && v.pedido_tipo !== 'nenhum' ? v.pedido_tipo
+               : (tipo === 'pedido' || tipo === 'orcamento' || tipo === 'remoto') ? tipo : null;
+      if (pt) {
+        pedidoHtml = _renderUmPedido(pt, v.pedido_representada || '', parseFloat(v.pedido_valor)||parseFloat(v.valor_pedido)||0, v.orcamento_status||v.status_orcamento||'aberto');
       }
     }
 
@@ -5481,13 +5575,16 @@ function renderHistorico(id, c) {
     ).join('');
 
     // Observações
-    const temConteudo = pt || v.obs;
+    const temConteudo = pedidoHtml || v.obs;
     const obsHtml = v.obs
       ? `<div style="font-size:13px;color:var(--text2);margin-top:7px;line-height:1.45">${v.obs}</div>`
       : (!temConteudo ? `<div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:5px">Sem observações</div>` : '');
 
-    // Ações orçamento em aberto
-    const isOrcAberto = pt === 'orcamento' && (!v.orcamento_status || v.orcamento_status === 'aberto') && (!v.status_orcamento || v.status_orcamento === 'aberto') && v.id;
+    // Ações orçamento em aberto (verifica tanto _pedidos quanto campo legado)
+    const _hasOrcAberto = (v._pedidos && v._pedidos.length > 0)
+      ? v._pedidos.some(p => p.tipo === 'orcamento' && (!p.status || p.status === 'aberto'))
+      : (v.pedido_tipo === 'orcamento' && (!v.orcamento_status || v.orcamento_status === 'aberto') && (!v.status_orcamento || v.status_orcamento === 'aberto'));
+    const isOrcAberto = _hasOrcAberto && v.id;
     const acoesHtml = isOrcAberto ? `<div style="display:flex;gap:6px;margin-top:8px">
       <button onclick="event.stopPropagation();converterOrcamentoEmPedido(${v.id})" style="flex:1;background:var(--green);color:#fff;border:none;border-radius:8px;padding:6px 8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">✓ Converter</button>
       <button onclick="event.stopPropagation();marcarOrcamentoPerdido(${v.id})" style="flex:1;background:var(--red-bg);color:var(--red);border:1.5px solid var(--red);border-radius:8px;padding:6px 8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">✗ Perdido</button>
@@ -6003,11 +6100,12 @@ async function buscarHistoricoSupabase(clienteId) {
 
   if (!currentUser) return local;
   try {
+    const repId = await getRepId();
     let query = sb
       .from('visitas')
       .select('*')
       .eq('id_cliente', String(clienteId))
-      .eq('rep_id', await getRepId())
+      .eq('rep_id', repId)
       .order('data', { ascending: false })
       .order('hora', { ascending: false });
 
@@ -6016,10 +6114,30 @@ async function buscarHistoricoSupabase(clienteId) {
 
     const { data, error } = await query;
     if (error) return local;
+
+    // Carrega pedidos da tabela pedidos para enriquecer o histórico com múltiplos pedidos
+    const visitaIds = (data||[]).filter(v => v.id).map(v => v.id);
+    let pedidosByVisita = {};
+    if (visitaIds.length > 0) {
+      try {
+        const { data: peds } = await sb.from('pedidos').select('*')
+          .in('visita_id', visitaIds).eq('rep_id', repId);
+        (peds||[]).forEach(p => {
+          if (!pedidosByVisita[p.visita_id]) pedidosByVisita[p.visita_id] = [];
+          pedidosByVisita[p.visita_id].push(p);
+        });
+      } catch(e) {}
+    }
+
+    const resultado = (data||[]).map(v => ({
+      ...v,
+      _pedidos: pedidosByVisita[v.id] || []
+    }));
+
     // Combina Supabase + local (sem duplicatas)
-    const supaIds = new Set((data||[]).map(v => v.data + v.hora));
+    const supaIds = new Set(resultado.map(v => v.data + v.hora));
     const somenteLocal = local.filter(h => !supaIds.has(h.data + h.hora));
-    return [...(data||[]), ...somenteLocal];
+    return [...resultado, ...somenteLocal];
   } catch(e) { return local; }
 }
 
