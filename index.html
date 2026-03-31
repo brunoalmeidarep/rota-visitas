@@ -976,6 +976,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <button class="seg-pill-filtro" id="pill-semana" onclick="filtrarStatus(this,'semana')">Semana</button>
     <button class="seg-pill-filtro" id="pill-green" onclick="filtrarStatus(this,'green')">30 dias</button>
     <button class="seg-pill-filtro" id="pill-blue" onclick="filtrarStatus(this,'blue')">60 dias</button>
+    <button class="seg-pill-filtro" id="pill-red" onclick="filtrarStatus(this,'red')">61+</button>
     <button class="seg-pill-filtro" id="pill-purple" onclick="filtrarStatus(this,'purple')">Prospect</button>
   </div>
 
@@ -1458,7 +1459,7 @@ const LABEL_ZOOM = 11;
 var activeFilter = null;
 let currentScreen = 'list';
 let searchQuery = '';
-const STATUS_LABEL = { today:'Hoje', semana:'Semana', green:'30 dias', blue:'60 dias', red:'90 dias', purple:'Prospect' };
+const STATUS_LABEL = { today:'Hoje', semana:'Semana', green:'30 dias', blue:'60 dias', red:'61+ dias', purple:'Prospect' };
 const STATUS_COLOR = { today:'var(--green)', green:'var(--blue)', blue:'var(--orange)', red:'var(--red)', purple:'var(--purple)' };
 const PIN_COLOR    = { today:'#fbbf24', green:'#4ade80', blue:'#60a5fa', red:'#f87171', purple:'#c084fc' };
 
@@ -2115,8 +2116,8 @@ function renderList() {
   const filterBar = document.getElementById('active-filter-bar');
   if (filterBar) {
     if (activeFilter) {
-      const labels = {today:'Hoje',semana:'Semana',green:'30 dias',blue:'60 dias',purple:'Prospect'};
-      const cores = {today:'var(--green)',semana:'var(--green)',green:'var(--blue)',blue:'var(--orange)',purple:'var(--purple)'};
+      const labels = {today:'Hoje',semana:'Semana',green:'30 dias',blue:'60 dias',red:'61+ dias',purple:'Prospect'};
+      const cores = {today:'var(--green)',semana:'var(--green)',green:'var(--blue)',blue:'var(--orange)',red:'var(--red)',purple:'var(--purple)'};
       filterBar.style.display = 'flex';
       filterBar.innerHTML = '<span style="font-size:12px;color:var(--text2)">Filtrando: <strong style="color:' + cores[activeFilter] + '">' + labels[activeFilter] + '</strong></span>' +
         '<button onclick="limparFiltro()" style="background:none;border:none;font-size:12px;font-weight:700;color:var(--blue);cursor:pointer;padding:0;font-family:inherit">✕ Ver todos</button>';
@@ -2524,11 +2525,16 @@ function filtrarBonifRelatorio(rep) {
 function _renderBonifBody(container) {
   if (!container) return;
   const reps = [...new Set(bonificacoesFinCache.map(b => b.representada_nome).filter(Boolean))];
-  const filtroHtml =
-    '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 4px;">' +
-    `<button class="fin-periodo-tab${!finBonifRepFiltro?' active':''}" onclick="filtrarBonifRelatorio(null)">Todas</button>` +
-    reps.map(r => `<button class="fin-periodo-tab${finBonifRepFiltro===r?' active':''}" onclick="filtrarBonifRelatorio('${r.replace(/'/g,"\\'")}')">${r}</button>`).join('') +
-    '</div>';
+  const filtroHtml = reps.length > 1
+    ? '<div style="display:flex;overflow-x:auto;gap:6px;padding:10px 12px 4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">' +
+      reps.map(function(r) {
+        const esc = r.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const onclick = finBonifRepFiltro === r ? 'filtrarBonifRelatorio(null)' : "filtrarBonifRelatorio('" + esc + "')";
+        const active = finBonifRepFiltro === r ? ' active' : '';
+        return '<button class="fin-periodo-tab' + active + '" style="white-space:nowrap;flex-shrink:0" onclick="' + onclick + '">' + r + '</button>';
+      }).join('') +
+      '</div>'
+    : '';
 
   const items = finBonifRepFiltro
     ? bonificacoesFinCache.filter(b => b.representada_nome === finBonifRepFiltro)
@@ -2553,7 +2559,8 @@ function _renderBonifBody(container) {
 
   html += items.map(b => {
     const parcelas = b.parcelas || [];
-    const recebido = parcelas.filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
+    const pagamentos = parcelas.filter(p=>p.recebido);
+    const recebido = pagamentos.reduce((s,p)=>s+(p.valor||0),0);
     const pendente = (b.valor_total||0) - recebido;
     const pct = b.valor_total ? Math.round(recebido/b.valor_total*100) : 0;
     const statusStr = b.status==='concluida'
@@ -2570,9 +2577,9 @@ function _renderBonifBody(container) {
             ${pendente>0?`<span style="color:var(--orange)">pendente ${formatarMoeda(pendente)}</span>`:''}
           </div>
         </div>
-        <div style="text-align:right;margin-left:10px">
+        <div style="text-align:right;margin-left:10px;min-width:0">
           <div style="font-size:14px;font-weight:800;white-space:nowrap">${formatarMoeda(b.valor_total||0)}</div>
-          <div style="font-size:11px;margin-top:4px">${parcelas.length}× · ${statusStr}</div>
+          <div style="font-size:11px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pagamentos.length} pgto${pagamentos.length!==1?'s':''} · ${statusStr}</div>
         </div>
       </div>
     </div>`;
@@ -3228,10 +3235,11 @@ function exportarPDFDetalhe() {
     Object.entries(byRepBonif).forEach(([rn, bItens]) => {
       addSectionHeader(rn, C_HDR);
       bItens.forEach(b => {
-        const rec  = (b.parcelas || []).filter(p => p.recebido).reduce((a, p) => a + (p.valor || 0), 0);
+        const pgtos = (b.parcelas || []).filter(p => p.recebido);
+        const rec  = pgtos.reduce((a, p) => a + (p.valor || 0), 0);
         const pend = (b.valor_total || 0) - rec;
         const pct  = b.valor_total ? Math.round(rec / b.valor_total * 100) : 0;
-        const cardH = 32;
+        const cardH = 32 + (pgtos.length > 0 ? pgtos.length * 7 : 0);
         checkPage(cardH + 3);
         doc.setDrawColor(215, 225, 242);
         doc.setLineWidth(0.3);
@@ -3241,11 +3249,11 @@ function exportarPDFDetalhe() {
         doc.text(_cut(_nc(b.cliente_nome), 58), ML + 5, y + 7);
         doc.setTextColor(...C_BLUE);
         doc.text(_val(b.valor_total), ML + CW - 4, y + 7, { align: 'right' });
-        // Motivo
+        // Motivo + status
         doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...C_GRAY);
         doc.text(_cut(b.motivo || '--', 72), ML + 5, y + 13.5);
-        // Info parcelas
-        doc.text(String((b.parcelas||[]).length) + 'x parcela' + ((b.parcelas||[]).length !== 1 ? 's' : '') + ' · ' + pct + '% recebido', ML + 5, y + 20);
+        const statusTxt = b.status === 'concluida' ? '✓ Concluída' : 'Em andamento';
+        doc.text(pct + '% recebido · ' + statusTxt, ML + 5, y + 20);
         // Barra de progresso
         const barX = ML + 5; const barW = CW - 10; const barY = y + 22.5;
         doc.setFillColor(215, 225, 242);
@@ -3255,6 +3263,16 @@ function exportarPDFDetalhe() {
         if (pend > 0) {
           doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...C_RED);
           doc.text('Pendente: ' + _val(pend), ML + 5, y + 29.5);
+        }
+        // Lista de pagamentos
+        if (pgtos.length > 0) {
+          let py = y + 34;
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C_GRAY);
+          pgtos.forEach(p => {
+            const dataFmt = p.data_recebimento ? new Date(p.data_recebimento + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+            doc.text('• ' + dataFmt + ' — ' + _val(p.valor), ML + 8, py);
+            py += 7;
+          });
         }
         doc.setTextColor(0, 0, 0);
         y += cardH + 3;
@@ -5136,10 +5154,8 @@ async function carregarGastosResumoPerfil() {
 
 // ── BONIFICAÇÕES ─────────────────────────────────────
 let bonifAtual = [];
-let bonifExpandido = null;
-let bonifQtd = 1;
 let bonifEditId = null;
-let bonifMarcandoParcela = null;
+let bonifDetalheId = null;
 
 function openBonificacoes() {
   if (!perfilId) return;
@@ -5148,9 +5164,6 @@ function openBonificacoes() {
   const nomeBase = c.nome.replace(/\s*\(.*?\)/, '').trim();
   document.getElementById('bonif-titulo').textContent = 'Bonificações — ' + nomeBase;
   document.getElementById('bonif-form').style.display = 'none';
-  bonifExpandido = null;
-  bonifQtd = 1;
-  setBonifQtd(1);
   document.getElementById('bonif-motivo').value = '';
   document.getElementById('bonif-valor').value = '';
   document.getElementById('bonif-data').value = new Date().toISOString().split('T')[0];
@@ -5179,22 +5192,7 @@ function toggleBonifForm() {
     document.getElementById('bonif-motivo').value = '';
     document.getElementById('bonif-valor').value = '';
     document.getElementById('bonif-data').value = new Date().toISOString().split('T')[0];
-    setBonifQtd(1);
   }
-}
-
-function setBonifQtd(n) {
-  bonifQtd = n;
-  [1,2,3,4].forEach(i => document.getElementById('bonif-qtd-'+i)?.classList.toggle('active', i===n));
-  bonifAtualizarParcelas();
-}
-
-function bonifAtualizarParcelas() {
-  const val = parseMoeda(document.getElementById('bonif-valor'));
-  const prev = document.getElementById('bonif-parcelas-preview');
-  if (!prev) return;
-  if (!val) { prev.textContent = ''; return; }
-  prev.textContent = bonifQtd+'x de '+formatarMoeda(val/bonifQtd);
 }
 
 async function carregarBonificacoes() {
@@ -5215,16 +5213,15 @@ function renderBonificacoes() {
     if (!el) return;
     if (!lista.length) { el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:4px 0 16px">Nenhuma</div>'; return; }
     el.innerHTML = lista.map(b => {
-      const parcelas = b.parcelas || [];
-      const recebido = parcelas.filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
-      const pendente = (b.valor_total||0) - recebido;
-      const pct = b.valor_total ? Math.round(recebido/b.valor_total*100) : 0;
-      const exp = bonifExpandido === b.id;
+      const pagamentos = (b.parcelas || []).filter(p => p.recebido);
+      const recebido = pagamentos.reduce((s,p) => s+(p.valor||0), 0);
+      const pendente = Math.max(0, (b.valor_total||0) - recebido);
+      const pct = b.valor_total ? Math.min(100, Math.round(recebido/b.valor_total*100)) : 0;
       return `<div class="gc-item" style="margin-bottom:10px">
-        <div class="gc-item-row" onclick="toggleBonifItem('${b.id}')">
+        <div class="gc-item-row" onclick="abrirBonifDetalhe('${b.id}')">
           <div class="gc-item-main">
             <div class="gc-item-desc">${b.motivo}</div>
-            <div class="gc-item-meta">${b.representada_nome?`<span>${b.representada_nome}</span>`:''}<span>${parcelas.length}x</span></div>
+            <div class="gc-item-meta">${b.representada_nome?`<span>${b.representada_nome}</span>`:''}<span>${pagamentos.length} pagamento${pagamentos.length!==1?'s':''}</span></div>
             <div class="bonif-progress-bar"><div class="bonif-progress-fill" style="width:${pct}%"></div></div>
             <div style="font-size:11px;display:flex;gap:10px;margin-top:2px">
               <span style="color:var(--green)">✓ ${formatarMoeda(recebido)}</span>
@@ -5239,23 +5236,6 @@ function renderBonificacoes() {
             </div>
           </div>
         </div>
-        ${exp?`<div>${parcelas.map((p,i)=>{
-          const marcando = bonifMarcandoParcela && bonifMarcandoParcela.bonifId===b.id && bonifMarcandoParcela.parcelaIdx===i;
-          const hoje = new Date().toISOString().split('T')[0];
-          return `<div class="bonif-parcela-row">
-            <div class="bonif-parcela-num">${i+1}.</div>
-            <div class="bonif-parcela-val">${formatarMoeda(p.valor||0)}</div>
-            ${p.recebido
-              ?`<div style="font-size:11px;font-weight:600;color:var(--green)">✓ ${p.data_recebimento?new Date(p.data_recebimento+'T12:00:00').toLocaleDateString('pt-BR'):''}</div>`
-              : marcando
-                ?`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                    <input type="date" id="bonif-parc-data-${b.id}-${i}" value="${hoje}" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)">
-                    <button class="gestao-btn-sm" style="font-size:11px;padding:3px 8px" onclick="confirmarMarcacaoParcela('${b.id}',${i})">✓ Confirmar</button>
-                    <button class="gestao-btn-sm" style="font-size:11px;padding:3px 8px" onclick="cancelarMarcacaoParcela()">✕</button>
-                  </div>`
-                :`<button class="gestao-btn-sm" style="font-size:11px;padding:4px 10px" onclick="iniciarMarcacaoParcela('${b.id}',${i})">Marcar recebido</button>`}
-          </div>`;
-        }).join('')}</div>`:''}
       </div>`;
     }).join('');
   };
@@ -5263,9 +5243,110 @@ function renderBonificacoes() {
   renderLista(concluidas, 'bonif-concluidas');
 }
 
-function toggleBonifItem(id) {
-  bonifExpandido = bonifExpandido === id ? null : id;
-  renderBonificacoes();
+function abrirBonifDetalhe(id) {
+  bonifDetalheId = id;
+  renderBonifDetalhe();
+  document.getElementById('screen-bonif-detalhe').style.display = 'flex';
+}
+
+function fecharBonifDetalhe() {
+  document.getElementById('screen-bonif-detalhe').style.display = 'none';
+  bonifDetalheId = null;
+}
+
+function renderBonifDetalhe() {
+  const b = bonifAtual.find(x => x.id === bonifDetalheId);
+  if (!b) return;
+  const pagamentos = (b.parcelas || []).filter(p => p.recebido);
+  const totalRecebido = pagamentos.reduce((s,p) => s+(p.valor||0), 0);
+  const totalAcordado = b.valor_total || 0;
+  const saldoPendente = totalAcordado - totalRecebido;
+  const pct = totalAcordado ? Math.min(100, Math.round(totalRecebido/totalAcordado*100)) : 0;
+  document.getElementById('bonif-detalhe-titulo').textContent = b.motivo;
+  let html = `
+    <div style="margin-bottom:14px">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--blue);white-space:nowrap">${formatarMoeda(totalAcordado)}</div><div class="fin-resumo-lbl">Acordado</div></div>
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--green);white-space:nowrap">${formatarMoeda(totalRecebido)}</div><div class="fin-resumo-lbl">Recebido</div></div>
+        <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange);white-space:nowrap">${formatarMoeda(Math.max(0,saldoPendente))}</div><div class="fin-resumo-lbl">Pendente</div></div>
+      </div>
+      <div class="bonif-progress-bar"><div class="bonif-progress-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:12px;color:var(--text3);text-align:right;margin-top:3px">${pct}% recebido</div>
+      ${totalRecebido > totalAcordado && totalAcordado > 0 ? `<div style="color:var(--green);font-size:13px;font-weight:700;margin-top:8px;text-align:center;padding:8px;background:var(--card);border-radius:10px">Bonificação quitada ✓ — Recebido ${formatarMoeda(totalRecebido - totalAcordado)} a mais que o acordado</div>` : ''}
+    </div>
+    <div class="perfil-section-title" style="margin-top:0">Pagamentos</div>`;
+  if (!pagamentos.length) {
+    html += '<div style="color:var(--text3);font-size:13px;padding:4px 0 16px">Nenhum pagamento registrado</div>';
+  } else {
+    html += pagamentos.map((p, i) => {
+      const dataFmt = p.data_recebimento ? new Date(p.data_recebimento+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+      return `<div style="display:flex;align-items:center;padding:10px 0;border-top:1px solid var(--border);gap:10px">
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700">${formatarMoeda(p.valor||0)}</div>
+          <div style="font-size:11px;color:var(--text3)">${dataFmt}</div>
+        </div>
+        <button class="gestao-btn-sm danger" style="font-size:11px;padding:3px 8px" onclick="removerPagamentoBonif(${i})">×</button>
+      </div>`;
+    }).join('');
+  }
+  html += `<button class="pf-btn-registrar" style="margin-top:16px" onclick="abrirModalPagamentoBonif()">+ Registrar pagamento</button>`;
+  document.getElementById('bonif-detalhe-body').innerHTML = html;
+}
+
+function abrirModalPagamentoBonif() {
+  document.getElementById('bonif-pag-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('bonif-pag-valor').value = '';
+  document.getElementById('bonif-modal-pagamento').style.display = 'flex';
+}
+
+function fecharModalPagamentoBonif() {
+  document.getElementById('bonif-modal-pagamento').style.display = 'none';
+}
+
+async function confirmarPagamentoBonif() {
+  const valor = parseMoeda(document.getElementById('bonif-pag-valor'));
+  const data = document.getElementById('bonif-pag-data').value;
+  if (!valor || isNaN(valor) || valor <= 0) { showToast('⚠️ Informe o valor', true); return; }
+  if (!data) { showToast('⚠️ Informe a data', true); return; }
+  const b = bonifAtual.find(x => x.id === bonifDetalheId);
+  if (!b) return;
+  const novasParcelas = [...(b.parcelas||[]), {valor, data_recebimento: data, recebido: true}];
+  const totalRec = novasParcelas.filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
+  const novoStatus = totalRec >= (b.valor_total||0) ? 'concluida' : 'em_andamento';
+  const { error } = await sb.from('bonificacoes').update({parcelas: novasParcelas, status: novoStatus}).eq('id', bonifDetalheId);
+  if (error) { showToast('❌ Erro ao registrar', true); return; }
+  if (currentRep) {
+    const c = clientes.find(x => x.id == perfilId);
+    await sb.from('financeiro').insert({
+      tipo: 'receita', categoria: 'bonificacao',
+      descricao: `Bonif: ${b.motivo}${b.representada_nome?' ('+b.representada_nome+')':''}`,
+      valor, data,
+      cliente_id: String(perfilId), cliente_nome: c?.nome||'',
+      representada_id: b.representada_id||null,
+      rep_id: currentRep.id
+    });
+  }
+  fecharModalPagamentoBonif();
+  showToast('✓ Pagamento registrado!');
+  await carregarBonificacoes();
+  renderBonifDetalhe();
+}
+
+async function removerPagamentoBonif(idx) {
+  if (!confirm('Remover este pagamento?')) return;
+  const b = bonifAtual.find(x => x.id === bonifDetalheId);
+  if (!b) return;
+  const recebidas = (b.parcelas||[]).filter(p => p.recebido);
+  recebidas.splice(idx, 1);
+  const naoRecebidas = (b.parcelas||[]).filter(p => !p.recebido);
+  const novasParcelas = [...naoRecebidas, ...recebidas];
+  const totalRec = recebidas.reduce((s,p) => s+(p.valor||0), 0);
+  const novoStatus = totalRec >= (b.valor_total||0) && recebidas.length > 0 ? 'concluida' : 'em_andamento';
+  const { error } = await sb.from('bonificacoes').update({parcelas: novasParcelas, status: novoStatus}).eq('id', bonifDetalheId);
+  if (error) { showToast('❌ Erro ao remover', true); return; }
+  showToast('Pagamento removido');
+  await carregarBonificacoes();
+  renderBonifDetalhe();
 }
 
 async function salvarBonificacao() {
@@ -5280,31 +5361,26 @@ async function salvarBonificacao() {
   const representadaNome = representadaId ? repSel?.options[repSel.selectedIndex]?.text : null;
   if (!motivo) { showToast('⚠️ Informe o motivo', true); return; }
   if (!valorTotal || isNaN(valorTotal)) { showToast('⚠️ Informe o valor', true); return; }
-  const parcValor = Math.round(valorTotal/bonifQtd*100)/100;
   const editId = document.getElementById('bonif-edit-id').value;
   let error;
   if (editId) {
-    // mantém parcelas já recebidas; recria apenas as pendentes se a qtd mudou
     const existente = bonifAtual.find(b => b.id === editId);
-    const parcelasAtuais = existente?.parcelas || [];
-    const parcelas = parcelasAtuais.length === bonifQtd
-      ? parcelasAtuais.map(p => ({...p, valor: parcValor}))
-      : Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
-    const novoStatus = parcelas.every(p=>p.recebido) ? 'concluida' : 'em_andamento';
+    const parcelas = existente?.parcelas || [];
+    const totalRec = parcelas.filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
+    const novoStatus = totalRec >= valorTotal && parcelas.filter(p=>p.recebido).length > 0 ? 'concluida' : 'em_andamento';
     ({ error } = await sb.from('bonificacoes').update({
       representada_id: representadaId||null, representada_nome: representadaNome||null,
       motivo, valor_total: valorTotal, data_combinada: dataCombinada||null,
-      parcelas, status: novoStatus
+      status: novoStatus
     }).eq('id', editId));
     if (!error) showToast('✓ Bonificação atualizada');
   } else {
-    const parcelas = Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
     ({ error } = await sb.from('bonificacoes').insert({
       rep_id: await getRepId(),
       cliente_id: String(perfilId), cliente_nome: c.nome,
       representada_id: representadaId||null, representada_nome: representadaNome||null,
       motivo, valor_total: valorTotal, data_combinada: dataCombinada||null,
-      parcelas, status: 'em_andamento'
+      parcelas: [], status: 'em_andamento'
     }));
     if (!error) showToast('✓ Bonificação registrada');
   }
@@ -5312,46 +5388,6 @@ async function salvarBonificacao() {
   bonifEditId = null;
   document.getElementById('bonif-edit-id').value = '';
   document.getElementById('bonif-form').style.display = 'none';
-  carregarBonificacoes();
-}
-
-function iniciarMarcacaoParcela(bonifId, parcelaIdx) {
-  bonifMarcandoParcela = { bonifId, parcelaIdx };
-  renderBonificacoes();
-}
-
-function cancelarMarcacaoParcela() {
-  bonifMarcandoParcela = null;
-  renderBonificacoes();
-}
-
-async function confirmarMarcacaoParcela(bonifId, parcelaIdx) {
-  const inputId = `bonif-parc-data-${bonifId}-${parcelaIdx}`;
-  const dataRecebimento = document.getElementById(inputId)?.value || new Date().toISOString().split('T')[0];
-  bonifMarcandoParcela = null;
-  await marcarParcelaRecebida(bonifId, parcelaIdx, dataRecebimento);
-}
-
-async function marcarParcelaRecebida(bonifId, parcelaIdx, dataRecebimento) {
-  const bonif = bonifAtual.find(b => b.id === bonifId);
-  if (!bonif) return;
-  const data = dataRecebimento || new Date().toISOString().split('T')[0];
-  const parcelas = bonif.parcelas.map((p,i) => i===parcelaIdx ? {...p, recebido:true, data_recebimento: data} : p);
-  const novoStatus = parcelas.every(p=>p.recebido) ? 'concluida' : 'em_andamento';
-  await sb.from('bonificacoes').update({parcelas, status:novoStatus}).eq('id', bonifId);
-  if (currentRep) {
-    const c = clientes.find(x => x.id == perfilId);
-    await sb.from('financeiro').insert({
-      tipo: 'receita', categoria: 'bonificacao',
-      descricao: `Bonif: ${bonif.motivo}${bonif.representada_nome?' ('+bonif.representada_nome+')':''} — parcela ${parcelaIdx+1}/${parcelas.length}`,
-      valor: parcelas[parcelaIdx].valor,
-      data,
-      cliente_id: String(perfilId), cliente_nome: c?.nome||'',
-      representada_id: bonif.representada_id||null,
-      rep_id: currentRep.id
-    });
-  }
-  showToast('✓ Parcela recebida!');
   carregarBonificacoes();
 }
 
@@ -5373,13 +5409,11 @@ function editarBonificacao(id) {
   const val = (b.valor_total || 0).toFixed(2).replace('.', ',');
   document.getElementById('bonif-valor').value = val;
   document.getElementById('bonif-data').value = b.data_combinada || '';
-  setBonifQtd(b.parcelas?.length || 1);
   const sel = document.getElementById('bonif-representada');
   if (sel && b.representada_id) sel.value = b.representada_id;
   const f = document.getElementById('bonif-form');
   f.style.display = 'block';
   f.scrollIntoView({ behavior: 'smooth' });
-  bonifAtualizarParcelas();
 }
 
 async function carregarBonifResumoPerfil() {
@@ -5390,7 +5424,10 @@ async function carregarBonifResumoPerfil() {
   const { data } = await sb.from('bonificacoes').select('parcelas,valor_total,status').eq('rep_id', await getRepId()).eq('cliente_id', String(perfilId));
   if (!data || !data.length) { sub.textContent = 'Nenhuma bonificação'; if(badge) badge.style.display='none'; return; }
   let pendente = 0;
-  data.forEach(b => (b.parcelas||[]).forEach(p => { if(!p.recebido) pendente+=(p.valor||0); }));
+  data.forEach(b => {
+    const rec = (b.parcelas||[]).filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
+    pendente += Math.max(0, (b.valor_total||0) - rec);
+  });
   sub.textContent = data.length+' bonificaç'+(data.length===1?'ão':'ões');
   if (badge) {
     if (pendente>0) { badge.textContent=formatarMoeda(pendente); badge.style.display='inline-flex'; }
@@ -6929,7 +6966,7 @@ function toggleCidade(id) {
 }
 
 function abrirFiltro(status) {
-  const labels = { today:'Visitados hoje', green:'Clientes — 30 dias', blue:'Clientes — 60 dias', red:'Clientes — 90 dias', purple:'Prospect' };
+  const labels = { today:'Visitados hoje', green:'Clientes — 30 dias', blue:'Clientes — 60 dias', red:'Clientes — 61+ dias', purple:'Prospect' };
   const cores  = { today:'var(--green)', green:'var(--blue)', blue:'var(--orange)', red:'var(--red)', purple:'var(--purple)' };
 
   const grupo = clientes.filter(c => getStatus(c) === status);
@@ -7027,7 +7064,7 @@ function filtrarStatus(btn, status) {
 }
 
 function sincronizarPillStatus() {
-  const map = { '': 'pill-todos', today: 'pill-today', semana: 'pill-semana', green: 'pill-green', blue: 'pill-blue', purple: 'pill-purple' };
+  const map = { '': 'pill-todos', today: 'pill-today', semana: 'pill-semana', green: 'pill-green', blue: 'pill-blue', red: 'pill-red', purple: 'pill-purple' };
   document.querySelectorAll('.seg-pill-filtro').forEach(b => b.classList.remove('active'));
   const key = activeFilter || '';
   const pillId = map[key];
@@ -8241,10 +8278,15 @@ function setFinBonifRep(rep) {
 function renderBonifFin() {
   const reps = [...new Set(bonificacoesFinCache.map(b => b.representada_nome).filter(Boolean))];
   const filtroEl = document.getElementById('fin-bonif-filtro');
-  if (filtroEl) {
-    filtroEl.innerHTML =
-      `<button class="fin-periodo-tab${!finBonifRepFiltro?' active':''}" onclick="setFinBonifRep(null)">Todas</button>` +
-      reps.map(r => `<button class="fin-periodo-tab${finBonifRepFiltro===r?' active':''}" onclick="setFinBonifRep('${r.replace(/'/g,"\\'")}')">${r}</button>`).join('');
+  if (filtroEl && reps.length > 1) {
+    filtroEl.innerHTML = reps.map(function(r) {
+      const esc = r.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      const onclick = finBonifRepFiltro === r ? 'setFinBonifRep(null)' : "setFinBonifRep('" + esc + "')";
+      const active = finBonifRepFiltro === r ? ' active' : '';
+      return '<button class="fin-periodo-tab' + active + '" style="white-space:nowrap;flex-shrink:0" onclick="' + onclick + '">' + r + '</button>';
+    }).join('');
+  } else if (filtroEl) {
+    filtroEl.innerHTML = '';
   }
   const lista = document.getElementById('fin-bonif-lista');
   if (!lista) return;
@@ -8257,13 +8299,14 @@ function renderBonifFin() {
   const totalRecebido = items.reduce((s,b) => s + (b.parcelas||[]).filter(p=>p.recebido).reduce((a,p)=>a+(p.valor||0),0), 0);
   const totalPendente = totalGeral - totalRecebido;
   let html = `<div style="display:flex;gap:8px;margin-bottom:14px;">
-    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--blue)">${formatarMoeda(totalGeral)}</div><div class="fin-resumo-lbl">Total</div></div>
-    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--green)">${formatarMoeda(totalRecebido)}</div><div class="fin-resumo-lbl">Recebido</div></div>
-    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange)">${formatarMoeda(totalPendente)}</div><div class="fin-resumo-lbl">Pendente</div></div>
+    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--blue);white-space:nowrap">${formatarMoeda(totalGeral)}</div><div class="fin-resumo-lbl">Total</div></div>
+    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--green);white-space:nowrap">${formatarMoeda(totalRecebido)}</div><div class="fin-resumo-lbl">Recebido</div></div>
+    <div class="fin-resumo-card" style="flex:1"><div class="fin-resumo-val" style="color:var(--orange);white-space:nowrap">${formatarMoeda(totalPendente)}</div><div class="fin-resumo-lbl">Pendente</div></div>
   </div>`;
   html += items.map(b => {
     const parcelas = b.parcelas || [];
-    const recebido = parcelas.filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
+    const pagamentos = parcelas.filter(p=>p.recebido);
+    const recebido = pagamentos.reduce((s,p)=>s+(p.valor||0),0);
     const pendente = (b.valor_total||0) - recebido;
     const pct = b.valor_total ? Math.round(recebido/b.valor_total*100) : 0;
     const statusStr = b.status==='concluida'
@@ -8280,9 +8323,9 @@ function renderBonifFin() {
             ${pendente>0?`<span style="color:var(--orange)">pendente ${formatarMoeda(pendente)}</span>`:''}
           </div>
         </div>
-        <div style="text-align:right;margin-left:10px">
+        <div style="text-align:right;margin-left:10px;min-width:0">
           <div style="font-size:14px;font-weight:800;white-space:nowrap">${formatarMoeda(b.valor_total||0)}</div>
-          <div style="font-size:11px;margin-top:4px">${parcelas.length}x · ${statusStr}</div>
+          <div style="font-size:11px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pagamentos.length} pgto${pagamentos.length!==1?'s':''} · ${statusStr}</div>
         </div>
       </div>
     </div>`;
@@ -9577,6 +9620,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.getElementById('filtro-panel')?.style.display === 'flex') { fecharFiltro(); return; }
     if (document.getElementById('screen-visita-detalhe')?.style.display === 'flex') { fecharDetalheVisita(); return; }
+    if (document.getElementById('bonif-modal-pagamento')?.style.display === 'flex') { fecharModalPagamentoBonif(); return; }
+    if (document.getElementById('screen-bonif-detalhe')?.style.display === 'flex') { fecharBonifDetalhe(); return; }
     if (document.getElementById('screen-bonificacoes')?.style.display === 'flex') { closeBonificacoes(); return; }
     if (document.getElementById('screen-gastos-cliente')?.style.display === 'flex') { closeGastosCliente(); return; }
     if (document.getElementById('screen-ver-dados')?.style.display === 'flex') { fecharVerDados(); return; }
@@ -9943,21 +9988,11 @@ if ('serviceWorker' in navigator) {
           </div>
           <div class="campo-grupo">
             <label class="campo-label">Valor total (R$) *</label>
-            <input class="campo-input" id="bonif-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this);bonifAtualizarParcelas()">
+            <input class="campo-input" id="bonif-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
           </div>
           <div class="campo-grupo">
             <label class="campo-label">Data combinada</label>
             <input class="campo-input" id="bonif-data" type="date">
-          </div>
-          <div class="campo-grupo">
-            <label class="campo-label">Parcelas</label>
-            <div class="bonif-qtd-btns">
-              <button class="bonif-qtd-btn active" id="bonif-qtd-1" onclick="setBonifQtd(1)">1×</button>
-              <button class="bonif-qtd-btn" id="bonif-qtd-2" onclick="setBonifQtd(2)">2×</button>
-              <button class="bonif-qtd-btn" id="bonif-qtd-3" onclick="setBonifQtd(3)">3×</button>
-              <button class="bonif-qtd-btn" id="bonif-qtd-4" onclick="setBonifQtd(4)">4×</button>
-            </div>
-            <div id="bonif-parcelas-preview" style="font-size:13px;color:var(--text2);margin-top:4px"></div>
           </div>
           <button class="pf-btn-registrar" onclick="salvarBonificacao()">Salvar</button>
         </div>
@@ -9965,6 +10000,35 @@ if ('serviceWorker' in navigator) {
         <div id="bonif-andamento"></div>
         <div class="perfil-section-title">Concluídas</div>
         <div id="bonif-concluidas"></div>
+      </div>
+    </div>
+
+    <!-- TELA DETALHE BONIFICAÇÃO -->
+    <div id="screen-bonif-detalhe" style="display:none;flex-direction:column;height:100%;background:var(--bg);position:fixed;top:0;left:0;right:0;bottom:0;z-index:610;animation:slideIn .22s ease">
+      <div class="gestao-header">
+        <button class="perfil-back" onclick="fecharBonifDetalhe()" style="flex-shrink:0">← Voltar</button>
+        <div class="gestao-titulo" id="bonif-detalhe-titulo">Bonificação</div>
+        <div style="width:70px"></div>
+      </div>
+      <div class="gestao-body" id="bonif-detalhe-body" style="overflow-y:auto;padding:14px 16px 80px"></div>
+    </div>
+
+    <!-- MODAL PAGAMENTO BONIFICAÇÃO -->
+    <div id="bonif-modal-pagamento" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:650;align-items:flex-end;justify-content:center">
+      <div style="background:var(--card);border-radius:20px 20px 0 0;padding:20px 20px 34px;width:100%;max-width:480px">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px">Registrar pagamento</div>
+        <div class="campo-grupo">
+          <label class="campo-label">Data</label>
+          <input class="campo-input" id="bonif-pag-data" type="date">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Valor (R$) *</label>
+          <input class="campo-input" id="bonif-pag-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="gestao-btn-sm" style="flex:1;padding:12px;font-size:14px" onclick="fecharModalPagamentoBonif()">Cancelar</button>
+          <button class="pf-btn-registrar" style="flex:2;margin:0" onclick="confirmarPagamentoBonif()">Confirmar</button>
+        </div>
       </div>
     </div>
 
