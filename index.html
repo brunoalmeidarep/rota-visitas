@@ -7506,13 +7506,13 @@ function confirmarNovoSeg(focusOut) {
   }
 }
 
-// ── IMPORTAR CLIENTES (SheetJS) ──────────────────────
-let _importarLinhas = []; // dados processados aguardando confirmação
+// ── IMPORTAR CLIENTES (upload para Storage) ──────────
+let _importarFile = null; // arquivo selecionado aguardando envio
 
 function openImportar() {
   document.getElementById('screen-importar').style.display = 'flex';
   document.body.style.overflow = 'hidden';
-  _importarLinhas = [];
+  _importarFile = null;
   document.getElementById('importar-preview').style.display = 'none';
   document.getElementById('importar-progress').style.display = 'none';
   document.getElementById('importar-footer').style.display = 'none';
@@ -7536,148 +7536,91 @@ function baixarModeloXlsx() {
   XLSX.writeFile(wb, 'clientes_modelo_importacao.xlsx');
 }
 
-async function importarLerArquivo(input) {
+function importarLerArquivo(input) {
   const file = input.files[0];
   if (!file) return;
+
+  _importarFile = file;
   document.getElementById('importar-file-label').textContent = file.name;
   document.getElementById('importar-preview').style.display = 'none';
-  document.getElementById('importar-footer').style.display = 'none';
-  document.getElementById('importar-progress').style.display = 'block';
-  document.getElementById('importar-progress').textContent = '⏳ Lendo arquivo...';
-
-  if (!window.XLSX) { showToast('⚠️ SheetJS ainda carregando', true); return; }
-
-  const buf = await file.arrayBuffer();
-  const wb  = XLSX.read(buf, { type: 'array' });
-  const ws  = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-
-  document.getElementById('importar-progress').textContent = `⏳ Processando ${rows.length} linhas...`;
-
-  const cnpjsExistentes = new Set(clientes.map(c => (c.cnpj||'').replace(/\D/g,'')).filter(Boolean));
-  const novos = [], existentes = [], erros = [], avisos = [];
-
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-    const nome = (r.nome || r.Nome || '').toString().trim();
-    const cep  = (r.cep  || r.CEP  || '').toString().replace(/\D/g,'');
-
-    // Erros bloqueantes: impedem a importação dessa linha
-    if (!nome) { erros.push({ linha: i+2, motivo: 'Nome vazio' }); continue; }
-    if (!cep || cep.length < 8) { erros.push({ linha: i+2, motivo: 'CEP inválido' }); continue; }
-
-    const cnpj = (r.cnpj || r.CNPJ || '').toString().replace(/\D/g,'');
-    if (cnpj && cnpjsExistentes.has(cnpj)) { existentes.push(i+2); continue; }
-
-    // Busca cidade via ViaCEP (falha = aviso, não erro bloqueante)
-    let cidade = '';
-    let endVia = '';
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const d   = await res.json();
-      if (!d.erro) {
-        cidade  = normalizarCidadeTexto((d.localidade||'') + (d.uf ? ' - '+d.uf.toUpperCase() : ''));
-        endVia  = [d.logradouro, d.bairro].filter(Boolean).join(', ');
-      }
-    } catch(e) {}
-    if (!cidade) {
-      avisos.push({ linha: i+2, motivo: 'Cidade não encontrada — verifique o CEP após importar' });
-    }
-
-    if (i % 5 === 0) {
-      document.getElementById('importar-progress').textContent = `⏳ Processando... ${i+1}/${rows.length}`;
-    }
-
-    const comprador = (r.comprador || r.Comprador || '').toString().trim();
-    const nomeExibir = comprador ? `${nome} (${comprador})` : nome;
-    novos.push({
-      id:           Date.now() + i,
-      nome:         nomeExibir,
-      cnpj:         cnpj ? cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5') : '',
-      cep,
-      cidade,
-      endereco:     (r.endereco || r.Endereço || endVia || '').toString().trim() || endVia,
-      tel:          (r.telefone || r.Telefone || '').toString().trim(),
-      segmento:     (r.segmento || r.Segmento || '').toString().trim(),
-      ultimaVisita: (r.ultima_visita || '').toString().trim() || null,
-      ultimaObs:    (r.ultima_obs   || '').toString().trim(),
-      lat: parseFloat(r.lat) || null,
-      lng: parseFloat(r.lng) || null,
-      visitadoHoje: false,
-      horaHoje: null,
-    });
-  }
-
-  _importarLinhas = novos;
   document.getElementById('importar-progress').style.display = 'none';
 
-  const textoPreview = [
-    novos.length     ? `<div style="color:var(--green);margin-bottom:4px">✓ ${novos.length} novo${novos.length>1?'s':''} — serão importados</div>` : '',
-    existentes.length? `<div style="color:var(--text3);margin-bottom:4px">⏭ ${existentes.length} já exist${existentes.length>1?'em':'e'} (CNPJ duplicado) — serão ignorados</div>` : '',
-    avisos.length    ? `<div style="color:var(--orange);margin-bottom:4px">⚠️ ${avisos.length} com aviso (cidade não encontrada) — podem ser corrigidos depois</div>` : '',
-    erros.length     ? `<div style="color:var(--red);margin-bottom:4px">✕ ${erros.length} com erro bloqueante — linhas ${erros.map(p=>p.linha).join(', ')}</div>` : '',
-  ].filter(Boolean).join('');
-
-  document.getElementById('importar-preview-texto').innerHTML = textoPreview || '<div style="color:var(--text3)">Nenhuma linha válida encontrada.</div>';
-  document.getElementById('importar-preview').style.display = 'block';
-
-  const footer = document.getElementById('importar-footer');
-  if (novos.length) {
-    const btn = document.getElementById('importar-btn-confirmar');
-    btn.textContent = `✓ Importar ${novos.length} cliente${novos.length>1?'s':''}`;
-    btn.disabled = false;
-    footer.style.display = 'flex';
-  } else {
-    footer.style.display = 'none';
-  }
+  const btn = document.getElementById('importar-btn-confirmar');
+  btn.textContent = '📤 Enviar para processamento';
+  btn.disabled = false;
+  document.getElementById('importar-footer').style.display = 'flex';
 }
 
 async function importarConfirmar() {
-  if (!_importarLinhas.length) return;
-  const btn = document.getElementById('importar-btn-confirmar');
+  if (!_importarFile || !currentUser) return;
+
+  const btn  = document.getElementById('importar-btn-confirmar');
   const prog = document.getElementById('importar-progress');
+  const BUCKET = 'client-import-originals';
+
   btn.disabled = true;
-  btn.textContent = '⏳ Importando...';
+  btn.textContent = '⏳ Enviando...';
   prog.style.display = 'block';
-  prog.textContent = '';
+  prog.textContent = '⏳ Fazendo upload do arquivo...';
 
-  let ok = 0, erroCount = 0;
-  for (const c of _importarLinhas) {
-    clientes.push(c);
-    ok++;
-    prog.textContent = `⏳ Importando... ${ok}/${_importarLinhas.length}`;
-    if (currentUser && sb) {
-      try {
-        await sb.from('clientes').insert({
-          id: c.id, nome: c.nome, cnpj: c.cnpj, cep: c.cep,
-          cidade: c.cidade, endereco: c.endereco, telefone: c.tel,
-          segmento: c.segmento,
-          ultima_visita: c.ultimaVisita || null,
-          ultima_obs: c.ultimaObs || '',
-          lat: c.lat, lng: c.lng,
-          rep_id: currentRep?.id,
-        });
-      } catch(e) { erroCount++; }
-    }
+  const userId   = currentUser.id;
+  const ts       = Date.now();
+  const safeName = _importarFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = `${userId}/${ts}-${safeName}`;
+
+  try {
+    // 1. Upload do arquivo bruto para o Storage
+    const { error: uploadError } = await sb.storage
+      .from(BUCKET)
+      .upload(storagePath, _importarFile, { upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    prog.textContent = '⏳ Registrando importação...';
+
+    // 2. Insere registro de controle na tabela
+    const { error: dbError } = await sb.from('client_import_files').insert({
+      user_id:           userId,
+      original_filename: _importarFile.name,
+      storage_bucket:    BUCKET,
+      storage_path:      storagePath,
+      status:            'uploaded',
+    });
+
+    if (dbError) throw dbError;
+
+    // 3. Sucesso — mostra confirmação com opções de navegação
+    _importarFile = null;
+    prog.style.display = 'none';
+    document.getElementById('importar-footer').style.display = 'none';
+    document.getElementById('importar-preview-texto').innerHTML = `
+      <div style="color:var(--green);font-size:16px;font-weight:700;margin-bottom:8px">✓ Arquivo enviado!</div>
+      <div style="color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:16px">
+        Seus clientes serão importados em breve após o processamento automático.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="closeImportar();showScreen('list')" style="width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Ver Carteira de Clientes</button>
+        <button onclick="closeImportar()" style="width:100%;padding:13px;background:none;color:var(--blue);border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer">← Voltar para Configurações</button>
+      </div>
+    `;
+    document.getElementById('importar-preview').style.display = 'block';
+
+  } catch (err) {
+    prog.style.display = 'none';
+    btn.disabled = false;
+    btn.textContent = '📤 Tentar novamente';
+
+    let msg = 'Erro ao enviar o arquivo. Tente novamente.';
+    if (err?.message?.includes('Bucket not found'))       msg = 'Bucket não encontrado. Execute o SQL de setup no Supabase.';
+    else if (err?.message?.includes('security'))          msg = 'Sem permissão de upload. Verifique as policies do Storage.';
+    else if (err?.message)                                msg = err.message;
+
+    document.getElementById('importar-preview-texto').innerHTML = `
+      <div style="color:var(--red);font-size:14px;font-weight:600;margin-bottom:6px">✕ Falha no envio</div>
+      <div style="color:var(--text2);font-size:13px">${msg}</div>
+    `;
+    document.getElementById('importar-preview').style.display = 'block';
   }
-
-  renderList();
-  if (gmap) renderMapMarkers();
-  prog.style.display = 'none';
-  document.getElementById('importar-footer').style.display = 'none';
-  _importarLinhas = [];
-
-  // Confirmação com opções de navegação
-  const msgErro = erroCount ? `<div style="color:var(--orange);font-size:12px;margin-top:4px">⚠️ ${erroCount} não puderam ser salvos no servidor (sem conexão?)</div>` : '';
-  document.getElementById('importar-preview-texto').innerHTML = `
-    <div style="color:var(--green);font-size:16px;font-weight:700;margin-bottom:8px">✓ ${ok} cliente${ok>1?'s':''} importado${ok>1?'s':''}!</div>
-    ${msgErro}
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
-      <button onclick="closeImportar();showScreen('list')" style="width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Ver Carteira de Clientes</button>
-      <button onclick="closeImportar()" style="width:100%;padding:13px;background:none;color:var(--blue);border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer">← Voltar para Configurações</button>
-    </div>
-  `;
-  document.getElementById('importar-preview').style.display = 'block';
 }
 
 // ── MODO OFFLINE ─────────────────────────────────────
@@ -10208,7 +10151,7 @@ if ('serviceWorker' in navigator) {
         </div>
         <div id="importar-preview" style="display:none">
           <div class="gestao-form-card">
-            <div class="gestao-form-titulo">3. Prévia</div>
+            <div class="gestao-form-titulo">3. Status</div>
             <div id="importar-preview-texto" style="font-size:14px;line-height:1.8"></div>
           </div>
         </div>
