@@ -94,7 +94,7 @@
             <button class="filter-pill f-today"  onclick="setFilter('today')">Hoje</button>
             <button class="filter-pill f-green"  onclick="setFilter('green')">≤1m</button>
             <button class="filter-pill f-blue"   onclick="setFilter('blue')">1–2m</button>
-            <button class="filter-pill f-red"    onclick="setFilter('red')">+2m</button>
+            <button class="filter-pill f-red"    onclick="setFilter('red')">61+</button>
             <button class="filter-pill f-purple" onclick="setFilter('purple')">Novos</button>
           </div>
           <div id="city-filter-wrap">
@@ -174,49 +174,54 @@
 
         <!-- PAINEL BONIFICAÇÕES -->
         <div id="panel-bonif" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-          <div class="det-overlay-header">
-            <button class="det-overlay-back" onclick="fecharPainelDetalhe()">← Voltar</button>
-            <div class="det-overlay-titulo" id="bonif-titulo">Bonificações — Cliente</div>
-            <button class="det-overlay-action" onclick="toggleBonifForm()">+ Nova</button>
-          </div>
-          <div class="det-overlay-body">
-            <div class="gc-form-panel" id="bonif-form" style="display:none">
-              <div class="gc-form-title">Nova bonificação</div>
-              <div class="campo-grupo">
-                <label class="campo-label">Representada</label>
-                <select class="campo-input" id="bonif-representada">
-                  <option value="">Selecionar empresa...</option>
-                </select>
-              </div>
-              <div class="campo-grupo">
-                <label class="campo-label">Motivo *</label>
-                <input class="campo-input" id="bonif-motivo" placeholder="Ex: Fachada, Uniforme, Aniversário...">
-              </div>
-              <div class="campo-grupo">
-                <label class="campo-label">Valor total (R$) *</label>
-                <input class="campo-input" id="bonif-valor" type="number" step="0.01" min="0" placeholder="0,00" oninput="bonifAtualizarParcelas()">
-              </div>
-              <div class="campo-grupo">
-                <label class="campo-label">Data combinada</label>
-                <input class="campo-input" id="bonif-data" type="date">
-              </div>
-              <div class="campo-grupo">
-                <label class="campo-label">Parcelas</label>
-                <div class="bonif-qtd-btns">
-                  <button class="bonif-qtd-btn active" id="bonif-qtd-1" onclick="setBonifQtd(1)">1×</button>
-                  <button class="bonif-qtd-btn" id="bonif-qtd-2" onclick="setBonifQtd(2)">2×</button>
-                  <button class="bonif-qtd-btn" id="bonif-qtd-3" onclick="setBonifQtd(3)">3×</button>
-                  <button class="bonif-qtd-btn" id="bonif-qtd-4" onclick="setBonifQtd(4)">4×</button>
-                </div>
-                <div id="bonif-parcelas-preview" style="font-size:12px;color:var(--text2);margin-top:4px"></div>
-              </div>
-              <button class="det-btn primary" style="width:100%;margin-top:4px" onclick="salvarBonificacao()">Salvar</button>
+
+          <!-- View: lista -->
+          <div id="bonif-lista-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+            <div class="det-overlay-header">
+              <button class="det-overlay-back" onclick="fecharPainelDetalhe()">← Voltar</button>
+              <div class="det-overlay-titulo" id="bonif-titulo">Bonificações — Cliente</div>
+              <button class="det-overlay-action" onclick="toggleBonifForm()">+ Nova</button>
             </div>
-            <div class="det-section-title" style="margin:0 0 8px">Em andamento</div>
-            <div id="bonif-andamento"></div>
-            <div class="det-section-title" style="margin:16px 0 8px">Concluídas</div>
-            <div id="bonif-concluidas"></div>
+            <div class="det-overlay-body">
+              <div class="gc-form-panel" id="bonif-form" style="display:none">
+                <div class="gc-form-title">Nova bonificação</div>
+                <div class="campo-grupo">
+                  <label class="campo-label">Representada</label>
+                  <select class="campo-input" id="bonif-representada">
+                    <option value="">Selecionar empresa...</option>
+                  </select>
+                </div>
+                <div class="campo-grupo">
+                  <label class="campo-label">Motivo *</label>
+                  <input class="campo-input" id="bonif-motivo" placeholder="Ex: Fachada, Uniforme, Aniversário...">
+                </div>
+                <div class="campo-grupo">
+                  <label class="campo-label">Valor acordado (R$) *</label>
+                  <input class="campo-input" id="bonif-valor" type="number" step="0.01" min="0" placeholder="0,00">
+                </div>
+                <div class="campo-grupo">
+                  <label class="campo-label">Data combinada</label>
+                  <input class="campo-input" id="bonif-data" type="date">
+                </div>
+                <input type="hidden" id="bonif-edit-id">
+                <button class="det-btn primary" style="width:100%;margin-top:4px" onclick="salvarBonificacao()">Salvar</button>
+              </div>
+              <div class="det-section-title" style="margin:0 0 8px">Em andamento</div>
+              <div id="bonif-andamento"></div>
+              <div class="det-section-title" style="margin:16px 0 8px">Concluídas</div>
+              <div id="bonif-concluidas"></div>
+            </div>
           </div>
+
+          <!-- View: detalhe de uma bonificação -->
+          <div id="bonif-detalhe-view" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+            <div class="det-overlay-header">
+              <button class="det-overlay-back" onclick="fecharBonifDetalhe()">← Bonificações</button>
+              <div class="det-overlay-titulo" id="bonif-detalhe-titulo"></div>
+            </div>
+            <div class="det-overlay-body" id="bonif-detalhe-body"></div>
+          </div>
+
         </div>
 
       </aside>
@@ -601,6 +606,27 @@
       <div class="cfg-version">Minha Rota RP · v2.0 Desktop</div>
     </div>
 
+  </div>
+</div>
+
+<!-- ── MODAL PAGAMENTO BONIFICAÇÃO ─────────────────────────────────── -->
+<div id="bonif-modal-pagamento" onclick="if(event.target===this)fecharModalPagamentoBonif()"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:800;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+  <div class="modal-box" style="width:360px;gap:0">
+    <button class="modal-close" onclick="fecharModalPagamentoBonif()">×</button>
+    <div class="modal-title" style="margin-bottom:16px">Registrar pagamento</div>
+    <div class="campo-grupo">
+      <label class="campo-label">Valor (R$) *</label>
+      <input class="campo-input" id="bonif-pag-valor" type="number" step="0.01" min="0" placeholder="0,00">
+    </div>
+    <div class="campo-grupo">
+      <label class="campo-label">Data</label>
+      <input class="campo-input" id="bonif-pag-data" type="date">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="fecharModalPagamentoBonif()">Cancelar</button>
+      <button class="btn-salvar-modal" onclick="confirmarPagamentoBonif()">Confirmar</button>
+    </div>
   </div>
 </div>
 

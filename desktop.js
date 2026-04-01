@@ -22,7 +22,7 @@ const STATUS_LABELS = {
   today:  'Visitado hoje',
   green:  'Até 1 mês',
   blue:   '1 a 2 meses',
-  red:    'Mais de 2 meses',
+  red:    '61+ dias',
   purple: 'Nunca visitado',
 };
 const STATUS_BG = {
@@ -71,8 +71,7 @@ let gastosClienteAtual = [];
 let gastosFiltro       = 'todos';
 let gastosExpandido    = null;
 let bonifAtual         = [];
-let bonifExpandido     = null;
-let bonifQtd           = 1;
+let bonifDetalheId     = null;
 let representadasList  = [];
 
 // ── PLANNER ──────────────────────────────────────────────────────────
@@ -2573,6 +2572,10 @@ function dataHojeLocal() {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
+function formatarMoeda(v) {
+  return 'R$ ' + (v||0).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+
 function maskMoeda(el) {
   let v = el.value.replace(/\D/g, '');
   if (!v) { el.value = ''; return; }
@@ -3133,9 +3136,12 @@ function openBonificacoes() {
   document.getElementById('bonif-form').style.display = 'none';
   document.getElementById('bonif-motivo').value = '';
   document.getElementById('bonif-valor').value = '';
-  document.getElementById('bonif-data').value = '';
-  document.getElementById('bonif-parcelas-preview').textContent = '';
-  setBonifQtd(1);
+  document.getElementById('bonif-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('bonif-edit-id').value = '';
+  // garante que lista está visível e detalhe oculto
+  document.getElementById('bonif-lista-view').style.display = 'flex';
+  document.getElementById('bonif-detalhe-view').style.display = 'none';
+  bonifDetalheId = null;
   // preenche select de representadas
   const sel = document.getElementById('bonif-representada');
   sel.innerHTML = '<option value="">Selecionar empresa...</option>' +
@@ -3146,22 +3152,15 @@ function openBonificacoes() {
 
 function toggleBonifForm() {
   const f = document.getElementById('bonif-form');
-  if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
-}
-
-function setBonifQtd(n) {
-  bonifQtd = n;
-  [1,2,3,4].forEach(i => document.getElementById('bonif-qtd-'+i)?.classList.toggle('active', i===n));
-  bonifAtualizarParcelas();
-}
-
-function bonifAtualizarParcelas() {
-  const total = parseFloat(document.getElementById('bonif-valor')?.value) || 0;
-  const el = document.getElementById('bonif-parcelas-preview');
-  if (!el) return;
-  if (!total) { el.textContent = ''; return; }
-  const parc = (total/bonifQtd).toFixed(2).replace('.',',');
-  el.textContent = `${bonifQtd}× de R$ ${parc}`;
+  if (!f) return;
+  const show = f.style.display === 'none';
+  f.style.display = show ? 'block' : 'none';
+  if (show) {
+    document.getElementById('bonif-motivo').value = '';
+    document.getElementById('bonif-valor').value = '';
+    document.getElementById('bonif-data').value = new Date().toISOString().split('T')[0];
+    document.getElementById('bonif-edit-id').value = '';
+  }
 }
 
 async function carregarBonificacoes() {
@@ -3183,30 +3182,29 @@ function renderBonificacoes() {
     const el = document.getElementById(elId);
     if (!lista.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 12px">Nenhuma</div>'; return; }
     el.innerHTML = lista.map(b => {
-      const parcelas = b.parcelas || [];
-      const recebidas = parcelas.filter(p=>p.recebido).length;
-      const pct = parcelas.length ? Math.round(recebidas/parcelas.length*100) : 0;
-      const exp = bonifExpandido === b.id;
+      const pagamentos = (b.parcelas || []).filter(p => p.recebido);
+      const recebido   = pagamentos.reduce((s,p) => s+(p.valor||0), 0);
+      const pendente   = Math.max(0, (b.valor_total||0) - recebido);
+      const pct        = b.valor_total ? Math.min(100, Math.round(recebido/b.valor_total*100)) : 0;
       return `<div class="gc-item" style="margin-bottom:8px">
-        <div class="gc-item-row" onclick="toggleBonifItem('${b.id}')">
+        <div class="gc-item-row" onclick="abrirBonifDetalhe('${b.id}')">
           <div class="gc-item-main">
             <div class="gc-item-desc">${b.motivo}</div>
             <div class="gc-item-meta">
-              <span>${b.representada_nome||'Sem representada'}</span>
-              <span>${recebidas}/${parcelas.length} parcelas</span>
+              ${b.representada_nome?`<span>${b.representada_nome}</span>`:''}
+              <span>${pagamentos.length} pagamento${pagamentos.length!==1?'s':''}</span>
             </div>
             <div class="bonif-progress-bar"><div class="bonif-progress-fill" style="width:${pct}%"></div></div>
+            <div style="font-size:11px;display:flex;gap:10px;margin-top:2px">
+              <span style="color:var(--green)">✓ ${formatarMoeda(recebido)}</span>
+              ${pendente>0?`<span style="color:var(--orange)">pendente ${formatarMoeda(pendente)}</span>`:''}
+            </div>
           </div>
-          <div style="font-size:13px;font-weight:800;margin-left:8px;white-space:nowrap">R$ ${(b.valor_total||0).toFixed(2).replace('.',',')}</div>
+          <div style="text-align:right;margin-left:10px;min-width:0">
+            <div style="font-size:13px;font-weight:800;white-space:nowrap">${formatarMoeda(b.valor_total||0)}</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px">${pct}%</div>
+          </div>
         </div>
-        ${exp?`<div>${parcelas.map((p,i)=>`
-          <div class="bonif-parcela-row">
-            <div class="bonif-parcela-num">${i+1}.</div>
-            <div class="bonif-parcela-val">R$ ${(p.valor||0).toFixed(2).replace('.',',')}</div>
-            ${p.recebido
-              ?`<div style="font-size:11px;font-weight:600;color:var(--green)">✓ ${p.data_recebimento?new Date(p.data_recebimento+'T12:00:00').toLocaleDateString('pt-BR'):''}</div>`
-              :`<button class="gestao-btn-sm" onclick="marcarParcelaRecebida('${b.id}',${i})">Marcar recebido</button>`}
-          </div>`).join('')}</div>`:''}
       </div>`;
     }).join('');
   };
@@ -3214,59 +3212,156 @@ function renderBonificacoes() {
   renderLista(concluidas, 'bonif-concluidas');
 }
 
-function toggleBonifItem(id) {
-  bonifExpandido = bonifExpandido === id ? null : id;
-  renderBonificacoes();
+function abrirBonifDetalhe(id) {
+  bonifDetalheId = id;
+  renderBonifDetalhe();
+  document.getElementById('bonif-lista-view').style.display = 'none';
+  document.getElementById('bonif-detalhe-view').style.display = 'flex';
+}
+
+function fecharBonifDetalhe() {
+  document.getElementById('bonif-detalhe-view').style.display = 'none';
+  document.getElementById('bonif-lista-view').style.display = 'flex';
+  bonifDetalheId = null;
+}
+
+function renderBonifDetalhe() {
+  const b = bonifAtual.find(x => x.id === bonifDetalheId);
+  if (!b) return;
+  const pagamentos     = (b.parcelas || []).filter(p => p.recebido);
+  const totalRecebido  = pagamentos.reduce((s,p) => s+(p.valor||0), 0);
+  const totalAcordado  = b.valor_total || 0;
+  const saldoPendente  = totalAcordado - totalRecebido;
+  const pct = totalAcordado ? Math.min(100, Math.round(totalRecebido/totalAcordado*100)) : 0;
+  document.getElementById('bonif-detalhe-titulo').textContent = b.motivo;
+  let html = `
+    <div style="margin-bottom:14px">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div class="gc-summary-card" style="flex:1"><div class="gc-summary-val" style="color:var(--blue)">${formatarMoeda(totalAcordado)}</div><div class="gc-summary-lbl">Acordado</div></div>
+        <div class="gc-summary-card" style="flex:1"><div class="gc-summary-val" style="color:var(--green)">${formatarMoeda(totalRecebido)}</div><div class="gc-summary-lbl">Recebido</div></div>
+        <div class="gc-summary-card" style="flex:1"><div class="gc-summary-val" style="color:var(--orange)">${formatarMoeda(Math.max(0,saldoPendente))}</div><div class="gc-summary-lbl">Pendente</div></div>
+      </div>
+      <div class="bonif-progress-bar"><div class="bonif-progress-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:11px;color:var(--text3);text-align:right;margin-top:3px">${pct}% recebido</div>
+      ${totalRecebido > totalAcordado && totalAcordado > 0
+        ? `<div style="color:var(--green);font-size:12px;font-weight:700;margin-top:8px;padding:8px;background:var(--green-bg);border-radius:8px;text-align:center">Quitada ✓ — ${formatarMoeda(totalRecebido-totalAcordado)} a mais</div>`
+        : ''}
+    </div>
+    <div class="det-section-title">Pagamentos</div>`;
+  if (!pagamentos.length) {
+    html += '<div style="font-size:12px;color:var(--text3);padding:4px 0 12px">Nenhum pagamento registrado</div>';
+  } else {
+    html += pagamentos.map((p, i) => {
+      const dataFmt = p.data_recebimento ? new Date(p.data_recebimento+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+      return `<div style="display:flex;align-items:center;padding:8px 0;border-top:1px solid var(--border);gap:8px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">${formatarMoeda(p.valor||0)}</div>
+          <div style="font-size:11px;color:var(--text3)">${dataFmt}</div>
+        </div>
+        <button class="gestao-btn-sm" style="color:var(--red);border-color:var(--red-bg);font-size:11px;padding:3px 8px" onclick="removerPagamentoBonif(${i})">×</button>
+      </div>`;
+    }).join('');
+  }
+  html += `<button class="cfg-save-btn" style="margin-top:16px" onclick="abrirModalPagamentoBonif()">+ Registrar pagamento</button>`;
+  document.getElementById('bonif-detalhe-body').innerHTML = html;
+}
+
+function abrirModalPagamentoBonif() {
+  document.getElementById('bonif-pag-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('bonif-pag-valor').value = '';
+  const modal = document.getElementById('bonif-modal-pagamento');
+  modal.style.display = 'flex';
+}
+
+function fecharModalPagamentoBonif() {
+  document.getElementById('bonif-modal-pagamento').style.display = 'none';
+}
+
+async function confirmarPagamentoBonif() {
+  const valorEl = document.getElementById('bonif-pag-valor');
+  const valor   = parseFloat(valorEl?.value) || 0;
+  const data    = document.getElementById('bonif-pag-data').value;
+  if (!valor || valor <= 0) { showToast('⚠️ Informe o valor', true); return; }
+  if (!data)                { showToast('⚠️ Informe a data', true); return; }
+  const b = bonifAtual.find(x => x.id === bonifDetalheId);
+  if (!b) return;
+  const novasParcelas = [...(b.parcelas||[]), {valor, data_recebimento: data, recebido: true}];
+  const totalRec  = novasParcelas.filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
+  const novoStatus = totalRec >= (b.valor_total||0) ? 'concluida' : 'em_andamento';
+  const { error } = await sb.from('bonificacoes').update({parcelas: novasParcelas, status: novoStatus}).eq('id', bonifDetalheId);
+  if (error) { showToast('❌ Erro ao registrar', true); return; }
+  if (currentRep) {
+    const c = clientes.find(x => x.id === activeId);
+    await sb.from('financeiro').insert({
+      tipo: 'receita', categoria: 'bonificacao',
+      descricao: `Bonif: ${b.motivo}${b.representada_nome?' ('+b.representada_nome+')':''}`,
+      valor, data,
+      cliente_id: String(activeId), cliente_nome: c?.nome||'',
+      representada_id: b.representada_id||null,
+      rep_id: currentRep.id
+    });
+  }
+  fecharModalPagamentoBonif();
+  showToast('✓ Pagamento registrado!');
+  await carregarBonificacoes();
+  renderBonifDetalhe();
+}
+
+async function removerPagamentoBonif(idx) {
+  if (!confirm('Remover este pagamento?')) return;
+  const b = bonifAtual.find(x => x.id === bonifDetalheId);
+  if (!b) return;
+  const recebidas    = (b.parcelas||[]).filter(p => p.recebido);
+  recebidas.splice(idx, 1);
+  const naoRecebidas = (b.parcelas||[]).filter(p => !p.recebido);
+  const novasParcelas = [...naoRecebidas, ...recebidas];
+  const totalRec  = recebidas.reduce((s,p) => s+(p.valor||0), 0);
+  const novoStatus = totalRec >= (b.valor_total||0) && recebidas.length > 0 ? 'concluida' : 'em_andamento';
+  const { error } = await sb.from('bonificacoes').update({parcelas: novasParcelas, status: novoStatus}).eq('id', bonifDetalheId);
+  if (error) { showToast('❌ Erro ao remover', true); return; }
+  showToast('Pagamento removido');
+  await carregarBonificacoes();
+  renderBonifDetalhe();
 }
 
 async function salvarBonificacao() {
   if (!activeId || !currentUser) return;
   const c = clientes.find(x => x.id === activeId);
   if (!c) return;
-  const motivo       = document.getElementById('bonif-motivo').value.trim();
-  const valorTotal   = parseFloat(document.getElementById('bonif-valor').value);
-  const dataCombinada= document.getElementById('bonif-data').value;
-  const repSel       = document.getElementById('bonif-representada');
+  const motivo        = document.getElementById('bonif-motivo').value.trim();
+  const valorTotal    = parseFloat(document.getElementById('bonif-valor').value);
+  const dataCombinada = document.getElementById('bonif-data').value;
+  const repSel        = document.getElementById('bonif-representada');
   const representadaId   = repSel?.value || null;
   const representadaNome = representadaId ? repSel?.options[repSel.selectedIndex]?.text : null;
-  if (!motivo) { showToast('Informe o motivo', true); return; }
-  if (!valorTotal || isNaN(valorTotal)) { showToast('Informe o valor', true); return; }
-  const parcValor = Math.round(valorTotal/bonifQtd*100)/100;
-  const parcelas  = Array.from({length:bonifQtd},(_,i)=>({numero:i+1,valor:parcValor,recebido:false,data_recebimento:null}));
-  const { error } = await sb.from('bonificacoes').insert({
-    rep_id: currentRep.id,
-    cliente_id: String(activeId), cliente_nome: c.nome,
-    representada_id: representadaId||null,
-    representada_nome: representadaNome||null,
-    motivo, valor_total: valorTotal,
-    data_combinada: dataCombinada||null,
-    parcelas, status: 'em_andamento'
-  });
-  if (error) { showToast('Erro ao salvar', true); console.error(error); return; }
-  showToast('Bonificação registrada');
-  document.getElementById('bonif-form').style.display = 'none';
-  carregarBonificacoes();
-}
-
-async function marcarParcelaRecebida(bonifId, parcelaIdx) {
-  const bonif = bonifAtual.find(b => b.id === bonifId);
-  if (!bonif) return;
-  const parcelas   = bonif.parcelas.map((p,i) => i===parcelaIdx ? {...p, recebido:true, data_recebimento: new Date().toISOString().split('T')[0]} : p);
-  const novoStatus = parcelas.every(p=>p.recebido) ? 'concluida' : 'em_andamento';
-  await sb.from('bonificacoes').update({parcelas, status:novoStatus}).eq('id', bonifId);
-  if (currentRep) {
-    const c = clientes.find(x => x.id === activeId);
-    await sb.from('financeiro').insert({
-      tipo: 'receita', categoria: 'bonificacao',
-      descricao: `Bonif: ${bonif.motivo}${bonif.representada_nome?' ('+bonif.representada_nome+')':''} — parcela ${parcelaIdx+1}/${parcelas.length}`,
-      valor: parcelas[parcelaIdx].valor,
-      data: new Date().toISOString().split('T')[0],
-      cliente_id: String(activeId), cliente_nome: c?.nome||'',
-      representada_id: bonif.representada_id||null,
-      rep_id: currentRep.id
-    });
+  const editId = document.getElementById('bonif-edit-id').value;
+  if (!motivo)                        { showToast('⚠️ Informe o motivo', true); return; }
+  if (!valorTotal || isNaN(valorTotal)) { showToast('⚠️ Informe o valor', true); return; }
+  let error;
+  if (editId) {
+    const existente = bonifAtual.find(b => b.id === editId);
+    const parcelas  = existente?.parcelas || [];
+    const totalRec  = parcelas.filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
+    const novoStatus = totalRec >= valorTotal && parcelas.filter(p=>p.recebido).length > 0 ? 'concluida' : 'em_andamento';
+    ({ error } = await sb.from('bonificacoes').update({
+      representada_id: representadaId||null, representada_nome: representadaNome||null,
+      motivo, valor_total: valorTotal, data_combinada: dataCombinada||null,
+      status: novoStatus
+    }).eq('id', editId));
+    if (!error) showToast('✓ Bonificação atualizada');
+  } else {
+    ({ error } = await sb.from('bonificacoes').insert({
+      rep_id: currentRep.id,
+      cliente_id: String(activeId), cliente_nome: c.nome,
+      representada_id: representadaId||null, representada_nome: representadaNome||null,
+      motivo, valor_total: valorTotal,
+      data_combinada: dataCombinada||null,
+      parcelas: [], status: 'em_andamento'
+    }));
+    if (!error) showToast('✓ Bonificação registrada');
   }
-  showToast('Parcela recebida!');
+  if (error) { showToast('❌ Erro ao salvar', true); console.error(error); return; }
+  document.getElementById('bonif-form').style.display = 'none';
   carregarBonificacoes();
 }
 
@@ -3278,11 +3373,14 @@ async function carregarBonifResumoPerfil() {
   const { data } = await sb.from('bonificacoes').select('parcelas,valor_total,status').eq('rep_id', currentRep.id).eq('cliente_id', String(activeId));
   if (!data || !data.length) { sub.textContent = 'Nenhuma bonificação'; if(badge) badge.style.display='none'; return; }
   let pendente = 0;
-  data.forEach(b => (b.parcelas||[]).forEach(p => { if(!p.recebido) pendente+=(p.valor||0); }));
+  data.forEach(b => {
+    const recebido = (b.parcelas||[]).filter(p=>p.recebido).reduce((s,p)=>s+(p.valor||0),0);
+    pendente += Math.max(0, (b.valor_total||0) - recebido);
+  });
   sub.textContent = data.length+' bonificaç'+(data.length===1?'ão':'ões');
   if (badge) {
-    if (pendente>0) { badge.textContent='R$ '+pendente.toFixed(2).replace('.',','); badge.style.display='inline-flex'; }
-    else badge.style.display='none';
+    if (pendente > 0) { badge.textContent = formatarMoeda(pendente); badge.style.display = 'inline-flex'; }
+    else badge.style.display = 'none';
   }
 }
 
