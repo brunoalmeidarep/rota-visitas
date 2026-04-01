@@ -799,6 +799,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .rep-detalhe-title { font-size:16px; font-weight:700; color:var(--text); flex:1; }
 .rep-detalhe-pdf { padding:7px 13px; background:var(--blue); color:#fff; border:none; border-radius:10px; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
 .rep-detalhe-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:20px; }
+#rep-detalhe { display:none; flex-direction:column; overflow:hidden; }
+#rep-detalhe.open { display:flex; }
+#rep-detalhe-body { flex:1; min-height:0; overflow:hidden; }
 
 /* ── ROTAS ───────────────────────────────────────────── */
 .rota-card { background:var(--card); border-radius:14px; padding:14px; margin-bottom:10px; box-shadow:var(--shadow); cursor:pointer; }
@@ -2261,6 +2264,16 @@ function getRowsFiltradas() {
   return rows;
 }
 
+function getRowsParaPDF() {
+  let rows = getRowsFiltradas();
+  if (typeof visitasCidadesFiltro !== 'undefined' && visitasCidadesFiltro.length > 0) {
+    rows = rows.filter(v =>
+      visitasCidadesFiltro.some(c => (v.cidade || '').trim() === c)
+    );
+  }
+  return rows;
+}
+
 function renderRepFilterHTML() {
   if (!representadasCache.length) return '';
   const todas = repRepresentadasFiltro.length === 0;
@@ -2390,6 +2403,12 @@ function abrirRepDetalhe(tipo) {
   repFiltroDropdownOpen = false;
   const overlay = document.getElementById('rep-detalhe');
   overlay.classList.add('open');
+  const body = document.getElementById('rep-detalhe-body');
+  if (tipo === 'vendas') {
+    body.style.cssText = 'display:flex;flex-direction:column;overflow:hidden;padding:0;flex:1;min-height:0;';
+  } else {
+    body.style.cssText = 'overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:90px;';
+  }
   const rows = getRowsFiltradas();
   const hoje = new Date();
   const titulos = { visitas:'Visitas', vendas:'Vendas', orcamentos:'Orçamentos', empresa:'Por Representada', bonificacoes:'Bonificações', gastos_clientes:'Gastos com Clientes' };
@@ -2816,8 +2835,6 @@ async function _carregarVendasRelatorio() {
   window._vendasRepFiltro = null;
   const totalVendas = allPedidos.reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
   const corRodape = window._vendasRepFiltro ? getCorRepresentada(window._vendasRepFiltro) : '#34C759';
-  document.getElementById('rep-detalhe-body').style.cssText =
-    'display:flex;flex-direction:column;overflow:hidden;padding:0;height:100%;';
   const rodapeHtml = `<div id="vendas-total-footer" style="flex-shrink:0;background:var(--surface);border-top:2px solid var(--border);display:flex;align-items:stretch;">
     <div style="flex:1;padding:12px 14px;">
       <div id="vendas-footer-label" style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;">Total do mês</div>
@@ -2828,7 +2845,7 @@ async function _carregarVendasRelatorio() {
     </div>
   </div>`;
   const wrapperHtml = `<div style="flex-shrink:0;">${filtroRepHtml}</div>` +
-    `<div class="vnd-lista-scroll" style="flex:1;overflow-y:auto;">${renderVendasDetalheLista(allPedidos)}</div>` +
+    `<div class="vnd-lista-scroll" style="flex:1;overflow-y:auto;min-height:0;">${renderVendasDetalheLista(allPedidos)}</div>` +
     rodapeHtml;
   body.innerHTML = wrapperHtml || '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum pedido no período</div>';
 }
@@ -3148,12 +3165,19 @@ function exportarPDFDetalhe() {
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const tipo = repDetalheAtual;
-  const rows = (tipo === 'orcamentos') ? (window._orcamentosRelatorioCache || []) : getRowsFiltradas();
+  const rows = (tipo === 'orcamentos') ? (window._orcamentosRelatorioCache || []) : (tipo === 'vendas' || tipo === 'empresa') ? getRowsFiltradas() : getRowsParaPDF();
   const hoje = new Date();
 
   const _nm = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
   const nomeMesCap = _nm.charAt(0).toUpperCase() + _nm.slice(1);
   const filtroLabel = repFiltroAtual === 'hoje' ? 'Hoje' : repFiltroAtual === 'semana' ? 'Esta semana' : repFiltroAtual === 'ano' ? String(relAno) : nomeMesCap;
+  // Representada filtrada (vendas)
+  const _repLabelPDF = window._vendasRepFiltro || null;
+  // Cidades filtradas
+  const _cidadesLabelPDF = (typeof visitasCidadesFiltro !== 'undefined' && visitasCidadesFiltro.length > 0)
+    ? visitasCidadesFiltro.slice(0, 3).join(', ') + (visitasCidadesFiltro.length > 3 ? ` +${visitasCidadesFiltro.length - 3}` : '')
+    : null;
+  const subtituloPDF = [filtroLabel, _repLabelPDF, _cidadesLabelPDF].filter(Boolean).join(' · ');
   const titulos = { visitas:'Relatório de Visitas', vendas:'Relatório de Vendas', orcamentos:'Relatório de Orçamentos', empresa:'Vendas por Representada', bonificacoes:'Relatório de Bonificações', gastos_clientes:'Relatório de Gastos com Clientes' };
   const repNome = currentRep?.nome || '';
 
@@ -3177,7 +3201,7 @@ function exportarPDFDetalhe() {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(190, 210, 240);
-  doc.text((repNome ? repNome + ' · ' : '') + filtroLabel, ML, 24);
+  doc.text((repNome ? repNome + ' · ' : '') + subtituloPDF, ML, 24);
   doc.setFontSize(8);
   doc.setTextColor(163, 183, 220);
   doc.text('Gerado em ' + hoje.toLocaleDateString('pt-BR') + ' às ' + hoje.toTimeString().slice(0, 5), ML, 32);
@@ -3348,7 +3372,15 @@ function exportarPDFDetalhe() {
 
   // ── VENDAS ──────────────────────────────────────────────
   } else if (tipo === 'vendas' || tipo === 'empresa') {
-    const cp  = rows.filter(v => parseFloat(v.valor_pedido) > 0);
+    let _vendasPDFRows = rows;
+    if (tipo === 'vendas') {
+      const _todasVendas = window._vendasTodas || rows;
+      _vendasPDFRows = window._vendasRepFiltro
+        ? _todasVendas.filter(v =>
+            (v.pedido_representada || v.representada_nome) === window._vendasRepFiltro)
+        : _todasVendas;
+    }
+    const cp  = _vendasPDFRows.filter(v => parseFloat(v.valor_pedido) > 0);
     const tot = cp.reduce((s, v) => s + parseFloat(v.valor_pedido), 0);
     addSummaryCards([
       { label: 'Total de Vendas', value: 'R$ ' + tot.toLocaleString('pt-BR', {minimumFractionDigits:2}), color: C_GREEN },
