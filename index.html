@@ -7541,6 +7541,7 @@ async function importarLerArquivo(input) {
   if (!file) return;
   document.getElementById('importar-file-label').textContent = file.name;
   document.getElementById('importar-preview').style.display = 'none';
+  document.getElementById('importar-footer').style.display = 'none';
   document.getElementById('importar-progress').style.display = 'block';
   document.getElementById('importar-progress').textContent = '⏳ Lendo arquivo...';
 
@@ -7554,20 +7555,21 @@ async function importarLerArquivo(input) {
   document.getElementById('importar-progress').textContent = `⏳ Processando ${rows.length} linhas...`;
 
   const cnpjsExistentes = new Set(clientes.map(c => (c.cnpj||'').replace(/\D/g,'')).filter(Boolean));
-  const novos = [], existentes = [], problemas = [];
+  const novos = [], existentes = [], erros = [], avisos = [];
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     const nome = (r.nome || r.Nome || '').toString().trim();
     const cep  = (r.cep  || r.CEP  || '').toString().replace(/\D/g,'');
 
-    if (!nome) { problemas.push({ linha: i+2, motivo: 'Nome vazio' }); continue; }
-    if (!cep || cep.length < 8) { problemas.push({ linha: i+2, motivo: 'CEP inválido' }); continue; }
+    // Erros bloqueantes: impedem a importação dessa linha
+    if (!nome) { erros.push({ linha: i+2, motivo: 'Nome vazio' }); continue; }
+    if (!cep || cep.length < 8) { erros.push({ linha: i+2, motivo: 'CEP inválido' }); continue; }
 
     const cnpj = (r.cnpj || r.CNPJ || '').toString().replace(/\D/g,'');
     if (cnpj && cnpjsExistentes.has(cnpj)) { existentes.push(i+2); continue; }
 
-    // Busca cidade via ViaCEP
+    // Busca cidade via ViaCEP (falha = aviso, não erro bloqueante)
     let cidade = '';
     let endVia = '';
     try {
@@ -7578,7 +7580,13 @@ async function importarLerArquivo(input) {
         endVia  = [d.logradouro, d.bairro].filter(Boolean).join(', ');
       }
     } catch(e) {}
-    if (!cidade) { problemas.push({ linha: i+2, motivo: 'CEP não encontrado' }); continue; }
+    if (!cidade) {
+      avisos.push({ linha: i+2, motivo: 'Cidade não encontrada — verifique o CEP após importar' });
+    }
+
+    if (i % 5 === 0) {
+      document.getElementById('importar-progress').textContent = `⏳ Processando... ${i+1}/${rows.length}`;
+    }
 
     const comprador = (r.comprador || r.Comprador || '').toString().trim();
     const nomeExibir = comprador ? `${nome} (${comprador})` : nome;
@@ -7604,17 +7612,21 @@ async function importarLerArquivo(input) {
   document.getElementById('importar-progress').style.display = 'none';
 
   const textoPreview = [
-    novos.length     ? `<div style="color:var(--green)">✓ ${novos.length} novo${novos.length>1?'s':''} — serão importados</div>` : '',
-    existentes.length? `<div style="color:var(--text3)">⏭ ${existentes.length} já exist${existentes.length>1?'em':'e'} — serão ignorados</div>` : '',
-    problemas.length ? `<div style="color:var(--orange)">⚠️ ${problemas.length} com problema${problemas.length>1?'s':''} — linhas ${problemas.map(p=>p.linha).join(', ')}</div>` : '',
+    novos.length     ? `<div style="color:var(--green);margin-bottom:4px">✓ ${novos.length} novo${novos.length>1?'s':''} — serão importados</div>` : '',
+    existentes.length? `<div style="color:var(--text3);margin-bottom:4px">⏭ ${existentes.length} já exist${existentes.length>1?'em':'e'} (CNPJ duplicado) — serão ignorados</div>` : '',
+    avisos.length    ? `<div style="color:var(--orange);margin-bottom:4px">⚠️ ${avisos.length} com aviso (cidade não encontrada) — podem ser corrigidos depois</div>` : '',
+    erros.length     ? `<div style="color:var(--red);margin-bottom:4px">✕ ${erros.length} com erro bloqueante — linhas ${erros.map(p=>p.linha).join(', ')}</div>` : '',
   ].filter(Boolean).join('');
 
-  document.getElementById('importar-preview-texto').innerHTML = textoPreview || '<div>Nenhuma linha válida encontrada.</div>';
+  document.getElementById('importar-preview-texto').innerHTML = textoPreview || '<div style="color:var(--text3)">Nenhuma linha válida encontrada.</div>';
   document.getElementById('importar-preview').style.display = 'block';
+
   const footer = document.getElementById('importar-footer');
   if (novos.length) {
-    document.getElementById('importar-btn-confirmar').textContent = `✓ Importar ${novos.length} cliente${novos.length>1?'s':''}`;
-    footer.style.display = 'block';
+    const btn = document.getElementById('importar-btn-confirmar');
+    btn.textContent = `✓ Importar ${novos.length} cliente${novos.length>1?'s':''}`;
+    btn.disabled = false;
+    footer.style.display = 'flex';
   } else {
     footer.style.display = 'none';
   }
@@ -7625,9 +7637,11 @@ async function importarConfirmar() {
   const btn = document.getElementById('importar-btn-confirmar');
   const prog = document.getElementById('importar-progress');
   btn.disabled = true;
+  btn.textContent = '⏳ Importando...';
   prog.style.display = 'block';
+  prog.textContent = '';
 
-  let ok = 0;
+  let ok = 0, erroCount = 0;
   for (const c of _importarLinhas) {
     clientes.push(c);
     ok++;
@@ -7643,17 +7657,27 @@ async function importarConfirmar() {
           lat: c.lat, lng: c.lng,
           rep_id: currentRep?.id,
         });
-      } catch(e) { /* continua */ }
+      } catch(e) { erroCount++; }
     }
   }
 
   renderList();
   if (gmap) renderMapMarkers();
-  prog.textContent = `✓ ${ok} cliente${ok>1?'s':''} importado${ok>1?'s':''}!`;
-  btn.disabled = false;
+  prog.style.display = 'none';
   document.getElementById('importar-footer').style.display = 'none';
   _importarLinhas = [];
-  setTimeout(() => closeImportar(), 2000);
+
+  // Confirmação com opções de navegação
+  const msgErro = erroCount ? `<div style="color:var(--orange);font-size:12px;margin-top:4px">⚠️ ${erroCount} não puderam ser salvos no servidor (sem conexão?)</div>` : '';
+  document.getElementById('importar-preview-texto').innerHTML = `
+    <div style="color:var(--green);font-size:16px;font-weight:700;margin-bottom:8px">✓ ${ok} cliente${ok>1?'s':''} importado${ok>1?'s':''}!</div>
+    ${msgErro}
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+      <button onclick="closeImportar();showScreen('list')" style="width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Ver Carteira de Clientes</button>
+      <button onclick="closeImportar()" style="width:100%;padding:13px;background:none;color:var(--blue);border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer">← Voltar para Configurações</button>
+    </div>
+  `;
+  document.getElementById('importar-preview').style.display = 'block';
 }
 
 // ── MODO OFFLINE ─────────────────────────────────────
@@ -10610,7 +10634,10 @@ if ('serviceWorker' in navigator) {
 <div class="config-overlay" id="config-overlay" onclick="closeConfig(event)">
       <div class="config-sheet" onclick="event.stopPropagation()">
         <div class="config-handle"></div>
-        <div class="config-titulo">Configurações</div>
+        <div class="config-titulo" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Configurações</span>
+          <button onclick="closeConfig()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3);padding:0 4px;line-height:1;-webkit-tap-highlight-color:transparent">✕</button>
+        </div>
         <div class="config-item" id="config-admin-item" style="display:none" onclick="closeConfig();openAdmin()">
           <div class="config-item-left">
             <div class="config-item-icon">👥</div>
