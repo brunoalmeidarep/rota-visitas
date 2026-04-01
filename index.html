@@ -1049,6 +1049,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
           <div class="rep-detalhe-title" id="rep-detalhe-title"></div>
           <button class="rep-detalhe-pdf" onclick="exportarPDFDetalhe()">📄 PDF</button>
         </div>
+        <div id="rep-detalhe-mesnav" style="display:none;flex-shrink:0;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border)"></div>
         <div class="rep-detalhe-body" id="rep-detalhe-body"></div>
       </div>
     </div>
@@ -2403,6 +2404,7 @@ function abrirRepDetalhe(tipo) {
   repFiltroDropdownOpen = false;
   const overlay = document.getElementById('rep-detalhe');
   overlay.classList.add('open');
+  _atualizarMesNavDetalhe();
   const body = document.getElementById('rep-detalhe-body');
   if (tipo === 'vendas') {
     body.style.cssText = 'display:flex;flex-direction:column;overflow:hidden;padding:0 0 80px 0;flex:1;min-height:0;';
@@ -3243,68 +3245,78 @@ function exportarPDFDetalhe() {
       doc.text(card.label, x + cardW / 2, y + 16.5, { align: 'center' });
     });
     doc.setTextColor(0, 0, 0);
-    y += 26;
+    y += 22;
   };
 
   // ── Helper: cabeçalho de seção ─────────────────────────
   const addSectionHeader = (label, color) => {
-    checkPage(14);
+    checkPage(13);
     doc.setFillColor(...color);
-    doc.roundedRect(ML, y, CW, 7, 1.5, 1.5, 'F');
+    doc.roundedRect(ML, y, CW, 6.5, 1.5, 1.5, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(...C_WHITE);
-    doc.text(label.toUpperCase(), ML + 6, y + 4.9);
+    doc.text(label.toUpperCase(), ML + 6, y + 4.6);
     doc.setTextColor(0, 0, 0);
-    y += 10;
+    y += 9;
   };
 
   // ── Helper: card de item ────────────────────────────────
   const addItemCard = ({ title, subtitle, right, rightColor, badge, badgeColor, obs }) => {
     const lineCount = 1 + (subtitle ? 1 : 0) + (obs ? 1 : 0);
-    const cardH = 5 + lineCount * 6 + 2;
-    checkPage(cardH + 3);
-    doc.setDrawColor(215, 225, 242);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(ML, y, CW, cardH, 2, 2, 'S');
+    const cardH = 4 + lineCount * 5.5 + 2;
+    checkPage(cardH + 2);
+    // Fundo suave
+    doc.setFillColor(248, 250, 253);
+    doc.roundedRect(ML, y, CW, cardH, 1.5, 1.5, 'F');
+    // Faixa lateral colorida (usa cor do badge ou azul padrão)
+    const accentColor = badgeColor || rightColor || C_BLUE;
+    doc.setFillColor(...accentColor);
+    doc.rect(ML, y, 2.5, cardH, 'F');
+    // Borda sutil
+    doc.setDrawColor(218, 228, 244);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(ML, y, CW, cardH, 1.5, 1.5, 'S');
     // Título
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.setTextColor(30, 30, 30);
-    doc.text(_cut(title, 65), ML + 5, y + 7);
+    doc.setTextColor(18, 25, 45);
+    doc.text(_cut(title, 58), ML + 6, y + 6.5);
     // Valor à direita (exclusivo com badge)
     if (right) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       doc.setTextColor(...(rightColor || C_GREEN));
-      doc.text(right, ML + CW - 4, y + 7, { align: 'right' });
+      doc.text(right, ML + CW - 4, y + 6.5, { align: 'right' });
     } else if (badge) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(6.5);
       const bc = badgeColor || C_BLUE;
       const bw = doc.getTextWidth(badge) + 6;
       const bx = ML + CW - bw - 4;
-      doc.setFillColor(Math.round(bc[0]*0.12+243*0.88), Math.round(bc[1]*0.12+243*0.88), Math.round(bc[2]*0.12+243*0.88));
+      doc.setFillColor(255, 255, 255);
       doc.roundedRect(bx, y + 2, bw, 5, 1, 1, 'F');
+      doc.setFillColor(...bc);
+      doc.rect(bx, y + 2, 2, 5, 'F');
       doc.setTextColor(...bc);
       doc.text(badge, bx + bw / 2, y + 5.9, { align: 'center' });
     }
-    let ly = y + 7 + 6;
+    let ly = y + 6.5 + 5.5;
     if (subtitle) {
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
       doc.setTextColor(...C_GRAY);
-      doc.text(_cut(subtitle, 88), ML + 5, ly);
-      ly += 6;
+      doc.text(_cut(subtitle, 90), ML + 6, ly);
+      ly += 5.5;
     }
     if (obs) {
       doc.setFont('helvetica', 'italic');
-      doc.setFontSize(7);
-      doc.setTextColor(100, 100, 100);
-      doc.text(_cut(obs, 95), ML + 5, ly);
+      doc.setFontSize(6.5);
+      doc.setTextColor(105, 115, 130);
+      doc.text(_cut(obs, 97), ML + 6, ly);
     }
     doc.setTextColor(0, 0, 0);
-    y += cardH + 3;
+    y += cardH + 2;
   };
 
   // ── Helper: card de total ───────────────────────────────
@@ -6526,6 +6538,34 @@ function navegarMes(delta) {
   if (relMes > 11) { relMes = 0; relAno++; }
   if (relMes < 0)  { relMes = 11; relAno--; }
   carregarPeriodoRelatorio();
+}
+
+function _atualizarMesNavDetalhe() {
+  const nav = document.getElementById('rep-detalhe-mesnav');
+  if (!nav) return;
+  if (repFiltroAtual !== 'mes') { nav.style.display = 'none'; return; }
+  const _nm = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const nomeMes = _nm.charAt(0).toUpperCase() + _nm.slice(1);
+  const hoje = new Date();
+  const ehMesAtual = relMes === hoje.getMonth() && relAno === hoje.getFullYear();
+  nav.style.display = 'flex';
+  nav.innerHTML =
+    '<button onclick="navegarMesDetalhe(-1)" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:4px 10px;line-height:1">‹</button>' +
+    '<div style="font-size:13px;font-weight:700;color:var(--text);flex:1;text-align:center">' +
+      nomeMes + (ehMesAtual ? ' <span style="font-size:10px;color:var(--green);font-weight:600">● atual</span>' : '') +
+    '</div>' +
+    '<button onclick="navegarMesDetalhe(1)" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:4px 10px;line-height:1' + (ehMesAtual ? ';opacity:.3' : '') + '"' + (ehMesAtual ? ' disabled' : '') + '>›</button>';
+}
+
+async function navegarMesDetalhe(delta) {
+  relMes += delta;
+  if (relMes > 11) { relMes = 0; relAno++; }
+  if (relMes < 0)  { relMes = 11; relAno--; }
+  visatasDoRelatorio = await buscarVisitasPeriodo(relMes, relAno);
+  atualizarAvisoOrcamentos();
+  _atualizarMesNavDetalhe();
+  const tipo = repDetalheAtual;
+  if (tipo) abrirRepDetalhe(tipo);
 }
 
 
