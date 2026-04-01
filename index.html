@@ -2405,7 +2405,7 @@ function abrirRepDetalhe(tipo) {
   overlay.classList.add('open');
   const body = document.getElementById('rep-detalhe-body');
   if (tipo === 'vendas') {
-    body.style.cssText = 'display:flex;flex-direction:column;overflow:hidden;padding:0;flex:1;min-height:0;';
+    body.style.cssText = 'display:flex;flex-direction:column;overflow:hidden;padding:0 0 80px 0;flex:1;min-height:0;';
   } else {
     body.style.cssText = 'overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:90px;';
   }
@@ -3357,8 +3357,11 @@ function exportarPDFDetalhe() {
     Object.entries(byCid).sort(([a],[b]) => a.localeCompare(b, 'pt-BR')).forEach(([cidade, cr]) => {
       addSectionHeader(cidade + ' (' + cr.length + ' visita' + (cr.length !== 1 ? 's' : '') + ')', C_HDR);
       cr.forEach(v => {
-        const tipoLabel = v.tipo === 'whatsapp' ? 'WhatsApp' : v.pedido_tipo === 'pedido' ? 'Pedido' : v.pedido_tipo === 'orcamento' ? 'Orcamento' : 'Presencial';
-        const badgeColor = v.tipo === 'whatsapp' ? [37,155,80] : v.pedido_tipo === 'pedido' ? C_GREEN : v.pedido_tipo === 'orcamento' ? C_ORANGE : C_BLUE;
+        const canalLabel = v.tipo === 'whatsapp' ? 'WhatsApp' : 'Presencial';
+        const _ptPdf = v.pedido_tipo && v.pedido_tipo !== 'nenhum' ? v.pedido_tipo : null;
+        const resultLabel = _ptPdf === 'pedido' || _ptPdf === 'remoto' ? 'Pedido' : _ptPdf === 'orcamento' ? 'Orçamento' : null;
+        const tipoLabel = resultLabel ? canalLabel + ' + ' + resultLabel : canalLabel;
+        const badgeColor = v.tipo === 'whatsapp' ? [128,90,213] : _ptPdf === 'pedido' || _ptPdf === 'remoto' ? C_GREEN : _ptPdf === 'orcamento' ? C_ORANGE : C_BLUE;
         const repVal = [v.representada_nome || v.pedido_representada, parseFloat(v.valor_pedido||0) > 0 ? _val(v.valor_pedido) : ''].filter(Boolean).join(' · ');
         addItemCard({
           title: _nc(v.nome_cliente),
@@ -5784,10 +5787,21 @@ function renderHistorico(id, c) {
 
     // Tags à direita (coluna)
     let tagsHtml = '';
+    // Tag 1: canal (obrigatório)
     if (isWhatsApp) {
       tagsHtml += `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--purple-bg);color:var(--purple)">WhatsApp</span>`;
     } else {
       tagsHtml += `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--green-bg);color:var(--green)">Presencial</span>`;
+    }
+    // Tag 2: resultado (opcional — Pedido ou Orçamento)
+    const _ptTag = (v._pedidos && v._pedidos.length > 0)
+      ? v._pedidos[0].tipo
+      : (v.pedido_tipo && v.pedido_tipo !== 'nenhum' ? v.pedido_tipo
+         : (tipo === 'pedido' || tipo === 'remoto' ? 'pedido' : tipo === 'orcamento' ? 'orcamento' : null));
+    if (_ptTag === 'pedido' || _ptTag === 'remoto') {
+      tagsHtml += `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--green-bg);color:var(--green)">Pedido</span>`;
+    } else if (_ptTag === 'orcamento') {
+      tagsHtml += `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--orange-bg);color:var(--orange)">Orçamento</span>`;
     }
     if (v.retroativo) {
       tagsHtml += `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--orange-bg);color:var(--orange)">Retroativo</span>`;
