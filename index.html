@@ -2081,8 +2081,19 @@ function showScreen(s) {
     if (!plannerCarregado) {
       plannerRef = new Date(); plannerDiaSel = new Date();
       plannerCarregado = true;
-      carregarTodoPlanner().then(() => renderPlanner());
+      // Garante rep_id disponível antes de carregar planner
+      getRepId().then(repId => {
+        console.log('[Planner] Iniciando carregamento. currentRep:', currentRep?.id, '| getRepId():', repId, '| auth.uid:', currentUser?.id);
+        if (!repId) {
+          console.warn('[Planner] rep_id nulo — planner renderizado vazio (sem dados do Supabase)');
+        }
+        carregarTodoPlanner().then(() => {
+          console.log('[Planner] carregarTodoPlanner() concluído. Renderizando semana.');
+          renderPlanner();
+        });
+      });
     } else {
+      console.log('[Planner] Já carregado. rep_id:', currentRep?.id, '| plannerView:', plannerView);
       renderPlanner();
     }
   }
@@ -6820,16 +6831,22 @@ async function salvarEventosPlanner(ds, eventos) {
 }
 
 async function carregarTodoPlanner() {
-  if (!currentRep) return;
+  const repId = await getRepId();
+  if (!repId) {
+    console.warn('[Planner] carregarTodoPlanner: rep_id nulo, usando apenas localStorage');
+    return;
+  }
   try {
-    const { data } = await sb.from('planner').select('*').eq('rep_id', currentRep.id);
+    const { data, error } = await sb.from('planner').select('*').eq('rep_id', repId);
+    if (error) { console.error('[Planner] Erro ao buscar planner:', error.message); return; }
     if (!data) return;
+    console.log('[Planner] Registros carregados do Supabase:', data.length);
     const local = {};
     data.forEach(row => {
       local[row.data] = { cidades: row.cidades || '', notas: row.notas || '', eventos: row.eventos || [] };
     });
     setPlannerDataLocal(local);
-  } catch(e) {}
+  } catch(e) { console.error('[Planner] carregarTodoPlanner exception:', e.message); }
 }
 
 function dataStr(d) {
@@ -6923,6 +6940,7 @@ function renderPlanner() {
 }
 
 function renderPlannerSemana() {
+  console.log('[Planner] renderPlannerSemana() chamada. plannerDiaSel:', dataStr(plannerDiaSel), '| clientes.length:', clientes.length);
   const hoje = new Date();
   const hoje0 = new Date(hoje); hoje0.setHours(0,0,0,0);
   const ref = new Date(plannerRef);
