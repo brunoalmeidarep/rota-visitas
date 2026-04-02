@@ -628,6 +628,8 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
   margin-top:2px !important;
 }
 .login-btn:disabled { opacity:.6 !important; }
+.login-btn-secundario { background:transparent !important; border:1.5px solid rgba(255,255,255,.3) !important; color:rgba(255,255,255,.75) !important; margin-top:8px !important; }
+.login-btn-secundario:hover { background:rgba(255,255,255,.07) !important; }
 .login-erro { color:#ff6b6b; font-size:13px; text-align:center; min-height:18px; }
 .login-esqueci { font-size:12px; color:rgba(255,255,255,.4); text-align:center; cursor:pointer; }
 .login-versao { font-size:10px; color:rgba(255,255,255,.25); text-align:center; margin-top:8px; }
@@ -957,9 +959,45 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <input class="login-input" id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
       <div class="login-erro" id="login-erro"></div>
       <button class="login-btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
+      <button class="login-btn login-btn-secundario" onclick="abrirCadastro()">Criar conta</button>
       <div class="login-esqueci" onclick="esqueceuSenha()">Esqueci minha senha</div>
     </div>
     <div class="login-versao">Minha Rota RP v1.0</div>
+  </div>
+</div>
+
+<!-- ── TELA CADASTRO ───────────────────────────────────── -->
+<div id="screen-nova-conta" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--surface); flex-direction:column; align-items:center; justify-content:center; padding:32px 24px;">
+  <div class="login-inner">
+    <div class="login-logo">
+      <div class="login-titulo">Criar conta</div>
+      <div class="login-sub">Preencha os dados abaixo</div>
+    </div>
+    <div class="login-card">
+      <input class="login-input" id="cad-nome" type="text" placeholder="Nome completo" autocomplete="name">
+      <input class="login-input" id="cad-email" type="email" placeholder="seu@email.com" autocomplete="email">
+      <input class="login-input" id="cad-senha" type="password" placeholder="Senha (mín. 6 caracteres)">
+      <input class="login-input" id="cad-confirmar" type="password" placeholder="Confirmar senha">
+      <div class="login-erro" id="cad-erro"></div>
+      <button class="login-btn" id="btn-cadastrar" onclick="fazerCadastro()">Criar conta</button>
+      <div class="login-esqueci" onclick="fecharCadastro()">Já tenho conta</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TELA REDEFINIR SENHA ────────────────────────────── -->
+<div id="screen-nova-senha" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--surface); flex-direction:column; align-items:center; justify-content:center; padding:32px 24px;">
+  <div class="login-inner">
+    <div class="login-logo">
+      <div class="login-titulo">Nova senha</div>
+      <div class="login-sub">Digite e confirme sua nova senha</div>
+    </div>
+    <div class="login-card">
+      <input class="login-input" id="nova-senha" type="password" placeholder="Nova senha (mín. 6 caracteres)">
+      <input class="login-input" id="nova-senha-confirmar" type="password" placeholder="Confirmar nova senha">
+      <div class="login-erro" id="nova-senha-erro"></div>
+      <button class="login-btn" id="btn-salvar-senha" onclick="salvarNovaSenha()">Salvar nova senha</button>
+    </div>
   </div>
 </div>
 
@@ -1505,6 +1543,21 @@ let _repIdCache  = null;
 
 // ── AUTH ─────────────────────────────────────────────────
 async function iniciarApp() {
+  // ── Detecta link de redefinição de senha na URL ──
+  const hash = window.location.hash;
+  const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : '');
+  if (params.get('type') === 'recovery' && params.get('access_token')) {
+    // Seta a sessão com o token do link e abre tela de nova senha
+    try {
+      await sb.auth.setSession({
+        access_token: params.get('access_token'),
+        refresh_token: params.get('refresh_token') || ''
+      });
+    } catch(e) { console.log('Erro setSession recovery:', e); }
+    abrirNovaSenha();
+    return;
+  }
+
   // Tenta autenticar com Supabase em background
   try {
     if (!sb || !sb.auth) { mostrarLogin(); return; }
@@ -1526,7 +1579,9 @@ async function iniciarApp() {
   // Listener de mudança de auth
   try {
     sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        abrirNovaSenha();
+      } else if (event === 'SIGNED_IN' && session) {
         // Só age se ainda não processado diretamente pelo fazerLogin()
         if (!currentUser) {
           currentUser = session.user;
@@ -5992,6 +6047,96 @@ async function esqueceuSenha() {
     erroEl.textContent = 'E-mail de recuperacao enviado!';
   } else {
     erroEl.textContent = 'Erro ao enviar e-mail.';
+  }
+}
+
+// ── TELA REDEFINIR SENHA ─────────────────────────────────
+function abrirNovaSenha() {
+  document.getElementById('screen-login').style.display = 'none';
+  const el = document.getElementById('screen-nova-senha');
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+}
+
+async function salvarNovaSenha() {
+  const senha    = document.getElementById('nova-senha').value;
+  const confirmar= document.getElementById('nova-senha-confirmar').value;
+  const erro     = document.getElementById('nova-senha-erro');
+  const btn      = document.getElementById('btn-salvar-senha');
+
+  erro.textContent = '';
+  if (senha.length < 6) { erro.textContent = 'Senha mínima: 6 caracteres.'; return; }
+  if (senha !== confirmar) { erro.textContent = 'As senhas não coincidem.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  const { error } = await sb.auth.updateUser({ password: senha });
+
+  if (error) {
+    erro.textContent = 'Erro: ' + error.message;
+    btn.disabled = false;
+    btn.textContent = 'Salvar nova senha';
+  } else {
+    // Limpa hash da URL para não re-detectar o recovery
+    history.replaceState(null, '', window.location.pathname);
+    document.getElementById('screen-nova-senha').style.display = 'none';
+    await sb.auth.signOut();
+    mostrarLogin();
+    const erroLogin = document.getElementById('login-erro');
+    erroLogin.style.color = '#4ade80';
+    erroLogin.textContent = 'Senha alterada com sucesso! Faça login.';
+  }
+}
+
+// ── TELA CADASTRO ────────────────────────────────────────
+function abrirCadastro() {
+  document.getElementById('screen-login').style.display = 'none';
+  const el = document.getElementById('screen-nova-conta');
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+  document.getElementById('cad-erro').textContent = '';
+}
+
+function fecharCadastro() {
+  document.getElementById('screen-nova-conta').style.display = 'none';
+  mostrarLogin();
+}
+
+async function fazerCadastro() {
+  const nome     = document.getElementById('cad-nome').value.trim();
+  const email    = document.getElementById('cad-email').value.trim();
+  const senha    = document.getElementById('cad-senha').value;
+  const confirmar= document.getElementById('cad-confirmar').value;
+  const erro     = document.getElementById('cad-erro');
+  const btn      = document.getElementById('btn-cadastrar');
+
+  erro.textContent = '';
+  if (!nome || !email || !senha) { erro.textContent = 'Preencha todos os campos.'; return; }
+  if (senha.length < 6) { erro.textContent = 'Senha mínima: 6 caracteres.'; return; }
+  if (senha !== confirmar) { erro.textContent = 'As senhas não coincidem.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Criando conta...';
+
+  try {
+    const { data: signData, error: signError } = await sb.auth.signUp({ email, password: senha });
+    if (signError) throw signError;
+
+    // Cria registro na tabela representantes
+    const authId = signData?.user?.id || null;
+    const { error: repError } = await sb.from('representantes').insert({ nome, email, auth_id: authId });
+    if (repError && !repError.message.includes('duplicate')) throw repError;
+
+    document.getElementById('screen-nova-conta').style.display = 'none';
+    mostrarLogin();
+    const erroLogin = document.getElementById('login-erro');
+    erroLogin.style.color = '#4ade80';
+    erroLogin.textContent = 'Verifique seu e-mail para confirmar o cadastro!';
+  } catch(e) {
+    erro.textContent = 'Erro: ' + (e.message || 'tente novamente');
+    btn.disabled = false;
+    btn.textContent = 'Criar conta';
   }
 }
 
