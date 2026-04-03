@@ -40,7 +40,7 @@ CRM e app de rota de visitas para representantes comerciais.
 
 ## Supabase — Tabelas existentes
 - **visitas:** id, cliente_id, rep_id, data, hora, obs, criado_em, id_cliente, nome_cliente, cidade, valor_pedido, doc_url, tipo, status_orcamento, representada_id, via_whatsapp, representada_nome, pedido_tipo, pedido_valor, pedido_representada, pedido_url_doc, orcamento_status, hora_edicao, retroativo, registrado_em
-- **pedidos:** id, visita_id, rep_id, representada_id, representada_nome, tipo, valor, status, doc_url, created_at — CRIAR SE NÃO EXISTIR (ver SQL abaixo)
+- **pedidos:** id, visita_id, rep_id, cliente_id, cliente_nome, representada_id, representada_nome, tipo, valor, status, tipo_contato, doc_url, obs, created_at — CRIADA ✓
 - **lembretes:** id_cliente, texto, rep_id, atualizado_em
 - **representantes:** id, email, nome, auth_id, endereco_base, lat_base, lng_base, media_carro, preco_gasolina, onboarding_ok
 - **clientes:** id, nome, cnpj, cidade, endereco, ultima_visita, ultima_obs, lat, lng, rep_id, segmento, telefone, comprador
@@ -53,21 +53,10 @@ CRM e app de rota de visitas para representantes comerciais.
 - **planner:** id, rep_id, titulo, data, hora, tipo, cliente_id
 - RLS ativa em todas as tabelas
 
-### SQL para criar tabela pedidos (executar no Supabase se ainda não criada):
-```sql
-CREATE TABLE IF NOT EXISTS pedidos (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  visita_id uuid REFERENCES visitas(id) ON DELETE CASCADE,
-  rep_id uuid REFERENCES representantes(id),
-  representada_id uuid, representada_nome text,
-  tipo text DEFAULT 'pedido', valor numeric,
-  status text DEFAULT 'fechado', doc_url text,
-  created_at timestamp with time zone DEFAULT now()
-);
-ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "rep acessa seus pedidos" ON pedidos FOR ALL
-  USING (rep_id = (SELECT id FROM representantes WHERE auth_id = auth.uid()));
-```
+### Tabela pedidos — criada em 2026-04-03
+Colunas: id, created_at, visita_id, rep_id, cliente_id, cliente_nome, representada_id, representada_nome, tipo, valor, status, tipo_contato, doc_url, obs
+- visita_id = NULL → pedido sem visita (WhatsApp ou Telefone)
+- tipo_contato = 'whatsapp' | 'telefone' | NULL (presencial)
 
 ---
 
@@ -104,6 +93,10 @@ Usar a função getRepId() que faz cache desse valor.
   - Múltiplos pedidos/orçamentos no check-in: lista com "+ Adicionar", cards com × remover e "Converter em pedido" (orçamento)
   - Gastos com cliente → tela detalhada
   - Bonificações → tela detalhada com parcelas
+- Tela cliente: seção "Visita presencial" (Fazer Check-in) + seção "Pedido sem visita" (WhatsApp verde / Telefone cinza)
+- Check-in presencial: salva em visitas + pedidos, atualiza ultima_visita
+- Pedido sem visita: salva APENAS em pedidos (tipo_contato='whatsapp'/'telefone'), NUNCA atualiza ultima_visita
+- Relatório Vendas/Orçamentos: inclui pedidos sem visita com badge do canal
   - Histórico: 🏪 presencial / 💬 WhatsApp (SVG inline, layout 3 colunas)
   - Clicar no histórico → tela detalhe da visita com edição de obs + lista de pedidos em cards
   - Long press → apagar visita (com confirmação)
@@ -142,8 +135,7 @@ Usar a função getRepId() que faz cache desse valor.
 
 ## Pendências em andamento
 1. Foreign key empresas — corrigir com getRepId() para qualquer usuário
-2. Criar tabela `pedidos` no Supabase (SQL acima) para ativar múltiplos pedidos por visita
-3. Desktop.html — Victor desenvolvendo
+2. Desktop.html — Victor desenvolvendo
 
 ---
 
