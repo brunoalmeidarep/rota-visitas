@@ -188,6 +188,27 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 
 
 
+/* ── TELA ACEITE TERMOS ─────────────────────────────── */
+#screen-termos { position:fixed; inset:0; z-index:1001; background:#0f172a; display:none; flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.termos-header { background:#1a3a6b; padding:22px 20px 20px; display:flex; align-items:center; gap:14px; flex-shrink:0; }
+.termos-header-logo { font-size:36px; }
+.termos-header-nome { font-size:20px; font-weight:800; color:#fff; letter-spacing:-.3px; }
+.termos-header-sub { font-size:12px; color:rgba(255,255,255,.65); margin-top:2px; }
+.termos-body { padding:24px 20px 40px; max-width:480px; margin:0 auto; width:100%; }
+.termos-titulo { font-size:26px; font-weight:800; color:#fff; margin-bottom:8px; }
+.termos-subtitulo { font-size:14px; color:rgba(255,255,255,.6); line-height:1.55; margin-bottom:24px; }
+.termos-cards { display:flex; flex-direction:column; gap:10px; margin-bottom:24px; }
+.termos-card { background:#1e293b; border-radius:14px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px; }
+.termos-card-icon { font-size:22px; flex-shrink:0; margin-top:1px; }
+.termos-card-titulo { font-size:13px; font-weight:700; color:#fff; margin-bottom:3px; }
+.termos-card-desc { font-size:12px; color:rgba(255,255,255,.55); line-height:1.5; }
+.termos-aviso { background:#1e293b; border-radius:14px; padding:16px; font-size:13px; color:rgba(255,255,255,.65); line-height:1.6; margin-bottom:20px; }
+.termos-aviso a { color:#60a5fa; font-weight:600; text-decoration:none; }
+.termos-aviso a:hover { text-decoration:underline; }
+.termos-btn { width:100%; background:#1a3a6b; color:#fff; border:none; border-radius:14px; padding:16px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:12px; letter-spacing:.2px; }
+.termos-btn:active { opacity:.85; }
+.termos-rodape { text-align:center; font-size:12px; color:rgba(255,255,255,.35); }
+
 /* ── LOGIN ──────────────────────────────────────────── */
 #screen-login { position:fixed; top:0;left:0;right:0;bottom:0; background:var(--surface); z-index:999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; }
 .login-icon { font-size:52px; margin-bottom:12px; }
@@ -988,6 +1009,53 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 </style>
 </head>
 <body>
+<!-- TELA DE ACEITE DE TERMOS (primeiro acesso) -->
+<div id="screen-termos">
+  <div class="termos-header">
+    <div class="termos-header-logo">💼</div>
+    <div>
+      <div class="termos-header-nome">Minha Rota RP</div>
+      <div class="termos-header-sub">Gestão Comercial</div>
+    </div>
+  </div>
+  <div class="termos-body">
+    <div class="termos-titulo">Bem-vindo! 👋</div>
+    <div class="termos-subtitulo">Antes de começar, precisamos que você leia e aceite nossa Política de Privacidade e Termos de Uso. É rápido!</div>
+    <div class="termos-cards">
+      <div class="termos-card">
+        <div class="termos-card-icon">📋</div>
+        <div>
+          <div class="termos-card-titulo">Dados que coletamos</div>
+          <div class="termos-card-desc">Nome, e-mail, localização GPS (opcional), dados de clientes e registros de visitas e pedidos.</div>
+        </div>
+      </div>
+      <div class="termos-card">
+        <div class="termos-card-icon">🔒</div>
+        <div>
+          <div class="termos-card-titulo">Como usamos</div>
+          <div class="termos-card-desc">Exclusivamente para o funcionamento do app. Seus dados são armazenados com segurança no Supabase e nunca são vendidos a terceiros.</div>
+        </div>
+      </div>
+      <div class="termos-card">
+        <div class="termos-card-icon">🗑️</div>
+        <div>
+          <div class="termos-card-titulo">Seus direitos</div>
+          <div class="termos-card-desc">Você pode solicitar a exclusão de todos os seus dados a qualquer momento pelo e-mail contato@minharotarp.com.br.</div>
+        </div>
+      </div>
+    </div>
+    <div class="termos-aviso">
+      Ao continuar, você declara que leu e concorda com a
+      <a href="privacidade.html" target="_blank">Política de Privacidade</a>
+      e os
+      <a href="termos.html" target="_blank">Termos de Uso</a>
+      do Minha Rota RP.
+    </div>
+    <button class="termos-btn" onclick="aceitarTermos()">✓ Li e aceito</button>
+    <div class="termos-rodape">Você só verá esta tela uma vez</div>
+  </div>
+</div>
+
 <!-- TELA DE LOGIN -->
 <div id="screen-login">
   <div class="login-inner">
@@ -1859,6 +1927,19 @@ async function esconderLogin() {
 }
 
 function mostrarLogin() {
+  if (!localStorage.getItem('termos_aceitos')) {
+    const t = document.getElementById('screen-termos');
+    if (t) t.style.display = 'flex';
+    return;
+  }
+  const el = document.getElementById('screen-login');
+  if (el) el.style.display = 'flex';
+}
+
+function aceitarTermos() {
+  localStorage.setItem('termos_aceitos', 'true');
+  const t = document.getElementById('screen-termos');
+  if (t) t.style.display = 'none';
   const el = document.getElementById('screen-login');
   if (el) el.style.display = 'flex';
 }

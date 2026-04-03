@@ -5,116 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Política de Privacidade — Minha Rota RP</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f4f6fb;
-    color: #1a1a2e;
-    line-height: 1.7;
-  }
-  header {
-    background: #1a3a6b;
-    color: #fff;
-    padding: 20px 24px 18px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.18);
-  }
-  header a {
-    color: rgba(255,255,255,.75);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 600;
-    white-space: nowrap;
-    transition: color .15s;
-  }
-  header a:hover { color: #fff; }
-  header h1 {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: -.2px;
-  }
-  header p {
-    font-size: 12px;
-    color: rgba(255,255,255,.65);
-    margin-top: 2px;
-  }
-  .container {
-    max-width: 740px;
-    margin: 36px auto 60px;
-    padding: 0 20px;
-  }
-  .card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 32px 36px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.07);
-    margin-bottom: 20px;
-  }
-  h2 {
-    font-size: 20px;
-    font-weight: 700;
-    color: #1a3a6b;
-    margin-bottom: 14px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #e8eef8;
-  }
-  h3 {
-    font-size: 15px;
-    font-weight: 700;
-    color: #1a3a6b;
-    margin: 20px 0 8px;
-  }
-  p { font-size: 15px; color: #333; margin-bottom: 12px; }
-  ul {
-    margin: 8px 0 14px 20px;
-    font-size: 15px;
-    color: #333;
-  }
-  ul li { margin-bottom: 6px; }
-  .badge {
-    display: inline-block;
-    background: #e8eef8;
-    color: #1a3a6b;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 20px;
-    text-transform: uppercase;
-    letter-spacing: .4px;
-    margin-bottom: 16px;
-  }
-  .highlight {
-    background: #f0f5ff;
-    border-left: 4px solid #1a3a6b;
-    border-radius: 0 10px 10px 0;
-    padding: 12px 16px;
-    margin: 14px 0;
-    font-size: 14px;
-    color: #1a3a6b;
-    font-weight: 600;
-  }
-  .footer-note {
-    text-align: center;
-    font-size: 13px;
-    color: #888;
-    margin-top: 32px;
-  }
-  a.link { color: #1a3a6b; font-weight: 600; }
-  @media (max-width: 600px) {
-    .card { padding: 22px 18px; }
-    .container { margin-top: 24px; }
-  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7;min-height:100vh}
+  header{background:#1a3a6b;padding:20px 24px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 12px rgba(0,0,0,.35);position:sticky;top:0;z-index:10}
+  header .logo{font-size:28px}
+  header h1{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.2px}
+  header p{font-size:12px;color:rgba(255,255,255,.6);margin-top:1px}
+  header a{color:rgba(255,255,255,.7);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;transition:color .15s}
+  header a:hover{color:#fff}
+  .container{max-width:720px;margin:32px auto 60px;padding:0 18px}
+  .card{background:#1e293b;border-radius:16px;padding:28px 30px;margin-bottom:18px}
+  h2{font-size:18px;font-weight:700;color:#fff;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08)}
+  h3{font-size:14px;font-weight:700;color:#93c5fd;margin:18px 0 7px}
+  p{font-size:14px;color:#cbd5e1;margin-bottom:11px}
+  ul{margin:6px 0 12px 18px;font-size:14px;color:#cbd5e1}
+  ul li{margin-bottom:5px}
+  .badge{display:inline-block;background:rgba(96,165,250,.15);color:#93c5fd;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:16px}
+  .highlight{background:rgba(26,58,107,.5);border-left:3px solid #60a5fa;border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:14px;color:#93c5fd;font-weight:600}
+  a.link{color:#60a5fa;font-weight:600;text-decoration:none}
+  a.link:hover{text-decoration:underline}
+  .footer-note{text-align:center;font-size:12px;color:rgba(255,255,255,.3);margin-top:28px}
+  @media(max-width:540px){.card{padding:20px 16px}}
 </style>
 </head>
 <body>
 
 <header>
+  <a href="index.html">← Voltar</a>
+  <div class="logo">💼</div>
   <div>
-    <a href="index.html">← Voltar ao app</a>
-  </div>
-  <div style="flex:1">
     <h1>Minha Rota RP</h1>
     <p>Política de Privacidade</p>
   </div>
@@ -123,138 +42,105 @@
 <div class="container">
 
   <div class="card">
-    <span class="badge">Última atualização: abril de 2025</span>
+    <span class="badge">Vigência: abril de 2025</span>
     <h2>Política de Privacidade</h2>
-    <p>
-      Sua privacidade é importante para nós. Esta política descreve quais informações o <strong>Minha Rota RP</strong>
-      coleta, como as utiliza e como as protege. Ao utilizar o aplicativo, você concorda com as práticas descritas aqui.
-    </p>
+    <p>Sua privacidade é importante para nós. Esta política explica quais dados o <strong style="color:#fff">Minha Rota RP</strong> coleta, como os utiliza e como os protege. Ao usar o app, você concorda com estas práticas.</p>
   </div>
 
   <div class="card">
     <h2>1. Dados coletados</h2>
-
-    <h3>1.1 Dados de cadastro</h3>
+    <h3>1.1 Cadastro</h3>
     <ul>
-      <li><strong>Nome completo</strong> e <strong>endereço de e-mail</strong> fornecidos no cadastro</li>
-      <li>Endereço base do representante (ponto de partida das rotas)</li>
+      <li><strong style="color:#e2e8f0">Nome completo</strong> e <strong style="color:#e2e8f0">e-mail</strong> fornecidos no registro</li>
+      <li>Endereço base do representante (ponto de partida de rotas)</li>
     </ul>
-
-    <h3>1.2 Dados de localização</h3>
+    <h3>1.2 Localização GPS</h3>
     <ul>
-      <li><strong>Localização GPS</strong>, solicitada apenas quando você usa o recurso "Usar minha localização atual" para definir o ponto de partida de uma rota</li>
-      <li>Coordenadas de endereços de clientes (obtidas via Google Maps e ViaCEP)</li>
+      <li>Solicitada <strong style="color:#e2e8f0">apenas quando</strong> você usa "Usar minha localização atual" para definir ponto de partida de rota</li>
+      <li>Coordenadas de endereços de clientes (via Google Maps e ViaCEP)</li>
     </ul>
-    <p>O acesso ao GPS é opcional. Você pode recusar sem perda de funcionalidade principal.</p>
-
+    <p>O GPS é opcional. Recusar não prejudica as demais funcionalidades.</p>
     <h3>1.3 Dados operacionais</h3>
     <ul>
-      <li>Cadastro de <strong>clientes</strong>: nome, CNPJ, endereço, cidade, telefone, segmento</li>
-      <li>Registros de <strong>visitas e check-ins</strong>: data, hora, observações, pedidos e orçamentos</li>
-      <li>Registros <strong>financeiros</strong>: receitas, comissões, gastos com clientes e hospedagem</li>
-      <li>Rotas planejadas e otimizadas</li>
-      <li>Tarefas, lembretes e agenda (planner)</li>
+      <li><strong style="color:#e2e8f0">Clientes:</strong> nome, CNPJ, endereço, cidade, telefone, segmento</li>
+      <li><strong style="color:#e2e8f0">Visitas:</strong> data, hora, observações, pedidos e orçamentos</li>
+      <li><strong style="color:#e2e8f0">Financeiro:</strong> receitas, comissões, gastos com clientes</li>
+      <li>Rotas planejadas, tarefas, lembretes e agenda</li>
     </ul>
-
     <h3>1.4 Dados técnicos</h3>
     <ul>
-      <li>Logs de acesso e autenticação gerenciados pela plataforma Supabase</li>
+      <li>Logs de autenticação gerenciados pelo Supabase</li>
     </ul>
   </div>
 
   <div class="card">
-    <h2>2. Como os dados são usados</h2>
-    <p>Utilizamos suas informações exclusivamente para:</p>
+    <h2>2. Como usamos os dados</h2>
+    <p>Usamos suas informações exclusivamente para:</p>
     <ul>
-      <li>Permitir o funcionamento do aplicativo de CRM e rotas</li>
-      <li>Autenticar seu acesso de forma segura</li>
-      <li>Gerar relatórios e análises de desempenho para uso próprio do representante</li>
-      <li>Otimizar rotas de visitas via Google Maps</li>
+      <li>Fazer o app funcionar corretamente</li>
+      <li>Autenticar seu acesso com segurança</li>
+      <li>Gerar relatórios e análises para uso próprio</li>
+      <li>Otimizar rotas via Google Maps</li>
       <li>Armazenar histórico de visitas, pedidos e finanças</li>
     </ul>
-    <div class="highlight">
-      Seus dados nunca são vendidos, repassados ou compartilhados com terceiros para fins comerciais ou publicitários.
-    </div>
+    <div class="highlight">Seus dados nunca são vendidos, repassados ou compartilhados com terceiros para fins comerciais ou publicitários.</div>
   </div>
 
   <div class="card">
     <h2>3. Armazenamento e segurança</h2>
-    <p>
-      Todos os dados são armazenados na plataforma <strong>Supabase</strong> (infraestrutura AWS),
-      com criptografia em trânsito (HTTPS/TLS) e em repouso. O acesso é protegido por
-      autenticação e políticas de Row Level Security (RLS), garantindo que cada representante
-      acesse apenas seus próprios dados.
-    </p>
-    <p>
-      Backups automáticos são realizados pela infraestrutura do Supabase. Não temos acesso
-      físico aos servidores — a gestão da infraestrutura é de responsabilidade da Supabase Inc.
-    </p>
-    <p>
-      Adotamos boas práticas de desenvolvimento seguro, mas nenhum sistema é 100% inviolável.
-      Em caso de incidente de segurança que afete seus dados, você será notificado por e-mail.
-    </p>
+    <p>Todos os dados são armazenados no <strong style="color:#fff">Supabase</strong> (infraestrutura AWS) com:</p>
+    <ul>
+      <li>Criptografia em trânsito (HTTPS/TLS)</li>
+      <li>Criptografia em repouso</li>
+      <li>Controle de acesso por Row Level Security (RLS) — cada representante acessa apenas seus próprios dados</li>
+    </ul>
+    <p>Em caso de incidente de segurança que afete seus dados, você será notificado por e-mail.</p>
   </div>
 
   <div class="card">
-    <h2>4. Compartilhamento de dados</h2>
-    <p>Seus dados podem ser acessados por:</p>
+    <h2>4. Compartilhamento</h2>
+    <p>Seus dados podem transitar pelos seguintes serviços:</p>
     <ul>
-      <li><strong>Supabase Inc.</strong> — provedor de banco de dados e autenticação (como processador de dados)</li>
-      <li><strong>Google LLC</strong> — para geocodificação de endereços e otimização de rotas via Google Maps API</li>
+      <li><strong style="color:#e2e8f0">Supabase Inc.</strong> — banco de dados e autenticação</li>
+      <li><strong style="color:#e2e8f0">Google LLC</strong> — geocodificação e otimização de rotas (Google Maps API)</li>
     </ul>
-    <p>
-      Esses serviços possuem suas próprias políticas de privacidade e são utilizados exclusivamente
-      para viabilizar as funcionalidades do aplicativo.
-    </p>
-    <p>Não compartilhamos dados com anunciantes, parceiros comerciais ou qualquer outro terceiro.</p>
+    <p>Esses provedores operam como processadores de dados e possuem suas próprias políticas de privacidade. Nenhum outro terceiro tem acesso às suas informações.</p>
   </div>
 
   <div class="card">
     <h2>5. Seus direitos</h2>
-    <p>Você tem o direito de:</p>
+    <p>Você pode a qualquer momento:</p>
     <ul>
-      <li><strong>Acessar</strong> os dados armazenados sobre você</li>
-      <li><strong>Corrigir</strong> informações incorretas diretamente no aplicativo</li>
-      <li><strong>Exportar</strong> seus dados (via relatórios PDF disponíveis no app)</li>
-      <li><strong>Solicitar a exclusão</strong> de todos os seus dados</li>
+      <li><strong style="color:#e2e8f0">Acessar</strong> os dados armazenados sobre você</li>
+      <li><strong style="color:#e2e8f0">Corrigir</strong> informações incorretas direto no app</li>
+      <li><strong style="color:#e2e8f0">Exportar</strong> dados via relatórios PDF disponíveis no app</li>
+      <li><strong style="color:#e2e8f0">Solicitar a exclusão</strong> completa da conta e dados</li>
     </ul>
     <div class="highlight">
-      Para solicitar a exclusão completa da sua conta e dados, envie um e-mail para
+      Para solicitar exclusão, envie e-mail para
       <a href="mailto:contato@minharotarp.com.br" class="link">contato@minharotarp.com.br</a>
-      com o assunto "Exclusão de dados — Minha Rota RP".
+      com o assunto "Exclusão de dados — Minha Rota RP". Prazo de atendimento: 15 dias úteis.
     </div>
-    <p>Atenderemos sua solicitação em até 15 dias úteis.</p>
   </div>
 
   <div class="card">
-    <h2>6. Retenção de dados</h2>
-    <p>
-      Seus dados são mantidos enquanto sua conta estiver ativa. Após a exclusão da conta,
-      os dados são removidos dos servidores em até 30 dias, exceto quando a retenção for
-      exigida por obrigação legal.
-    </p>
+    <h2>6. Retenção</h2>
+    <p>Seus dados são mantidos enquanto a conta estiver ativa. Após exclusão, são removidos dos servidores em até 30 dias, salvo obrigação legal de retenção.</p>
   </div>
 
   <div class="card">
-    <h2>7. Alterações nesta política</h2>
-    <p>
-      Podemos atualizar esta política periodicamente. Mudanças significativas serão comunicadas
-      por e-mail ou notificação no aplicativo. O uso continuado do app após as alterações
-      implica aceitação da nova versão.
-    </p>
+    <h2>7. Atualizações</h2>
+    <p>Esta política pode ser atualizada. Mudanças relevantes serão comunicadas por e-mail ou notificação no app. O uso continuado após as alterações implica aceitação.</p>
   </div>
 
   <div class="card">
     <h2>8. Contato</h2>
-    <p>
-      Dúvidas, solicitações ou reclamações relacionadas à privacidade:
-    </p>
     <ul>
       <li>E-mail: <a href="mailto:contato@minharotarp.com.br" class="link">contato@minharotarp.com.br</a></li>
     </ul>
   </div>
 
-  <p class="footer-note">© 2025 Minha Rota RP · <a href="termos.html" class="link">Termos de Uso</a></p>
+  <p class="footer-note">© 2025 Minha Rota RP &nbsp;·&nbsp; <a href="termos.html" class="link">Termos de Uso</a></p>
 
 </div>
 </body>
