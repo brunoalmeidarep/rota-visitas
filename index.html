@@ -1706,52 +1706,52 @@ function fmtNum(valor) {
 
 async function carregarRepresentante() {
   _repIdCache = null;
+  currentRep  = null;
   try {
-    const { data } = await sb
+    // Busca pelo auth_id — compatível com a RLS: USING (auth_id = auth.uid())
+    const { data: porAuth, error: errAuth } = await sb
       .from('representantes')
       .select('*')
-      .eq('email', currentUser.email)
+      .eq('auth_id', currentUser.id)
       .maybeSingle();
-    if (data) {
-      currentRep = data;
-      // garante auth_id preenchido
-      if (!data.auth_id) {
-        await sb.from('representantes').update({ auth_id: currentUser.id }).eq('id', data.id);
-        currentRep.auth_id = currentUser.id;
-      }
-    } else {
-      // primeiro login: cria linha em representantes automaticamente
-      const { data: novo, error: insErr } = await sb.from('representantes').insert({
-        email:   currentUser.email,
-        nome:    currentUser.email.split('@')[0],
-        auth_id: currentUser.id,
-        ativo:   true,
-      }).select().maybeSingle();
 
-      if (novo) {
-        currentRep = novo;
+    console.log('[Rep] busca por auth_id:', currentUser.id, '| resultado:', porAuth?.id || 'vazio', '| erro:', errAuth?.message || 'nenhum');
+
+    if (porAuth) {
+      currentRep = porAuth;
+    } else {
+      // Fallback: busca por email (usuários antigos sem auth_id preenchido)
+      const { data: porEmail, error: errEmail } = await sb
+        .from('representantes')
+        .select('*')
+        .eq('email', currentUser.email)
+        .maybeSingle();
+
+      console.log('[Rep] busca por email:', currentUser.email, '| resultado:', porEmail?.id || 'vazio', '| erro:', errEmail?.message || 'nenhum');
+
+      if (porEmail) {
+        currentRep = porEmail;
+        // Vincula auth_id para que próximos logins usem a rota rápida
+        sb.from('representantes').update({ auth_id: currentUser.id }).eq('id', porEmail.id).catch(() => {});
       } else {
-        // INSERT falhou (ex: email já existe por cadastro manual sem auth_id, ou política RLS)
-        // Tenta buscar pelo auth_id que acabamos de definir
-        const { data: porAuth } = await sb.from('representantes')
-          .select('*').eq('auth_id', currentUser.id).maybeSingle();
-        if (porAuth) {
-          currentRep = porAuth;
-        } else {
-          // Tenta vincular auth_id ao registro existente com esse email
-          const { data: upd } = await sb.from('representantes')
-            .update({ auth_id: currentUser.id })
-            .eq('email', currentUser.email)
-            .select().maybeSingle();
-          currentRep = upd || null;
-        }
+        // Primeiro acesso real: cria registro
+        const { data: novo, error: errIns } = await sb.from('representantes').insert({
+          email:   currentUser.email,
+          nome:    currentUser.email.split('@')[0],
+          auth_id: currentUser.id,
+          ativo:   true,
+        }).select().maybeSingle();
+
+        console.log('[Rep] insert novo representante:', novo?.id || 'falhou', '| erro:', errIns?.message || 'nenhum');
+        currentRep = novo || null;
       }
     }
   } catch(e) {
-    console.error('carregarRepresentante erro:', e);
+    console.error('[Rep] carregarRepresentante exceção:', e.message);
     currentRep = null;
   }
   _repIdCache = currentRep?.id || null;
+  console.log('[Rep] _repIdCache final:', _repIdCache || 'NULL');
 }
 
 // Retorna o id correto de representantes para uso como rep_id
@@ -1786,49 +1786,47 @@ async function fazerLogin() {
   btn.textContent = 'ENTRANDO...';
   erro.textContent = '';
 
-  const _restaurarBtn = (msg) => {
-    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
-    btn.disabled = false;
-    btn.textContent = 'Entrar';
-    if (msg) erro.textContent = msg;
-  };
+  let loginOk = false;
 
   try {
-    alert('1 - captcha ok, chamando signIn...');
-
+    console.log('[Login] Chamando signInWithPassword...');
     const { data, error } = await sb.auth.signInWithPassword({
       email, password: senha,
       options: { captchaToken }
     });
-
-    alert('2 - signIn retornou. erro: ' + (error?.message || 'nenhum'));
+    console.log('[Login] signIn retornou. erro:', error?.message || 'nenhum');
 
     if (error) {
-      _restaurarBtn('E-mail ou senha incorretos.');
+      erro.textContent = 'E-mail ou senha incorretos.';
       return;
     }
 
     currentUser = data.user;
-    alert('3 - auth ok: ' + data.user?.email + ' | carregando representante...');
+    console.log('[Login] Auth ok:', currentUser.email, '| Carregando representante...');
 
     await carregarRepresentante();
-    alert('4 - representante: ' + (currentRep?.id || 'NÃO ENCONTRADO'));
+    console.log('[Login] currentRep?.id:', currentRep?.id || 'NULL');
 
     if (!currentRep) {
       await sb.auth.signOut();
       currentUser = null;
       _repIdCache  = null;
-      _restaurarBtn('Conta não configurada. Contate o suporte.');
+      erro.textContent = 'Usuário não vinculado a um representante. Contate o administrador.';
       return;
     }
 
-    alert('5 - redirecionando para o app');
-    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
+    loginOk = true;
+    console.log('[Login] Sucesso — redirecionando para o app');
     esconderLogin();
 
   } catch(e) {
-    alert('ERRO no login: ' + e.message);
-    _restaurarBtn('Erro inesperado. Tente novamente.');
+    console.error('[Login] Exceção:', e.message);
+    erro.textContent = 'Erro inesperado. Tente novamente.';
+  } finally {
+    // SEMPRE restaura o botão — independente do que aconteceu
+    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
+    btn.disabled  = false;
+    btn.textContent = 'Entrar';
   }
 }
 
