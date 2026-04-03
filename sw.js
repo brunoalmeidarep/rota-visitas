@@ -1,19 +1,33 @@
-// Service worker — sempre network, sem cache, auto-update imediato — v20260330
+// Service worker — network-first, fallback cache — v20260403
+const CACHE = 'mdr-v1';
+
 self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    )
+  );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  const isSameOrigin = new URL(e.request.url).origin === self.location.origin;
-  if (isSameOrigin) {
-    // Arquivos do app (index.html, manifest, ícones): sempre busca do servidor, nunca do cache
-    e.respondWith(fetch(e.request, { cache: 'no-store' }));
-  }
-  // Recursos externos (Supabase SDK, Google Maps): browser decide normalmente
+  const url = new URL(e.request.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  if (!isSameOrigin) return; // recursos externos: browser decide
+
+  e.respondWith(
+    fetch(e.request, { cache: 'no-store' })
+      .then(res => {
+        // Atualiza cache com a resposta fresca
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      })
+      .catch(() => caches.match(e.request)) // offline: serve do cache
+  );
 });
 
 // Mensagens do app principal

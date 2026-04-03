@@ -988,7 +988,6 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 </style>
 </head>
 <body>
-<div id="debug-log" style="display:none;position:fixed;top:0;left:0;right:0;background:#900;color:#fff;z-index:99999;font-size:12px;font-family:monospace;padding:8px;max-height:50vh;overflow:auto;"></div>
 <!-- TELA DE LOGIN -->
 <div id="screen-login">
   <div class="login-inner">
@@ -1700,13 +1699,6 @@ function fmtNum(valor) {
   return (parseFloat(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function uiLog(msg) {
-  const el = document.getElementById('debug-log');
-  if (!el) return;
-  el.style.display = 'block';
-  el.innerHTML += new Date().toISOString().slice(11,19) + ' ' + msg + '<br>';
-  el.scrollTop = el.scrollHeight;
-}
 
 function queryComTimeout(promise, ms) {
   const timeout = new Promise((_, reject) =>
@@ -2127,7 +2119,6 @@ async function geocodeAll() {
     return;
   }
   let found = clientes.filter(c => c.lat && c.lng).length;
-  uiLog('geocodeAll: ' + semCoords.length + ' sem coords, iniciando...');
   document.getElementById('geo-status').textContent = 'Localizando... ' + found + '/' + clientes.length;
   for (const c of semCoords) {
     if (c.lat && c.lng) { found++; continue; }
@@ -2135,24 +2126,19 @@ async function geocodeAll() {
     try {
       const res = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + q + '&key=AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI&region=br&language=pt-BR');
       const data = await res.json();
-      if (data.status !== 'OK') {
-        uiLog('geocode ERRO: ' + data.status + ' | ' + c.nome + ' | ' + c.endereco);
-      }
       if (data.status === 'OK' && data.results.length > 0) {
         const loc = data.results[0].geometry.location;
         if (loc.lat >= -30.5 && loc.lat <= -22.5 && loc.lng >= -54.6 && loc.lng <= -48.0) {
           c.lat = loc.lat; c.lng = loc.lng; found++;
           try { await sb.from('clientes').update({ lat: c.lat, lng: c.lng }).eq('id', String(c.id)); } catch(e) {}
           if (gmap) renderMapMarkers();
-        } else {
-          uiLog('geocode fora dos bounds: ' + c.nome + ' lat=' + loc.lat + ' lng=' + loc.lng);
         }
       }
-    } catch(e) { uiLog('geocode fetch erro: ' + e.message); }
+    } catch(e) {}
     document.getElementById('geo-status').textContent = 'Localizando... ' + found + '/' + clientes.length;
     await new Promise(r => setTimeout(r, 50));
   }
-  uiLog('geocodeAll concluído: ' + found + '/' + clientes.length + ' com coords');
+  _mapAtualizarMensagemVazia(false);
   document.getElementById('geo-status').textContent = '✓ ' + found + '/' + clientes.length;
   document.getElementById('export-bar').style.display = 'block';
 }
@@ -2310,8 +2296,6 @@ async function carregarMarcadoresMapa() {
   }
 
   const comCoords = (data || []).filter(c => c.lat && c.lng).length;
-  const semCoords = (data || []).filter(c => !c.lat && !c.lng).length;
-  uiLog('Mapa: ' + (data?.length||0) + ' clientes | ' + comCoords + ' com coords | ' + semCoords + ' sem coords');
 
   if (!data || !data.length) {
     _mapAtualizarMensagemVazia(true);
@@ -2335,10 +2319,7 @@ async function carregarMarcadoresMapa() {
   // Geocodifica automaticamente clientes sem coordenadas
   const semCoordsArr = clientes.filter(c => !c.lat && !c.lng && c.endereco && c.cidade);
   if (semCoordsArr.length > 0) {
-    uiLog('Iniciando geocoding de ' + semCoordsArr.length + ' clientes...');
     geocodeAll();
-  } else if (comCoords === 0) {
-    uiLog('ATENÇÃO: nenhum cliente tem endereço para geocodificar');
   }
 }
 
