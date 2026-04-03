@@ -1613,6 +1613,8 @@ let currentRep   = null;
 let _repIdCache  = null;
 
 // ── AUTH ─────────────────────────────────────────────────
+let _authEmAndamento = false; // flag anti race-condition entre getSession e onAuthStateChange
+
 async function iniciarApp() {
   // ── Captura hash ANTES do Supabase processar (SDK pode limpar o hash) ──
   const _hash = window.location.hash;
@@ -1631,42 +1633,49 @@ async function iniciarApp() {
     return;
   }
 
-  // ── Listener de auth — DEVE ser registrado ANTES de getSession() ──
-  // O Supabase dispara PASSWORD_RECOVERY ao inicializar quando detecta o link;
-  // se o listener for registrado depois, o evento já foi perdido.
+  // ── Listener de auth — registrado ANTES de getSession() ──
   try {
     sb.auth.onAuthStateChange(async (event, session) => {
-      debugLog('[Auth]', event);
       if (event === 'PASSWORD_RECOVERY') {
         abrirNovaSenha();
       } else if (event === 'SIGNED_IN' && session) {
-        // Só age se ainda não processado diretamente pelo fazerLogin()
-        if (!currentUser) {
+        // Ignora se getSession() já está processando (race condition)
+        if (_authEmAndamento || currentUser) return;
+        _authEmAndamento = true;
+        try {
           currentUser = session.user;
           await carregarRepresentante();
           esconderLogin();
+        } finally {
+          _authEmAndamento = false;
         }
       } else if (event === 'SIGNED_OUT') {
         currentUser = null;
+        _repIdCache  = null;
         mostrarLogin();
       }
     });
   } catch(e) { console.log('Auth listener erro:', e); }
 
-  // ── Fluxo PKCE: ?type=recovery — código já trocado automaticamente pelo SDK ──
+  // ── Fluxo PKCE: ?type=recovery ──
   if (searchParams.get('type') === 'recovery') {
     abrirNovaSenha();
     return;
   }
 
-  // ── Tenta autenticar com sessão existente ──
+  // ── Sessão existente (ex: reload da página) ──
   try {
     if (!sb || !sb.auth) { mostrarLogin(); return; }
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
-      currentUser = session.user;
-      await carregarRepresentante();
-      esconderLogin();
+      _authEmAndamento = true;
+      try {
+        currentUser = session.user;
+        await carregarRepresentante();
+        esconderLogin();
+      } finally {
+        _authEmAndamento = false;
+      }
     } else {
       mostrarLogin();
     }
