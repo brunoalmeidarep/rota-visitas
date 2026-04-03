@@ -1794,26 +1794,27 @@ async function fazerLogin() {
   };
 
   try {
+    alert('1 - captcha ok, chamando signIn...');
+
     const { data, error } = await sb.auth.signInWithPassword({
       email, password: senha,
       options: { captchaToken }
     });
-    console.log('[Login] signInWithPassword concluído. error:', error?.message || 'nenhum');
+
+    alert('2 - signIn retornou. erro: ' + (error?.message || 'nenhum'));
 
     if (error) {
       _restaurarBtn('E-mail ou senha incorretos.');
       return;
     }
 
-    console.log('[Login] Auth ok — usuário:', data.user?.email, '| Carregando representante...');
     currentUser = data.user;
+    alert('3 - auth ok: ' + data.user?.email + ' | carregando representante...');
 
     await carregarRepresentante();
-    console.log('[Login] carregarRepresentante concluído. currentRep?.id:', currentRep?.id || 'NÃO ENCONTRADO');
+    alert('4 - representante: ' + (currentRep?.id || 'NÃO ENCONTRADO'));
 
     if (!currentRep) {
-      // Usuário existe no Auth mas não na tabela representantes e a criação automática falhou
-      console.error('[Login] currentRep nulo após carregarRepresentante');
       await sb.auth.signOut();
       currentUser = null;
       _repIdCache  = null;
@@ -1821,12 +1822,12 @@ async function fazerLogin() {
       return;
     }
 
-    // Sucesso — esconde login e carrega o app
+    alert('5 - redirecionando para o app');
     if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
     esconderLogin();
 
   } catch(e) {
-    console.error('[Login] Erro inesperado:', e);
+    alert('ERRO no login: ' + e.message);
     _restaurarBtn('Erro inesperado. Tente novamente.');
   }
 }
