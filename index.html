@@ -2014,8 +2014,8 @@ async function loadClientes() {
 
     clientes = data.map(_mapearCliente);
     restaurarCheckinsDoDia();
-    renderList();
-    if (gmap) renderMapMarkers();
+    try { renderList(); } catch(e) { debugError('renderList error:', e); }
+    if (gmap) { try { renderMapMarkers(); } catch(e) { debugError('renderMapMarkers error:', e); } }
   } catch(e) {
     if (listEl) listEl.innerHTML = '<div class="empty">❌ Erro ao carregar clientes. Verifique sua conexão.</div>';
   }
@@ -5257,13 +5257,31 @@ async function dvConverterPedido(pedidoId) {
   if (!p._legado) {
     const { error } = await sb.from('pedidos').update(updates).eq('id', pedidoId).eq('rep_id', repId);
     if (error) { showToast('❌ Erro ao converter', true); return; }
+    // Atualiza visita pai para aparecer em totalVendas do relatório
+    if (dvVisitaAtual?.id) {
+      const valorPed = parseFloat(p.valor) || 0;
+      sb.from('visitas').update({ pedido_tipo: 'pedido', ...(valorPed > 0 ? { valor_pedido: valorPed } : {}) })
+        .eq('id', dvVisitaAtual.id).eq('rep_id', repId).catch(() => {});
+    }
   } else if (dvVisitaAtual?.id) {
     await sb.from('visitas').update({ pedido_tipo: 'pedido', orcamento_status: 'fechado', status_orcamento: 'fechado' })
       .eq('id', dvVisitaAtual.id).eq('rep_id', repId);
   }
+  // Atualiza cache local do relatório
+  if (dvVisitaAtual?.id) {
+    const vIdx = visatasDoRelatorio.findIndex(v => String(v.id) === String(dvVisitaAtual.id));
+    if (vIdx >= 0) {
+      visatasDoRelatorio[vIdx].pedido_tipo = 'pedido';
+      visatasDoRelatorio[vIdx].orcamento_status = 'fechado';
+      visatasDoRelatorio[vIdx].status_orcamento = 'fechado';
+      const val = parseFloat(p.valor) || 0;
+      if (val > 0) visatasDoRelatorio[vIdx].valor_pedido = val;
+    }
+  }
   Object.assign(p, updates);
   dvRenderPedidos();
   showToast('✓ Convertido em pedido!');
+  if (typeof renderReport === 'function') renderReport();
 }
 
 async function dvPerdeuPedido(pedidoId) {
@@ -5278,9 +5296,15 @@ async function dvPerdeuPedido(pedidoId) {
     await sb.from('visitas').update({ orcamento_status: 'perdido', status_orcamento: 'perdido' })
       .eq('id', dvVisitaAtual.id).eq('rep_id', repId);
   }
+  // Atualiza cache local do relatório
+  if (dvVisitaAtual?.id) {
+    const vIdx = visatasDoRelatorio.findIndex(v => String(v.id) === String(dvVisitaAtual.id));
+    if (vIdx >= 0) { visatasDoRelatorio[vIdx].orcamento_status = 'perdido'; visatasDoRelatorio[vIdx].status_orcamento = 'perdido'; }
+  }
   Object.assign(p, updates);
   dvRenderPedidos();
   showToast('✓ Orçamento marcado como perdido');
+  if (typeof renderReport === 'function') renderReport();
 }
 
 function abrirModalEditarPedido(pedido) {
@@ -9645,11 +9669,14 @@ function abrirNovaRota() {
   renderCidadesPillsRota();
   renderClientesRota();
   document.getElementById('rota-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 function fecharModalRota(e) {
-  if (!e || e.target === document.getElementById('rota-modal'))
+  if (!e || e.target === document.getElementById('rota-modal')) {
     document.getElementById('rota-modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
 }
 
 function renderCidadesPillsRota() {
@@ -9721,7 +9748,8 @@ async function salvarNovaRota() {
   const nome = document.getElementById('rota-nome-input').value.trim();
   if (!nome) { showToast('Dê um nome para a rota'); return; }
   if (novaRotaClientesSel.length < 2) { showToast('Selecione ao menos 2 clientes'); return; }
-  if (!currentRep) { showToast('Faça login primeiro'); return; }
+  const repId = await getRepId();
+  if (!repId) { showToast('Faça login primeiro'); return; }
 
   const btn = document.getElementById('btn-criar-rota');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Otimizando rota...'; }
@@ -9785,7 +9813,7 @@ async function salvarNovaRota() {
     km_total: Math.round(kmTotal * 10) / 10,
     tempo_estimado: Math.round(tempoEstimado),
     status: fonte === 'google' ? 'otimizada' : 'ativa',
-    rep_id: currentRep.id,
+    rep_id: repId,
     tipo_partida: rotaPartidaTipo,
     ponto_partida: endPartida,
     tipo_chegada: rotaChegadaTipo,
