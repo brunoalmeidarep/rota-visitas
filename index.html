@@ -1708,53 +1708,40 @@ async function carregarRepresentante() {
   _repIdCache = null;
   currentRep  = null;
   try {
-    const { data: { user: authUser } } = await sb.auth.getUser();
-    alert('DEBUG getRepId\nauth.uid = ' + (authUser?.id || 'NULL') + '\nemail = ' + (authUser?.email || 'NULL'));
+    // Usa RPC com SECURITY DEFINER para bypassar RLS da tabela representantes
+    const { data: rpcData, error: rpcErr } = await sb.rpc('get_my_representante');
+    console.log('[Rep] rpc get_my_representante:', rpcData, rpcErr?.message);
 
-    // Busca pelo auth_id — compatível com a RLS: USING (auth_id = auth.uid())
-    const { data: porAuth, error: errAuth } = await sb
-      .from('representantes')
-      .select('*')
-      .eq('auth_id', currentUser.id)
-      .maybeSingle();
-
-    alert('DEBUG busca por auth_id\nresultado: ' + JSON.stringify(porAuth) + '\nerro: ' + JSON.stringify(errAuth));
-
-    if (porAuth) {
-      currentRep = porAuth;
+    if (rpcData && rpcData.length > 0) {
+      currentRep = rpcData[0];
     } else {
-      // Fallback: busca por email (usuários antigos sem auth_id preenchido)
-      const { data: porEmail, error: errEmail } = await sb
-        .from('representantes')
-        .select('*')
-        .eq('email', currentUser.email)
-        .maybeSingle();
+      // RPC não encontrou — tenta criar (primeiro acesso)
+      const { data: novo, error: errIns } = await sb.from('representantes').insert({
+        email:   currentUser.email,
+        nome:    currentUser.email.split('@')[0],
+        auth_id: currentUser.id,
+        ativo:   true,
+      }).select().maybeSingle();
 
-      alert('DEBUG busca por email\nresultado: ' + JSON.stringify(porEmail) + '\nerro: ' + JSON.stringify(errEmail));
+      console.log('[Rep] insert:', novo?.id || 'falhou', errIns?.message);
 
-      if (porEmail) {
-        currentRep = porEmail;
-        // Vincula auth_id para que próximos logins usem a rota rápida
-        sb.from('representantes').update({ auth_id: currentUser.id }).eq('id', porEmail.id).catch(() => {});
+      if (novo) {
+        currentRep = novo;
       } else {
-        // Primeiro acesso real: cria registro
-        const { data: novo, error: errIns } = await sb.from('representantes').insert({
-          email:   currentUser.email,
-          nome:    currentUser.email.split('@')[0],
-          auth_id: currentUser.id,
-          ativo:   true,
-        }).select().maybeSingle();
-
-        alert('DEBUG insert representante\nresultado: ' + JSON.stringify(novo) + '\nerro: ' + JSON.stringify(errIns));
-        currentRep = novo || null;
+        // Última tentativa: busca direto por auth_id (se RLS já corrigida)
+        const { data: fallback } = await sb
+          .from('representantes').select('*')
+          .eq('auth_id', currentUser.id).maybeSingle();
+        currentRep = fallback || null;
+        console.log('[Rep] fallback direto:', currentRep?.id || 'NULL');
       }
     }
   } catch(e) {
-    alert('EXCEÇÃO carregarRepresentante: ' + e.message);
+    console.error('[Rep] exceção:', e.message);
     currentRep = null;
   }
   _repIdCache = currentRep?.id || null;
-  alert('DEBUG _repIdCache final: ' + (_repIdCache || 'NULL'));
+  console.log('[Rep] _repIdCache:', _repIdCache || 'NULL');
 }
 
 // Retorna o id correto de representantes para uso como rep_id
@@ -1792,45 +1779,21 @@ async function fazerLogin() {
   let loginOk = false;
 
   try {
-    alert('1 - chamando signIn...');
     const { data, error } = await sb.auth.signInWithPassword({
       email, password: senha,
       options: { captchaToken }
     });
 
-    // currentUser setado ANTES de qualquer alert para evitar race condition com onAuthStateChange
+    // currentUser setado antes de qualquer await para evitar race condition com onAuthStateChange
     if (!error) currentUser = data.user;
-
-    alert('2 - signIn retornou\nerro: ' + (error?.message || 'nenhum') + '\nuser: ' + (data?.user?.email || 'NULL'));
 
     if (error) {
       erro.textContent = 'E-mail ou senha incorretos.';
       return;
     }
 
-    alert('3 - buscando representante na tabela...');
-
-    const { data: _rep, error: _repErr } = await sb
-      .from('representantes')
-      .select('id, email, auth_id')
-      .eq('auth_id', currentUser.id)
-      .maybeSingle();
-
-    alert('4 - resultado:\n' + JSON.stringify(_rep) + '\nerro: ' + JSON.stringify(_repErr));
-
-    if (!_rep && !_repErr) {
-      // Tenta por email como fallback
-      const { data: _repEmail, error: _repEmailErr } = await sb
-        .from('representantes')
-        .select('id, email, auth_id')
-        .eq('email', currentUser.email)
-        .maybeSingle();
-      alert('4b - busca por email:\n' + JSON.stringify(_repEmail) + '\nerro: ' + JSON.stringify(_repEmailErr));
-    }
-
-    alert('5 - chamando carregarRepresentante...');
     await carregarRepresentante();
-    alert('6 - currentRep?.id: ' + (currentRep?.id || 'NULL'));
+    console.log('[Login] currentRep?.id:', currentRep?.id || 'NULL');
 
     if (!currentRep) {
       await sb.auth.signOut();
@@ -1841,11 +1804,10 @@ async function fazerLogin() {
     }
 
     loginOk = true;
-    alert('7 - sucesso! entrando no app...');
     esconderLogin();
 
   } catch(e) {
-    alert('EXCEÇÃO: ' + e.message);
+    console.error('[Login] exceção:', e.message);
     erro.textContent = 'Erro inesperado. Tente novamente.';
   } finally {
     // SEMPRE restaura o botão — independente do que aconteceu
