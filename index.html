@@ -1805,6 +1805,24 @@ async function fazerLogin() {
     }
 
     currentUser = data.user;
+
+    // ── DEBUG RAW: query direta antes de qualquer lógica ──
+    const { data: { user: _dbgUser } } = await sb.auth.getUser();
+    alert('DEBUG uid: ' + _dbgUser?.id + '\nemail: ' + _dbgUser?.email);
+
+    const { data: _dbgData, error: _dbgErr } = await sb
+      .from('representantes')
+      .select('id, email, auth_id')
+      .limit(10);
+    alert('DEBUG SELECT representantes (todos, limit 10):\n' + JSON.stringify(_dbgData) + '\nerro: ' + JSON.stringify(_dbgErr));
+
+    const { data: _dbgByAuth, error: _dbgByAuthErr } = await sb
+      .from('representantes')
+      .select('id, email, auth_id')
+      .eq('auth_id', _dbgUser?.id);
+    alert('DEBUG busca auth_id = ' + _dbgUser?.id + ':\n' + JSON.stringify(_dbgByAuth) + '\nerro: ' + JSON.stringify(_dbgByAuthErr));
+    // ── FIM DEBUG RAW ──
+
     alert('LOGIN 3 - carregando representante...');
 
     await carregarRepresentante();
