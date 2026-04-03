@@ -1,17 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<script>
-// Mata todos os Service Workers e limpa todos os caches imediatamente
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(registrations) {
-    for (let r of registrations) r.unregister();
-  });
-  caches.keys().then(function(names) {
-    for (let name of names) caches.delete(name);
-  });
-}
-</script>
 <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
@@ -10441,7 +10430,38 @@ function showToast(msg, isErr = false) {
 }
 </script>
 
-<!-- Service Worker desativado — reimplementar após estabilidade confirmada -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // Detecta nova versão do SW
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Nova versão pronta: pede ao SW para ativar imediatamente
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+    }).catch(err => console.log('SW erro:', err));
+
+    // Quando o SW novo assumir o controle, recarrega o app
+    let _swRefreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (_swRefreshing) return;
+      _swRefreshing = true;
+      if (typeof showToast === 'function') showToast('🔄 Atualizando...');
+      setTimeout(() => window.location.reload(), 1500);
+    });
+
+    // Mensagens do SW (ex: clique na notificação de tarefas)
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'OPEN_TAREFAS') showScreen('tarefas');
+    });
+  });
+}
+</script>
 
 
     <!-- TELA DE PERFIL -->
