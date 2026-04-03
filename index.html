@@ -154,6 +154,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .card-badge.red    { background:var(--red-bg);    color:var(--red); }
 .card-badge.purple { background:var(--purple-bg); color:var(--purple); }
 .card-arrow { color:var(--text3); font-size:18px; flex-shrink:0; margin-top:2px; }
+.card-wa-pedido-btn { background:#25D366;color:#fff;border:none;border-radius:8px;padding:6px 8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:3px;flex-shrink:0; }
 
 /* ── MAPA ───────────────────────────────────────────── */
 #map { flex:1; }
@@ -2366,6 +2367,7 @@ function cardHTML(c) {
         '<span class="card-badge ' + (c.visitadoHoje ? 'today' : s) + '">' + badgeTexto + '</span>' +
       '</div>' +
     '</div>' +
+    '<button class="card-wa-pedido-btn" onclick="event.stopPropagation();abrirWaPedido(' + c.id + ')" onpointerdown="event.preventDefault()"><svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 48 48\' width=\'13\' height=\'13\'><path fill=\'white\' d=\'M24 8C15.2 8 8 15.2 8 24c0 3.6 1.1 7 3 9.8L8 40l6.5-1.9C16.9 39.3 20.4 40 24 40c8.8 0 16-7.2 16-16S32.8 8 24 8zm7.9 21.9c-.3.9-1.8 1.7-2.5 1.8-.6.1-1.4.1-2.3-.1-.5-.1-1.2-.4-2-.7-3.5-1.5-5.8-5-6-5.2-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.7 1.3-3.1.3-.3.8-.5 1.2-.5h.8c.3 0 .6.1.8.7.3.8 1 2.6 1.1 2.8.1.2.1.4 0 .7-.1.2-.2.4-.4.6-.2.2-.4.5-.5.6-.2.2-.3.4-.1.7.2.3 1 1.6 2.1 2.6 1.5 1.3 2.7 1.7 3.1 1.9.3.1.6.1.8-.1.3-.3.6-.7.9-1.1.2-.3.5-.3.8-.2.3.1 2 .9 2.3 1.1.3.2.6.3.7.4.1.3.1 1-.2 1.9z\'/></svg>Pedido</button>' +
     '<div class="card-arrow">›</div>' +
   '</div>';
 }
@@ -4463,7 +4465,7 @@ function ciRenderPedidos() {
         </div>
         ${p.representada_nome?`<div style="font-size:13px;color:var(--text2)">${sanitize(p.representada_nome)}</div>`:''}
         ${val>0?`<div style="font-size:14px;font-weight:700;color:var(--green)">R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>`:''}
-        ${!isPedido?`<button onclick="ciConverterPedido(${i})" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;margin-top:6px">✓ Converter em pedido</button>`:''}
+        ${!isPedido && p.status !== 'perdido' && p.status !== 'fechado' ? `<div style="display:flex;gap:4px;margin-top:6px"><button onclick="ciConverterPedido(${i})" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">✓ Converter em pedido</button><button onclick="ciPerdeuPedido(${i})" style="background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">✗ Perdido</button></div>` : ''}
       </div>
       <button onclick="ciRemoverPedido(${i})" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0">×</button>
     </div>`;
@@ -4485,6 +4487,12 @@ function ciConverterPedido(idx) {
   if (!ciPedidosLista[idx]) return;
   ciPedidosLista[idx].tipo = 'pedido';
   ciPedidosLista[idx].status = 'fechado';
+  ciRenderPedidos();
+}
+
+function ciPerdeuPedido(idx) {
+  if (!ciPedidosLista[idx]) return;
+  ciPedidosLista[idx].status = 'perdido';
   ciRenderPedidos();
 }
 
@@ -4729,6 +4737,87 @@ async function fazerCheckin() {
     const cAtual = clientes.find(x => x.id == perfilId);
     if (cAtual) renderHistorico(perfilId, cAtual);
   });
+}
+
+// ── PEDIDO VIA WHATSAPP (CARTEIRA) ──────────────────────
+let waPedidoClienteId = null;
+let waTipoAtual = 'pedido';
+
+function abrirWaPedido(clienteId) {
+  waPedidoClienteId = clienteId;
+  const c = clientes.find(x => x.id == clienteId);
+  if (!c) return;
+  const nomeBase = c.nome.replace(/\s*\(.*?\)/, '').trim();
+  document.getElementById('wa-nome-cliente').textContent = nomeBase;
+  waTipoAtual = 'pedido';
+  document.getElementById('wa-tipo-pedido')?.classList.add('active');
+  document.getElementById('wa-tipo-orcamento')?.classList.remove('active');
+  document.getElementById('wa-valor').value = '';
+  document.getElementById('wa-obs').value = '';
+  const sel = document.getElementById('wa-representada');
+  if (sel) {
+    sel.innerHTML = '<option value="">Selecionar empresa...</option>' +
+      (representadasCache || []).map(r => `<option value="${r.id}">${sanitize(r.nome)}</option>`).join('');
+  }
+  document.getElementById('screen-wa-pedido').style.display = 'flex';
+}
+
+function closeWaPedido() {
+  document.getElementById('screen-wa-pedido').style.display = 'none';
+}
+
+function waSetTipo(tipo) {
+  waTipoAtual = tipo;
+  document.getElementById('wa-tipo-pedido')?.classList.toggle('active', tipo === 'pedido');
+  document.getElementById('wa-tipo-orcamento')?.classList.toggle('active', tipo === 'orcamento');
+}
+
+async function salvarWaPedido() {
+  if (!waPedidoClienteId || !currentUser) return;
+  const c = clientes.find(x => x.id == waPedidoClienteId);
+  if (!c) return;
+  const btn = document.querySelector('#screen-wa-pedido .pf-btn-registrar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+  try {
+    const repSel = document.getElementById('wa-representada');
+    const representadaId = repSel?.value || null;
+    const representadaNome = representadaId ? (repSel.options[repSel.selectedIndex]?.text || null) : null;
+    const valorRaw = (document.getElementById('wa-valor').value || '').replace(',', '.').replace(/[^\d.]/g, '');
+    const valor = parseFloat(valorRaw) || null;
+    const obs = document.getElementById('wa-obs').value.trim();
+    const repId = await getRepId();
+    const agora = new Date();
+    const hora = String(agora.getHours()).padStart(2,'0') + ':' + String(agora.getMinutes()).padStart(2,'0');
+    const dataHoje = dataHojeLocal();
+    const visitaPayload = {
+      id_cliente: String(c.id), nome_cliente: c.nome, cidade: c.cidade,
+      data: dataHoje, hora: hora, obs: obs, rep_id: repId,
+      tipo: 'whatsapp',
+      pedido_tipo: waTipoAtual, pedido_valor: valor, pedido_representada: representadaNome,
+      valor_pedido: valor, representada_id: representadaId,
+      orcamento_status: waTipoAtual === 'orcamento' ? 'aberto' : null,
+      status_orcamento: waTipoAtual === 'orcamento' ? 'aberto' : null,
+    };
+    const { data: visita, error: visErr } = await sb.from('visitas').insert(visitaPayload).select().maybeSingle();
+    if (visErr) throw visErr;
+    if (visita?.id) {
+      sb.from('pedidos').insert({
+        visita_id: visita.id, rep_id: repId,
+        representada_id: representadaId, representada_nome: representadaNome,
+        tipo: waTipoAtual, valor: valor,
+        status: waTipoAtual === 'orcamento' ? 'aberto' : 'fechado',
+      }).catch(() => {});
+    }
+    if (!historicoVisitas[c.id]) historicoVisitas[c.id] = [];
+    historicoVisitas[c.id].unshift({ ...visitaPayload, id: visita?.id });
+    showToast('✓ Pedido via WhatsApp salvo!');
+    closeWaPedido();
+  } catch(e) {
+    showToast('❌ Erro ao salvar', true);
+    debugError('salvarWaPedido:', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar pedido'; }
+  }
 }
 
 // ── LONG PRESS HISTÓRICO ──────────────────────────────
@@ -5108,7 +5197,7 @@ function dvRenderPedidos() {
       </div>
       ${rep ? `<div style="font-size:13px;color:var(--text2);margin-bottom:2px">${sanitize(rep)}</div>` : ''}
       ${val > 0 ? `<div style="font-size:15px;font-weight:700;color:var(--green)">R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>` : ''}
-      ${isOrcAberto ? `<button onclick="event.stopPropagation();dvConverterPedido('${p.id}')" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px">✓ Converter em pedido</button>` : ''}
+      ${isOrcAberto ? `<div style="display:flex;gap:6px;margin-top:8px"><button onclick="event.stopPropagation();dvConverterPedido('${p.id}')" style="flex:1;background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✓ Converter em pedido</button><button onclick="event.stopPropagation();dvPerdeuPedido('${p.id}')" style="flex:1;background:#A32D2D;color:#fff;border:none;border-radius:8px;padding:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✗ Perdido</button></div>` : ''}
     </div>`;
   }).join('');
 }
@@ -5175,6 +5264,23 @@ async function dvConverterPedido(pedidoId) {
   Object.assign(p, updates);
   dvRenderPedidos();
   showToast('✓ Convertido em pedido!');
+}
+
+async function dvPerdeuPedido(pedidoId) {
+  const p = dvPedidosCache.find(x => String(x.id) === String(pedidoId));
+  if (!p) return;
+  const updates = { status: 'perdido' };
+  const repId = await getRepId();
+  if (!p._legado) {
+    const { error } = await sb.from('pedidos').update(updates).eq('id', pedidoId).eq('rep_id', repId);
+    if (error) { showToast('❌ Erro', true); return; }
+  } else if (dvVisitaAtual?.id) {
+    await sb.from('visitas').update({ orcamento_status: 'perdido', status_orcamento: 'perdido' })
+      .eq('id', dvVisitaAtual.id).eq('rep_id', repId);
+  }
+  Object.assign(p, updates);
+  dvRenderPedidos();
+  showToast('✓ Orçamento marcado como perdido');
 }
 
 function abrirModalEditarPedido(pedido) {
@@ -10544,6 +10650,43 @@ if ('serviceWorker' in navigator) {
           <button class="gestao-btn-sm" style="flex:1;padding:12px;font-size:14px" onclick="fecharModalPagamentoBonif()">Cancelar</button>
           <button class="pf-btn-registrar" style="flex:2;margin:0" onclick="confirmarPagamentoBonif()" onpointerdown="event.preventDefault()">Confirmar</button>
         </div>
+      </div>
+    </div>
+
+    <!-- TELA PEDIDO VIA WHATSAPP -->
+    <div id="screen-wa-pedido" style="display:none;flex-direction:column;height:100%;background:var(--bg);position:fixed;top:0;left:0;right:0;bottom:0;z-index:610;animation:slideIn .22s ease">
+      <div class="gestao-header">
+        <button class="perfil-back" onclick="closeWaPedido()" style="flex-shrink:0">← Voltar</button>
+        <div class="gestao-titulo" style="display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20"><path fill="#25D366" d="M24 4C12.97 4 4 12.97 4 24c0 3.6 1 7 2.7 9.9L4 44l10.4-2.7C17 43 20.4 44 24 44c11.03 0 20-8.97 20-20S35.03 4 24 4zm7.9 27.9c-.3.9-1.8 1.7-2.5 1.8-.6.1-1.4.1-2.3-.1-.5-.1-1.2-.4-2-.7-3.5-1.5-5.8-5-6-5.2-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.7 1.3-3.1.3-.3.8-.5 1.2-.5h.8c.3 0 .6.1.8.7.3.8 1 2.6 1.1 2.8.1.2.1.4 0 .7-.1.2-.2.4-.4.6-.2.2-.4.5-.5.6-.2.2-.3.4-.1.7.2.3 1 1.6 2.1 2.6 1.5 1.3 2.7 1.7 3.1 1.9.3.1.6.1.8-.1.3-.3.6-.7.9-1.1.2-.3.5-.3.8-.2.3.1 2 .9 2.3 1.1.3.2.6.3.7.4.1.3.1 1-.2 1.9z"/></svg>Pedido via WhatsApp</div>
+        <div style="width:60px"></div>
+      </div>
+      <div class="gestao-body" style="overflow-y:auto;padding:16px;padding-bottom:80px">
+        <div id="wa-nome-cliente" style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:12px"></div>
+        <div style="background:rgba(37,211,102,.1);border:1.5px solid #25D366;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#1a8a42;line-height:1.5">
+          📵 Não conta como visita presencial — a última visita na carteira não será atualizada
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Tipo</label>
+          <div style="display:flex;gap:8px">
+            <button id="wa-tipo-pedido" class="ci-modo-pill active" onclick="waSetTipo('pedido')" style="flex:1">💰 Pedido</button>
+            <button id="wa-tipo-orcamento" class="ci-modo-pill" onclick="waSetTipo('orcamento')" style="flex:1">📋 Orçamento</button>
+          </div>
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Empresa (opcional)</label>
+          <select class="campo-input" id="wa-representada">
+            <option value="">Selecionar empresa...</option>
+          </select>
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Valor (R$)</label>
+          <input class="campo-input" id="wa-valor" type="text" inputmode="decimal" placeholder="0,00" oninput="maskMoeda(this)" enterKeyHint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('wa-obs').focus();}">
+        </div>
+        <div class="campo-grupo">
+          <label class="campo-label">Observações (opcional)</label>
+          <textarea class="campo-input" id="wa-obs" placeholder="Detalhes do pedido..." style="resize:none;min-height:80px"></textarea>
+        </div>
+        <button class="pf-btn-registrar" style="background:#25D366" onclick="salvarWaPedido()" onpointerdown="event.preventDefault()">💾 Salvar pedido</button>
       </div>
     </div>
 
