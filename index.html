@@ -2315,6 +2315,13 @@ async function carregarMarcadoresMapa() {
 
   renderMapMarkers();
   _mapAtualizarMensagemVazia(comCoords === 0);
+
+  // Geocodifica automaticamente clientes sem coordenadas
+  const semCoords = clientes.filter(c => !c.lat && !c.lng && c.endereco && c.cidade);
+  if (semCoords.length > 0) {
+    console.log('[Mapa] Geocodificando ' + semCoords.length + ' clientes sem coordenadas...');
+    geocodeAll();
+  }
 }
 
 function _mapAtualizarMensagemVazia(vazio) {
