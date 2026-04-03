@@ -74,6 +74,19 @@ let bonifAtual         = [];
 let bonifDetalheId     = null;
 let representadasList  = [];
 
+// ── CHECK-IN PEDIDOS ─────────────────────────────────────────────────
+let ciPedidos = [];   // pedidos sendo criados no check-in atual
+
+// ── PEDIDO SEM VISITA ────────────────────────────────────────────────
+let waCanal   = null; // 'whatsapp' | 'telefone'
+let waPedidos = [];   // pedidos do modal WA/Tel
+
+// ── DETALHE VISITA ───────────────────────────────────────────────────
+let visitasHistoricoCache = {};  // { visitaId: visita }
+let visitaDetAtual        = null;
+let visitaModoEdicao      = false;
+let pedidosVisitaAtual    = [];
+
 // ── PLANNER ──────────────────────────────────────────────────────────
 let plannerMode    = false;
 let plannerSel     = new Map();  // id → { horTipo:'nenhum'|'obrigatorio'|'preferencial', horario:'HH:MM' }
@@ -498,18 +511,24 @@ function renderDetail(c) {
         </button>
         <button class="det-btn secondary maps" onclick="abrirMaps(${c.id})" title="Abrir no Google Maps">↗</button>
       </div>
+      ${!visitadoHoje ? `
+      <div class="det-pedido-canais">
+        <button class="det-btn-canal wa" onclick="abrirPedidoSemVisita('whatsapp')">💬 WhatsApp</button>
+        <button class="det-btn-canal tel" onclick="abrirPedidoSemVisita('telefone')">📞 Telefone</button>
+      </div>` : ''}
     </div>
 
     <!-- FORM CHECK-IN (oculto até clicar) -->
     <div id="checkin-form-wrap" class="det-section" style="display:none">
-      <div class="det-section-title">Registrar visita</div>
+      <div class="det-section-title">Registrar visita presencial</div>
       <div class="checkin-form">
-        <textarea class="checkin-obs" id="checkin-obs" placeholder="Observações, pedido feito, retornar em X dias..."></textarea>
-        <div class="checkin-valor-row">
-          <span class="checkin-valor-pre">R$</span>
-          <input type="number" class="checkin-valor-input" id="checkin-valor" placeholder="Valor do pedido (opcional)" step="0.01" min="0">
+        <textarea class="checkin-obs" id="checkin-obs" placeholder="Observações, próximo contato, decisões..."></textarea>
+        <div class="ci-pedidos-header">
+          <span class="ci-pedidos-label">Pedidos desta visita</span>
+          <button type="button" class="ci-add-btn" onclick="ciAdicionarPedido()">+ Adicionar</button>
         </div>
-        <button class="det-btn primary" onclick="doCheckin(${c.id})">✓ Confirmar visita</button>
+        <div id="ci-pedidos-list"><div class="ci-empty">Nenhum pedido — clique em "+ Adicionar" para incluir.</div></div>
+        <button class="det-btn primary" style="margin-top:4px" onclick="doCheckin(${c.id})">✓ Confirmar visita</button>
       </div>
     </div>
 
@@ -587,6 +606,10 @@ function toggleCheckinForm() {
   const wrap = document.getElementById('checkin-form-wrap');
   if (!wrap) return;
   const visible = wrap.style.display !== 'none';
+  if (!visible) {
+    ciPedidos = [];
+    ciRenderPedidos();
+  }
   wrap.style.display = visible ? 'none' : 'block';
   if (!visible) document.getElementById('checkin-obs')?.focus();
 }
@@ -596,20 +619,21 @@ async function doCheckin(id) {
   const c = clientes.find(x => x.id === id);
   if (!c || c.visitadoHoje) return;
 
-  const obs      = document.getElementById('checkin-obs')?.value.trim() || '';
-  const valorRaw = document.getElementById('checkin-valor')?.value;
-  const valor    = valorRaw ? parseFloat(valorRaw) : null;
-  const hora     = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const data     = new Date().toISOString().slice(0, 10);
+  const obs  = document.getElementById('checkin-obs')?.value.trim() || '';
+  const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const data = new Date().toISOString().slice(0, 10);
+
+  // Snapshot dos pedidos antes de re-renderizar
+  const pedidosSnap = [...ciPedidos];
 
   c.visitadoHoje = true;
   c.horaHoje     = hora;
   c.ultimaVisita = data;
   if (obs) c.ultimaObs = obs;
 
-  // Salva local para restaurar no reload
   localStorage.setItem(`checkin_${c.id}_${data}`, JSON.stringify({ hora, obs }));
 
+  ciPedidos = [];
   renderList();
   renderCounters();
   renderDetail(c);
@@ -619,6 +643,9 @@ async function doCheckin(id) {
   }
 
   try {
+    const repId = await getRepId();
+    const totalPedidos = pedidosSnap.reduce((s, p) => s + (p.valor || 0), 0);
+
     const payload = {
       id_cliente:   String(c.id),
       nome_cliente: c.nome,
@@ -628,13 +655,106 @@ async function doCheckin(id) {
       rep_id:       currentUser.id,
       tipo:         'visita',
     };
-    if (valor !== null) payload.valor_pedido = valor;
-    await sb.from('visitas').insert(payload);
+    if (totalPedidos > 0) payload.valor_pedido = totalPedidos;
+
+    const { data: visitaData, error: errV } = await sb.from('visitas').insert(payload).select().single();
+    if (errV) throw errV;
+
+    // Salva pedidos se existirem
+    if (pedidosSnap.length > 0 && visitaData?.id) {
+      const pedidosPayload = pedidosSnap.map(p => ({
+        visita_id:         visitaData.id,
+        rep_id:            repId,
+        cliente_id:        String(c.id),
+        cliente_nome:      c.nome,
+        representada_id:   p.representada_id   || null,
+        representada_nome: p.representada_nome || null,
+        tipo:              p.tipo   || 'pedido',
+        valor:             p.valor  || 0,
+        status:            p.status || null,
+        tipo_contato:      null,   // presencial
+      }));
+      await sb.from('pedidos').insert(pedidosPayload);
+    }
+
     await sb.from('clientes').update({ ultima_visita: data }).eq('id', String(c.id));
     showToast('✓ Visita registrada!');
   } catch(e) {
+    console.warn('doCheckin:', e);
     showToast('⚠️ Salvo localmente', true);
   }
+}
+
+// ── CHECK-IN — gerenciamento de pedidos ──────────────────────────────
+function ciRenderPedidos() {
+  const el = document.getElementById('ci-pedidos-list');
+  if (!el) return;
+  if (!ciPedidos.length) {
+    el.innerHTML = '<div class="ci-empty">Nenhum pedido — clique em "+ Adicionar" para incluir.</div>';
+    return;
+  }
+  el.innerHTML = ciPedidos.map((p, idx) => {
+    const repOpts = representadasList.map(r =>
+      `<option value="${r.id}" data-nome="${r.nome}"${p.representada_id == r.id ? ' selected' : ''}>${r.nome}</option>`
+    ).join('');
+    return `
+      <div class="ci-pedido-card">
+        <div class="ci-pedido-row">
+          <select class="ci-select" onchange="ciSetRep(${idx},this)">
+            <option value="">Representada (opcional)...</option>${repOpts}
+          </select>
+          <button class="ci-remove-btn" onclick="ciRemoverPedido(${idx})">×</button>
+        </div>
+        <div class="ci-pedido-row">
+          <div class="ci-tipo-btns">
+            <button class="ci-tipo-btn${p.tipo==='pedido'?' active':''}" onclick="ciSetTipo(${idx},'pedido')">Pedido</button>
+            <button class="ci-tipo-btn${p.tipo==='orcamento'?' active':''}" onclick="ciSetTipo(${idx},'orcamento')">Orçamento</button>
+          </div>
+          <input class="ci-valor-input" type="text" inputmode="decimal" placeholder="R$ 0,00"
+            value="${p.valor ? p.valor.toFixed(2).replace('.',',') : ''}"
+            oninput="ciSetValor(${idx},this)" onblur="maskMoeda(this)">
+        </div>
+        ${p.tipo==='orcamento' ? `
+        <div class="ci-status-row">
+          <span class="ci-status-label">Status:</span>
+          <button class="ci-status-btn${p.status==='aberto'?' active':''}" onclick="ciSetStatus(${idx},'aberto')">Aberto</button>
+          <button class="ci-status-btn${p.status==='ganho'?' active':''}" onclick="ciSetStatus(${idx},'ganho')">Ganho</button>
+          <button class="ci-status-btn${p.status==='perdido'?' active':''}" onclick="ciSetStatus(${idx},'perdido')">Perdido</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function ciAdicionarPedido() {
+  ciPedidos.push({ representada_id: null, representada_nome: null, tipo: 'pedido', valor: 0, status: null });
+  ciRenderPedidos();
+}
+
+function ciRemoverPedido(idx) {
+  ciPedidos.splice(idx, 1);
+  ciRenderPedidos();
+}
+
+function ciSetRep(idx, sel) {
+  const opt = sel.options[sel.selectedIndex];
+  ciPedidos[idx].representada_id   = sel.value || null;
+  ciPedidos[idx].representada_nome = opt.dataset.nome || null;
+}
+
+function ciSetTipo(idx, tipo) {
+  ciPedidos[idx].tipo   = tipo;
+  ciPedidos[idx].status = tipo === 'orcamento' ? 'aberto' : null;
+  ciRenderPedidos();
+}
+
+function ciSetValor(idx, el) {
+  const v = el.value.replace(/\./g, '').replace(',', '.');
+  ciPedidos[idx].valor = parseFloat(v) || 0;
+}
+
+function ciSetStatus(idx, status) {
+  ciPedidos[idx].status = status;
+  ciRenderPedidos();
 }
 
 // ── HISTÓRICO ────────────────────────────────────────────────────────
@@ -649,29 +769,38 @@ async function carregarHistorico(clienteId) {
       .eq('rep_id', currentUser.id)
       .order('data', { ascending: false })
       .order('hora', { ascending: false })
-      .limit(20);
+      .limit(30);
     if (error) throw error;
     const visitas = data || [];
     if (!visitas.length) {
       el.innerHTML = `<div class="hist-obs-empty" style="padding:8px 0">Nenhuma visita registrada ainda.</div>`;
       return;
     }
+    // Cacheia para o detalhe
+    visitas.forEach(v => { visitasHistoricoCache[v.id] = v; });
+
     const hoje = new Date().toISOString().slice(0, 10);
     el.innerHTML = visitas.map(v => {
-      const isHoje   = v.data === hoje;
+      const isHoje    = v.data === hoje;
       const diasAtras = Math.floor((Date.now() - new Date(v.data + 'T00:00:00')) / 86400000);
-      const isRecent = diasAtras <= 7;
-      const dotClass = isHoje ? 'hoje' : isRecent ? 'recent' : '';
-      const icon = isHoje ? '🟡' : isRecent ? '🟢' : '·';
-      const valorStr = v.valor_pedido ? `<div class="hist-valor">R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>` : '';
+      const isRecent  = diasAtras <= 7;
+      const dotClass  = isHoje ? 'hoje' : isRecent ? 'recent' : '';
+      const icon      = isHoje ? '🟡' : isRecent ? '🟢' : '·';
+      const valorStr  = v.valor_pedido
+        ? `<div class="hist-valor">R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>`
+        : '';
+      const canalBadge = v.via_whatsapp
+        ? `<span class="hist-canal-badge wa">💬 WhatsApp</span>`
+        : '';
       return `
-        <div class="hist-item">
+        <div class="hist-item clickable" onclick="abrirDetalheVisita('${v.id}')">
           <div class="hist-dot ${dotClass}">${icon}</div>
           <div class="hist-content">
-            <div class="hist-data">${formatDate(v.data)} às ${v.hora || '—'}</div>
+            <div class="hist-data">${formatDate(v.data)} às ${v.hora || '—'} ${canalBadge}</div>
             ${v.obs ? `<div class="hist-obs">${v.obs}</div>` : `<div class="hist-obs-empty">Sem observação</div>`}
             ${valorStr}
           </div>
+          <div class="hist-arrow">›</div>
         </div>`;
     }).join('');
   } catch(e) {
@@ -954,6 +1083,7 @@ function renderRadarSection(rows) {
 
 // ── RELATÓRIO DETALHE ────────────────────────────────────────────────
 async function abrirDetalheRelatorio(tipo) {
+  relDetalheAtivo = tipo;
   document.getElementById('rep-body').style.display = 'none';
   const det = document.getElementById('rep-detail');
   det.style.display = 'flex';
@@ -976,6 +1106,11 @@ async function abrirDetalheRelatorio(tipo) {
   document.getElementById('rep-detail-titulo').textContent = titulos[tipo] || tipo;
   document.getElementById('rep-detail-meta').textContent = periodoLabel;
 
+  // Mostra botão PDF apenas para tipos exportáveis
+  const exportaveis = ['visitas','vendas','top-compradores','mais-lucrativos','clientes-sumindo'];
+  const btnPdf = document.getElementById('btn-pdf-relatorio');
+  if (btnPdf) btnPdf.style.display = exportaveis.includes(tipo) ? '' : 'none';
+
   const body = document.getElementById('rep-detail-body');
   body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Carregando...</div>';
 
@@ -996,6 +1131,7 @@ async function abrirDetalheRelatorio(tipo) {
 }
 
 function fecharDetalheRelatorio() {
+  relDetalheAtivo = null;
   const det = document.getElementById('rep-detail');
   const body = document.getElementById('rep-body');
   if (det)  det.style.display = 'none';
@@ -1861,6 +1997,12 @@ async function salvarCliente() {
       lat:          novoClienteCoords?.lat || null,
       lng:          novoClienteCoords?.lng || null,
     };
+    // Geocoding automático se não tiver GPS mas tiver endereço/cidade
+    if (!novoClienteCoords && (payload.endereco || payload.cep) && cidade) {
+      btn.textContent = 'Geocodificando...';
+      const coords = await geocodeEndereco(payload.endereco || payload.cep, cidade);
+      if (coords) { payload.lat = coords.lat; payload.lng = coords.lng; }
+    }
     const { data, error } = await sb.from('clientes').insert(payload).select().single();
     if (error) throw error;
     clientes.push(mapCliente(data));
@@ -1871,6 +2013,293 @@ async function salvarCliente() {
     showToast('Erro ao salvar: ' + (e.message || ''), true);
   }
   btn.disabled = false; btn.textContent = 'Salvar cliente';
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────────────
+
+function _novoPDF(titulo, subtitulo) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  doc.setFont('helvetica');
+
+  // Cabeçalho
+  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+  doc.text(titulo, 14, 18);
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120);
+  doc.text(subtitulo, 14, 25);
+  doc.setTextColor(0);
+  return doc;
+}
+
+function _nomePeriodo() {
+  if (relFiltro === 'hoje')   return 'Hoje — ' + new Date().toLocaleDateString('pt-BR');
+  if (relFiltro === 'semana') return 'Esta semana';
+  const n = new Date(relAno, relMes, 1)
+    .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
+let relDetalheAtivo = null; // tipo aberto no detalhe do relatório
+
+function exportarPDFRelatorio() {
+  if (!relDetalheAtivo) return;
+  if (relDetalheAtivo === 'visitas')          exportarPDFVisitas();
+  else if (relDetalheAtivo === 'vendas')      exportarPDFVendas();
+  else if (relDetalheAtivo === 'top-compradores') exportarPDFTopCompradores();
+  else if (relDetalheAtivo === 'clientes-sumindo') exportarPDFClientesSumindo();
+  else if (relDetalheAtivo === 'mais-lucrativos')  exportarPDFMaisLucrativos();
+  else showToast('Exportação não disponível para este tipo', true);
+}
+
+function exportarPDFVisitas() {
+  if (!relRowsAtual.length) { showToast('Nenhuma visita para exportar', true); return; }
+  const periodo = _nomePeriodo();
+  const doc = _novoPDF('Relatório de Visitas', periodo);
+
+  const rows = [...relRowsAtual].sort((a, b) => b.data.localeCompare(a.data));
+  const body = rows.map(v => [
+    formatDate(v.data),
+    v.hora || '—',
+    v.nome_cliente || '—',
+    v.cidade || '—',
+    v.obs ? (v.obs.length > 60 ? v.obs.slice(0, 60) + '…' : v.obs) : '',
+    v.valor_pedido ? 'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '',
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Hora', 'Cliente', 'Cidade', 'Observação', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [0, 122, 255], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 20 }, 1: { cellWidth: 14 }, 5: { cellWidth: 26, halign: 'right' } },
+    alternateRowStyles: { fillColor: [245, 245, 250] },
+  });
+
+  const total = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
+  if (total > 0) {
+    const y = doc.lastAutoTable.finalY + 6;
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text(`Total: R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits:2})}`, 14, y);
+  }
+
+  doc.save(`visitas_${periodo.replace(/\s/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFVendas() {
+  const rows = relRowsAtual.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+  if (!rows.length) { showToast('Nenhuma venda com valor para exportar', true); return; }
+  const periodo = _nomePeriodo();
+  const doc = _novoPDF('Relatório de Vendas', periodo);
+
+  const ordenado = [...rows].sort((a, b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
+  const body = ordenado.map(v => [
+    formatDate(v.data),
+    v.nome_cliente || '—',
+    v.cidade || '—',
+    v.representada_nome || v.pedido_representada || '—',
+    'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}),
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Cliente', 'Cidade', 'Representada', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [52, 199, 89], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 4: { halign: 'right', cellWidth: 30 } },
+    alternateRowStyles: { fillColor: [245, 250, 245] },
+  });
+
+  const total = rows.reduce((s, v) => s + parseFloat(v.valor_pedido), 0);
+  const y = doc.lastAutoTable.finalY + 6;
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+  doc.text(`Total vendido: R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits:2})}`, 14, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  doc.text(`${rows.length} pedidos com valor`, 14, y + 6);
+
+  doc.save(`vendas_${periodo.replace(/\s/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFTopCompradores() {
+  const comValor = relRowsAtual.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+  if (!comValor.length) { showToast('Sem dados de valor para exportar', true); return; }
+  const periodo = _nomePeriodo();
+  const doc = _novoPDF('Top Compradores', periodo);
+
+  const byCliente = {};
+  comValor.forEach(v => {
+    const k = v.id_cliente;
+    if (!byCliente[k]) byCliente[k] = { nome: v.nome_cliente, cidade: v.cidade, total: 0, pedidos: 0 };
+    byCliente[k].total   += parseFloat(v.valor_pedido);
+    byCliente[k].pedidos += 1;
+  });
+  const ranking = Object.values(byCliente).sort((a, b) => b.total - a.total);
+  const body = ranking.map((r, i) => [
+    `#${i+1}`,
+    r.nome,
+    r.cidade || '—',
+    String(r.pedidos),
+    'R$ ' + r.total.toLocaleString('pt-BR', {minimumFractionDigits:2}),
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['#', 'Cliente', 'Cidade', 'Pedidos', 'Total']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [255, 149, 0], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 10 }, 3: { halign: 'center' }, 4: { halign: 'right', cellWidth: 32 } },
+    alternateRowStyles: { fillColor: [255, 249, 240] },
+  });
+
+  doc.save(`top_compradores_${periodo.replace(/\s/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFClientesSumindo() {
+  const sumindo = clientes
+    .filter(c => { const st = getStatus(c); return st === 'blue' || st === 'red'; })
+    .map(c => {
+      const dias = c.ultimaVisita
+        ? Math.floor((Date.now() - new Date(c.ultimaVisita + 'T00:00:00')) / 86400000)
+        : null;
+      return { ...c, dias };
+    })
+    .sort((a, b) => (b.dias ?? 9999) - (a.dias ?? 9999));
+
+  if (!sumindo.length) { showToast('Nenhum cliente sumindo', true); return; }
+  const doc = _novoPDF('Clientes Sumindo', new Date().toLocaleDateString('pt-BR'));
+
+  const body = sumindo.map(c => [
+    c.nome,
+    c.cidade || '—',
+    STATUS_LABELS[getStatus(c)],
+    c.ultimaVisita ? formatDate(c.ultimaVisita) : 'Nunca',
+    c.dias !== null ? `${c.dias} dias` : '—',
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Cliente', 'Cidade', 'Status', 'Última visita', 'Dias sem visita']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [255, 59, 48], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 4: { halign: 'right' } },
+    alternateRowStyles: { fillColor: [255, 245, 245] },
+  });
+
+  doc.save('clientes_sumindo.pdf');
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFMaisLucrativos() {
+  exportarPDFTopCompradores(); // mesma lógica com nome diferente
+}
+
+async function exportarPDFGastos() {
+  const c = clientes.find(x => x.id === activeId);
+  if (!c) return;
+  if (!gastosClienteAtual.length) { showToast('Nenhum gasto para exportar', true); return; }
+
+  const doc = _novoPDF('Gastos com Cliente', c.nome);
+  const sorted = [...gastosClienteAtual].sort((a, b) => b.data.localeCompare(a.data));
+  const body = sorted.map(g => [
+    new Date(g.data + 'T12:00:00').toLocaleDateString('pt-BR'),
+    g.descricao || '—',
+    g.url_comprovante ? 'Sim' : '—',
+    'R$ ' + (g.valor || 0).toFixed(2).replace('.', ','),
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Descrição', 'NF', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [0, 122, 255], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 3: { halign: 'right', cellWidth: 28 } },
+    alternateRowStyles: { fillColor: [245, 245, 250] },
+  });
+
+  const total = gastosClienteAtual.reduce((s, g) => s + (g.valor || 0), 0);
+  const y = doc.lastAutoTable.finalY + 6;
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+  doc.text(`Total: R$ ${total.toFixed(2).replace('.', ',')}`, 14, y);
+
+  doc.save(`gastos_${c.nome.replace(/\s+/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+async function exportarPDFFinancas() {
+  if (!lancamentosCache.length) { showToast('Nenhum lançamento no período', true); return; }
+
+  const periodo = (() => {
+    const p = finTab === 'resumo' ? finPeriodoResumo : finPeriodo;
+    if (p === 'hoje')   return 'Hoje — ' + new Date().toLocaleDateString('pt-BR');
+    if (p === 'semana') return 'Esta semana';
+    return 'Este mês';
+  })();
+  const doc = _novoPDF('Finanças — Lançamentos', periodo);
+
+  const sorted = [...lancamentosCache].sort((a, b) => b.data.localeCompare(a.data));
+  const body = sorted.map(l => {
+    const isHosp = l.categoria === 'Hospedagem';
+    const desc = isHosp ? (l.hotel_nome || l.descricao || 'Hospedagem') : (l.descricao || l.categoria);
+    return [
+      new Date(l.data + 'T12:00:00').toLocaleDateString('pt-BR'),
+      l.tipo === 'receita' ? 'Receita' : 'Gasto',
+      l.categoria || '—',
+      desc,
+      (l.tipo === 'receita' ? '+' : '-') + 'R$ ' + Number(l.valor).toFixed(2).replace('.', ','),
+    ];
+  });
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [52, 199, 89], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 4: { halign: 'right', cellWidth: 30 } },
+    alternateRowStyles: { fillColor: [245, 250, 245] },
+    bodyStyles: {
+      didParseCell: (data) => {
+        if (data.column.index === 4 && data.cell.text[0]?.startsWith('-'))
+          data.cell.styles.textColor = [255, 59, 48];
+        if (data.column.index === 4 && data.cell.text[0]?.startsWith('+'))
+          data.cell.styles.textColor = [52, 199, 89];
+      }
+    },
+  });
+
+  const receitas = lancamentosCache.filter(l => l.tipo === 'receita').reduce((s, l) => s + Number(l.valor), 0);
+  const gastos   = lancamentosCache.filter(l => l.tipo === 'gasto').reduce((s, l) => s + Number(l.valor), 0);
+  const saldo    = receitas - gastos;
+  const y = doc.lastAutoTable.finalY + 8;
+  doc.setFontSize(9);
+  doc.text(`Receitas: R$ ${receitas.toFixed(2).replace('.',',')}   Gastos: R$ ${gastos.toFixed(2).replace('.',',')}   Saldo: R$ ${saldo.toFixed(2).replace('.',',')}`, 14, y);
+
+  doc.save(`financas_${periodo.replace(/[\s\/—]/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+// ── GEOCODING ─────────────────────────────────────────────────────────
+function geocodeEndereco(endereco, cidade) {
+  return new Promise(resolve => {
+    if (!window.google?.maps?.Geocoder) { resolve(null); return; }
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: `${endereco}, ${cidade}, Brasil` }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const loc = results[0].geometry.location;
+        resolve({ lat: loc.lat(), lng: loc.lng() });
+      } else {
+        resolve(null);
+      }
+    });
+  });
 }
 
 // ── UTILITÁRIOS ──────────────────────────────────────────────────────
@@ -2601,6 +3030,8 @@ function setFinTab(tab) {
   });
   const novoBtn = document.getElementById('fin-novo-btn');
   if (novoBtn) novoBtn.style.display = tab === 'lancamentos' ? 'block' : 'none';
+  const pdfBtn = document.getElementById('fin-pdf-btn');
+  if (pdfBtn) pdfBtn.style.display = tab === 'lancamentos' ? 'block' : 'none';
   if (tab === 'lancamentos')  carregarLancamentos().then(renderLancamentos);
   if (tab === 'impostos')     carregarImpostos().then(renderImpostos);
   if (tab === 'resumo')       carregarLancamentos().then(renderResumoFin);
@@ -2941,6 +3372,134 @@ async function salvarConfigPerfil() {
 
 // ── GASTOS COM CLIENTE ────────────────────────────────────────────────
 
+// ── PEDIDO SEM VISITA (WhatsApp / Telefone) ───────────────────────────
+function abrirPedidoSemVisita(canal) {
+  const c = clientes.find(x => x.id === activeId);
+  if (!c) return;
+  waCanal   = canal;
+  waPedidos = [{ representada_id: null, representada_nome: null, tipo: 'pedido', valor: 0, status: null }];
+
+  document.getElementById('wa-modal-titulo').textContent =
+    canal === 'whatsapp' ? '💬 Pedido via WhatsApp' : '📞 Pedido via Telefone';
+  document.getElementById('wa-cliente-nome').textContent = c.nome + ' · ' + c.cidade;
+  document.getElementById('wa-obs').value = '';
+
+  waRenderPedidos();
+  document.getElementById('wa-modal').classList.add('open');
+}
+
+function fecharPedidoSemVisita() {
+  document.getElementById('wa-modal').classList.remove('open');
+  waCanal   = null;
+  waPedidos = [];
+}
+
+async function salvarPedidoSemVisita() {
+  const c = clientes.find(x => x.id === activeId);
+  if (!c || !waCanal) return;
+  if (!waPedidos.length) { showToast('Adicione ao menos um pedido', true); return; }
+
+  const obs = document.getElementById('wa-obs')?.value.trim() || '';
+  const btn = document.getElementById('wa-btn-salvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  try {
+    const repId = await getRepId();
+    const pedidosPayload = waPedidos.map(p => ({
+      visita_id:         null,         // sem visita
+      rep_id:            repId,
+      cliente_id:        String(c.id),
+      cliente_nome:      c.nome,
+      representada_id:   p.representada_id   || null,
+      representada_nome: p.representada_nome || null,
+      tipo:              p.tipo   || 'pedido',
+      valor:             p.valor  || 0,
+      status:            p.status || null,
+      tipo_contato:      waCanal,      // 'whatsapp' | 'telefone'
+      obs:               obs || null,
+    }));
+    const { error } = await sb.from('pedidos').insert(pedidosPayload);
+    if (error) throw error;
+    // Regra: NÃO atualiza ultima_visita
+    showToast(`✓ Pedido via ${waCanal === 'whatsapp' ? 'WhatsApp' : 'Telefone'} registrado!`);
+    fecharPedidoSemVisita();
+  } catch(e) {
+    showToast('Erro ao salvar: ' + (e.message || ''), true);
+  }
+  btn.disabled = false; btn.textContent = 'Salvar pedido';
+}
+
+function waRenderPedidos() {
+  const el = document.getElementById('wa-pedidos-list');
+  if (!el) return;
+  if (!waPedidos.length) {
+    el.innerHTML = '<div class="ci-empty">Nenhum pedido adicionado.</div>';
+    return;
+  }
+  el.innerHTML = waPedidos.map((p, idx) => {
+    const repOpts = representadasList.map(r =>
+      `<option value="${r.id}" data-nome="${r.nome}"${p.representada_id == r.id ? ' selected' : ''}>${r.nome}</option>`
+    ).join('');
+    return `
+      <div class="ci-pedido-card">
+        <div class="ci-pedido-row">
+          <select class="ci-select" onchange="waSetRep(${idx},this)">
+            <option value="">Representada (opcional)...</option>${repOpts}
+          </select>
+          <button class="ci-remove-btn" onclick="waRemoverPedido(${idx})">×</button>
+        </div>
+        <div class="ci-pedido-row">
+          <div class="ci-tipo-btns">
+            <button class="ci-tipo-btn${p.tipo==='pedido'?' active':''}" onclick="waSetTipo(${idx},'pedido')">Pedido</button>
+            <button class="ci-tipo-btn${p.tipo==='orcamento'?' active':''}" onclick="waSetTipo(${idx},'orcamento')">Orçamento</button>
+          </div>
+          <input class="ci-valor-input" type="text" inputmode="decimal" placeholder="R$ 0,00"
+            value="${p.valor ? p.valor.toFixed(2).replace('.',',') : ''}"
+            oninput="waSetValor(${idx},this)" onblur="maskMoeda(this)">
+        </div>
+        ${p.tipo==='orcamento' ? `
+        <div class="ci-status-row">
+          <span class="ci-status-label">Status:</span>
+          <button class="ci-status-btn${p.status==='aberto'?' active':''}" onclick="waSetStatus(${idx},'aberto')">Aberto</button>
+          <button class="ci-status-btn${p.status==='ganho'?' active':''}" onclick="waSetStatus(${idx},'ganho')">Ganho</button>
+          <button class="ci-status-btn${p.status==='perdido'?' active':''}" onclick="waSetStatus(${idx},'perdido')">Perdido</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function waAdicionarPedido() {
+  waPedidos.push({ representada_id: null, representada_nome: null, tipo: 'pedido', valor: 0, status: null });
+  waRenderPedidos();
+}
+
+function waRemoverPedido(idx) {
+  waPedidos.splice(idx, 1);
+  waRenderPedidos();
+}
+
+function waSetRep(idx, sel) {
+  const opt = sel.options[sel.selectedIndex];
+  waPedidos[idx].representada_id   = sel.value || null;
+  waPedidos[idx].representada_nome = opt.dataset.nome || null;
+}
+
+function waSetTipo(idx, tipo) {
+  waPedidos[idx].tipo   = tipo;
+  waPedidos[idx].status = tipo === 'orcamento' ? 'aberto' : null;
+  waRenderPedidos();
+}
+
+function waSetValor(idx, el) {
+  const v = el.value.replace(/\./g, '').replace(',', '.');
+  waPedidos[idx].valor = parseFloat(v) || 0;
+}
+
+function waSetStatus(idx, status) {
+  waPedidos[idx].status = status;
+  waRenderPedidos();
+}
+
 async function carregarRepresentadasDesktop() {
   if (!currentRep) return;
   const { data } = await sb.from('representadas').select('id,nome').eq('rep_id', currentRep.id).order('nome');
@@ -2950,19 +3509,202 @@ async function carregarRepresentadasDesktop() {
 function showDetailOverlay(panelId) {
   document.getElementById('detail-empty').style.display = 'none';
   document.getElementById('detail-body').style.display = 'none';
-  ['panel-gastos', 'panel-bonif'].forEach(id => {
+  ['panel-gastos', 'panel-bonif', 'panel-visita-detalhe'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === panelId ? 'flex' : 'none';
   });
 }
 
 function fecharPainelDetalhe() {
-  ['panel-gastos', 'panel-bonif'].forEach(id => {
+  ['panel-gastos', 'panel-bonif', 'panel-visita-detalhe'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
   const c = clientes.find(x => x.id === activeId);
   if (c) renderDetail(c);
+}
+
+// ── DETALHE VISITA ───────────────────────────────────────────────────
+function abrirDetalheVisita(visitaId) {
+  const v = visitasHistoricoCache[visitaId];
+  if (!v) return;
+  visitaDetAtual    = v;
+  visitaModoEdicao  = false;
+  pedidosVisitaAtual = [];
+
+  document.getElementById('vd-titulo').textContent =
+    formatDate(v.data) + ' às ' + (v.hora || '—');
+  document.getElementById('vd-btn-edit').style.display = '';
+
+  showDetailOverlay('panel-visita-detalhe');
+  renderDetalheVisitaView();
+  carregarPedidosVisita(visitaId);
+}
+
+function fecharDetalheVisita() {
+  fecharPainelDetalhe();
+}
+
+function ativarEdicaoVisita() {
+  visitaModoEdicao = true;
+  renderDetalheVisitaView();
+  document.getElementById('vd-btn-edit').style.display = 'none';
+}
+
+function cancelarEdicaoVisita() {
+  visitaModoEdicao = false;
+  renderDetalheVisitaView();
+  document.getElementById('vd-btn-edit').style.display = '';
+}
+
+function renderDetalheVisitaView() {
+  const v    = visitaDetAtual;
+  const body = document.getElementById('vd-body');
+  if (!v || !body) return;
+
+  const diasAtras = Math.floor((Date.now() - new Date(v.data + 'T00:00:00')) / 86400000);
+  const diasLabel = diasAtras === 0 ? 'Hoje' : diasAtras === 1 ? 'Ontem' : `${diasAtras} dias atrás`;
+
+  const obsHtml = visitaModoEdicao
+    ? `<textarea class="checkin-obs" id="vd-obs-edit" style="min-height:70px">${v.obs || ''}</textarea>`
+    : (v.obs
+        ? `<div class="vd-obs-text">${v.obs}</div>`
+        : `<div class="hist-obs-empty">Sem observação</div>`);
+
+  body.innerHTML = `
+    <div class="vd-meta-block">
+      <div class="vd-meta"><span class="vd-meta-label">Data</span><span class="vd-meta-val">${formatDate(v.data)}</span></div>
+      <div class="vd-meta"><span class="vd-meta-label">Hora</span><span class="vd-meta-val">${v.hora || '—'}</span></div>
+      <div class="vd-meta"><span class="vd-meta-label">Período</span><span class="vd-meta-val" style="color:var(--text3)">${diasLabel}</span></div>
+      ${v.cidade ? `<div class="vd-meta"><span class="vd-meta-label">Cidade</span><span class="vd-meta-val">${v.cidade}</span></div>` : ''}
+    </div>
+
+    <div class="det-section-title" style="margin:14px 0 6px">Observação</div>
+    ${obsHtml}
+
+    <div class="det-section-title" style="margin:14px 0 6px">Pedidos</div>
+    <div id="vd-pedidos-list"><div style="font-size:12px;color:var(--text3);padding:4px 0">Carregando...</div></div>
+
+    ${visitaModoEdicao ? `
+    <div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <button class="det-btn danger" style="flex:0 0 auto;background:var(--red-bg);color:var(--red)" onclick="excluirVisitaDetalhe()">🗑 Excluir</button>
+      <button class="det-btn secondary" onclick="cancelarEdicaoVisita()">Cancelar</button>
+      <button class="det-btn primary" onclick="salvarEdicaoVisita()">Salvar</button>
+    </div>` : ''}
+  `;
+
+  if (pedidosVisitaAtual.length) renderPedidosVisita();
+}
+
+async function carregarPedidosVisita(visitaId) {
+  try {
+    const { data } = await sb.from('pedidos').select('*').eq('visita_id', visitaId);
+    pedidosVisitaAtual = data || [];
+    renderPedidosVisita();
+  } catch(e) {
+    const el = document.getElementById('vd-pedidos-list');
+    if (el) el.innerHTML = '<div style="font-size:12px;color:var(--text3)">Erro ao carregar pedidos.</div>';
+  }
+}
+
+function renderPedidosVisita() {
+  const el = document.getElementById('vd-pedidos-list');
+  if (!el) return;
+  if (!pedidosVisitaAtual.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nenhum pedido registrado nesta visita.</div>';
+    return;
+  }
+  el.innerHTML = pedidosVisitaAtual.map(p => {
+    const valor      = p.valor ? `R$ ${parseFloat(p.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—';
+    const tipoLabel  = p.tipo === 'orcamento' ? 'Orçamento' : 'Pedido';
+    const tipoCor    = p.tipo === 'orcamento' ? 'var(--orange)' : 'var(--green)';
+    const statusMap  = { aberto:'Aberto', ganho:'Ganho', perdido:'Perdido', fechado:'Fechado' };
+    const statusLabel = p.status ? statusMap[p.status] || p.status : null;
+    const podeConverter = p.tipo === 'orcamento' && p.status !== 'fechado';
+    return `
+      <div class="vd-pedido-card">
+        <div class="vd-pedido-top">
+          <span class="vd-pedido-tipo" style="color:${tipoCor}">${tipoLabel}</span>
+          <span class="vd-pedido-valor">${valor}</span>
+        </div>
+        ${p.representada_nome ? `<div class="vd-pedido-rep">${p.representada_nome}</div>` : ''}
+        ${statusLabel ? `<div class="vd-pedido-status">${statusLabel}</div>` : ''}
+        ${visitaModoEdicao ? `
+        <div class="vd-pedido-actions">
+          ${podeConverter ? `<button class="gc-item-action-btn" onclick="converterOrcamento('${p.id}')">→ Converter em pedido</button>` : ''}
+          <button class="gc-item-action-btn danger" onclick="excluirPedidoVisita('${p.id}')">Excluir</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+async function salvarEdicaoVisita() {
+  if (!visitaDetAtual) return;
+  const obs = document.getElementById('vd-obs-edit')?.value.trim() || '';
+  const btns = document.querySelectorAll('#vd-body .det-btn');
+  btns.forEach(b => b.disabled = true);
+  try {
+    await sb.from('visitas').update({ obs }).eq('id', visitaDetAtual.id);
+    visitaDetAtual.obs = obs;
+    visitasHistoricoCache[visitaDetAtual.id] = { ...visitaDetAtual };
+    visitaModoEdicao = false;
+    renderDetalheVisitaView();
+    document.getElementById('vd-btn-edit').style.display = '';
+    renderPedidosVisita();
+    showToast('✓ Visita atualizada!');
+  } catch(e) {
+    showToast('Erro ao salvar', true);
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+async function excluirVisitaDetalhe() {
+  if (!visitaDetAtual) return;
+  if (!confirm('Excluir esta visita? A ação não pode ser desfeita.')) return;
+  try {
+    await sb.from('pedidos').delete().eq('visita_id', visitaDetAtual.id);
+    await sb.from('visitas').delete().eq('id', visitaDetAtual.id);
+    delete visitasHistoricoCache[visitaDetAtual.id];
+    // Atualiza ultima_visita do cliente local
+    const c = clientes.find(x => x.id === activeId);
+    if (c) {
+      const { data: last } = await sb.from('visitas')
+        .select('data').eq('id_cliente', String(activeId))
+        .order('data', { ascending: false }).limit(1).maybeSingle();
+      c.ultimaVisita = last?.data || null;
+      c.visitadoHoje = false;
+    }
+    showToast('✓ Visita excluída');
+    renderList();
+    renderCounters();
+    fecharDetalheVisita();
+  } catch(e) {
+    showToast('Erro ao excluir', true);
+  }
+}
+
+async function excluirPedidoVisita(pedidoId) {
+  if (!confirm('Excluir este pedido?')) return;
+  try {
+    await sb.from('pedidos').delete().eq('id', pedidoId);
+    pedidosVisitaAtual = pedidosVisitaAtual.filter(p => p.id !== pedidoId);
+    renderPedidosVisita();
+    showToast('✓ Pedido excluído');
+  } catch(e) {
+    showToast('Erro ao excluir pedido', true);
+  }
+}
+
+async function converterOrcamento(pedidoId) {
+  try {
+    await sb.from('pedidos').update({ tipo: 'pedido', status: 'fechado' }).eq('id', pedidoId);
+    const idx = pedidosVisitaAtual.findIndex(p => p.id === pedidoId);
+    if (idx !== -1) { pedidosVisitaAtual[idx].tipo = 'pedido'; pedidosVisitaAtual[idx].status = 'fechado'; }
+    renderPedidosVisita();
+    showToast('✓ Convertido para pedido!');
+  } catch(e) {
+    showToast('Erro ao converter', true);
+  }
 }
 
 function openGastosCliente() {

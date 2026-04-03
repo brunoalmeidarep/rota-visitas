@@ -9,6 +9,10 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
 
+  <!-- PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
   <!-- Fontes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -133,6 +137,7 @@
           <div class="det-overlay-header">
             <button class="det-overlay-back" onclick="fecharPainelDetalhe()">← Voltar</button>
             <div class="det-overlay-titulo" id="gc-titulo">Gastos — Cliente</div>
+            <button class="det-overlay-action secondary" onclick="exportarPDFGastos()" title="Exportar PDF">📥</button>
             <button class="det-overlay-action" onclick="toggleGastoForm()">+ Novo</button>
           </div>
           <div class="det-overlay-body">
@@ -224,6 +229,16 @@
 
         </div>
 
+        <!-- PAINEL DETALHE VISITA -->
+        <div id="panel-visita-detalhe" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+          <div class="det-overlay-header">
+            <button class="det-overlay-back" onclick="fecharDetalheVisita()">← Histórico</button>
+            <div class="det-overlay-titulo" id="vd-titulo">Detalhes da visita</div>
+            <button class="det-overlay-action" id="vd-btn-edit" onclick="ativarEdicaoVisita()">✏ Editar</button>
+          </div>
+          <div class="det-overlay-body" id="vd-body"></div>
+        </div>
+
       </aside>
 
     </div><!-- /tab-mapa -->
@@ -248,6 +263,7 @@
             <button class="rep-detail-back" onclick="fecharDetalheRelatorio()">← Voltar ao relatório</button>
             <h2 id="rep-detail-titulo"></h2>
             <div id="rep-detail-meta"></div>
+            <button class="rep-pdf-btn" id="btn-pdf-relatorio" onclick="exportarPDFRelatorio()" title="Exportar PDF">📥 PDF</button>
           </div>
           <div id="rep-detail-body"></div>
         </div>
@@ -264,6 +280,7 @@
         <button class="fin-subtab"        id="fin-subtab-resumo"       onclick="setFinTab('resumo')">📊 Resumo</button>
         <button class="fin-subtab"        id="fin-subtab-compromissos" onclick="setFinTab('compromissos')">📅 Compromissos</button>
         <button class="fin-novo-btn" id="fin-novo-btn" onclick="abrirModalLancamento()">+ Novo lançamento</button>
+        <button class="fin-novo-btn" id="fin-pdf-btn" onclick="exportarPDFFinancas()" title="Exportar PDF do período">📥 PDF</button>
       </div>
 
       <!-- LANÇAMENTOS -->
@@ -626,6 +643,28 @@
     <div class="modal-footer">
       <button class="btn-cancel-modal" onclick="fecharModalPagamentoBonif()">Cancelar</button>
       <button class="btn-salvar-modal" onclick="confirmarPagamentoBonif()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL PEDIDO SEM VISITA (WhatsApp / Telefone) ──────────────── -->
+<div id="wa-modal" onclick="if(event.target===this)fecharPedidoSemVisita()">
+  <div class="modal-box" style="max-width:480px;width:100%">
+    <button class="modal-close" onclick="fecharPedidoSemVisita()">×</button>
+    <div class="modal-title" id="wa-modal-titulo">💬 Pedido via WhatsApp</div>
+    <div style="font-size:12px;color:var(--text3);margin:-8px 0 14px" id="wa-cliente-nome"></div>
+
+    <div id="wa-pedidos-list"></div>
+    <button type="button" class="ci-add-btn" style="width:100%;margin:8px 0" onclick="waAdicionarPedido()">+ Adicionar pedido</button>
+
+    <div class="campo-grupo" style="margin-top:4px">
+      <label class="campo-label">Observação (opcional)</label>
+      <textarea class="campo-input checkin-obs" id="wa-obs" placeholder="Anotações sobre o pedido..." style="min-height:60px;resize:none"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="fecharPedidoSemVisita()">Cancelar</button>
+      <button class="btn-salvar-modal" id="wa-btn-salvar" onclick="salvarPedidoSemVisita()">Salvar pedido</button>
     </div>
   </div>
 </div>

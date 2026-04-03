@@ -444,6 +444,13 @@ html, body {
 .rep-detail-back:hover { border-color: var(--blue); color: var(--blue); }
 #rep-detail-titulo { font-size: 17px; font-weight: 800; color: var(--text); }
 #rep-detail-meta   { font-size: 13px; color: var(--text3); margin-left: auto; }
+.rep-pdf-btn {
+  border: 1.5px solid var(--border); background: var(--bg);
+  border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700;
+  color: var(--text2); cursor: pointer; font-family: inherit; flex-shrink: 0;
+  transition: .12s;
+}
+.rep-pdf-btn:hover { border-color: var(--blue); color: var(--blue); }
 #rep-detail-body   { flex: 1; overflow-y: auto; padding: 24px; background: var(--bg); }
 
 .det-table-wrap { background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
@@ -1088,6 +1095,11 @@ html, body {
   font-size: 12px; font-weight: 700; cursor: pointer;
   font-family: inherit; white-space: nowrap;
 }
+.det-overlay-action.secondary {
+  background: var(--bg); color: var(--text2);
+  border: 1.5px solid var(--border);
+}
+.det-overlay-action.secondary:hover { border-color: var(--blue); color: var(--blue); }
 .det-overlay-body {
   flex: 1; overflow-y: auto; padding: 14px;
 }
@@ -1290,3 +1302,145 @@ html, body {
   font-size: 11px; font-weight: 700; padding: 4px 10px;
   cursor: pointer; font-family: inherit;
 }
+
+/* ── BOTÕES WHATSAPP / TELEFONE no detalhe ────────────────────────── */
+.det-pedido-canais {
+  display: flex; gap: 6px; margin-top: 8px;
+}
+.det-btn-canal {
+  flex: 1; padding: 7px 10px; border-radius: 8px; border: none;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: opacity .15s; font-family: inherit;
+}
+.det-btn-canal.wa  { background: #25D366; color: #fff; }
+.det-btn-canal.wa:hover  { opacity: .85; }
+.det-btn-canal.tel { background: var(--bg); color: var(--text2); border: 1.5px solid var(--border); }
+.det-btn-canal.tel:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ── CHECK-IN PEDIDOS ─────────────────────────────────────────────── */
+.ci-pedidos-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 6px 0 4px;
+}
+.ci-pedidos-label {
+  font-size: 11px; font-weight: 700; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.ci-add-btn {
+  font-size: 12px; font-weight: 700; color: var(--blue);
+  background: var(--blue-bg); border: none; border-radius: 7px;
+  padding: 4px 10px; cursor: pointer; font-family: inherit;
+  transition: opacity .15s;
+}
+.ci-add-btn:hover { opacity: .8; }
+.ci-empty {
+  font-size: 12px; color: var(--text3); padding: 6px 0;
+  font-style: italic;
+}
+.ci-pedido-card {
+  background: var(--bg); border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 10px 10px 8px; margin-bottom: 6px;
+}
+.ci-pedido-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+}
+.ci-pedido-row:last-child { margin-bottom: 0; }
+.ci-select {
+  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; font-size: 12px;
+  color: var(--text); outline: none; font-family: inherit;
+  cursor: pointer;
+}
+.ci-tipo-btns { display: flex; gap: 4px; flex-shrink: 0; }
+.ci-tipo-btn {
+  padding: 6px 10px; border-radius: 7px; border: 1.5px solid var(--border);
+  font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit;
+  background: var(--surface); color: var(--text2); transition: .12s;
+}
+.ci-tipo-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.ci-valor-input {
+  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; font-size: 12px;
+  color: var(--text); outline: none; font-family: inherit;
+  min-width: 0;
+}
+.ci-valor-input:focus { border-color: var(--blue); }
+.ci-remove-btn {
+  width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: var(--red-bg); color: var(--red); font-size: 14px;
+  font-weight: 700; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit; line-height: 1;
+}
+.ci-status-row {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+}
+.ci-status-label {
+  font-size: 11px; color: var(--text3); margin-right: 2px;
+}
+.ci-status-btn {
+  padding: 4px 8px; border-radius: 7px; border: 1.5px solid var(--border);
+  font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit;
+  background: var(--surface); color: var(--text2); transition: .12s;
+}
+.ci-status-btn.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+
+/* ── HISTÓRICO CLICÁVEL ───────────────────────────────────────────── */
+.hist-item.clickable {
+  cursor: pointer; border-radius: 8px;
+  transition: background .12s; margin: 0 -4px; padding-left: 4px; padding-right: 4px;
+}
+.hist-item.clickable:hover { background: var(--surface2); }
+.hist-arrow {
+  color: var(--text3); font-size: 16px; align-self: center;
+  flex-shrink: 0; margin-left: 4px;
+}
+.hist-canal-badge {
+  font-size: 10px; font-weight: 700; padding: 1px 6px;
+  border-radius: 8px; vertical-align: middle; margin-left: 4px;
+}
+.hist-canal-badge.wa { background: #25D36622; color: #25D366; }
+
+/* ── DETALHE VISITA ───────────────────────────────────────────────── */
+.vd-meta-block {
+  background: var(--bg); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 4px;
+}
+.vd-meta {
+  display: flex; justify-content: space-between;
+  padding: 4px 0; border-bottom: 1px solid var(--border);
+}
+.vd-meta:last-child { border-bottom: none; }
+.vd-meta-label { font-size: 12px; color: var(--text3); }
+.vd-meta-val   { font-size: 12px; font-weight: 600; color: var(--text); }
+.vd-obs-text {
+  background: var(--bg); border-radius: 8px;
+  padding: 9px 12px; font-size: 13px; color: var(--text); line-height: 1.5;
+}
+.vd-pedido-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;
+}
+.vd-pedido-top  { display: flex; justify-content: space-between; align-items: center; }
+.vd-pedido-tipo { font-size: 11px; font-weight: 700; }
+.vd-pedido-valor { font-size: 14px; font-weight: 800; color: var(--text); }
+.vd-pedido-rep  { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.vd-pedido-status {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  background: var(--bg); padding: 2px 8px; border-radius: 8px;
+  color: var(--text2); margin-top: 4px;
+}
+.vd-pedido-actions {
+  display: flex; gap: 6px; margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── MODAL WA ─────────────────────────────────────────────────────── */
+#wa-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 800;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+#wa-modal.open { display: flex; }
