@@ -1028,6 +1028,23 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
   </div>
 </div>
 
+<!-- ── TELA ESQUECI MINHA SENHA ───────────────────────── -->
+<div id="screen-esqueci-senha" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--surface);flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;">
+  <div class="login-inner">
+    <div class="login-logo">
+      <div class="login-titulo">Recuperar senha</div>
+      <div class="login-sub">Informe seu e-mail para receber o link de redefinição</div>
+    </div>
+    <div class="login-card">
+      <input class="login-input" id="esqueci-email" type="email" placeholder="seu@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')enviarRecuperacao()">
+      <div class="login-erro" id="esqueci-erro"></div>
+      <div id="esqueci-captcha-container" style="margin:8px 0"></div>
+      <button class="login-btn" id="btn-enviar-recuperacao" onclick="enviarRecuperacao()">Enviar link</button>
+      <button class="login-btn login-btn-secundario" onclick="fecharEsqueci()">← Voltar ao login</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── TELA REDEFINIR SENHA ────────────────────────────── -->
 <div id="screen-nova-senha" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--surface); flex-direction:column; align-items:center; justify-content:center; padding:32px 24px;">
   <div class="login-inner">
@@ -6237,27 +6254,68 @@ async function salvarObsHoje(clienteId, data, hora) {
 }
 
 // ── RECUPERAÇÃO DE SENHA ─────────────────────────────────
-async function esqueceuSenha() {
-  const email = document.getElementById('login-email').value.trim();
-  if (!email) {
-    document.getElementById('login-erro').textContent = 'Digite seu e-mail primeiro.';
-    return;
+let esqueciWidgetId = null;
+
+function esqueceuSenha() {
+  // Pré-preenche o email se o usuário já tinha digitado no login
+  const emailLogin = document.getElementById('login-email')?.value.trim();
+  const esqueciInput = document.getElementById('esqueci-email');
+  if (emailLogin && esqueciInput) esqueciInput.value = emailLogin;
+  document.getElementById('esqueci-erro').textContent = '';
+  document.getElementById('screen-login').style.display = 'none';
+  const el = document.getElementById('screen-esqueci-senha');
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+  // Renderiza hCaptcha dedicado na primeira abertura; reseta nas seguintes
+  if (typeof hcaptcha !== 'undefined') {
+    const container = document.getElementById('esqueci-captcha-container');
+    if (esqueciWidgetId === null) {
+      esqueciWidgetId = hcaptcha.render(container, { sitekey: 'becedf82-59a0-4206-9230-7de22e4c49f0' });
+    } else {
+      hcaptcha.reset(esqueciWidgetId);
+    }
   }
+}
+
+function fecharEsqueci() {
+  document.getElementById('screen-esqueci-senha').style.display = 'none';
+  document.getElementById('screen-login').style.display = 'flex';
+}
+
+async function enviarRecuperacao() {
+  const email = document.getElementById('esqueci-email').value.trim();
+  const erroEl = document.getElementById('esqueci-erro');
+  const btn = document.getElementById('btn-enviar-recuperacao');
+  erroEl.textContent = '';
+  erroEl.style.color = '';
+
+  if (!email) { erroEl.textContent = 'Digite seu e-mail.'; return; }
+
+  const captchaToken = typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse(esqueciWidgetId ?? undefined) : '';
+  if (!captchaToken) { erroEl.textContent = 'Complete o CAPTCHA antes de enviar.'; return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
   const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://brunoalmeidarep.github.io/rota-visitas/'
+    redirectTo: 'https://minharotarp.com.br',
+    captchaToken
   });
-  const erroEl = document.getElementById('login-erro');
+
+  if (typeof hcaptcha !== 'undefined' && esqueciWidgetId !== null) hcaptcha.reset(esqueciWidgetId);
+  if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
+
   if (!error) {
     erroEl.style.color = '#4ade80';
-    erroEl.textContent = 'E-mail de recuperacao enviado!';
+    erroEl.textContent = '✓ Link enviado! Verifique sua caixa de entrada.';
   } else {
-    erroEl.textContent = 'Erro ao enviar e-mail.';
+    erroEl.textContent = 'Erro ao enviar: ' + (error.message || 'tente novamente.');
   }
 }
 
 // ── TELA REDEFINIR SENHA ─────────────────────────────────
 function abrirNovaSenha() {
   document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-esqueci-senha').style.display = 'none';
   const el = document.getElementById('screen-nova-senha');
   el.style.display = 'flex';
   el.style.flexDirection = 'column';
