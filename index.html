@@ -7,6 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <!-- v2.1 desktop -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="manifest" href="manifest.json">
@@ -958,6 +959,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <input class="login-input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="email">
       <input class="login-input" id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
       <div class="login-erro" id="login-erro"></div>
+      <div class="h-captcha" data-sitekey="becedf82-59a0-4206-9230-7de22e4c49f0" style="margin:8px 0"></div>
       <button class="login-btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
       <button class="login-btn login-btn-secundario" onclick="abrirCadastro()">Criar conta</button>
       <div class="login-esqueci" onclick="esqueceuSenha()">Esqueci minha senha</div>
@@ -979,6 +981,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <input class="login-input" id="cad-senha" type="password" placeholder="Senha (mín. 6 caracteres)">
       <input class="login-input" id="cad-confirmar" type="password" placeholder="Confirmar senha">
       <div class="login-erro" id="cad-erro"></div>
+      <div class="h-captcha" data-sitekey="becedf82-59a0-4206-9230-7de22e4c49f0" style="margin:8px 0"></div>
       <button class="login-btn" id="btn-cadastrar" onclick="fazerCadastro()">Criar conta</button>
       <div class="login-esqueci" onclick="fecharCadastro()">Já tenho conta</div>
     </div>
@@ -1705,11 +1708,22 @@ async function fazerLogin() {
     return;
   }
 
+  const captchaToken = typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '';
+  if (!captchaToken) {
+    erro.textContent = 'Complete o CAPTCHA antes de entrar.';
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'ENTRANDO...';
   erro.textContent = '';
 
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+  const { data, error } = await sb.auth.signInWithPassword({
+    email, password: senha,
+    options: { captchaToken }
+  });
+
+  if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
 
   if (error) {
     erro.textContent = 'E-mail ou senha incorretos.';
@@ -6138,11 +6152,17 @@ async function fazerCadastro() {
   if (senha.length < 6) { erro.textContent = 'Senha mínima: 6 caracteres.'; return; }
   if (senha !== confirmar) { erro.textContent = 'As senhas não coincidem.'; return; }
 
+  const captchaToken = typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '';
+  if (!captchaToken) { erro.textContent = 'Complete o CAPTCHA antes de continuar.'; return; }
+
   btn.disabled = true;
   btn.textContent = 'Criando conta...';
 
   try {
-    const { data: signData, error: signError } = await sb.auth.signUp({ email, password: senha });
+    const { data: signData, error: signError } = await sb.auth.signUp({
+      email, password: senha,
+      options: { captchaToken }
+    });
     if (signError) throw signError;
 
     // Cria registro na tabela representantes
@@ -6150,12 +6170,14 @@ async function fazerCadastro() {
     const { error: repError } = await sb.from('representantes').insert({ nome, email, auth_id: authId });
     if (repError && !repError.message.includes('duplicate')) throw repError;
 
+    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
     document.getElementById('screen-nova-conta').style.display = 'none';
     mostrarLogin();
     const erroLogin = document.getElementById('login-erro');
     erroLogin.style.color = '#4ade80';
     erroLogin.textContent = 'Verifique seu e-mail para confirmar o cadastro!';
   } catch(e) {
+    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
     erro.textContent = 'Erro: ' + (e.message || 'tente novamente');
     btn.disabled = false;
     btn.textContent = 'Criar conta';
