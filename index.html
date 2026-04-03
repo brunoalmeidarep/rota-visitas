@@ -10433,8 +10433,8 @@ function showToast(msg, isErr = false) {
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // updateViaCache:'none' impede o browser de servir sw.js do cache HTTP
-    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+    // ?v=2 força o browser a tratar como novo SW; updateViaCache:'none' impede cache HTTP do sw.js
+    navigator.serviceWorker.register('sw.js?v=2', { updateViaCache: 'none' }).then(reg => {
       // Força verificação de atualização toda vez que o app abre
       reg.update();
       // Detecta nova versão do SW
