@@ -1,5 +1,5 @@
 // Service Worker — network-first, fallback cache
-const CACHE_VERSION = 'mdr-v3';
+const CACHE_VERSION = '20260403T222350Z';
 
 self.addEventListener('install', () => self.skipWaiting());
 
