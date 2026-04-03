@@ -1311,7 +1311,10 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <!-- VISÃO ROTAS -->
       <div id="planner-rotas-wrap" style="display:none;flex:1;overflow:hidden;flex-direction:column">
         <div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-          <div style="font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Rotas salvas</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button onclick="setViewPlanner('semana')" style="background:none;border:none;font-size:15px;font-weight:700;color:var(--blue);cursor:pointer;font-family:inherit;padding:4px 2px;">← Voltar</button>
+            <div style="font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Rotas salvas</div>
+          </div>
           <button onclick="abrirNovaRota()" style="background:var(--blue);color:#fff;border:none;border-radius:20px;padding:6px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">+ Nova Rota</button>
         </div>
         <div id="rotas-lista" style="flex:1;overflow-y:auto;padding:0 12px 80px;-webkit-overflow-scrolling:touch;">
@@ -2652,64 +2655,9 @@ function abrirRepDetalhe(tipo) {
   if (tipo === 'visitas') {
     window._visitasRowsAll = rows;
     window._visitasPeriodoFiltro = repFiltroAtual;
-    // Botão filtro de cidades
-    const btnLabel = visitasCidadesFiltro.length === 0
-      ? '📍 Todas as cidades  ▾'
-      : '📍 ' + visitasCidadesFiltro.slice(0, 2).map(c => c.split(' -')[0]).join(', ')
-        + (visitasCidadesFiltro.length > 2 ? ` +${visitasCidadesFiltro.length - 2}` : '') + '  ×';
-    const btnStyle = visitasCidadesFiltro.length > 0
-      ? 'background:var(--blue);color:#fff;border-color:var(--blue);'
-      : 'background:var(--bg);color:var(--text2);border-color:var(--border);';
-    const btnFiltro = `<div style="padding:8px 14px 4px;">
-      <button onclick="${visitasCidadesFiltro.length > 0 ? 'limparFiltroCidadesVisitas()' : 'abrirSheetCidadesVisitas()'}"
-        style="width:100%;padding:9px 14px;border-radius:20px;border:1.5px solid;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;${btnStyle}">
-        ${btnLabel}
-      </button>
-    </div>`;
-    // Filtrar rows por cidade
-    let rowsFiltradas = rows;
-    if (visitasCidadesFiltro.length > 0) {
-      rowsFiltradas = rows.filter(v =>
-        visitasCidadesFiltro.some(c => (v.cidade || '').trim() === c)
-      );
-    }
-    const totalGeral = rows.length;
-    const totalFiltrado = rowsFiltradas.length;
-    let cardsHtml;
-    if (visitasCidadesFiltro.length > 0) {
-      cardsHtml = `<div style="display:flex;gap:8px;padding:8px 14px 4px;">
-        <div style="flex:1;background:var(--card);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow);">
-          <div style="font-size:22px;font-weight:800;color:var(--text3);">${totalGeral}</div>
-          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-top:3px;">Total geral</div>
-        </div>
-        <div style="flex:1.2;background:var(--blue);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow);">
-          <div style="font-size:26px;font-weight:800;color:#fff;">${totalFiltrado}</div>
-          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;margin-top:3px;">
-            ${visitasCidadesFiltro.length} cidade${visitasCidadesFiltro.length > 1 ? 's' : ''}
-          </div>
-        </div>
-      </div>`;
-    } else {
-      cardsHtml = '';
-    }
-    let listaHtml;
-    if (visitasCidadesFiltro.length > 0) {
-      const porCidade = {};
-      rowsFiltradas.forEach(v => {
-        const c = (v.cidade || '').trim();
-        if (!porCidade[c]) porCidade[c] = [];
-        porCidade[c].push(v);
-      });
-      listaHtml = Object.entries(porCidade)
-        .sort((a, b) => b[1].length - a[1].length)
-        .map(([cidade, items]) =>
-          `<div style="font-size:11px;font-weight:700;color:var(--blue);padding:12px 14px 4px;text-transform:uppercase;letter-spacing:.3px;">📍 ${cidade} (${items.length})</div>` +
-          _renderVisitasDetalheComFiltro(items, repFiltroAtual)
-        ).join('');
-    } else {
-      listaHtml = _renderVisitasDetalheComFiltro(rows, repFiltroAtual);
-    }
-    html = btnFiltro + cardsHtml + listaHtml;
+    document.getElementById('rep-detalhe-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)"><div class="spinner" style="margin:0 auto 12px"></div>Carregando...</div>';
+    _carregarVisitasRelatorio(rows, repFiltroAtual);
+    return;
   } else if (tipo === 'vendas') {
     document.getElementById('rep-detalhe-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)"><div class="spinner" style="margin:0 auto 12px"></div>Carregando...</div>';
     _carregarVendasRelatorio();
@@ -3254,7 +3202,112 @@ function renderDetalheLista(rows, showValor) {
   }).join('');
 }
 
-function _renderVisitasDetalheComFiltro(rows, periodoAtual) {
+async function _carregarVisitasRelatorio(rows, periodoAtual) {
+  const body = document.getElementById('rep-detalhe-body');
+  if (!body || !currentRep) return;
+  // Busca gastos com clientes do mesmo período
+  let gastosIni, gastosFim;
+  const agora = new Date();
+  if (periodoAtual === 'hoje') {
+    const d = agora.toISOString().slice(0,10);
+    gastosIni = d; gastosFim = d;
+  } else if (periodoAtual === 'semana') {
+    const dSem = agora.getDay();
+    const ini = new Date(agora); ini.setDate(agora.getDate()-dSem); ini.setHours(0,0,0,0);
+    gastosIni = ini.toISOString().slice(0,10);
+    gastosFim = agora.toISOString().slice(0,10);
+  } else if (periodoAtual === 'ano') {
+    gastosIni = relAno + '-01-01';
+    gastosFim = agora.toISOString().slice(0,10);
+  } else {
+    const ultimoDia = new Date(relAno, relMes+1, 0);
+    gastosIni = relAno + '-' + String(relMes+1).padStart(2,'0') + '-01';
+    gastosFim = ultimoDia.toISOString().slice(0,10);
+  }
+  let gastosMap = {};
+  let totalGastosClientes = 0;
+  try {
+    const { data: gastosData } = await sb.from('financeiro')
+      .select('*').eq('rep_id', currentRep.id)
+      .in('categoria', ['Clientes','clientes'])
+      .gte('data', gastosIni).lte('data', gastosFim);
+    (gastosData || []).forEach(g => {
+      const cid = String(g.cliente_id || '');
+      if (!gastosMap[cid]) gastosMap[cid] = [];
+      gastosMap[cid].push(g);
+      totalGastosClientes += g.valor || 0;
+    });
+  } catch(e) {}
+
+  // Botão filtro de cidades
+  const btnLabel = visitasCidadesFiltro.length === 0
+    ? '📍 Todas as cidades  ▾'
+    : '📍 ' + visitasCidadesFiltro.slice(0, 2).map(c => c.split(' -')[0]).join(', ')
+      + (visitasCidadesFiltro.length > 2 ? ` +${visitasCidadesFiltro.length - 2}` : '') + '  ×';
+  const btnStyle = visitasCidadesFiltro.length > 0
+    ? 'background:var(--blue);color:#fff;border-color:var(--blue);'
+    : 'background:var(--bg);color:var(--text2);border-color:var(--border);';
+  const btnFiltro = `<div style="padding:8px 14px 4px;">
+    <button onclick="${visitasCidadesFiltro.length > 0 ? 'limparFiltroCidadesVisitas()' : 'abrirSheetCidadesVisitas()'}"
+      style="width:100%;padding:9px 14px;border-radius:20px;border:1.5px solid;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;${btnStyle}">
+      ${btnLabel}
+    </button>
+  </div>`;
+  // Filtrar rows por cidade
+  let rowsFiltradas = rows;
+  if (visitasCidadesFiltro.length > 0) {
+    rowsFiltradas = rows.filter(v => visitasCidadesFiltro.some(c => (v.cidade || '').trim() === c));
+  }
+  const totalGeral = rows.length;
+  const totalFiltrado = rowsFiltradas.length;
+  // Cards de totais
+  const cardGastos = totalGastosClientes > 0
+    ? `<div style="flex:1.2;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow);">
+        <div style="font-size:18px;font-weight:800;color:var(--red);">${formatarMoeda(totalGastosClientes)}</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-top:3px;">💸 Gasto clientes</div>
+      </div>` : '';
+  let cardsHtml;
+  if (visitasCidadesFiltro.length > 0) {
+    cardsHtml = `<div style="display:flex;gap:8px;padding:8px 14px 4px;">
+      <div style="flex:1;background:var(--card);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow);">
+        <div style="font-size:22px;font-weight:800;color:var(--text3);">${totalGeral}</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-top:3px;">Total geral</div>
+      </div>
+      <div style="flex:1.2;background:var(--blue);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow);">
+        <div style="font-size:26px;font-weight:800;color:#fff;">${totalFiltrado}</div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;margin-top:3px;">
+          ${visitasCidadesFiltro.length} cidade${visitasCidadesFiltro.length > 1 ? 's' : ''}
+        </div>
+      </div>
+      ${cardGastos}
+    </div>`;
+  } else if (totalGastosClientes > 0) {
+    cardsHtml = `<div style="display:flex;gap:8px;padding:8px 14px 4px;">${cardGastos}</div>`;
+  } else {
+    cardsHtml = '';
+  }
+  let listaHtml;
+  if (visitasCidadesFiltro.length > 0) {
+    const porCidade = {};
+    rowsFiltradas.forEach(v => {
+      const c = (v.cidade || '').trim();
+      if (!porCidade[c]) porCidade[c] = [];
+      porCidade[c].push(v);
+    });
+    listaHtml = Object.entries(porCidade)
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([cidade, items]) =>
+        `<div style="font-size:11px;font-weight:700;color:var(--blue);padding:12px 14px 4px;text-transform:uppercase;letter-spacing:.3px;">📍 ${cidade} (${items.length})</div>` +
+        _renderVisitasDetalheComFiltro(items, periodoAtual, gastosMap)
+      ).join('');
+  } else {
+    listaHtml = _renderVisitasDetalheComFiltro(rows, periodoAtual, gastosMap);
+  }
+  body.innerHTML = btnFiltro + cardsHtml + listaHtml;
+}
+
+function _renderVisitasDetalheComFiltro(rows, periodoAtual, gastosMap) {
+  gastosMap = gastosMap || {};
   const hoje = new Date();
   const dHoje = dataHojeLocal();
   const dSem = hoje.getDay();
@@ -3293,17 +3346,29 @@ function _renderVisitasDetalheComFiltro(rows, periodoAtual) {
 
   return sorted.map((item, i) => {
     const v = item.visita;
+    const cid = String(v.id_cliente || v.cliente_id || '');
     const nomeBase = (v.nome_cliente||'').replace(/\s*\([^)]*\)/,'').trim();
     const dataFmt = v.data?new Date(v.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
     const cidade = (v.cidade||'').replace(' - SC','').replace(' - PR','').trim();
     const bg = i%2===0?'var(--card)':'var(--bg)';
     const badgeCount = item.count > 1 ? `<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);margin-left:6px">${item.count}x</span>` : '';
-    return `<div style="display:flex;align-items:center;padding:12px 14px;background:${bg};border-bottom:1px solid var(--border);gap:10px" onclick="fecharRepDetalhe();openPerfil(${v.id_cliente||v.cliente_id})">` +
-      '<div style="font-size:16px">🤝</div>' +
-      '<div style="flex:1;min-width:0">' +
-        `<div style="font-size:14px;font-weight:600;color:var(--text)">${nomeBase}${badgeCount}</div>` +
-        `<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 ${cidade} · ${dataFmt}</div>` +
+    const gastosCliente = gastosMap[cid] || [];
+    const gastosHtml = gastosCliente.length > 0
+      ? `<div style="margin-top:6px;padding:6px 8px;background:rgba(255,59,48,.07);border-radius:8px;border-left:3px solid var(--red);">
+          ${gastosCliente.map(g => `<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);padding:1px 0;">
+            <span>💸 ${g.descricao||g.categoria}</span>
+            <span style="font-weight:700;color:var(--red)">-${formatarMoeda(g.valor)}</span>
+          </div>`).join('')}
+        </div>` : '';
+    return `<div style="padding:12px 14px;background:${bg};border-bottom:1px solid var(--border);" onclick="fecharRepDetalhe();openPerfil(${v.id_cliente||v.cliente_id})">` +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<div style="font-size:16px">🤝</div>' +
+        '<div style="flex:1;min-width:0">' +
+          `<div style="font-size:14px;font-weight:600;color:var(--text)">${nomeBase}${badgeCount}</div>` +
+          `<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 ${cidade} · ${dataFmt}</div>` +
+        '</div>' +
       '</div>' +
+      gastosHtml +
     '</div>';
   }).join('');
 }
@@ -5393,28 +5458,17 @@ async function dvConverterPedido(pedidoId) {
     // Atualiza visita pai para aparecer em totalVendas do relatório
     if (dvVisitaAtual?.id) {
       const valorPed = parseFloat(p.valor) || 0;
-      sb.from('visitas').update({ pedido_tipo: 'pedido', ...(valorPed > 0 ? { valor_pedido: valorPed } : {}) })
-        .eq('id', dvVisitaAtual.id).eq('rep_id', repId).catch(() => {});
+      await sb.from('visitas').update({ pedido_tipo: 'pedido', ...(valorPed > 0 ? { valor_pedido: valorPed } : {}) })
+        .eq('id', dvVisitaAtual.id).eq('rep_id', repId);
     }
   } else if (dvVisitaAtual?.id) {
     await sb.from('visitas').update({ pedido_tipo: 'pedido', orcamento_status: 'fechado', status_orcamento: 'fechado' })
       .eq('id', dvVisitaAtual.id).eq('rep_id', repId);
   }
-  // Atualiza cache local do relatório
-  if (dvVisitaAtual?.id) {
-    const vIdx = visatasDoRelatorio.findIndex(v => String(v.id) === String(dvVisitaAtual.id));
-    if (vIdx >= 0) {
-      visatasDoRelatorio[vIdx].pedido_tipo = 'pedido';
-      visatasDoRelatorio[vIdx].orcamento_status = 'fechado';
-      visatasDoRelatorio[vIdx].status_orcamento = 'fechado';
-      const val = parseFloat(p.valor) || 0;
-      if (val > 0) visatasDoRelatorio[vIdx].valor_pedido = val;
-    }
-  }
   Object.assign(p, updates);
   dvRenderPedidos();
   showToast('✓ Convertido em pedido!');
-  if (typeof renderReport === 'function') renderReport();
+  if (typeof carregarPeriodoRelatorio === 'function') carregarPeriodoRelatorio();
 }
 
 async function dvPerdeuPedido(pedidoId) {
@@ -6994,15 +7048,37 @@ async function buscarVisitasPeriodo(mes, ano) {
   try {
     const dataInicio = ano + '-' + String(mes+1).padStart(2,'0') + '-01';
     const dataFim = new Date(ano, mes+1, 0).toISOString().slice(0,10);
+    const repId = await getRepId();
     const { data, error } = await sb
       .from('visitas')
       .select('*')
-      .eq('rep_id', await getRepId())
+      .eq('rep_id', repId)
       .gte('data', dataInicio)
       .lte('data', dataFim)
       .order('data', { ascending: false });
     if (error) return [];
-    return data || [];
+    const visitas = data || [];
+    // Busca pedidos do período para reconciliar pedido_tipo/valor com dados frescos
+    const visitaIds = visitas.filter(v => v.id).map(v => v.id);
+    let pedidosByVisita = {};
+    if (visitaIds.length > 0) {
+      try {
+        const { data: peds } = await sb.from('pedidos').select('*').in('visita_id', visitaIds).eq('rep_id', repId);
+        (peds||[]).forEach(p => {
+          if (!pedidosByVisita[p.visita_id]) pedidosByVisita[p.visita_id] = [];
+          pedidosByVisita[p.visita_id].push(p);
+        });
+      } catch(e) {}
+    }
+    return visitas.map(v => {
+      const peds = pedidosByVisita[v.id] || [];
+      const pedidoFechado = peds.find(p => p.tipo === 'pedido');
+      if (pedidoFechado && v.pedido_tipo !== 'pedido') {
+        const valorTotal = peds.filter(p => p.tipo === 'pedido').reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
+        return { ...v, _pedidos: peds, pedido_tipo: 'pedido', valor_pedido: valorTotal || v.valor_pedido };
+      }
+      return { ...v, _pedidos: peds };
+    });
   } catch(e) { return []; }
 }
 
@@ -9986,12 +10062,12 @@ async function salvarNovaRota() {
     ordem_otimizada: ordemOtimizada,
     km_total: Math.round(kmTotal * 10) / 10,
     tempo_estimado: Math.round(tempoEstimado),
-    status: fonte === 'google' ? 'otimizada' : 'ativa',
     rep_id: repId,
     tipo_partida: rotaPartidaTipo,
     ponto_partida: endPartida,
     tipo_chegada: rotaChegadaTipo,
-    ponto_chegada: endChegada
+    ponto_chegada: endChegada,
+    nome_hotel: rotaChegadaTipo === 'hotel' ? endChegada : null
   });
 
   if (btn) { btn.disabled = false; btn.textContent = 'Criar Rota'; }
