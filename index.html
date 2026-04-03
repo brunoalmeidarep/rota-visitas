@@ -2037,7 +2037,7 @@ window.initMap = function() {
 
 // Adiciona callback ao script do Google Maps dinamicamente
 const gmScript = document.createElement('script');
-gmScript.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&callback=initMap&loading=async';
+gmScript.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&libraries=places&callback=initMap&loading=async';
 gmScript.async = true;
 gmScript.defer = true;
 document.head.appendChild(gmScript);
@@ -9883,6 +9883,7 @@ function abrirMeuPerfil() {
     document.getElementById('mp-gasolina').value = currentRep.preco_gasolina || 6.0;
   }
   document.getElementById('screen-meu-perfil').style.display = 'flex';
+  ativarAutocomplete('mp-endereco');
 }
 
 function fecharMeuPerfil() {
@@ -9953,6 +9954,23 @@ function renderRotas() {
   el.innerHTML = cards;
 }
 
+// ── AUTOCOMPLETE DE ENDEREÇO ──────────────────────────
+function ativarAutocomplete(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input || !window.google?.maps?.places) return;
+  const ac = new google.maps.places.Autocomplete(input, {
+    componentRestrictions: { country: 'br' },
+    fields: ['formatted_address']
+  });
+  ac.addListener('place_changed', () => {
+    const place = ac.getPlace();
+    if (place.formatted_address) {
+      input.value = place.formatted_address;
+      input.dispatchEvent(new Event('input'));
+    }
+  });
+}
+
 // ── ROTA: PARTIDA/CHEGADA/VIAGEM ──────────────────────
 let rotaPartidaTipo = 'casa';
 let rotaChegadaTipo = 'casa';
@@ -9965,6 +9983,7 @@ function setRotaPartida(tipo, btn) {
   if (btn) btn.classList.add('active');
   const inp = document.getElementById('rota-partida-input');
   if (inp) inp.style.display = tipo === 'outro' ? 'block' : 'none';
+  if (tipo === 'outro') ativarAutocomplete('rota-partida-input');
 }
 
 function setRotaChegada(tipo, btn) {
@@ -9975,6 +9994,7 @@ function setRotaChegada(tipo, btn) {
   if (inp) inp.style.display = (tipo === 'hotel' || tipo === 'outra') ? 'block' : 'none';
   if (inp && tipo === 'hotel') inp.placeholder = 'Nome/endereço do hotel...';
   if (inp && tipo === 'outra') inp.placeholder = 'Digite o endereço de chegada...';
+  if (tipo === 'hotel' || tipo === 'outra') ativarAutocomplete('rota-chegada-input');
 }
 
 function toggleModoViagem() {
