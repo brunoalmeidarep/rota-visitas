@@ -1083,6 +1083,7 @@ function renderRadarSection(rows) {
 
 // ── RELATÓRIO DETALHE ────────────────────────────────────────────────
 async function abrirDetalheRelatorio(tipo) {
+  relDetalheAtivo = tipo;
   document.getElementById('rep-body').style.display = 'none';
   const det = document.getElementById('rep-detail');
   det.style.display = 'flex';
@@ -1105,6 +1106,11 @@ async function abrirDetalheRelatorio(tipo) {
   document.getElementById('rep-detail-titulo').textContent = titulos[tipo] || tipo;
   document.getElementById('rep-detail-meta').textContent = periodoLabel;
 
+  // Mostra botão PDF apenas para tipos exportáveis
+  const exportaveis = ['visitas','vendas','top-compradores','mais-lucrativos','clientes-sumindo'];
+  const btnPdf = document.getElementById('btn-pdf-relatorio');
+  if (btnPdf) btnPdf.style.display = exportaveis.includes(tipo) ? '' : 'none';
+
   const body = document.getElementById('rep-detail-body');
   body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Carregando...</div>';
 
@@ -1125,6 +1131,7 @@ async function abrirDetalheRelatorio(tipo) {
 }
 
 function fecharDetalheRelatorio() {
+  relDetalheAtivo = null;
   const det = document.getElementById('rep-detail');
   const body = document.getElementById('rep-body');
   if (det)  det.style.display = 'none';
@@ -2008,6 +2015,277 @@ async function salvarCliente() {
   btn.disabled = false; btn.textContent = 'Salvar cliente';
 }
 
+// ── PDF EXPORT ────────────────────────────────────────────────────────
+
+function _novoPDF(titulo, subtitulo) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  doc.setFont('helvetica');
+
+  // Cabeçalho
+  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+  doc.text(titulo, 14, 18);
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120);
+  doc.text(subtitulo, 14, 25);
+  doc.setTextColor(0);
+  return doc;
+}
+
+function _nomePeriodo() {
+  if (relFiltro === 'hoje')   return 'Hoje — ' + new Date().toLocaleDateString('pt-BR');
+  if (relFiltro === 'semana') return 'Esta semana';
+  const n = new Date(relAno, relMes, 1)
+    .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
+let relDetalheAtivo = null; // tipo aberto no detalhe do relatório
+
+function exportarPDFRelatorio() {
+  if (!relDetalheAtivo) return;
+  if (relDetalheAtivo === 'visitas')          exportarPDFVisitas();
+  else if (relDetalheAtivo === 'vendas')      exportarPDFVendas();
+  else if (relDetalheAtivo === 'top-compradores') exportarPDFTopCompradores();
+  else if (relDetalheAtivo === 'clientes-sumindo') exportarPDFClientesSumindo();
+  else if (relDetalheAtivo === 'mais-lucrativos')  exportarPDFMaisLucrativos();
+  else showToast('Exportação não disponível para este tipo', true);
+}
+
+function exportarPDFVisitas() {
+  if (!relRowsAtual.length) { showToast('Nenhuma visita para exportar', true); return; }
+  const periodo = _nomePeriodo();
+  const doc = _novoPDF('Relatório de Visitas', periodo);
+
+  const rows = [...relRowsAtual].sort((a, b) => b.data.localeCompare(a.data));
+  const body = rows.map(v => [
+    formatDate(v.data),
+    v.hora || '—',
+    v.nome_cliente || '—',
+    v.cidade || '—',
+    v.obs ? (v.obs.length > 60 ? v.obs.slice(0, 60) + '…' : v.obs) : '',
+    v.valor_pedido ? 'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '',
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Hora', 'Cliente', 'Cidade', 'Observação', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [0, 122, 255], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 20 }, 1: { cellWidth: 14 }, 5: { cellWidth: 26, halign: 'right' } },
+    alternateRowStyles: { fillColor: [245, 245, 250] },
+  });
+
+  const total = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
+  if (total > 0) {
+    const y = doc.lastAutoTable.finalY + 6;
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text(`Total: R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits:2})}`, 14, y);
+  }
+
+  doc.save(`visitas_${periodo.replace(/\s/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFVendas() {
+  const rows = relRowsAtual.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+  if (!rows.length) { showToast('Nenhuma venda com valor para exportar', true); return; }
+  const periodo = _nomePeriodo();
+  const doc = _novoPDF('Relatório de Vendas', periodo);
+
+  const ordenado = [...rows].sort((a, b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
+  const body = ordenado.map(v => [
+    formatDate(v.data),
+    v.nome_cliente || '—',
+    v.cidade || '—',
+    v.representada_nome || v.pedido_representada || '—',
+    'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}),
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Cliente', 'Cidade', 'Representada', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [52, 199, 89], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 4: { halign: 'right', cellWidth: 30 } },
+    alternateRowStyles: { fillColor: [245, 250, 245] },
+  });
+
+  const total = rows.reduce((s, v) => s + parseFloat(v.valor_pedido), 0);
+  const y = doc.lastAutoTable.finalY + 6;
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+  doc.text(`Total vendido: R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits:2})}`, 14, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  doc.text(`${rows.length} pedidos com valor`, 14, y + 6);
+
+  doc.save(`vendas_${periodo.replace(/\s/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFTopCompradores() {
+  const comValor = relRowsAtual.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+  if (!comValor.length) { showToast('Sem dados de valor para exportar', true); return; }
+  const periodo = _nomePeriodo();
+  const doc = _novoPDF('Top Compradores', periodo);
+
+  const byCliente = {};
+  comValor.forEach(v => {
+    const k = v.id_cliente;
+    if (!byCliente[k]) byCliente[k] = { nome: v.nome_cliente, cidade: v.cidade, total: 0, pedidos: 0 };
+    byCliente[k].total   += parseFloat(v.valor_pedido);
+    byCliente[k].pedidos += 1;
+  });
+  const ranking = Object.values(byCliente).sort((a, b) => b.total - a.total);
+  const body = ranking.map((r, i) => [
+    `#${i+1}`,
+    r.nome,
+    r.cidade || '—',
+    String(r.pedidos),
+    'R$ ' + r.total.toLocaleString('pt-BR', {minimumFractionDigits:2}),
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['#', 'Cliente', 'Cidade', 'Pedidos', 'Total']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [255, 149, 0], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 10 }, 3: { halign: 'center' }, 4: { halign: 'right', cellWidth: 32 } },
+    alternateRowStyles: { fillColor: [255, 249, 240] },
+  });
+
+  doc.save(`top_compradores_${periodo.replace(/\s/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFClientesSumindo() {
+  const sumindo = clientes
+    .filter(c => { const st = getStatus(c); return st === 'blue' || st === 'red'; })
+    .map(c => {
+      const dias = c.ultimaVisita
+        ? Math.floor((Date.now() - new Date(c.ultimaVisita + 'T00:00:00')) / 86400000)
+        : null;
+      return { ...c, dias };
+    })
+    .sort((a, b) => (b.dias ?? 9999) - (a.dias ?? 9999));
+
+  if (!sumindo.length) { showToast('Nenhum cliente sumindo', true); return; }
+  const doc = _novoPDF('Clientes Sumindo', new Date().toLocaleDateString('pt-BR'));
+
+  const body = sumindo.map(c => [
+    c.nome,
+    c.cidade || '—',
+    STATUS_LABELS[getStatus(c)],
+    c.ultimaVisita ? formatDate(c.ultimaVisita) : 'Nunca',
+    c.dias !== null ? `${c.dias} dias` : '—',
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Cliente', 'Cidade', 'Status', 'Última visita', 'Dias sem visita']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [255, 59, 48], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 4: { halign: 'right' } },
+    alternateRowStyles: { fillColor: [255, 245, 245] },
+  });
+
+  doc.save('clientes_sumindo.pdf');
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFMaisLucrativos() {
+  exportarPDFTopCompradores(); // mesma lógica com nome diferente
+}
+
+async function exportarPDFGastos() {
+  const c = clientes.find(x => x.id === activeId);
+  if (!c) return;
+  if (!gastosClienteAtual.length) { showToast('Nenhum gasto para exportar', true); return; }
+
+  const doc = _novoPDF('Gastos com Cliente', c.nome);
+  const sorted = [...gastosClienteAtual].sort((a, b) => b.data.localeCompare(a.data));
+  const body = sorted.map(g => [
+    new Date(g.data + 'T12:00:00').toLocaleDateString('pt-BR'),
+    g.descricao || '—',
+    g.url_comprovante ? 'Sim' : '—',
+    'R$ ' + (g.valor || 0).toFixed(2).replace('.', ','),
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Descrição', 'NF', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [0, 122, 255], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 3: { halign: 'right', cellWidth: 28 } },
+    alternateRowStyles: { fillColor: [245, 245, 250] },
+  });
+
+  const total = gastosClienteAtual.reduce((s, g) => s + (g.valor || 0), 0);
+  const y = doc.lastAutoTable.finalY + 6;
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+  doc.text(`Total: R$ ${total.toFixed(2).replace('.', ',')}`, 14, y);
+
+  doc.save(`gastos_${c.nome.replace(/\s+/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+async function exportarPDFFinancas() {
+  if (!lancamentosCache.length) { showToast('Nenhum lançamento no período', true); return; }
+
+  const periodo = (() => {
+    const p = finTab === 'resumo' ? finPeriodoResumo : finPeriodo;
+    if (p === 'hoje')   return 'Hoje — ' + new Date().toLocaleDateString('pt-BR');
+    if (p === 'semana') return 'Esta semana';
+    return 'Este mês';
+  })();
+  const doc = _novoPDF('Finanças — Lançamentos', periodo);
+
+  const sorted = [...lancamentosCache].sort((a, b) => b.data.localeCompare(a.data));
+  const body = sorted.map(l => {
+    const isHosp = l.categoria === 'Hospedagem';
+    const desc = isHosp ? (l.hotel_nome || l.descricao || 'Hospedagem') : (l.descricao || l.categoria);
+    return [
+      new Date(l.data + 'T12:00:00').toLocaleDateString('pt-BR'),
+      l.tipo === 'receita' ? 'Receita' : 'Gasto',
+      l.categoria || '—',
+      desc,
+      (l.tipo === 'receita' ? '+' : '-') + 'R$ ' + Number(l.valor).toFixed(2).replace('.', ','),
+    ];
+  });
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [52, 199, 89], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 4: { halign: 'right', cellWidth: 30 } },
+    alternateRowStyles: { fillColor: [245, 250, 245] },
+    bodyStyles: {
+      didParseCell: (data) => {
+        if (data.column.index === 4 && data.cell.text[0]?.startsWith('-'))
+          data.cell.styles.textColor = [255, 59, 48];
+        if (data.column.index === 4 && data.cell.text[0]?.startsWith('+'))
+          data.cell.styles.textColor = [52, 199, 89];
+      }
+    },
+  });
+
+  const receitas = lancamentosCache.filter(l => l.tipo === 'receita').reduce((s, l) => s + Number(l.valor), 0);
+  const gastos   = lancamentosCache.filter(l => l.tipo === 'gasto').reduce((s, l) => s + Number(l.valor), 0);
+  const saldo    = receitas - gastos;
+  const y = doc.lastAutoTable.finalY + 8;
+  doc.setFontSize(9);
+  doc.text(`Receitas: R$ ${receitas.toFixed(2).replace('.',',')}   Gastos: R$ ${gastos.toFixed(2).replace('.',',')}   Saldo: R$ ${saldo.toFixed(2).replace('.',',')}`, 14, y);
+
+  doc.save(`financas_${periodo.replace(/[\s\/—]/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
 // ── GEOCODING ─────────────────────────────────────────────────────────
 function geocodeEndereco(endereco, cidade) {
   return new Promise(resolve => {
@@ -2752,6 +3030,8 @@ function setFinTab(tab) {
   });
   const novoBtn = document.getElementById('fin-novo-btn');
   if (novoBtn) novoBtn.style.display = tab === 'lancamentos' ? 'block' : 'none';
+  const pdfBtn = document.getElementById('fin-pdf-btn');
+  if (pdfBtn) pdfBtn.style.display = tab === 'lancamentos' ? 'block' : 'none';
   if (tab === 'lancamentos')  carregarLancamentos().then(renderLancamentos);
   if (tab === 'impostos')     carregarImpostos().then(renderImpostos);
   if (tab === 'resumo')       carregarLancamentos().then(renderResumoFin);

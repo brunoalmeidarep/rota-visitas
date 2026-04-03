@@ -444,6 +444,13 @@ html, body {
 .rep-detail-back:hover { border-color: var(--blue); color: var(--blue); }
 #rep-detail-titulo { font-size: 17px; font-weight: 800; color: var(--text); }
 #rep-detail-meta   { font-size: 13px; color: var(--text3); margin-left: auto; }
+.rep-pdf-btn {
+  border: 1.5px solid var(--border); background: var(--bg);
+  border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700;
+  color: var(--text2); cursor: pointer; font-family: inherit; flex-shrink: 0;
+  transition: .12s;
+}
+.rep-pdf-btn:hover { border-color: var(--blue); color: var(--blue); }
 #rep-detail-body   { flex: 1; overflow-y: auto; padding: 24px; background: var(--bg); }
 
 .det-table-wrap { background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
@@ -1088,6 +1095,11 @@ html, body {
   font-size: 12px; font-weight: 700; cursor: pointer;
   font-family: inherit; white-space: nowrap;
 }
+.det-overlay-action.secondary {
+  background: var(--bg); color: var(--text2);
+  border: 1.5px solid var(--border);
+}
+.det-overlay-action.secondary:hover { border-color: var(--blue); color: var(--blue); }
 .det-overlay-body {
   flex: 1; overflow-y: auto; padding: 14px;
 }

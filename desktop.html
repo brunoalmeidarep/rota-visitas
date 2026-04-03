@@ -9,6 +9,10 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
 
+  <!-- PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
   <!-- Fontes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -133,6 +137,7 @@
           <div class="det-overlay-header">
             <button class="det-overlay-back" onclick="fecharPainelDetalhe()">← Voltar</button>
             <div class="det-overlay-titulo" id="gc-titulo">Gastos — Cliente</div>
+            <button class="det-overlay-action secondary" onclick="exportarPDFGastos()" title="Exportar PDF">📥</button>
             <button class="det-overlay-action" onclick="toggleGastoForm()">+ Novo</button>
           </div>
           <div class="det-overlay-body">
@@ -258,6 +263,7 @@
             <button class="rep-detail-back" onclick="fecharDetalheRelatorio()">← Voltar ao relatório</button>
             <h2 id="rep-detail-titulo"></h2>
             <div id="rep-detail-meta"></div>
+            <button class="rep-pdf-btn" id="btn-pdf-relatorio" onclick="exportarPDFRelatorio()" title="Exportar PDF">📥 PDF</button>
           </div>
           <div id="rep-detail-body"></div>
         </div>
@@ -274,6 +280,7 @@
         <button class="fin-subtab"        id="fin-subtab-resumo"       onclick="setFinTab('resumo')">📊 Resumo</button>
         <button class="fin-subtab"        id="fin-subtab-compromissos" onclick="setFinTab('compromissos')">📅 Compromissos</button>
         <button class="fin-novo-btn" id="fin-novo-btn" onclick="abrirModalLancamento()">+ Novo lançamento</button>
+        <button class="fin-novo-btn" id="fin-pdf-btn" onclick="exportarPDFFinancas()" title="Exportar PDF do período">📥 PDF</button>
       </div>
 
       <!-- LANÇAMENTOS -->
