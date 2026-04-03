@@ -1845,8 +1845,6 @@ async function esconderLogin() {
     const emailEl = document.getElementById('config-user-email');
     if (emailEl && currentUser) emailEl.textContent = currentUser.email;
   } catch(e) {}
-  // Se representante ainda não carregou (ex: falha silenciosa), tenta uma vez mais
-  if (!currentRep && currentUser) await carregarRepresentante();
   loadClientes().then(() => sincronizarUltimasVisitas());
   carregarLembretesSupabase();
   iniciarTarefas();
