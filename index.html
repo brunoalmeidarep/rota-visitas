@@ -2142,7 +2142,7 @@ async function geocodeAll() {
         const loc = data.results[0].geometry.location;
         if (loc.lat >= -30.5 && loc.lat <= -22.5 && loc.lng >= -54.6 && loc.lng <= -48.0) {
           c.lat = loc.lat; c.lng = loc.lng; found++;
-          sb.from('clientes').update({ lat: c.lat, lng: c.lng }).eq('id', String(c.id)).catch(() => {});
+          try { await sb.from('clientes').update({ lat: c.lat, lng: c.lng }).eq('id', String(c.id)); } catch(e) {}
           if (gmap) renderMapMarkers();
         } else {
           uiLog('geocode fora dos bounds: ' + c.nome + ' lat=' + loc.lat + ' lng=' + loc.lng);
@@ -2166,7 +2166,7 @@ async function geocodeCliente(c) {
       const loc = data.results[0].geometry.location;
       if (loc.lat >= -30.5 && loc.lat <= -22.5 && loc.lng >= -54.6 && loc.lng <= -48.0) {
         c.lat = loc.lat; c.lng = loc.lng;
-        sb.from('clientes').update({ lat: c.lat, lng: c.lng }).eq('id', String(c.id)).catch(() => {});
+        try { await sb.from('clientes').update({ lat: c.lat, lng: c.lng }).eq('id', String(c.id)); } catch(e) {}
         if (gmap) renderMapMarkers();
         showToast('📍 ' + c.nome.split(' ')[0] + ' localizado!');
       }
