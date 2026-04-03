@@ -1709,56 +1709,39 @@ async function carregarRepresentante() {
   _repIdCache = null;
   currentRep  = null;
   try {
-    uiLog('rep: query por email=' + currentUser?.email);
-    const { data, error: qErr } = await sb
+    uiLog('rep: inicio email=' + currentUser?.email);
+
+    // Usa .limit(1) em vez de .maybeSingle() — evita erro se houver duplicatas na tabela
+    const { data, error } = await sb
       .from('representantes')
       .select('*')
       .eq('email', currentUser.email)
-      .maybeSingle();
-    uiLog('rep: data=' + (data?.id || 'null') + ' err=' + (qErr?.message || 'ok'));
+      .limit(1);
 
-    if (data) {
-      currentRep = data;
-      if (!data.auth_id) {
-        sb.from('representantes').update({ auth_id: currentUser.id }).eq('id', data.id).catch(() => {});
-      }
+    uiLog('rep: retornou data=' + JSON.stringify(data) + ' err=' + (error?.message || 'ok'));
+
+    const row = Array.isArray(data) ? data[0] : data;
+
+    if (row) {
+      currentRep = row;
     } else {
-      uiLog('rep: não encontrado, tentando insert...');
-      const { data: novo, error: insErr } = await sb.from('representantes').insert({
-        email:   currentUser.email,
-        nome:    currentUser.email.split('@')[0],
-        auth_id: currentUser.id,
-        ativo:   true,
-      }).select().maybeSingle();
-      uiLog('rep: insert=' + (novo?.id || 'null') + ' err=' + (insErr?.message || 'ok'));
+      uiLog('rep: nao encontrado, tentando por auth_id...');
+      const { data: d2, error: e2 } = await sb
+        .from('representantes')
+        .select('*')
+        .eq('auth_id', currentUser.id)
+        .limit(1);
+      uiLog('rep: auth_id retornou=' + JSON.stringify(d2) + ' err=' + (e2?.message || 'ok'));
 
-      if (novo) {
-        currentRep = novo;
-      } else {
-        uiLog('rep: insert falhou, tentando por auth_id...');
-        const { data: porAuth, error: eAuth } = await sb.from('representantes')
-          .select('*').eq('auth_id', currentUser.id).maybeSingle();
-        uiLog('rep: porAuth=' + (porAuth?.id || 'null') + ' err=' + (eAuth?.message || 'ok'));
-
-        if (porAuth) {
-          currentRep = porAuth;
-        } else {
-          uiLog('rep: tentando update auth_id...');
-          const { data: upd, error: eUpd } = await sb.from('representantes')
-            .update({ auth_id: currentUser.id })
-            .eq('email', currentUser.email)
-            .select().maybeSingle();
-          uiLog('rep: upd=' + (upd?.id || 'null') + ' err=' + (eUpd?.message || 'ok'));
-          currentRep = upd || null;
-        }
-      }
+      const row2 = Array.isArray(d2) ? d2[0] : d2;
+      currentRep = row2 || null;
     }
   } catch(e) {
-    uiLog('rep: EXCEÇÃO ' + e.message);
+    uiLog('rep: EXCECAO ' + e.message);
     currentRep = null;
   }
   _repIdCache = currentRep?.id || null;
-  uiLog('rep: _repIdCache=' + (_repIdCache || 'NULL'));
+  uiLog('rep: fim _repIdCache=' + (_repIdCache || 'NULL'));
 }
 
 // Retorna o id correto de representantes para uso como rep_id
