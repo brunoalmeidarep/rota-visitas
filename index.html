@@ -988,7 +988,6 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 </style>
 </head>
 <body>
-<div id="debug-log" style="display:none;position:fixed;top:0;left:0;right:0;background:red;color:white;z-index:99999;font-size:13px;font-family:monospace;padding:10px;max-height:40vh;overflow:auto;"></div>
 <!-- TELA DE LOGIN -->
 <div id="screen-login">
   <div class="login-inner">
@@ -1709,39 +1708,45 @@ async function carregarRepresentante() {
   _repIdCache = null;
   currentRep  = null;
   try {
-    uiLog('rep: inicio email=' + currentUser?.email);
-
-    // Usa .limit(1) em vez de .maybeSingle() — evita erro se houver duplicatas na tabela
-    const { data, error } = await sb
+    // 1ª tentativa: busca por auth_id (rota rápida, sempre correta)
+    const { data: d1 } = await sb
       .from('representantes')
       .select('*')
-      .eq('email', currentUser.email)
+      .eq('auth_id', currentUser.id)
       .limit(1);
 
-    uiLog('rep: retornou data=' + JSON.stringify(data) + ' err=' + (error?.message || 'ok'));
+    const porAuthId = Array.isArray(d1) ? d1[0] : null;
 
-    const row = Array.isArray(data) ? data[0] : data;
-
-    if (row) {
-      currentRep = row;
+    if (porAuthId) {
+      currentRep = porAuthId;
     } else {
-      uiLog('rep: nao encontrado, tentando por auth_id...');
-      const { data: d2, error: e2 } = await sb
+      // 2ª tentativa: busca por email (auth_id pode ter mudado após troca de senha)
+      const { data: d2 } = await sb
         .from('representantes')
         .select('*')
-        .eq('auth_id', currentUser.id)
-        .limit(1);
-      uiLog('rep: auth_id retornou=' + JSON.stringify(d2) + ' err=' + (e2?.message || 'ok'));
+        .eq('email', currentUser.email)
+        .limit(2); // limit 2 para detectar duplicatas
 
-      const row2 = Array.isArray(d2) ? d2[0] : d2;
-      currentRep = row2 || null;
+      const registros = Array.isArray(d2) ? d2 : [];
+
+      if (registros.length === 1) {
+        currentRep = registros[0];
+        // Auto-corrige o auth_id — resolve troca de senha para sempre
+        sb.from('representantes')
+          .update({ auth_id: currentUser.id })
+          .eq('email', currentUser.email)
+          .catch(e => console.error('Erro ao atualizar auth_id:', e.message));
+      } else if (registros.length > 1) {
+        console.error('carregarRepresentante: múltiplos registros para email', currentUser.email, '— auth_id NÃO atualizado');
+        currentRep = registros[0]; // usa o primeiro mas não corrige
+      }
+      // se registros.length === 0: currentRep permanece null
     }
   } catch(e) {
-    uiLog('rep: EXCECAO ' + e.message);
+    console.error('carregarRepresentante exceção:', e.message);
     currentRep = null;
   }
   _repIdCache = currentRep?.id || null;
-  uiLog('rep: fim _repIdCache=' + (_repIdCache || 'NULL'));
 }
 
 // Retorna o id correto de representantes para uso como rep_id
@@ -1753,19 +1758,10 @@ async function getRepId() {
   return _repIdCache;
 }
 
-// ── DEBUG PANEL (visível no celular, remover após diagnóstico) ─────────────
-function uiLog(msg) {
-  const el = document.getElementById('debug-log');
-  if (!el) return;
-  el.style.display = 'block';
-  el.innerHTML += new Date().toISOString().slice(11,19) + ' ' + msg + '<br>';
-  el.scrollTop = el.scrollHeight;
-}
-
 // Token do hCaptcha do login — preenchido pelo callback data-callback
 let _loginCaptchaToken = '';
-function onLoginCaptchaSolved(token) { _loginCaptchaToken = token; uiLog('captcha resolvido'); }
-function onLoginCaptchaExpired()     { _loginCaptchaToken = ''; uiLog('captcha expirou'); }
+function onLoginCaptchaSolved(token) { _loginCaptchaToken = token; }
+function onLoginCaptchaExpired()     { _loginCaptchaToken = ''; }
 
 async function fazerLogin() {
   const email = document.getElementById('login-email').value.trim();
@@ -1773,16 +1769,12 @@ async function fazerLogin() {
   const btn   = document.getElementById('btn-login');
   const erro  = document.getElementById('login-erro');
 
-  document.getElementById('debug-log').innerHTML = '';
-  uiLog('fazerLogin iniciado');
-
   if (!email || !senha) {
     erro.textContent = 'Preencha e-mail e senha.';
     return;
   }
 
   const captchaToken = _loginCaptchaToken || (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
-  uiLog('captchaToken: ' + (captchaToken ? 'ok (' + captchaToken.slice(0,10) + '...)' : 'VAZIO'));
   if (!captchaToken) {
     erro.textContent = 'Complete o CAPTCHA antes de entrar.';
     return;
@@ -1793,7 +1785,6 @@ async function fazerLogin() {
   erro.textContent = '';
 
   try {
-    uiLog('chamando signInWithPassword...');
     const { data, error } = await sb.auth.signInWithPassword({
       email, password: senha,
       options: { captchaToken }
@@ -1801,17 +1792,13 @@ async function fazerLogin() {
     _loginCaptchaToken = '';
     if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
 
-    uiLog('signIn retornou — erro: ' + (error?.message || 'nenhum') + ' | user: ' + (data?.user?.email || 'null'));
-
     if (error) {
       erro.textContent = 'E-mail ou senha incorretos.';
       return;
     }
 
     currentUser = data.user;
-    uiLog('carregando representante...');
     await carregarRepresentante();
-    uiLog('currentRep: ' + (currentRep?.id || 'NULL'));
 
     if (!currentRep) {
       erro.textContent = 'Usuário não vinculado. Contate o administrador.';
@@ -1820,11 +1807,9 @@ async function fazerLogin() {
       return;
     }
 
-    uiLog('sucesso — entrando no app');
     esconderLogin();
 
   } catch(e) {
-    uiLog('EXCEÇÃO: ' + e.message);
     erro.textContent = 'Erro inesperado. Tente novamente.';
   } finally {
     btn.disabled = false;
