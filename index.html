@@ -1708,6 +1708,9 @@ async function carregarRepresentante() {
   _repIdCache = null;
   currentRep  = null;
   try {
+    const { data: { user: authUser } } = await sb.auth.getUser();
+    alert('DEBUG getRepId\nauth.uid = ' + (authUser?.id || 'NULL') + '\nemail = ' + (authUser?.email || 'NULL'));
+
     // Busca pelo auth_id — compatível com a RLS: USING (auth_id = auth.uid())
     const { data: porAuth, error: errAuth } = await sb
       .from('representantes')
@@ -1715,7 +1718,7 @@ async function carregarRepresentante() {
       .eq('auth_id', currentUser.id)
       .maybeSingle();
 
-    console.log('[Rep] busca por auth_id:', currentUser.id, '| resultado:', porAuth?.id || 'vazio', '| erro:', errAuth?.message || 'nenhum');
+    alert('DEBUG busca por auth_id\nresultado: ' + JSON.stringify(porAuth) + '\nerro: ' + JSON.stringify(errAuth));
 
     if (porAuth) {
       currentRep = porAuth;
@@ -1727,7 +1730,7 @@ async function carregarRepresentante() {
         .eq('email', currentUser.email)
         .maybeSingle();
 
-      console.log('[Rep] busca por email:', currentUser.email, '| resultado:', porEmail?.id || 'vazio', '| erro:', errEmail?.message || 'nenhum');
+      alert('DEBUG busca por email\nresultado: ' + JSON.stringify(porEmail) + '\nerro: ' + JSON.stringify(errEmail));
 
       if (porEmail) {
         currentRep = porEmail;
@@ -1742,16 +1745,16 @@ async function carregarRepresentante() {
           ativo:   true,
         }).select().maybeSingle();
 
-        console.log('[Rep] insert novo representante:', novo?.id || 'falhou', '| erro:', errIns?.message || 'nenhum');
+        alert('DEBUG insert representante\nresultado: ' + JSON.stringify(novo) + '\nerro: ' + JSON.stringify(errIns));
         currentRep = novo || null;
       }
     }
   } catch(e) {
-    console.error('[Rep] carregarRepresentante exceção:', e.message);
+    alert('EXCEÇÃO carregarRepresentante: ' + e.message);
     currentRep = null;
   }
   _repIdCache = currentRep?.id || null;
-  console.log('[Rep] _repIdCache final:', _repIdCache || 'NULL');
+  alert('DEBUG _repIdCache final: ' + (_repIdCache || 'NULL'));
 }
 
 // Retorna o id correto de representantes para uso como rep_id
@@ -1789,12 +1792,12 @@ async function fazerLogin() {
   let loginOk = false;
 
   try {
-    console.log('[Login] Chamando signInWithPassword...');
+    alert('LOGIN 1 - chamando signInWithPassword...');
     const { data, error } = await sb.auth.signInWithPassword({
       email, password: senha,
       options: { captchaToken }
     });
-    console.log('[Login] signIn retornou. erro:', error?.message || 'nenhum');
+    alert('LOGIN 2 - signIn retornou\nerro: ' + (error?.message || 'nenhum') + '\nuser: ' + (data?.user?.email || 'NULL'));
 
     if (error) {
       erro.textContent = 'E-mail ou senha incorretos.';
@@ -1802,10 +1805,10 @@ async function fazerLogin() {
     }
 
     currentUser = data.user;
-    console.log('[Login] Auth ok:', currentUser.email, '| Carregando representante...');
+    alert('LOGIN 3 - carregando representante...');
 
     await carregarRepresentante();
-    console.log('[Login] currentRep?.id:', currentRep?.id || 'NULL');
+    alert('LOGIN 4 - currentRep?.id: ' + (currentRep?.id || 'NULL'));
 
     if (!currentRep) {
       await sb.auth.signOut();
