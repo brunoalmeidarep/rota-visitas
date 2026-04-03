@@ -10248,7 +10248,7 @@ if ('serviceWorker' in navigator) {
               <input type="date" class="ci-data-input" id="ci-data-visita">
             </div>
             <textarea id="p-obs" placeholder="Observações desta visita (opcional)..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:14px;resize:none;outline:none;min-height:70px;margin-bottom:4px;display:block"></textarea>
-            <button class="btn-checkin-unico" id="p-btn-checkin" onclick="fazerCheckin()">✓ Check-in</button>
+            <button class="btn-checkin-unico" id="p-btn-checkin" onclick="fazerCheckin()" onpointerdown="event.preventDefault()">✓ Check-in</button>
             <div class="pf-feedback" id="ci-feedback"></div>
           </div>
         </div>
@@ -10393,7 +10393,7 @@ if ('serviceWorker' in navigator) {
           </div>
           <div style="display:flex;gap:8px;margin-top:4px">
             <button class="gestao-btn-sm" onclick="cancelarEdicaoVisita()" style="flex:1;padding:11px">Cancelar</button>
-            <button class="pf-btn-registrar" onclick="salvarEdicaoVisita()" style="flex:2;margin-top:0">Salvar obs.</button>
+            <button class="pf-btn-registrar" onclick="salvarEdicaoVisita()" onpointerdown="event.preventDefault()" style="flex:2;margin-top:0">Salvar obs.</button>
           </div>
         </div>
       </div>
@@ -10455,7 +10455,9 @@ if ('serviceWorker' in navigator) {
           <div class="gc-form-title">Novo gasto</div>
           <div class="campo-grupo">
             <label class="campo-label">Descrição *</label>
-            <input class="campo-input" id="gc-desc" placeholder="Ex: Almoço com cliente, Brinde...">
+            <input class="campo-input" id="gc-desc" placeholder="Ex: Almoço com cliente, Brinde..."
+              enterKeyHint="next"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('gc-valor').focus();}">
           </div>
           <div class="campo-grupo">
             <label class="campo-label">Valor (R$) *</label>
@@ -10472,7 +10474,7 @@ if ('serviceWorker' in navigator) {
             <input type="file" id="gc-nf-input" accept=".pdf,image/*" multiple style="display:none" onchange="anexoAdd('gc', this)">
             <div id="anexos-gc"></div>
           </div>
-          <button class="pf-btn-registrar" onclick="salvarGasto()">Salvar</button>
+          <button class="pf-btn-registrar" onclick="salvarGasto()" onpointerdown="event.preventDefault()">Salvar</button>
         </div>
         <div id="gc-list"></div>
       </div>
@@ -10507,7 +10509,7 @@ if ('serviceWorker' in navigator) {
             <label class="campo-label">Data combinada</label>
             <input class="campo-input" id="bonif-data" type="date">
           </div>
-          <button class="pf-btn-registrar" onclick="salvarBonificacao()">Salvar</button>
+          <button class="pf-btn-registrar" onclick="salvarBonificacao()" onpointerdown="event.preventDefault()">Salvar</button>
         </div>
         <div class="perfil-section-title" style="margin-top:0">Em andamento</div>
         <div id="bonif-andamento"></div>
@@ -10540,7 +10542,7 @@ if ('serviceWorker' in navigator) {
         </div>
         <div style="display:flex;gap:10px;margin-top:16px">
           <button class="gestao-btn-sm" style="flex:1;padding:12px;font-size:14px" onclick="fecharModalPagamentoBonif()">Cancelar</button>
-          <button class="pf-btn-registrar" style="flex:2;margin:0" onclick="confirmarPagamentoBonif()">Confirmar</button>
+          <button class="pf-btn-registrar" style="flex:2;margin:0" onclick="confirmarPagamentoBonif()" onpointerdown="event.preventDefault()">Confirmar</button>
         </div>
       </div>
     </div>
@@ -10635,7 +10637,7 @@ if ('serviceWorker' in navigator) {
           </div>
           <div class="gestao-form-footer">
             <button class="btn-cancelar" onclick="fecharFormEmpresa()">Cancelar</button>
-            <button class="btn-salvar" onclick="salvarEmpresa()">Salvar</button>
+            <button class="btn-salvar" onclick="salvarEmpresa()" onpointerdown="event.preventDefault()">Salvar</button>
           </div>
         </div>
         <div id="empresas-lista"></div>
@@ -10660,7 +10662,7 @@ if ('serviceWorker' in navigator) {
           </div>
           <div class="gestao-form-footer">
             <button class="btn-cancelar" onclick="fecharFormSegmento()">Cancelar</button>
-            <button class="btn-salvar" onclick="salvarSegmento()">Salvar</button>
+            <button class="btn-salvar" onclick="salvarSegmento()" onpointerdown="event.preventDefault()">Salvar</button>
           </div>
         </div>
         <div id="segmentos-lista"></div>
@@ -10743,7 +10745,7 @@ if ('serviceWorker' in navigator) {
       </div>
       <div class="cadastro-footer">
         <button class="btn-cancelar" onclick="closeCadastro()">Cancelar</button>
-        <button class="btn-salvar-cliente" id="btn-salvar-cliente" onclick="salvarNovoCliente()">Salvar Cliente</button>
+        <button class="btn-salvar-cliente" id="btn-salvar-cliente" onclick="salvarNovoCliente()" onpointerdown="event.preventDefault()">Salvar Cliente</button>
       </div>
       <div id="cadastro-feedback" style="text-align:center;font-size:14px;font-weight:700;color:var(--green);padding:0 16px 16px;display:none"></div>
     </div>
@@ -10999,7 +11001,7 @@ if ('serviceWorker' in navigator) {
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="gestao-btn-sm" onclick="fecharModalEditarPedido()" style="flex:1;padding:11px">Cancelar</button>
-      <button class="pf-btn-registrar" onclick="salvarModalEditarPedido()" style="flex:2;margin-top:0">Salvar</button>
+      <button class="pf-btn-registrar" onclick="salvarModalEditarPedido()" onpointerdown="event.preventDefault()" style="flex:2;margin-top:0">Salvar</button>
     </div>
   </div>
 </div>
