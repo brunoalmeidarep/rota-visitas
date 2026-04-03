@@ -4279,27 +4279,6 @@ function editarCliente() {
   document.body.style.overflow = 'hidden';
 }
 
-async function geocodeCliente(c) {
-  const q = encodeURIComponent(`${c.endereco}, ${c.cidade}, Brasil`);
-  try {
-    const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
-      headers: { 'Accept-Language': 'pt-BR' }
-    });
-    const data = await res.json();
-    if (data.length > 0) {
-      const lat = parseFloat(data[0].lat);
-      const lng = parseFloat(data[0].lon);
-      // Valida bounds SC/PR
-      if (lat >= -30.5 && lat <= -22.5 && lng >= -54.6 && lng <= -48.0) {
-        c.lat = lat;
-        c.lng = lng;
-        if (map) updateMapPins();
-        showToast(`📍 ${c.nome.split(' ')[0]} localizado no mapa!`);
-      }
-    }
-  } catch(e) { /* sem geocoding */ }
-}
-
 // ── CEP / VIACEP ────────────────────────────────────────
 function mascaraCEP(el) {
   let v = el.value.replace(/\D/g,'').slice(0,8);
