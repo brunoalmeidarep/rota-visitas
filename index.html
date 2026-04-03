@@ -2792,11 +2792,15 @@ function renderVendasDetalheLista(rows, inner) {
     const cidade = (v.cidade||'').replace(' - SC','').replace(' - PR','').trim();
     const rep = v.pedido_representada || v.representada_nome || '';
     const bg = i%2===0?'var(--card)':'var(--bg)';
+    const canalTag = v.tipo_contato === 'whatsapp'
+      ? ' · <span style="color:#25D366;font-weight:700">WhatsApp</span>'
+      : v.tipo_contato === 'telefone'
+        ? ' · <span style="color:#888;font-weight:700">Telefone</span>' : '';
     return `<div style="display:flex;align-items:flex-start;padding:12px 14px;background:${bg};border-bottom:1px solid var(--border);gap:10px;cursor:pointer" onclick="${v.id?`abrirDetalheVisitaRel('${v.id}')`:''}" >` +
       '<div style="font-size:16px;margin-top:1px">💰</div>' +
       '<div style="flex:1;min-width:0">' +
         `<div style="font-size:14px;font-weight:600;color:var(--text)">${nomeBase}</div>` +
-        `<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 ${cidade} · ${dataFmt}${rep?' · '+rep:''}</div>` +
+        `<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 ${cidade} · ${dataFmt}${rep?' · '+rep:''}${canalTag}</div>` +
       '</div>' +
       `<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px">${formatarMoeda(v.valor_pedido)}</div>` +
     '</div>';
@@ -3061,6 +3065,37 @@ async function _carregarVendasRelatorio() {
     }
   } catch(e) {}
 
+  // Pedidos sem visita (WhatsApp / Telefone) — visita_id IS NULL
+  try {
+    let psvIni, psvFim;
+    if (repFiltroAtual === 'hoje') {
+      psvIni = dataHojeLocal() + 'T00:00:00'; psvFim = dataHojeLocal() + 'T23:59:59';
+    } else if (repFiltroAtual === 'semana') {
+      const dr = getDateRange('semana');
+      psvIni = dr.ini + 'T00:00:00'; psvFim = dr.fim + 'T23:59:59';
+    } else if (repFiltroAtual === 'ano') {
+      psvIni = relAno + '-01-01T00:00:00'; psvFim = relAno + '-12-31T23:59:59';
+    } else {
+      const p1 = new Date(relAno, relMes, 1), pu = new Date(relAno, relMes + 1, 0);
+      psvIni = p1.toISOString().slice(0,10) + 'T00:00:00';
+      psvFim = pu.toISOString().slice(0,10) + 'T23:59:59';
+    }
+    const { data: psvPeds } = await sb.from('pedidos').select('*')
+      .eq('rep_id', repId).is('visita_id', null).eq('tipo', 'pedido')
+      .gte('created_at', psvIni).lte('created_at', psvFim);
+    (psvPeds || []).forEach(p => {
+      if (!(parseFloat(p.valor) > 0)) return;
+      const cli = clientes.find(c => String(c.id) === String(p.cliente_id));
+      allPedidos.push({
+        id: null, id_cliente: p.cliente_id, nome_cliente: p.cliente_nome || cli?.nome || '',
+        cidade: cli?.cidade || '', data: p.created_at?.slice(0,10),
+        pedido_tipo: p.tipo, pedido_valor: p.valor, valor_pedido: p.valor,
+        representada_id: p.representada_id, pedido_representada: p.representada_nome,
+        representada_nome: p.representada_nome, tipo_contato: p.tipo_contato, obs: p.obs,
+      });
+    });
+  } catch(e) {}
+
   allPedidos.sort((a,b) => parseFloat(b.valor_pedido||0) - parseFloat(a.valor_pedido||0));
   const repsVendas = [...new Set(allPedidos.map(v=>v.pedido_representada||v.representada_nome).filter(Boolean))];
   const filtroRepHtml = repsVendas.length > 1
@@ -3124,6 +3159,26 @@ async function _carregarOrcamentosRelatorio(periodo) {
       }
     }
   } catch(e) {}
+
+  // Orçamentos sem visita (WhatsApp / Telefone) — visita_id IS NULL
+  try {
+    const { data: psvOrcs } = await sb.from('pedidos').select('*')
+      .eq('rep_id', currentRep.id).is('visita_id', null).eq('tipo', 'orcamento')
+      .gte('created_at', ini + 'T00:00:00').lte('created_at', fim + 'T23:59:59');
+    (psvOrcs || []).forEach(p => {
+      const cli = clientes.find(c => String(c.id) === String(p.cliente_id));
+      orc.push({
+        id: null, id_cliente: p.cliente_id, nome_cliente: p.cliente_nome || cli?.nome || '',
+        cidade: cli?.cidade || '', data: p.created_at?.slice(0,10),
+        pedido_tipo: p.tipo, valor_pedido: p.valor,
+        representada_id: p.representada_id, representada_nome: p.representada_nome,
+        pedido_representada: p.representada_nome,
+        orcamento_status: p.status, status_orcamento: p.status,
+        tipo_contato: p.tipo_contato, obs: p.obs,
+      });
+    });
+  } catch(e) {}
+
   window._orcamentosRelatorioCache = orc;
   const abertos = orc.filter(v => !statusOrc(v) || statusOrc(v) === 'aberto');
   const fechados = orc.filter(v => statusOrc(v) === 'fechado');
@@ -3151,11 +3206,15 @@ async function _carregarOrcamentosRelatorio(periodo) {
     const val = parseFloat(v.valor_pedido) > 0 ? formatarMoeda(v.valor_pedido) : '';
     const dt = v.data ? new Date(v.data+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
     const obs = v.obs ? v.obs.slice(0,80)+(v.obs.length>80?'…':'') : '';
+    const canalTag = v.tipo_contato === 'whatsapp'
+      ? ' · <span style="color:#25D366;font-weight:700">WhatsApp</span>'
+      : v.tipo_contato === 'telefone'
+        ? ' · <span style="color:#888;font-weight:700">Telefone</span>' : '';
     return `<div style="display:flex;align-items:flex-start;padding:11px 14px;background:${bg};border-bottom:1px solid var(--border);gap:10px" onclick="fecharRepDetalhe();openPerfil(${v.id_cliente||v.cliente_id})">
       <div style="font-size:16px;margin-top:1px">📋</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:600;color:var(--text)">${nome}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">${[rep,dt].filter(Boolean).join(' · ')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${[rep,dt].filter(Boolean).join(' · ')}${canalTag}</div>
         ${obs ? `<div style="font-size:12px;color:var(--text2);margin-top:3px;line-height:1.4">${obs}</div>` : ''}
       </div>
       ${val ? `<div style="font-size:14px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:2px;white-space:nowrap">${val}</div>` : ''}
