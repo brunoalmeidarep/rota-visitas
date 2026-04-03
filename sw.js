@@ -1,36 +1,33 @@
-// Service worker — network-first, fallback cache — v20260403
-const CACHE = 'mdr-v1';
+// Service Worker — network-first, fallback cache
+const CACHE_VERSION = 'mdr-v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  const url = new URL(e.request.url);
-  const isSameOrigin = url.origin === self.location.origin;
-  if (!isSameOrigin) return; // recursos externos: browser decide
+  if (new URL(e.request.url).origin !== self.location.origin) return;
 
   e.respondWith(
     fetch(e.request, { cache: 'no-store' })
       .then(res => {
-        // Atualiza cache com a resposta fresca
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE_VERSION).then(c => c.put(e.request, clone));
+        }
         return res;
       })
-      .catch(() => caches.match(e.request)) // offline: serve do cache
+      .catch(() => caches.match(e.request))
   );
 });
 
-// Mensagens do app principal
 self.addEventListener('message', e => {
   if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
   if (e.data?.type === 'SHOW_NOTIFICATION') {
@@ -46,7 +43,6 @@ self.addEventListener('message', e => {
   }
 });
 
-// Ao clicar na notificação, abre o app na tela de tarefas
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(
