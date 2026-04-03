@@ -2195,27 +2195,12 @@ function showScreen(s) {
     }
   }
   if (s === 'map') {
-    if (currentUser && clientes.length === 0) loadClientes();
     const _tryMap = (attempt) => {
       if (!gmap && typeof google !== 'undefined' && google.maps) window.initMap();
       if (gmap) {
         google.maps.event.trigger(gmap, 'resize');
-        renderMapMarkers();
-        if (!clientes.length) {
-          const mapEl = document.getElementById('map');
-          if (mapEl && !mapEl.querySelector('.map-empty-msg')) {
-            const msg = document.createElement('div');
-            msg.className = 'map-empty-msg';
-            msg.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);color:#fff;padding:16px 24px;border-radius:14px;font-size:14px;text-align:center;pointer-events:none;z-index:10';
-            msg.innerHTML = '🗺️ Nenhum cliente com localização<br><span style="font-size:12px;opacity:.7">Importe sua carteira em ⚙️ Configurações</span>';
-            mapEl.style.position = 'relative';
-            mapEl.appendChild(msg);
-          }
-        } else {
-          const mapEl = document.getElementById('map');
-          const msg = mapEl?.querySelector('.map-empty-msg');
-          if (msg) msg.remove();
-        }
+        // Sempre recarrega marcadores frescos do Supabase ao abrir a aba
+        carregarMarcadoresMapa();
       } else if (attempt < 5) {
         setTimeout(() => _tryMap(attempt + 1), 1000);
       }
@@ -2273,6 +2258,68 @@ function renderMapMarkers() {
 
 function updateMapPins() { renderMapMarkers(); }
 function refreshMarkers() { renderMapMarkers(); }
+
+// Carrega marcadores frescos do Supabase — chamado toda vez que a aba do mapa abre
+async function carregarMarcadoresMapa() {
+  if (!gmap) return;
+
+  const repId = await getRepId();
+  if (!repId) {
+    console.log('[Mapa] rep_id nulo — abortando carregamento de marcadores');
+    return;
+  }
+
+  const { data, error } = await sb
+    .from('clientes')
+    .select('id, nome, cidade, lat, lng, ultima_visita')
+    .eq('rep_id', repId);
+
+  if (error) {
+    console.log('[Mapa] Erro ao buscar clientes:', error.message);
+    return;
+  }
+
+  const comCoords = (data || []).filter(c => c.lat && c.lng).length;
+  console.log('[Mapa] rep_id:', repId, '| clientes:', data?.length, '| com coordenadas:', comCoords);
+
+  if (!data || !data.length) {
+    _mapAtualizarMensagemVazia(true);
+    return;
+  }
+
+  // Atualiza lat/lng no array global (preserva checkins do dia e demais campos)
+  data.forEach(row => {
+    const c = clientes.find(x => String(x.id) === String(row.id));
+    if (c) {
+      c.lat = row.lat;
+      c.lng = row.lng;
+    } else {
+      // Ainda não carregado na carteira — adiciona versão mínima
+      clientes.push(_mapearCliente(row));
+    }
+  });
+
+  renderMapMarkers();
+  _mapAtualizarMensagemVazia(comCoords === 0);
+}
+
+function _mapAtualizarMensagemVazia(vazio) {
+  const mapEl = document.getElementById('map');
+  if (!mapEl) return;
+  const msg = mapEl.querySelector('.map-empty-msg');
+  if (vazio) {
+    if (!msg) {
+      const el = document.createElement('div');
+      el.className = 'map-empty-msg';
+      el.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);color:#fff;padding:16px 24px;border-radius:14px;font-size:14px;text-align:center;pointer-events:none;z-index:10';
+      el.innerHTML = '🗺️ Nenhum cliente com localização<br><span style="font-size:12px;opacity:.7">Importe sua carteira em ⚙️ Configurações</span>';
+      mapEl.style.position = 'relative';
+      mapEl.appendChild(el);
+    }
+  } else {
+    if (msg) msg.remove();
+  }
+}
 
 // ── LISTA ──────────────────────────────────────────────
 function renderList() {
