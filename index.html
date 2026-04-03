@@ -2133,7 +2133,7 @@ async function geocodeAll() {
     if (c.lat && c.lng) { found++; continue; }
     const q = encodeURIComponent(c.endereco + ', ' + c.cidade + ', Brasil');
     try {
-      const res = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + q + '&key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&region=br&language=pt-BR');
+      const res = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + q + '&key=AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI&region=br&language=pt-BR');
       const data = await res.json();
       if (data.status !== 'OK') {
         uiLog('geocode ERRO: ' + data.status + ' | ' + c.nome + ' | ' + c.endereco);
@@ -2160,7 +2160,7 @@ async function geocodeAll() {
 async function geocodeCliente(c) {
   const q = encodeURIComponent(c.endereco + ', ' + c.cidade + ', Brasil');
   try {
-    const res = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + q + '&key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&region=br&language=pt-BR');
+    const res = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + q + '&key=AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI&region=br&language=pt-BR');
     const data = await res.json();
     if (data.status === 'OK' && data.results.length > 0) {
       const loc = data.results[0].geometry.location;
