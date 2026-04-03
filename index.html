@@ -2,6 +2,39 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src  'self' 'unsafe-inline'
+                https://cdn.jsdelivr.net
+                https://cdnjs.cloudflare.com
+                https://js.hcaptcha.com
+                https://newassets.hcaptcha.com
+                https://maps.googleapis.com
+                https://maps.gstatic.com;
+    style-src   'self' 'unsafe-inline'
+                https://fonts.googleapis.com
+                https://newassets.hcaptcha.com;
+    font-src    'self'
+                https://fonts.gstatic.com;
+    img-src     'self' data: blob:
+                https://maps.googleapis.com
+                https://maps.gstatic.com
+                https://*.googleapis.com;
+    connect-src 'self'
+                https://fiwpmhrjbovnazagjcjf.supabase.co
+                wss://fiwpmhrjbovnazagjcjf.supabase.co
+                https://maps.googleapis.com
+                https://viacep.com.br
+                https://nominatim.openstreetmap.org
+                https://script.google.com
+                https://hcaptcha.com
+                https://*.hcaptcha.com;
+    frame-src   https://newassets.hcaptcha.com
+                https://hcaptcha.com;
+    worker-src  'self' blob:;
+    object-src  'none';
+    base-uri    'self';
+  ">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
