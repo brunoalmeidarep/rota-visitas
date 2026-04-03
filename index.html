@@ -999,7 +999,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <input class="login-input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="email">
       <input class="login-input" id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
       <div class="login-erro" id="login-erro"></div>
-      <div class="h-captcha" data-sitekey="becedf82-59a0-4206-9230-7de22e4c49f0" style="margin:8px 0"></div>
+      <div class="h-captcha" data-sitekey="becedf82-59a0-4206-9230-7de22e4c49f0" data-callback="onLoginCaptchaSolved" data-expired-callback="onLoginCaptchaExpired" style="margin:8px 0"></div>
       <button class="login-btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
       <button class="login-btn login-btn-secundario" onclick="abrirCadastro()">Criar conta</button>
       <div class="login-esqueci" onclick="esqueceuSenha()">Esqueci minha senha</div>
@@ -1763,6 +1763,11 @@ async function getRepId() {
   return _repIdCache;
 }
 
+// Token do hCaptcha do login — preenchido pelo callback data-callback
+let _loginCaptchaToken = '';
+function onLoginCaptchaSolved(token) { _loginCaptchaToken = token; }
+function onLoginCaptchaExpired()     { _loginCaptchaToken = ''; }
+
 async function fazerLogin() {
   const email = document.getElementById('login-email').value.trim();
   const senha = document.getElementById('login-senha').value;
@@ -1774,7 +1779,8 @@ async function fazerLogin() {
     return;
   }
 
-  const captchaToken = typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '';
+  // Usa token guardado pelo callback; fallback para getResponse() caso callback não tenha sido chamado
+  const captchaToken = _loginCaptchaToken || (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
   if (!captchaToken) {
     erro.textContent = 'Complete o CAPTCHA antes de entrar.';
     return;
@@ -1789,14 +1795,14 @@ async function fazerLogin() {
     options: { captchaToken }
   });
 
+  _loginCaptchaToken = '';
   if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
 
   if (error) {
     erro.textContent = 'E-mail ou senha incorretos.';
     btn.disabled = false;
-    btn.textContent = 'ENTRAR';
+    btn.textContent = 'Entrar';
   } else {
-    // Trata sucesso diretamente (não depende de onAuthStateChange, que pode não disparar no Safari)
     currentUser = data.user;
     await carregarRepresentante();
     esconderLogin();
