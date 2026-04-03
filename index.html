@@ -1452,7 +1452,10 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 <div class="rota-modal" id="rota-modal" onclick="fecharModalRota(event)">
   <div class="rota-modal-sheet" onclick="event.stopPropagation()">
     <div class="rota-modal-handle"></div>
-    <div class="rota-modal-titulo">🗺️ Nova Rota</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div class="rota-modal-titulo" style="margin-bottom:0">🗺️ Nova Rota</div>
+      <button onclick="fecharModalRota({target:document.getElementById('rota-modal')})" style="background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+    </div>
     <div style="margin-bottom:12px;">
       <label class="campo-label">Nome da rota</label>
       <input class="campo-input" id="rota-nome-input" placeholder="Ex: Jaraguá do Sul - Segunda">
@@ -6958,9 +6961,22 @@ async function pfRegistrar() {
 async function converterOrcamentoEmPedido(visitaId) {
   if (!currentUser) return;
   try {
-    await sb.from('visitas').update({ tipo: 'remoto', status_orcamento: 'fechado' }).eq('id', visitaId).eq('rep_id', await getRepId());
+    const repId = await getRepId();
+    // Verifica se há pedidos na tabela pedidos para esta visita
+    const { data: peds } = await sb.from('pedidos')
+      .select('id').eq('visita_id', visitaId).eq('rep_id', repId).eq('tipo', 'orcamento');
+    if (peds && peds.length > 0) {
+      // Sistema novo: atualiza tabela pedidos
+      await sb.from('pedidos').update({ tipo: 'pedido', status: 'fechado' })
+        .eq('visita_id', visitaId).eq('rep_id', repId).eq('tipo', 'orcamento');
+      await sb.from('visitas').update({ pedido_tipo: 'pedido' })
+        .eq('id', visitaId).eq('rep_id', repId);
+    } else {
+      // Legado: atualiza apenas visitas
+      await sb.from('visitas').update({ pedido_tipo: 'pedido', orcamento_status: 'fechado', status_orcamento: 'fechado' })
+        .eq('id', visitaId).eq('rep_id', repId);
+    }
     showToast('✓ Orçamento convertido em pedido!');
-    // Recarrega histórico do cliente atual
     if (perfilId) {
       const c = clientes.find(x => x.id == perfilId);
       const visitas = await buscarHistoricoSupabase(perfilId);
@@ -6974,7 +6990,16 @@ async function converterOrcamentoEmPedido(visitaId) {
 async function marcarOrcamentoPerdido(visitaId) {
   if (!currentUser) return;
   try {
-    await sb.from('visitas').update({ status_orcamento: 'perdido' }).eq('id', visitaId).eq('rep_id', await getRepId());
+    const repId = await getRepId();
+    const { data: peds } = await sb.from('pedidos')
+      .select('id').eq('visita_id', visitaId).eq('rep_id', repId).eq('tipo', 'orcamento');
+    if (peds && peds.length > 0) {
+      await sb.from('pedidos').update({ status: 'perdido' })
+        .eq('visita_id', visitaId).eq('rep_id', repId).eq('tipo', 'orcamento');
+    } else {
+      await sb.from('visitas').update({ status_orcamento: 'perdido', orcamento_status: 'perdido' })
+        .eq('id', visitaId).eq('rep_id', repId);
+    }
     showToast('Orçamento marcado como perdido');
     if (perfilId) {
       const c = clientes.find(x => x.id == perfilId);
