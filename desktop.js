@@ -148,24 +148,97 @@ async function iniciarApp() {
   } catch(e) { mostrarLogin(); }
 
   sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session) { currentUser = session.user; mostrarApp(); }
-    else if (event === 'SIGNED_OUT') { currentUser = null; mostrarLogin(); }
+    if (event === 'SIGNED_IN' && session) {
+      currentUser = session.user;
+      mostrarApp();
+    } else if (event === 'PASSWORD_RECOVERY') {
+      // Usuário clicou no link de recuperação — mostra form nova senha
+      _mostrarViewLogin('view-nova-senha');
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      mostrarLogin();
+    }
+  });
+}
+
+function _mostrarViewLogin(viewId) {
+  document.getElementById('screen-onboarding').style.display = 'none';
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('screen-login').style.display = 'flex';
+  ['view-login', 'view-recuperar', 'view-nova-senha'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === viewId ? 'flex' : 'none';
   });
 }
 
 function mostrarLogin() {
-  document.getElementById('screen-login').style.display = 'flex';
-  document.getElementById('app').classList.remove('visible');
+  _mostrarViewLogin('view-login');
+}
+
+function mostrarRecuperarSenha() {
+  const email = document.getElementById('login-email')?.value.trim() || '';
+  if (email) document.getElementById('rec-email').value = email;
+  document.getElementById('rec-erro').textContent = '';
+  document.getElementById('rec-ok').style.display = 'none';
+  _mostrarViewLogin('view-recuperar');
+}
+
+async function enviarRecuperacao() {
+  const email = document.getElementById('rec-email').value.trim();
+  const erro  = document.getElementById('rec-erro');
+  const ok    = document.getElementById('rec-ok');
+  const btn   = document.getElementById('btn-rec');
+  if (!email) { erro.textContent = 'Informe o e-mail.'; return; }
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  erro.textContent = ''; ok.style.display = 'none';
+  try {
+    const redirectTo = window.location.href.split('?')[0].split('#')[0];
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+    ok.textContent = '✓ Link enviado! Verifique sua caixa de entrada.';
+    ok.style.display = 'block';
+    btn.textContent = 'Reenviar';
+  } catch(e) {
+    erro.textContent = 'Erro: ' + (e.message || 'tente novamente.');
+    btn.textContent = 'Enviar link';
+  }
+  btn.disabled = false;
+}
+
+async function salvarNovaSenha() {
+  const senha = document.getElementById('nova-senha').value;
+  const conf  = document.getElementById('nova-senha-conf').value;
+  const erro  = document.getElementById('nova-senha-erro');
+  const btn   = document.getElementById('btn-nova-senha');
+  if (!senha || senha.length < 6) { erro.textContent = 'Senha deve ter ao menos 6 caracteres.'; return; }
+  if (senha !== conf)              { erro.textContent = 'As senhas não conferem.'; return; }
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  erro.textContent = '';
+  try {
+    const { error } = await sb.auth.updateUser({ password: senha });
+    if (error) throw error;
+    showToast('✓ Senha atualizada! Entrando...');
+    // onAuthStateChange com SIGNED_IN vai chamar mostrarApp automaticamente
+  } catch(e) {
+    erro.textContent = 'Erro: ' + (e.message || 'tente novamente.');
+    btn.disabled = false; btn.textContent = 'Salvar nova senha';
+  }
 }
 
 async function mostrarApp() {
   document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-onboarding').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   document.getElementById('header-user').textContent = currentUser?.email ?? '';
   if (currentUser?.email === ADMIN_EMAIL) {
     document.getElementById('tab-admin-btn').style.display = 'inline-block';
   }
   await carregarRepresentante();
+  // Onboarding: primeira abertura sem endereço configurado
+  if (currentRep && !currentRep.onboarding_ok) {
+    _mostrarOnboarding();
+    return;
+  }
   await loadClientes();
   carregarLembretesSupabase();
   carregarRepresentadasDesktop();
@@ -225,6 +298,97 @@ async function fazerLogin() {
 }
 
 function fazerLogout() { _repIdCache = null; sb.auth.signOut(); }
+
+// ── ONBOARDING ───────────────────────────────────────────────────────
+function _mostrarOnboarding() {
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-onboarding').style.display = 'flex';
+  // Preenche endereço base se já existir (edição do onboarding)
+  if (currentRep?.endereco_base)
+    document.getElementById('ob-endereco').value = currentRep.endereco_base;
+  if (currentRep?.media_carro)
+    document.getElementById('ob-media').value = currentRep.media_carro;
+  if (currentRep?.preco_gasolina)
+    document.getElementById('ob-gasolina').value = currentRep.preco_gasolina;
+}
+
+function obMaskCep(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 8);
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
+  el.value = v;
+}
+
+async function obBuscarCep() {
+  const cep = document.getElementById('ob-cep').value.replace(/\D/g, '');
+  const status = document.getElementById('ob-cep-status');
+  if (cep.length !== 8) return;
+  status.textContent = 'Buscando endereço...'; status.style.color = 'rgba(255,255,255,.4)';
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d = await r.json();
+    if (d.erro) { status.textContent = 'CEP não encontrado.'; return; }
+    document.getElementById('ob-endereco').value =
+      `${d.logradouro}, ${d.bairro}, ${d.localidade} - ${d.uf}`;
+    status.textContent = '✓ Endereço encontrado'; status.style.color = '#34C759';
+  } catch(e) { status.textContent = 'Erro ao buscar CEP.'; }
+}
+
+async function obSalvar() {
+  const endereco = document.getElementById('ob-endereco').value.trim();
+  const media    = parseFloat(document.getElementById('ob-media').value)    || 10;
+  const gasolina = parseFloat(document.getElementById('ob-gasolina').value) || 6.0;
+  const erro     = document.getElementById('ob-erro');
+  const btn      = document.getElementById('btn-ob');
+
+  if (!endereco) { erro.textContent = 'Informe o endereço base.'; return; }
+  btn.disabled = true; btn.textContent = 'Salvando...'; erro.textContent = '';
+
+  try {
+    // Geocodifica endereço base para lat/lng
+    let lat_base = currentRep?.lat_base || null;
+    let lng_base = currentRep?.lng_base || null;
+    const coords = await geocodeEndereco(endereco, '');
+    if (coords) { lat_base = coords.lat; lng_base = coords.lng; }
+
+    await sb.from('representantes').update({
+      endereco_base: endereco,
+      media_carro:   media,
+      preco_gasolina: gasolina,
+      onboarding_ok: true,
+      lat_base, lng_base,
+    }).eq('id', currentRep.id);
+
+    currentRep.endereco_base  = endereco;
+    currentRep.media_carro    = media;
+    currentRep.preco_gasolina = gasolina;
+    currentRep.onboarding_ok  = true;
+    if (lat_base) { currentRep.lat_base = lat_base; currentRep.lng_base = lng_base; }
+
+    document.getElementById('screen-onboarding').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    await loadClientes();
+    carregarLembretesSupabase();
+    carregarRepresentadasDesktop();
+    showToast('✓ Perfil configurado!');
+  } catch(e) {
+    erro.textContent = 'Erro ao salvar: ' + (e.message || '');
+    btn.disabled = false; btn.textContent = 'Salvar e começar';
+  }
+}
+
+function obPular() {
+  // Marca onboarding como ok mesmo sem preencher (não vai pedir de novo)
+  if (currentRep) {
+    sb.from('representantes').update({ onboarding_ok: true }).eq('id', currentRep.id).then(() => {});
+    currentRep.onboarding_ok = true;
+  }
+  document.getElementById('screen-onboarding').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  loadClientes();
+  carregarLembretesSupabase();
+  carregarRepresentadasDesktop();
+}
 
 // ── CLIENTES ─────────────────────────────────────────────────────────
 async function loadClientes() {

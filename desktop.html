@@ -24,7 +24,9 @@
 
 <!-- ── LOGIN ──────────────────────────────────────────────────────── -->
 <div id="screen-login">
-  <div class="login-box">
+
+  <!-- View: login normal -->
+  <div class="login-box" id="view-login">
     <div class="login-logo">Minha Rota RP</div>
     <div class="login-sub">Gestão Comercial · Desktop</div>
     <input class="login-input" id="login-email" type="email"
@@ -34,7 +36,73 @@
       onkeydown="if(event.key==='Enter') fazerLogin()">
     <div class="login-erro" id="login-erro"></div>
     <button class="login-btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
+    <button class="login-link" onclick="mostrarRecuperarSenha()">Esqueci minha senha</button>
     <div class="login-versao">v2.0 desktop · Mundo do Rep</div>
+  </div>
+
+  <!-- View: recuperar senha (enviar link) -->
+  <div class="login-box" id="view-recuperar" style="display:none">
+    <div class="login-logo">Recuperar senha</div>
+    <div class="login-sub" style="margin-bottom:4px">Enviaremos um link para o seu e-mail</div>
+    <input class="login-input" id="rec-email" type="email"
+      placeholder="seu@email.com" autocomplete="email"
+      onkeydown="if(event.key==='Enter') enviarRecuperacao()">
+    <div class="login-erro" id="rec-erro"></div>
+    <div class="login-ok" id="rec-ok" style="display:none"></div>
+    <button class="login-btn" id="btn-rec" onclick="enviarRecuperacao()">Enviar link</button>
+    <button class="login-link" onclick="mostrarLogin()">← Voltar ao login</button>
+  </div>
+
+  <!-- View: nova senha (após clicar no link do e-mail) -->
+  <div class="login-box" id="view-nova-senha" style="display:none">
+    <div class="login-logo">Nova senha</div>
+    <div class="login-sub" style="margin-bottom:4px">Crie sua nova senha de acesso</div>
+    <input class="login-input" id="nova-senha" type="password"
+      placeholder="Nova senha (mín. 6 caracteres)"
+      onkeydown="if(event.key==='Enter') salvarNovaSenha()">
+    <input class="login-input" id="nova-senha-conf" type="password"
+      placeholder="Confirmar nova senha"
+      onkeydown="if(event.key==='Enter') salvarNovaSenha()">
+    <div class="login-erro" id="nova-senha-erro"></div>
+    <button class="login-btn" id="btn-nova-senha" onclick="salvarNovaSenha()">Salvar nova senha</button>
+  </div>
+
+</div>
+
+<!-- ── ONBOARDING ──────────────────────────────────────────────────── -->
+<div id="screen-onboarding" style="display:none">
+  <div class="login-box" style="gap:10px">
+    <div class="login-logo">Bem-vindo!</div>
+    <div class="login-sub" style="margin-bottom:4px">Configure seu perfil para começar</div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;width:100%">
+      <label class="ob-label">Endereço base (sua casa ou escritório)</label>
+      <div style="display:flex;gap:6px">
+        <input class="login-input" id="ob-cep" type="text" placeholder="CEP"
+          maxlength="9" style="flex:0 0 110px;margin:0"
+          oninput="obMaskCep(this)" onblur="obBuscarCep()">
+        <input class="login-input" id="ob-endereco" type="text"
+          placeholder="Endereço completo" style="flex:1;margin:0">
+      </div>
+      <div class="login-erro" id="ob-cep-status" style="text-align:left"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;width:100%">
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <label class="ob-label">Consumo (km/L)</label>
+        <input class="login-input" id="ob-media" type="number" placeholder="Ex: 12"
+          step="0.1" min="1" style="margin:0">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <label class="ob-label">Preço da gasolina (R$)</label>
+        <input class="login-input" id="ob-gasolina" type="number" placeholder="Ex: 6.20"
+          step="0.01" min="1" style="margin:0">
+      </div>
+    </div>
+
+    <div class="login-erro" id="ob-erro"></div>
+    <button class="login-btn" id="btn-ob" onclick="obSalvar()">Salvar e começar</button>
+    <button class="login-link" onclick="obPular()">Pular por agora</button>
   </div>
 </div>
 
