@@ -1792,41 +1792,45 @@ async function fazerLogin() {
   let loginOk = false;
 
   try {
-    alert('LOGIN 1 - chamando signInWithPassword...');
+    alert('1 - chamando signIn...');
     const { data, error } = await sb.auth.signInWithPassword({
       email, password: senha,
       options: { captchaToken }
     });
-    alert('LOGIN 2 - signIn retornou\nerro: ' + (error?.message || 'nenhum') + '\nuser: ' + (data?.user?.email || 'NULL'));
+
+    // currentUser setado ANTES de qualquer alert para evitar race condition com onAuthStateChange
+    if (!error) currentUser = data.user;
+
+    alert('2 - signIn retornou\nerro: ' + (error?.message || 'nenhum') + '\nuser: ' + (data?.user?.email || 'NULL'));
 
     if (error) {
       erro.textContent = 'E-mail ou senha incorretos.';
       return;
     }
 
-    currentUser = data.user;
+    alert('3 - buscando representante na tabela...');
 
-    // ── DEBUG RAW: query direta antes de qualquer lógica ──
-    const { data: { user: _dbgUser } } = await sb.auth.getUser();
-    alert('DEBUG uid: ' + _dbgUser?.id + '\nemail: ' + _dbgUser?.email);
-
-    const { data: _dbgData, error: _dbgErr } = await sb
+    const { data: _rep, error: _repErr } = await sb
       .from('representantes')
       .select('id, email, auth_id')
-      .limit(10);
-    alert('DEBUG SELECT representantes (todos, limit 10):\n' + JSON.stringify(_dbgData) + '\nerro: ' + JSON.stringify(_dbgErr));
+      .eq('auth_id', currentUser.id)
+      .maybeSingle();
 
-    const { data: _dbgByAuth, error: _dbgByAuthErr } = await sb
-      .from('representantes')
-      .select('id, email, auth_id')
-      .eq('auth_id', _dbgUser?.id);
-    alert('DEBUG busca auth_id = ' + _dbgUser?.id + ':\n' + JSON.stringify(_dbgByAuth) + '\nerro: ' + JSON.stringify(_dbgByAuthErr));
-    // ── FIM DEBUG RAW ──
+    alert('4 - resultado:\n' + JSON.stringify(_rep) + '\nerro: ' + JSON.stringify(_repErr));
 
-    alert('LOGIN 3 - carregando representante...');
+    if (!_rep && !_repErr) {
+      // Tenta por email como fallback
+      const { data: _repEmail, error: _repEmailErr } = await sb
+        .from('representantes')
+        .select('id, email, auth_id')
+        .eq('email', currentUser.email)
+        .maybeSingle();
+      alert('4b - busca por email:\n' + JSON.stringify(_repEmail) + '\nerro: ' + JSON.stringify(_repEmailErr));
+    }
 
+    alert('5 - chamando carregarRepresentante...');
     await carregarRepresentante();
-    alert('LOGIN 4 - currentRep?.id: ' + (currentRep?.id || 'NULL'));
+    alert('6 - currentRep?.id: ' + (currentRep?.id || 'NULL'));
 
     if (!currentRep) {
       await sb.auth.signOut();
@@ -1837,11 +1841,11 @@ async function fazerLogin() {
     }
 
     loginOk = true;
-    console.log('[Login] Sucesso — redirecionando para o app');
+    alert('7 - sucesso! entrando no app...');
     esconderLogin();
 
   } catch(e) {
-    console.error('[Login] Exceção:', e.message);
+    alert('EXCEÇÃO: ' + e.message);
     erro.textContent = 'Erro inesperado. Tente novamente.';
   } finally {
     // SEMPRE restaura o botão — independente do que aconteceu
