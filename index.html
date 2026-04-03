@@ -2041,9 +2041,13 @@ async function loadClientes() {
     }
 
     clientes = data.map(_mapearCliente);
+    const _comCoords = clientes.filter(c => c.lat && c.lng).length;
+    debugLog('Mapa: carregados ' + clientes.length + ' clientes (' + _comCoords + ' com coordenadas) para rep_id ' + repId);
     restaurarCheckinsDoDia();
     try { renderList(); } catch(e) { debugError('renderList error:', e); }
     if (gmap) { try { renderMapMarkers(); } catch(e) { debugError('renderMapMarkers error:', e); } }
+    // Se a aba do mapa está aberta, re-renderiza os marcadores
+    if (currentScreen === 'map' && gmap) { try { renderMapMarkers(); } catch(e) {} }
   } catch(e) {
     if (listEl) listEl.innerHTML = '<div class="empty">❌ Erro ao carregar clientes. Verifique sua conexão.</div>';
   }
@@ -2113,6 +2117,7 @@ async function geocodeAll() {
         const loc = data.results[0].geometry.location;
         if (loc.lat >= -30.5 && loc.lat <= -22.5 && loc.lng >= -54.6 && loc.lng <= -48.0) {
           c.lat = loc.lat; c.lng = loc.lng; found++;
+          sb.from('clientes').update({ lat: c.lat, lng: c.lng }).eq('id', String(c.id)).catch(() => {});
           if (gmap) renderMapMarkers();
         }
       }
@@ -2133,6 +2138,7 @@ async function geocodeCliente(c) {
       const loc = data.results[0].geometry.location;
       if (loc.lat >= -30.5 && loc.lat <= -22.5 && loc.lng >= -54.6 && loc.lng <= -48.0) {
         c.lat = loc.lat; c.lng = loc.lng;
+        sb.from('clientes').update({ lat: c.lat, lng: c.lng }).eq('id', String(c.id)).catch(() => {});
         if (gmap) renderMapMarkers();
         showToast('📍 ' + c.nome.split(' ')[0] + ' localizado!');
       }
@@ -2191,6 +2197,7 @@ function showScreen(s) {
     }
   }
   if (s === 'map') {
+    if (currentUser && clientes.length === 0) loadClientes();
     const _tryMap = (attempt) => {
       if (!gmap && typeof google !== 'undefined' && google.maps) window.initMap();
       if (gmap) {
