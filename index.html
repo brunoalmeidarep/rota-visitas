@@ -1774,32 +1774,60 @@ async function fazerLogin() {
     return;
   }
 
+  console.log('[Login] Verificando CAPTCHA...');
   const captchaToken = typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '';
   if (!captchaToken) {
     erro.textContent = 'Complete o CAPTCHA antes de entrar.';
     return;
   }
+  console.log('[Login] CAPTCHA ok. Iniciando signIn...');
 
   btn.disabled = true;
   btn.textContent = 'ENTRANDO...';
   erro.textContent = '';
 
-  const { data, error } = await sb.auth.signInWithPassword({
-    email, password: senha,
-    options: { captchaToken }
-  });
-
-  if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
-
-  if (error) {
-    erro.textContent = 'E-mail ou senha incorretos.';
+  const _restaurarBtn = (msg) => {
+    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
     btn.disabled = false;
-    btn.textContent = 'ENTRAR';
-  } else {
-    // Trata sucesso diretamente (não depende de onAuthStateChange, que pode não disparar no Safari)
+    btn.textContent = 'Entrar';
+    if (msg) erro.textContent = msg;
+  };
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({
+      email, password: senha,
+      options: { captchaToken }
+    });
+    console.log('[Login] signInWithPassword concluído. error:', error?.message || 'nenhum');
+
+    if (error) {
+      _restaurarBtn('E-mail ou senha incorretos.');
+      return;
+    }
+
+    console.log('[Login] Auth ok — usuário:', data.user?.email, '| Carregando representante...');
     currentUser = data.user;
+
     await carregarRepresentante();
+    console.log('[Login] carregarRepresentante concluído. currentRep?.id:', currentRep?.id || 'NÃO ENCONTRADO');
+
+    if (!currentRep) {
+      // Usuário existe no Auth mas não na tabela representantes e a criação automática falhou
+      console.error('[Login] currentRep nulo após carregarRepresentante');
+      await sb.auth.signOut();
+      currentUser = null;
+      _repIdCache  = null;
+      _restaurarBtn('Conta não configurada. Contate o suporte.');
+      return;
+    }
+
+    // Sucesso — esconde login e carrega o app
+    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
     esconderLogin();
+
+  } catch(e) {
+    console.error('[Login] Erro inesperado:', e);
+    _restaurarBtn('Erro inesperado. Tente novamente.');
   }
 }
 
