@@ -10433,7 +10433,10 @@ function showToast(msg, isErr = false) {
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').then(reg => {
+    // updateViaCache:'none' impede o browser de servir sw.js do cache HTTP
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+      // Força verificação de atualização toda vez que o app abre
+      reg.update();
       // Detecta nova versão do SW
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
