@@ -1049,7 +1049,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 <div id="screen-nova-senha" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--surface); flex-direction:column; align-items:center; justify-content:center; padding:32px 24px;">
   <div class="login-inner">
     <div class="login-logo">
-      <div class="login-titulo">Nova senha</div>
+      <div class="login-titulo">Criar nova senha</div>
       <div class="login-sub">Digite e confirme sua nova senha</div>
     </div>
     <div class="login-card">
@@ -1614,53 +1614,29 @@ let _repIdCache  = null;
 
 // ── AUTH ─────────────────────────────────────────────────
 async function iniciarApp() {
-  // ── Detecta link de redefinição de senha na URL ──
-  // Suporte ao fluxo implícito (#access_token&type=recovery)
-  // e ao fluxo PKCE (?code=...&type=recovery ou ?type=recovery)
-  const hashParams   = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '');
+  // ── Captura hash ANTES do Supabase processar (SDK pode limpar o hash) ──
+  const _hash = window.location.hash;
+  const hashParams   = new URLSearchParams(_hash.startsWith('#') ? _hash.slice(1) : '');
   const searchParams = new URLSearchParams(window.location.search);
+  const _accessToken  = hashParams.get('access_token');
+  const _refreshToken = hashParams.get('refresh_token') || '';
+  const _type         = hashParams.get('type');
 
-  const isRecovery =
-    (hashParams.get('type') === 'recovery' && hashParams.get('access_token')) ||
-    searchParams.get('type') === 'recovery';
-
-  if (isRecovery) {
-    // Fluxo implícito: seta sessão manualmente com o access_token do hash
-    if (hashParams.get('access_token')) {
-      try {
-        await sb.auth.setSession({
-          access_token: hashParams.get('access_token'),
-          refresh_token: hashParams.get('refresh_token') || ''
-        });
-      } catch(e) { debugLog('Erro setSession recovery:', e); }
-    }
-    // Fluxo PKCE: o Supabase JS troca o ?code automaticamente na inicialização;
-    // o onAuthStateChange PASSWORD_RECOVERY confirma a sessão em paralelo.
+  // Fluxo implícito: #access_token=...&type=recovery
+  if (_type === 'recovery' && _accessToken) {
+    try {
+      await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken });
+    } catch(e) { debugLog('Erro setSession recovery:', e); }
     abrirNovaSenha();
     return;
   }
 
-  // Tenta autenticar com Supabase em background
-  try {
-    if (!sb || !sb.auth) { mostrarLogin(); return; }
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) {
-      currentUser = session.user;
-      await carregarRepresentante();
-      esconderLogin();
-    } else {
-      // Não logado - mostra login
-      mostrarLogin();
-    }
-  } catch(e) {
-    debugLog('Supabase erro:', e.message);
-    // Se Supabase falhar, mostra login mesmo assim
-    mostrarLogin();
-  }
-
-  // Listener de mudança de auth
+  // ── Listener de auth — DEVE ser registrado ANTES de getSession() ──
+  // O Supabase dispara PASSWORD_RECOVERY ao inicializar quando detecta o link;
+  // se o listener for registrado depois, o evento já foi perdido.
   try {
     sb.auth.onAuthStateChange(async (event, session) => {
+      debugLog('[Auth]', event);
       if (event === 'PASSWORD_RECOVERY') {
         abrirNovaSenha();
       } else if (event === 'SIGNED_IN' && session) {
@@ -1676,6 +1652,28 @@ async function iniciarApp() {
       }
     });
   } catch(e) { console.log('Auth listener erro:', e); }
+
+  // ── Fluxo PKCE: ?type=recovery — código já trocado automaticamente pelo SDK ──
+  if (searchParams.get('type') === 'recovery') {
+    abrirNovaSenha();
+    return;
+  }
+
+  // ── Tenta autenticar com sessão existente ──
+  try {
+    if (!sb || !sb.auth) { mostrarLogin(); return; }
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      await carregarRepresentante();
+      esconderLogin();
+    } else {
+      mostrarLogin();
+    }
+  } catch(e) {
+    debugLog('Supabase erro:', e.message);
+    mostrarLogin();
+  }
 }
 
 // ── DATA LOCAL ────────────────────────────────────────
