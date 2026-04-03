@@ -1613,10 +1613,10 @@ let currentRep   = null;
 let _repIdCache  = null;
 
 // ── AUTH ─────────────────────────────────────────────────
-let _authEmAndamento = false; // flag anti race-condition entre getSession e onAuthStateChange
+let _appJaIniciou = false; // true assim que o fluxo principal (getSession ou fazerLogin) assumiu
 
 async function iniciarApp() {
-  // ── Captura hash ANTES do Supabase processar (SDK pode limpar o hash) ──
+  // ── Captura hash ANTES do Supabase processar ──
   const _hash = window.location.hash;
   const hashParams   = new URLSearchParams(_hash.startsWith('#') ? _hash.slice(1) : '');
   const searchParams = new URLSearchParams(window.location.search);
@@ -1624,63 +1624,49 @@ async function iniciarApp() {
   const _refreshToken = hashParams.get('refresh_token') || '';
   const _type         = hashParams.get('type');
 
-  // Fluxo implícito: #access_token=...&type=recovery
+  // Fluxo recovery implícito
   if (_type === 'recovery' && _accessToken) {
-    try {
-      await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken });
-    } catch(e) { debugLog('Erro setSession recovery:', e); }
+    try { await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken }); } catch(e) {}
     abrirNovaSenha();
     return;
   }
 
-  // ── Listener de auth — registrado ANTES de getSession() ──
+  // ── Listener — só trata SIGNED_OUT e PASSWORD_RECOVERY ──
+  // SIGNED_IN é tratado aqui apenas se o app ainda não iniciou (ex: token refresh inesperado)
   try {
     sb.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         abrirNovaSenha();
-      } else if (event === 'SIGNED_IN' && session) {
-        // Ignora se getSession() já está processando (race condition)
-        if (_authEmAndamento || currentUser) return;
-        _authEmAndamento = true;
-        try {
-          currentUser = session.user;
-          await carregarRepresentante();
-          esconderLogin();
-        } finally {
-          _authEmAndamento = false;
-        }
+      } else if (event === 'SIGNED_IN' && session && !_appJaIniciou) {
+        _appJaIniciou = true;
+        currentUser = session.user;
+        await carregarRepresentante();
+        esconderLogin();
       } else if (event === 'SIGNED_OUT') {
-        currentUser = null;
-        _repIdCache  = null;
+        _appJaIniciou = false;
+        currentUser   = null;
+        _repIdCache   = null;
         mostrarLogin();
       }
     });
   } catch(e) { console.log('Auth listener erro:', e); }
 
-  // ── Fluxo PKCE: ?type=recovery ──
-  if (searchParams.get('type') === 'recovery') {
-    abrirNovaSenha();
-    return;
-  }
+  // Fluxo PKCE recovery
+  if (searchParams.get('type') === 'recovery') { abrirNovaSenha(); return; }
 
-  // ── Sessão existente (ex: reload da página) ──
+  // ── Sessão existente (reload) — fluxo principal ──
   try {
     if (!sb || !sb.auth) { mostrarLogin(); return; }
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
-      _authEmAndamento = true;
-      try {
-        currentUser = session.user;
-        await carregarRepresentante();
-        esconderLogin();
-      } finally {
-        _authEmAndamento = false;
-      }
+      _appJaIniciou = true;
+      currentUser = session.user;
+      await carregarRepresentante();
+      esconderLogin();
     } else {
       mostrarLogin();
     }
   } catch(e) {
-    debugLog('Supabase erro:', e.message);
     mostrarLogin();
   }
 }
@@ -1713,46 +1699,47 @@ function fmtNum(valor) {
   return (parseFloat(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function queryComTimeout(promise, ms) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('timeout')), ms)
+  );
+  return Promise.race([promise, timeout]);
+}
+
 async function carregarRepresentante() {
   _repIdCache = null;
   currentRep  = null;
   try {
-    // 1ª tentativa: busca por auth_id (rota rápida, sempre correta)
-    const { data: d1 } = await sb
-      .from('representantes')
-      .select('*')
-      .eq('auth_id', currentUser.id)
-      .limit(1);
-
+    // 1ª tentativa: busca por auth_id (timeout 8s)
+    const { data: d1 } = await queryComTimeout(
+      sb.from('representantes').select('*').eq('auth_id', currentUser.id).limit(1),
+      8000
+    );
     const porAuthId = Array.isArray(d1) ? d1[0] : null;
 
     if (porAuthId) {
       currentRep = porAuthId;
     } else {
-      // 2ª tentativa: busca por email (auth_id pode ter mudado após troca de senha)
-      const { data: d2 } = await sb
-        .from('representantes')
-        .select('*')
-        .eq('email', currentUser.email)
-        .limit(2); // limit 2 para detectar duplicatas
-
+      // 2ª tentativa: busca por email (timeout 8s)
+      const { data: d2 } = await queryComTimeout(
+        sb.from('representantes').select('*').eq('email', currentUser.email).limit(2),
+        8000
+      );
       const registros = Array.isArray(d2) ? d2 : [];
 
-      if (registros.length === 1) {
+      if (registros.length >= 1) {
         currentRep = registros[0];
-        // Auto-corrige o auth_id — resolve troca de senha para sempre
-        sb.from('representantes')
-          .update({ auth_id: currentUser.id })
-          .eq('email', currentUser.email)
-          .catch(e => console.error('Erro ao atualizar auth_id:', e.message));
-      } else if (registros.length > 1) {
-        console.error('carregarRepresentante: múltiplos registros para email', currentUser.email, '— auth_id NÃO atualizado');
-        currentRep = registros[0]; // usa o primeiro mas não corrige
+        if (registros.length === 1) {
+          // Auto-corrige auth_id se necessário
+          sb.from('representantes')
+            .update({ auth_id: currentUser.id })
+            .eq('email', currentUser.email)
+            .catch(() => {});
+        }
       }
-      // se registros.length === 0: currentRep permanece null
     }
   } catch(e) {
-    console.error('carregarRepresentante exceção:', e.message);
+    console.error('carregarRepresentante:', e.message);
     currentRep = null;
   }
   _repIdCache = currentRep?.id || null;
@@ -1793,6 +1780,9 @@ async function fazerLogin() {
   btn.textContent = 'ENTRANDO...';
   erro.textContent = '';
 
+  // Marca que o fluxo principal assumiu — onAuthStateChange SIGNED_IN será ignorado
+  _appJaIniciou = true;
+
   try {
     const { data, error } = await sb.auth.signInWithPassword({
       email, password: senha,
@@ -1802,6 +1792,7 @@ async function fazerLogin() {
     if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
 
     if (error) {
+      _appJaIniciou = false;
       erro.textContent = 'E-mail ou senha incorretos.';
       return;
     }
@@ -1810,6 +1801,7 @@ async function fazerLogin() {
     await carregarRepresentante();
 
     if (!currentRep) {
+      _appJaIniciou = false;
       erro.textContent = 'Usuário não vinculado. Contate o administrador.';
       await sb.auth.signOut();
       currentUser = null; _repIdCache = null;
@@ -1819,6 +1811,7 @@ async function fazerLogin() {
     esconderLogin();
 
   } catch(e) {
+    _appJaIniciou = false;
     erro.textContent = 'Erro inesperado. Tente novamente.';
   } finally {
     btn.disabled = false;
