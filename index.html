@@ -988,6 +988,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 </style>
 </head>
 <body>
+<div id="debug-log" style="display:none;position:fixed;top:0;left:0;right:0;background:red;color:white;z-index:99999;font-size:13px;font-family:monospace;padding:10px;max-height:40vh;overflow:auto;"></div>
 <!-- TELA DE LOGIN -->
 <div id="screen-login">
   <div class="login-inner">
@@ -1706,52 +1707,58 @@ function fmtNum(valor) {
 
 async function carregarRepresentante() {
   _repIdCache = null;
+  currentRep  = null;
   try {
-    const { data } = await sb
+    uiLog('rep: query por email=' + currentUser?.email);
+    const { data, error: qErr } = await sb
       .from('representantes')
       .select('*')
       .eq('email', currentUser.email)
       .maybeSingle();
+    uiLog('rep: data=' + (data?.id || 'null') + ' err=' + (qErr?.message || 'ok'));
+
     if (data) {
       currentRep = data;
-      // garante auth_id preenchido
       if (!data.auth_id) {
-        await sb.from('representantes').update({ auth_id: currentUser.id }).eq('id', data.id);
-        currentRep.auth_id = currentUser.id;
+        sb.from('representantes').update({ auth_id: currentUser.id }).eq('id', data.id).catch(() => {});
       }
     } else {
-      // primeiro login: cria linha em representantes automaticamente
+      uiLog('rep: não encontrado, tentando insert...');
       const { data: novo, error: insErr } = await sb.from('representantes').insert({
         email:   currentUser.email,
         nome:    currentUser.email.split('@')[0],
         auth_id: currentUser.id,
         ativo:   true,
       }).select().maybeSingle();
+      uiLog('rep: insert=' + (novo?.id || 'null') + ' err=' + (insErr?.message || 'ok'));
 
       if (novo) {
         currentRep = novo;
       } else {
-        // INSERT falhou (ex: email já existe por cadastro manual sem auth_id, ou política RLS)
-        // Tenta buscar pelo auth_id que acabamos de definir
-        const { data: porAuth } = await sb.from('representantes')
+        uiLog('rep: insert falhou, tentando por auth_id...');
+        const { data: porAuth, error: eAuth } = await sb.from('representantes')
           .select('*').eq('auth_id', currentUser.id).maybeSingle();
+        uiLog('rep: porAuth=' + (porAuth?.id || 'null') + ' err=' + (eAuth?.message || 'ok'));
+
         if (porAuth) {
           currentRep = porAuth;
         } else {
-          // Tenta vincular auth_id ao registro existente com esse email
-          const { data: upd } = await sb.from('representantes')
+          uiLog('rep: tentando update auth_id...');
+          const { data: upd, error: eUpd } = await sb.from('representantes')
             .update({ auth_id: currentUser.id })
             .eq('email', currentUser.email)
             .select().maybeSingle();
+          uiLog('rep: upd=' + (upd?.id || 'null') + ' err=' + (eUpd?.message || 'ok'));
           currentRep = upd || null;
         }
       }
     }
   } catch(e) {
-    console.error('carregarRepresentante erro:', e);
+    uiLog('rep: EXCEÇÃO ' + e.message);
     currentRep = null;
   }
   _repIdCache = currentRep?.id || null;
+  uiLog('rep: _repIdCache=' + (_repIdCache || 'NULL'));
 }
 
 // Retorna o id correto de representantes para uso como rep_id
@@ -1763,10 +1770,19 @@ async function getRepId() {
   return _repIdCache;
 }
 
+// ── DEBUG PANEL (visível no celular, remover após diagnóstico) ─────────────
+function uiLog(msg) {
+  const el = document.getElementById('debug-log');
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML += new Date().toISOString().slice(11,19) + ' ' + msg + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+
 // Token do hCaptcha do login — preenchido pelo callback data-callback
 let _loginCaptchaToken = '';
-function onLoginCaptchaSolved(token) { _loginCaptchaToken = token; }
-function onLoginCaptchaExpired()     { _loginCaptchaToken = ''; }
+function onLoginCaptchaSolved(token) { _loginCaptchaToken = token; uiLog('captcha resolvido'); }
+function onLoginCaptchaExpired()     { _loginCaptchaToken = ''; uiLog('captcha expirou'); }
 
 async function fazerLogin() {
   const email = document.getElementById('login-email').value.trim();
@@ -1774,13 +1790,16 @@ async function fazerLogin() {
   const btn   = document.getElementById('btn-login');
   const erro  = document.getElementById('login-erro');
 
+  document.getElementById('debug-log').innerHTML = '';
+  uiLog('fazerLogin iniciado');
+
   if (!email || !senha) {
     erro.textContent = 'Preencha e-mail e senha.';
     return;
   }
 
-  // Usa token guardado pelo callback; fallback para getResponse() caso callback não tenha sido chamado
   const captchaToken = _loginCaptchaToken || (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
+  uiLog('captchaToken: ' + (captchaToken ? 'ok (' + captchaToken.slice(0,10) + '...)' : 'VAZIO'));
   if (!captchaToken) {
     erro.textContent = 'Complete o CAPTCHA antes de entrar.';
     return;
@@ -1790,22 +1809,43 @@ async function fazerLogin() {
   btn.textContent = 'ENTRANDO...';
   erro.textContent = '';
 
-  const { data, error } = await sb.auth.signInWithPassword({
-    email, password: senha,
-    options: { captchaToken }
-  });
+  try {
+    uiLog('chamando signInWithPassword...');
+    const { data, error } = await sb.auth.signInWithPassword({
+      email, password: senha,
+      options: { captchaToken }
+    });
+    _loginCaptchaToken = '';
+    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
 
-  _loginCaptchaToken = '';
-  if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
+    uiLog('signIn retornou — erro: ' + (error?.message || 'nenhum') + ' | user: ' + (data?.user?.email || 'null'));
 
-  if (error) {
-    erro.textContent = 'E-mail ou senha incorretos.';
+    if (error) {
+      erro.textContent = 'E-mail ou senha incorretos.';
+      return;
+    }
+
+    currentUser = data.user;
+    uiLog('carregando representante...');
+    await carregarRepresentante();
+    uiLog('currentRep: ' + (currentRep?.id || 'NULL'));
+
+    if (!currentRep) {
+      erro.textContent = 'Usuário não vinculado. Contate o administrador.';
+      await sb.auth.signOut();
+      currentUser = null; _repIdCache = null;
+      return;
+    }
+
+    uiLog('sucesso — entrando no app');
+    esconderLogin();
+
+  } catch(e) {
+    uiLog('EXCEÇÃO: ' + e.message);
+    erro.textContent = 'Erro inesperado. Tente novamente.';
+  } finally {
     btn.disabled = false;
     btn.textContent = 'Entrar';
-  } else {
-    currentUser = data.user;
-    await carregarRepresentante();
-    esconderLogin();
   }
 }
 
