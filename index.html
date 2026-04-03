@@ -10331,8 +10331,11 @@ function abrirGoogleMapsRota(id) {
 
 async function excluirRota(id) {
   if (!confirm('Excluir esta rota?')) return;
-  await sb.from('rotas').delete().eq('id', id);
+  const { error } = await sb.from('rotas').delete().eq('id', id);
+  if (error) { showToast('Erro ao excluir rota'); return; }
   rotasCache = rotasCache.filter(r => r.id !== id);
+  const el = document.getElementById('rotas-lista');
+  if (el) el.innerHTML = '';
   renderRotas();
   showToast('Rota excluída');
 }
