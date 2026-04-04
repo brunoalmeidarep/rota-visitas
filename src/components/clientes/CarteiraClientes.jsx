@@ -9,28 +9,51 @@ function CarteiraClientes() {
   const { repId, loading: loadingRep } = useRepId()
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
   const [busca, setBusca] = useState('')
   const [filtroAtivo, setFiltroAtivo] = useState('todos')
 
+  // Debug: log repId
   useEffect(() => {
-    if (!repId) return
+    console.log('[CarteiraClientes] loadingRep:', loadingRep, 'repId:', repId)
+  }, [loadingRep, repId])
+
+  useEffect(() => {
+    // Se ainda está carregando o repId, aguarda
+    if (loadingRep) return
+
+    // Se terminou de carregar e repId é null, para de carregar
+    if (!repId) {
+      console.log('[CarteiraClientes] repId é null/undefined após carregar')
+      setLoading(false)
+      return
+    }
 
     async function fetchClientes() {
       setLoading(true)
+      setErro(null)
+      console.log('[CarteiraClientes] Buscando clientes para rep_id:', repId)
+
       const { data, error } = await supabase
         .from('clientes')
         .select('*')
         .eq('rep_id', repId)
         .order('nome')
 
-      if (!error && data) {
-        setClientes(data)
+      console.log('[CarteiraClientes] Resultado:', { data, error })
+
+      if (error) {
+        console.error('[CarteiraClientes] Erro Supabase:', error)
+        setErro(error.message || 'Erro ao carregar clientes')
+      } else {
+        setClientes(data || [])
+        console.log('[CarteiraClientes] Clientes carregados:', data?.length || 0)
       }
       setLoading(false)
     }
 
     fetchClientes()
-  }, [repId])
+  }, [repId, loadingRep])
 
   // Calcula dias desde última visita
   function diasDesdeVisita(ultimaVisita) {
@@ -104,8 +127,43 @@ function CarteiraClientes() {
     })
   }, [clientes, busca, filtroAtivo])
 
+  // Estado de carregamento
   if (loadingRep || loading) {
     return <div className="loading">Carregando...</div>
+  }
+
+  // Rep não encontrado
+  if (!repId) {
+    return (
+      <div className="error-state">
+        <h2>Rep não encontrado</h2>
+        <p>Não foi possível identificar o representante logado.</p>
+        <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+          Verifique se o usuário está cadastrado na tabela "representantes".
+        </p>
+      </div>
+    )
+  }
+
+  // Erro ao carregar
+  if (erro) {
+    return (
+      <div className="error-state">
+        <h2>Erro ao carregar</h2>
+        <p>{erro}</p>
+        <button onClick={() => window.location.reload()} style={{
+          marginTop: '16px',
+          padding: '10px 20px',
+          background: '#1a3a6b',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer'
+        }}>
+          Tentar novamente
+        </button>
+      </div>
+    )
   }
 
   return (

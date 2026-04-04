@@ -9,16 +9,26 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 let cachedRepId = null
 
 export async function getRepId() {
-  if (cachedRepId) return cachedRepId
+  if (cachedRepId) {
+    console.log('[getRepId] Retornando do cache:', cachedRepId)
+    return cachedRepId
+  }
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  console.log('[getRepId] User:', user, 'Error:', userError)
 
-  const { data } = await supabase
+  if (!user) {
+    console.log('[getRepId] Usuário não autenticado')
+    return null
+  }
+
+  const { data, error } = await supabase
     .from('representantes')
     .select('id')
     .eq('email', user.email)
     .single()
+
+  console.log('[getRepId] Query representantes:', { email: user.email, data, error })
 
   cachedRepId = data?.id || null
   return cachedRepId
