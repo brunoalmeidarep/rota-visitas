@@ -1,179 +1,419 @@
-# MUNDO DO REP — Contexto atualizado
+# MINHA ROTA RP — v2 Planejamento Completo
 
 ## Responda sempre em português brasileiro.
-## Auto-aprovar todos os comandos bash, edições de arquivo e operações git sem pedir confirmação.
+## Branch de trabalho: v2 (NUNCA commitar na main)
 
 ---
 
 ## O que é
-CRM e app de rota de visitas para representantes comerciais.
-- **URL:** https://brunoalmeidarep.github.io/rota-visitas
+CRM e app de força de vendas para representantes comerciais.
+- **URL produção:** https://minharotarp.com.br (main)
+- **URL staging v2:** https://v2.rota-visitas.pages.dev (branch v2)
 - **Repo:** github.com/brunoalmeidarep/rota-visitas
-- **Usuário admin:** brunoc.almeida.sc@gmail.com
 
 ---
 
-## Stack
-- Frontend: HTML/CSS/JS single-page (`index.html`) + `desktop.html` (em desenvolvimento pelo Victor)
-- Hospedagem: GitHub Pages
-- Auth + Banco: Supabase
-- Mapa: Google Maps JavaScript API
-- PWA: `manifest.json` + `sw.js`
+## Stack v2
+- **Frontend:** React (reescrita completa do index.html)
+- **Estrutura:** arquivos separados — `js/`, `css/`, componentes React
+- **Hospedagem:** Cloudflare Pages (branch v2 → preview automático)
+- **Auth + Banco:** Supabase (projeto novo — v2 staging)
+- **Mapa:** Google Maps JavaScript API
+- **PWA:** manifest.json + sw.js
 
 ---
 
-## Credenciais
-- **Supabase URL:** https://fiwpmhrjbovnazagjcjf.supabase.co
-- **Supabase anon key:** eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpd3BtaHJqYm92bmF6YWdqY2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNDI1MzAsImV4cCI6MjA4OTcxODUzMH0.pHgiICZzqoeLq5uez8_3WwfurHuouV_Cp9kz1ThRsFs
+## Credenciais v2 (Supabase novo)
+- **Supabase URL:** https://byglymeulgeomoldhrrh.supabase.co
+- **Supabase anon key:** sb_publishable_N7Es1GU_4yUNpun4qQDkWQ_4Lhl-6Ii
 - **Google Maps API key:** AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo
-- **Admin email:** brunoc.almeida.sc@gmail.com
-- **Google Apps Script URL:** https://script.google.com/macros/s/AKfycbyGXXcYVzmMjbJzYWLjVg9nDIiCurp2jmU37jqJh_f6w1HtNoHrs9_5W4pAlrqH7f0pXg/exec
-
----
-
-## IDs importantes
-- **Bruno auth.uid:** 4cb2cf44-d786-4903-b422-080dbd1eb39f
-- **Bruno representantes.id:** 37b05e24-a7d3-4b33-86c7-ce59aeb36ea0
-- **ATENÇÃO:** Sempre usar representantes.id (não auth.uid) como rep_id nas operações
-
----
-
-## Supabase — Tabelas existentes
-- **visitas:** id, cliente_id, rep_id, data, hora, obs, criado_em, id_cliente, nome_cliente, cidade, valor_pedido, doc_url, tipo, status_orcamento, representada_id, via_whatsapp, representada_nome, pedido_tipo, pedido_valor, pedido_representada, pedido_url_doc, orcamento_status, hora_edicao, retroativo, registrado_em
-- **pedidos:** id, visita_id, rep_id, cliente_id, cliente_nome, representada_id, representada_nome, tipo, valor, status, tipo_contato, doc_url, obs, created_at — CRIADA ✓
-- **lembretes:** id_cliente, texto, rep_id, atualizado_em
-- **representantes:** id, email, nome, auth_id, endereco_base, lat_base, lng_base, media_carro, preco_gasolina, onboarding_ok
-- **clientes:** id, nome, cnpj, cidade, endereco, ultima_visita, ultima_obs, lat, lng, rep_id, segmento, telefone, comprador
-- **empresas:** id, nome, cnpj, cep, endereco, cidade, banco, agencia, conta, pix, contatos, rep_id
-- **segmentos:** id, nome, rep_id
-- **financeiro:** id, tipo, categoria, descricao, valor, data, cliente_id, cliente_nome, representada_id, representada_nome, url_comprovante, rep_id
-- **impostos:** id, nome, dia_vencimento, rep_id
-- **rotas:** id, nome, clientes_ids, ordem_otimizada, km_total, tempo_estimado, rep_id, tipo_partida, ponto_partida, tipo_chegada, ponto_chegada
-- **bonificacoes:** id, cliente_id, cliente_nome, representada_id, representada_nome, motivo, valor_total, parcelas (json), status, rep_id
-- **planner:** id, rep_id, titulo, data, hora, tipo, cliente_id
-- RLS ativa em todas as tabelas
-
-### Tabela pedidos — criada em 2026-04-03
-Colunas: id, created_at, visita_id, rep_id, cliente_id, cliente_nome, representada_id, representada_nome, tipo, valor, status, tipo_contato, doc_url, obs
-- visita_id = NULL → pedido sem visita (WhatsApp ou Telefone)
-- tipo_contato = 'whatsapp' | 'telefone' | NULL (presencial)
 
 ---
 
 ## Regra crítica — rep_id
 NUNCA usar auth.uid() diretamente como rep_id.
 Sempre buscar: SELECT id FROM representantes WHERE email = user.email
-Usar a função getRepId() que faz cache desse valor.
+Usar a função getRepId() com cache.
 
 ---
 
-## Clientes
-- 210 clientes migrados para o Supabase (rep_id = 37b05e24-a7d3-4b33-86c7-ce59aeb36ea0)
-- 29 cidades normalizadas: "Jaraguá do Sul - SC" (com acento, 1ª maiúscula)
+## Planos e funcionalidades
+
+### Starter
+- Carteira de clientes
+- Check-in presencial
+- Pedido simples (sem catálogo — só valor total)
+- Planner
+- Relatórios básicos (visitas, bonificações manuais, gastos)
+- Finanças
+- Navbar: 🔒Pedidos · 👥Clientes · 📅Planner · ···Mais
+
+### Pro
+- Tudo do Starter
+- Pedido completo com catálogo de produtos
+- Orçamentos
+- Descontos em cascata
+- PDF profissional por empresa
+- Produtos na navbar
+- Navbar: 📋Pedidos · 👥Clientes · 📦Produtos · 📅Planner · ···Mais
+
+### Enterprise (guarda-chuva)
+- Tudo do Pro
+- Painel web da indústria
+- Política comercial configurável
+- Transmissão de pedidos
+- Badge "Transmitido" nos pedidos
+- Múltiplos reps sob uma empresa
 
 ---
 
-## Navbar (mobile)
-💼 Carteira | 🗺️ Mapa | 📅 Planner | 📈 Relatório | 💰 Finanças
-- Tarefas: ícone ✅ no cabeçalho direito
-- Calendário: dentro de Settings
+## Navbar v2
+
+### Starter
+📋 Pedidos (🔒 bloqueado, mostra upgrade) · 👥 Clientes · 📅 Planner · ··· Mais
+
+### Pro e Enterprise
+📋 Pedidos · 👥 Clientes · 📦 Produtos · 📅 Planner · ··· Mais
 
 ---
 
-## Funcionalidades implementadas
-
-### Mobile
-- Login/logout Supabase Auth
-- Carteira: filtros Todos/Hoje/30dias/60dias/90dias/Prospect
-- Mapa com AdvancedMarkerElement
-- Perfil do cliente:
-  - Lembrete editável
-  - Check-in (presencial) OU Registrar (WhatsApp) — exclusivos
-  - Botão check-in: verde escuro (#1a5c2a) com "✓ Visitado às HH:MM" após visita do dia
-  - Múltiplos pedidos/orçamentos no check-in: lista com "+ Adicionar", cards com × remover e "Converter em pedido" (orçamento)
-  - Gastos com cliente → tela detalhada
-  - Bonificações → tela detalhada com parcelas
-- Tela cliente: seção "Visita presencial" (Fazer Check-in) + seção "Pedido sem visita" (WhatsApp verde / Telefone cinza)
-- Check-in presencial: salva em visitas + pedidos, atualiza ultima_visita
-- Pedido sem visita: salva APENAS em pedidos (tipo_contato='whatsapp'/'telefone'), NUNCA atualiza ultima_visita
-- Relatório Vendas/Orçamentos: inclui pedidos sem visita com badge do canal
-  - Histórico: 🏪 presencial / 💬 WhatsApp (SVG inline, layout 3 colunas)
-  - Clicar no histórico → tela detalhe da visita com edição de obs + lista de pedidos em cards
-  - Long press → apagar visita (com confirmação)
-- Perfil do cliente: cabeçalho limpo (Voltar | Nome | Comprador·Cidade | Última visita + Última compra | Ver dados →)
-  - Tela "Ver dados": razão social, comprador, telefone clicável, CNPJ, endereço, segmento, representadas (pills), datas
-  - Botão ✏️ Editar apenas dentro de "Ver dados"
-- Tela detalhe da visita:
-  - Modo ver: badges, data/hora, obs, pedidos, docs, bonificações, gastos
-  - Modo editar: obs + lista de pedidos em cards (editar ✏️, deletar ×, converter orçamento)
-  - Modal editar pedido: tipo (Pedido/Orçamento), representada, valor, status só para orçamento
-  - Botão "🗑 Excluir" no cabeçalho (só no modo edição)
-- Regra do Hoje: visitou hoje → botão fica verde escuro; amanhã → volta ao normal
-- Carteira: badges de tempo com palavra "dias" completa (ex: "30 dias", "75 dias")
-- Relatório: cards clicáveis, multi-select representadas, clientes (3x)
-  - Conversão = orçamentos convertidos em pedido (status=fechado), não mais visitados/clientes
-  - Orçamentos: filtro corrigido (tipo='visita' + pedido_tipo='orcamento')
-  - PDFs: Visitas (agrupado cidade, com representada/valor), Bonificações (recebido/pendente), Gastos com Clientes (agrupado cliente, total rodapé)
-- Planner: Hoje/Semana/Mês + card rotas
-- Rotas: multi-select cidades/clientes, algoritmo vizinho mais próximo, combustível, Google Maps
-  - Ponto de partida: 🏠 Casa / 📍 GPS / ✏️ Outro
-  - Ponto de chegada: 🏠 Casa / 🏨 Hotel / ✏️ Outro
-  - Detalhe da rota: ícone início + paradas numeradas + ícone fim
-  - Google Maps URL usa ponto_partida e ponto_chegada salvos
-- Finanças: gastos por categoria, receitas por tipo (Comissão/Reembolso/Bonificação), impostos, PDF por período, botão Ano, tabs corrigidas
-- Settings: Empresas, Segmentação, Importar Clientes, Meu Perfil, Calendário
-- Busca CNPJ (ReceitaWS) + CEP (ViaCEP)
-- Importação massa via .xlsx (SheetJS)
-- Onboarding: endereço base na primeira abertura
-- Offline mode + sync automático (IndexedDB)
-- SW.js versionado por timestamp
-- Feedback visual em todas as ações
-- Lembretes: semanal, 1 dia antes de eventos, impostos vencendo, tarefas após 18h
-- Compartilhar dados bancários das empresas (Web Share API)
+## Modelo de empresas — Modelo A (workspace por representada)
+- Cada representada é um workspace separado com catálogo próprio
+- Rep troca de empresa via switcher no topo das telas de Pedidos e Produtos
+- PDF gerado com logo e cor da representada
+- Rep solo (Pro): gerencia a própria representada
+- Guarda-chuva (Enterprise): indústria gerencia, rep não edita
 
 ---
 
-## Pendências em andamento
-1. Foreign key empresas — corrigir com getRepId() para qualquer usuário
-2. Desktop.html — Victor desenvolvendo
+## Telas validadas e especificação
+
+### 1. PEDIDOS (lista)
+- Header: título "Pedidos" + ícone relatórios (azul) + ícone + (verde)
+- Switcher de empresa logo abaixo do título
+- Busca por cliente ou número
+- Filtros: Todos · Orçamento · Pedido · Transmitido (só Enterprise)
+- Cards agrupados por data: cliente, qtd itens, cidade, número, badge status, valor
+- Badges: Orçamento (laranja) · Pedido (verde) · Transmitido (azul, só Enterprise)
+
+### 2. DENTRO DO PEDIDO / ORÇAMENTO
+- Header: ← Voltar | badge único colorido (Em orçamento=laranja / Pedido #xxx=verde) | Salvar
+- Cliente clicável no topo (para trocar)
+- Canal: 🏪 Presencial (atualiza última visita) | WhatsApp (não atualiza)
+- Botões: Adicionar produtos · Descontos ou acréscimos
+- Lista de itens com preço, IPI (se houver), desconto por item
+- Detalhes: tipo de pedido, condição de pagamento, regime tributário, data emissão, informações adicionais
+- Campo de obs da visita (grande, não vai pro PDF nem pra indústria — só alimenta histórico)
+- Ações: Gerar pedido · Duplicar · Ver PDF · Compartilhar · Cancelar orçamento
+- Quando pedido gerado: trava edição, só Duplicar · PDF · Compartilhar · Excluir
+- Footer fixo com total sempre visível
+
+### 3. VER ITENS
+- Resumo topo: qtd itens · unidades · total
+- Lista de produtos: nome, código, qtde, preço, tag de desconto (só se tiver)
+- Item no preço de tabela: sem tag nenhuma
+- Item com desconto manual: tag "manual" laranja + % em vermelho
+- Item com desconto %: tag "-X%" verde
+- Preço de tabela riscado quando há desconto
+- Resumo financeiro: subtotal tabela · IPI · descontos · total
+- Card desconto médio (só na tela, NUNCA no PDF): % à esquerda · valor total descontado à direita
+- Sem percentuais no PDF — só "Descontos: R$ X"
+
+### 4. CATÁLOGO (adicionar produtos)
+- Header: Cancelar | Adicionar produtos | Concluir
+- Busca por nome ou código
+- Filtros pills: Todos · Reposições · Promoções · Destaques
+- Cards: foto, nome, código, preço/un, IPI badge (roxo) se houver, preço c/ IPI discreto abaixo
+- Controle +/− direto no card
+- Quantidade azul quando > 0, cinza quando = 0
+- Footer fixo: unidades adicionadas + total (já com IPI)
+
+### 5. DETALHE DO PRODUTO NO PEDIDO
+- Foto grande
+- Nome, código, NCM, código de barras
+- Descrição com "Ver mais"
+- Quantidade com +/−
+- Preço de tabela + IPI separados
+- Desconto por % ou R$ com resultado em tempo real
+- Preço líquido resultante
+- Subtotal: tabela + IPI − desconto = total do item
+
+### 6. PDF DO PEDIDO
+- Header colorido com logo da representada e número do pedido
+- Cor do header personalizável por representada
+- Dados do cliente e representante lado a lado
+- Detalhes: tipo, condição, prazo, regime
+- Tabela: foto, código, qtde, unidade, preço líquido, IPI, subtotal
+- IPI por produto visível (para cliente cadastrar no sistema)
+- Totais: subtotal · IPI · descontos (só R$, sem %) · total
+- SEM desconto médio no PDF
+- SEM percentuais de desconto no PDF
+- Informações adicionais com destaque visual
+- Rodapé: vendedor, data, tipo
+- Marca "Gerado por Minha Rota RP"
+
+### 6b. PDF DO ORÇAMENTO
+- Mesmo layout mas com cor âmbar/marrom
+- Badge "Em orçamento" amarelo
+- Aviso de validade (ex: 7 dias)
+- Numeração ORC-XXX
+
+### 7. CLIENTES (carteira)
+- Header: Clientes + ícone mapa (azul) + ícone + (verde)
+- Busca por nome ou cidade
+- Stats bar clicável (filtros): Ativos (até 30 dias) · Recentes (31-89 dias) · Inativos (90+ dias) · Prospect (sem visita)
+- Cards SEM avatar/foto
+- Esquerda: nome, cidade, último pedido R$ + data
+- Direita: "Última visita" label, "X dias atrás" colorido, data
+
+### 8. PERFIL DO CLIENTE
+- Header: ← Clientes | nome | ✏️ Editar
+- Hero: nome completo, cidade + regime, stats (última visita · último pedido · total 12 meses)
+- 3 ações rápidas: ✅ Check-in · 🎁 Bonificação · 💸 Gastos · 🗺️ Ver no mapa
+- Ao clicar Check-in: sheet com opções:
+  - ✅ Só o check-in (registra visita sem pedido)
+  - 📋 Check-in + Pedido (registra visita e abre pedido — Starter: simples / Pro: completo)
+  - 📄 Check-in + Orçamento
+- Lembretes múltiplos com data opcional e "+ Adicionar"
+- Dados do cliente: CNPJ, telefone clicável, comprador, segmento, endereço
+- Histórico em 3 abas:
+  - **Visitas** (padrão): data, tipo (presencial/WhatsApp), obs da visita
+  - **Pedidos**: empresa, número, canal, badge, valor
+  - **Orçamentos**: empresa, número, canal, badge, valor
+
+### 9. GASTOS DO CLIENTE (tela dedicada)
+- Abre ao clicar em "Gastos" nas ações rápidas
+- Header: ← Don Camillo | Gastos | + Novo
+- Resumo: total ano · total mês · qtd registros
+- Filtro por ano: 2026 · 2025 · Tudo
+- Agrupado por mês com total do mês
+- Cards: ícone categoria, nome, data + categoria, valor
+- Categorias: Alimentação · Brinde · Amostra · Café/lanche · Evento · Outros
+- SEM km rodado (vai para despesas operacionais nas finanças)
+- Total geral no rodapé
+- Alimenta relatório de gastos com clientes
+
+### 10. PRODUTOS (lista)
+- Header: Produtos + ícone + (verde)
+- Switcher de empresa
+- Busca por nome ou código
+- Stats bar clicável: Todos · Ativos · Inativos
+- Cards: foto (ou ícone câmera se sem foto), nome, código + NCM, preço + unidade, IPI badge se houver, badge Ativo/Inativo, › arrow
+- Clicar no card abre edição
+- Produto inativo: opacidade reduzida
+- SEM badge "Sem foto" — câmera já indica visualmente
+
+### 11. CADASTRO/EDIÇÃO DE PRODUTO
+- Fotos: até 5, primeira é principal, × para remover, instruções de reordenar
+- Identificação: nome, código/ref, NCM, código de barras
+- Preço e unidade: preço de tabela, unidade (selecionável), múltiplo de venda, IPI %
+- Descrição: textarea livre (aparece no catálogo)
+- Status: toggle ativo/inativo
+- Botão excluir no rodapé
+
+### 12. DESCONTOS OU ACRÉSCIMOS
+- Segmented control: Descontos | Acréscimos
+- **Com política comercial (Enterprise):**
+  - Seção "Política — Empresa X" com 🔒
+  - Linhas configuradas pela indústria: toggle ativo/inativo pelo rep
+  - Verde quando condição atingida (automático)
+  - Automático quando boleto à vista selecionado no pedido
+  - Opaco quando condição não atingida (mostra quanto falta)
+  - Rep não pode editar valores da política
+- **Desconto do representante:**
+  - Campo motivo livre
+  - Valor em % ou R$ (alternável)
+  - Botão × para remover
+  - + Adicionar desconto
+- **Rep solo (sem política):**
+  - Só a seção do rep, sem bloco de política
+  - Tudo editável
+- **Cálculo em cascata:** cada desconto aplicado sobre valor já descontado
+- Aviso: não se aplica a itens com preço manual
+- Resumo com ↳ passo a passo da cascata
+
+### 13. TELA MAIS
+- **Relatórios:** Vendas · Orçamentos · Visitas · Bonificações · Gastos com clientes
+- **Finanças:** Receitas · Despesas operacionais · Impostos · Compromissos
+- **Configurações:** Meu perfil · Empresas representadas · Segmentos · Importar clientes · Calendário
+- **Conta:** Termos de uso · Privacidade · Sair
 
 ---
 
-## Pendências v2.0
-- AI Agent via WhatsApp (Claude API + WhatsApp Business API)
-- Rota de viagem com múltiplas cidades
-- Sugestão de hotéis por cidade
-- Comissão automática por representada
-- LGPD: Termos de uso e Privacidade
-- Domínio mundodorep.com.br
-- App Store / Google Play
+## Regras de negócio críticas
+
+### Visitas e pedidos
+- Check-in presencial → atualiza última visita do cliente
+- Pedido por WhatsApp → NÃO atualiza última visita
+- Pedido presencial = check-in automático
+- Pedido de bonificação → entra no relatório de bonificações, não de vendas
+
+### Status dos pedidos
+- Sempre começa como orçamento
+- Orçamento → Gerar pedido → trava edição
+- Pedido travado: só duplicar, PDF, compartilhar, excluir
+- Duplicar disponível mesmo após gerado
+- Transmitido: só para Enterprise (guarda-chuva)
+
+### Descontos
+- Desconto calculado sobre preço líquido (sem IPI)
+- IPI é separado e adicionado ao total
+- Múltiplos descontos = cascata (cada um sobre o valor anterior)
+- Desconto único = aplicado diretamente
+- Política comercial liga automaticamente quando condição atingida
+- Boleto à vista no pagamento → liga desconto de boleto automaticamente
+
+### PDF
+- Sem desconto médio
+- Sem percentuais de desconto (só valores R$)
+- IPI por produto visível
+- Canal (presencial/WhatsApp) NÃO aparece no PDF
+- Obs da visita NÃO aparece no PDF
+- Cor do header = cor da representada
 
 ---
 
-## Regras de negócio
-- Check-in = visita presencial (marca como visitado)
-- Via WhatsApp = sem visita (NÃO marca como visitado)
-- Retenção: mobile 6 meses; desktop histórico completo
-- CNPJ duplicado na importação → ignora
-- Cidades sempre via ViaCEP (nome oficial)
+## Tabelas Supabase v2
+
+- representantes
+- clientes
+- representadas (workspace por empresa)
+- segmentos
+- visitas
+- pedidos (inclui pedidos sem visita via WhatsApp)
+- lembretes
+- financeiro
+- impostos
+- compromissos
+- rotas
+- bonificacoes
+- planner
+- tarefas
+- client_import_files
+- produtos (NOVA — catálogo por representada)
+- politica_comercial (NOVA — descontos configurados pela indústria)
+- gastos_cliente (NOVA — separado do financeiro geral)
+
+---
+
+## Tabelas NOVAS a criar no Supabase v2
+
+### produtos
+```sql
+CREATE TABLE produtos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  rep_id UUID,
+  representada_id UUID,
+  nome TEXT,
+  codigo TEXT,
+  ncm TEXT,
+  codigo_barras TEXT,
+  preco NUMERIC,
+  unidade TEXT DEFAULT 'UN',
+  multiplo INTEGER DEFAULT 1,
+  ipi NUMERIC DEFAULT 0,
+  descricao TEXT,
+  fotos JSONB,
+  ativo BOOLEAN DEFAULT TRUE
+);
+ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "prod_own" ON produtos FOR ALL USING (rep_id = (SELECT id FROM representantes WHERE auth_id = auth.uid()));
+```
+
+### politica_comercial
+```sql
+CREATE TABLE politica_comercial (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  representada_id UUID,
+  nome TEXT,
+  tipo TEXT, -- 'desconto' | 'acrescimo'
+  valor NUMERIC,
+  valor_tipo TEXT, -- 'percentual' | 'fixo'
+  condicao TEXT, -- 'volume_minimo' | 'forma_pagamento' | 'sempre'
+  condicao_valor NUMERIC,
+  condicao_pagamento TEXT,
+  editavel_rep BOOLEAN DEFAULT FALSE,
+  ativo BOOLEAN DEFAULT TRUE
+);
+ALTER TABLE politica_comercial ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "pol_read" ON politica_comercial FOR SELECT USING (
+  representada_id IN (SELECT id FROM representadas WHERE rep_id = (SELECT id FROM representantes WHERE auth_id = auth.uid()))
+);
+```
+
+### gastos_cliente
+```sql
+CREATE TABLE gastos_cliente (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  rep_id UUID,
+  cliente_id UUID,
+  cliente_nome TEXT,
+  categoria TEXT,
+  descricao TEXT,
+  valor NUMERIC,
+  data DATE,
+  url_comprovante TEXT
+);
+ALTER TABLE gastos_cliente ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "gas_own" ON gastos_cliente FOR ALL USING (rep_id = (SELECT id FROM representantes WHERE auth_id = auth.uid()));
+```
+
+---
+
+## Estrutura de arquivos React sugerida
+
+```
+/src
+  /components
+    /pedidos
+      ListaPedidos.jsx
+      DetalhesPedido.jsx
+      VerItens.jsx
+      Catalogo.jsx
+      DetalheProdutoPedido.jsx
+      DescontosAcrescimos.jsx
+    /clientes
+      CarteiraClientes.jsx
+      PerfilCliente.jsx
+      GastosCliente.jsx
+    /produtos
+      ListaProdutos.jsx
+      CadastroProduto.jsx
+    /planner
+      Planner.jsx
+    /mais
+      Mais.jsx
+      Relatorios.jsx
+      Financas.jsx
+    /shared
+      Navbar.jsx
+      RepSwitcher.jsx
+      PDFPedido.jsx
+      PDFOrcamento.jsx
+  /hooks
+    useRepId.js
+    usePlano.js
+  /lib
+    supabase.js
+  App.jsx
+  main.jsx
+```
 
 ---
 
 ## Deploy
 ```bash
+git checkout v2
 git add .
 git commit -m "descrição"
-git push
+git push origin v2
 ```
-
-## SQL padrão RLS
-```sql
-DROP POLICY IF EXISTS "nome" ON tabela;
-CREATE POLICY "nome" ON tabela FOR SELECT USING (rep_id = auth.uid());
-```
-NUNCA usar CREATE POLICY IF NOT EXISTS.
+Cloudflare Pages faz deploy automático na URL de preview.
 
 ---
 
 ## Ao encerrar sessão
-Atualizar este CLAUDE.md com o que foi feito e fazer commit + push.
+Atualizar este CLAUDE.md com o que foi feito e fazer commit + push na branch v2.
