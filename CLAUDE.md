@@ -415,5 +415,15 @@ Cloudflare Pages faz deploy automático na URL de preview.
 
 ---
 
+## Status v2 — sessão 04/04/2026
+- ✅ Login funcional com Supabase Auth
+- ✅ CarteiraClientes com stats bar, filtros e cores de inatividade
+- ✅ CadastroCliente com busca CNPJ (BrasilAPI), CEP (ViaCEP), autocomplete de rua
+- ✅ Planner com views semana/mês, compromissos, integração com visitas
+- ✅ Rotas no Planner com otimização Google, modal completo, detalhe e Google Maps
+- ⚠️ Autocomplete Places nas Rotas: bloqueado por restrição de key — resolver habilitando Places API na Geocoding Key ou adicionando domínio *.rota-visitas.pages.dev na key principal
+
+---
+
 ## Ao encerrar sessão
 Atualizar este CLAUDE.md com o que foi feito e fazer commit + push na branch v2.
