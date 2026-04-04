@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import './CarteiraClientes.css'
 
 function CarteiraClientes() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { repId, loading: loadingRep } = useRepId()
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(false)
@@ -14,54 +15,64 @@ function CarteiraClientes() {
   const [busca, setBusca] = useState('')
   const [filtroAtivo, setFiltroAtivo] = useState('todos')
 
+  // Função para buscar clientes (reutilizável)
+  const fetchClientes = useCallback(async () => {
+    if (!repId) return
+
+    setLoading(true)
+    setErro(null)
+    console.log('[CarteiraClientes] Buscando clientes para rep_id:', repId)
+
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('rep_id', repId)
+        .order('nome')
+
+      console.log('[CarteiraClientes] Resultado:', { data, error })
+
+      if (error) {
+        console.error('[CarteiraClientes] Erro Supabase:', error)
+        setErro(error.message || 'Erro ao carregar clientes')
+      } else {
+        setClientes(data || [])
+        console.log('[CarteiraClientes] Clientes carregados:', data?.length || 0)
+      }
+    } catch (err) {
+      console.error('[CarteiraClientes] Exceção:', err)
+      setErro('Erro de conexão. Verifique sua internet.')
+    } finally {
+      setLoading(false)
+      setCarregouUmaVez(true)
+    }
+  }, [repId])
+
   // Debug: log repId
   useEffect(() => {
     console.log('[CarteiraClientes] loadingRep:', loadingRep, 'repId:', repId)
   }, [loadingRep, repId])
 
+  // Busca inicial quando repId estiver disponível
   useEffect(() => {
-    // Se ainda está carregando o repId, aguarda
     if (loadingRep) return
 
-    // Se terminou de carregar e repId é null, marca como carregado
     if (!repId) {
       console.log('[CarteiraClientes] repId é null/undefined após carregar')
       setCarregouUmaVez(true)
       return
     }
 
-    async function fetchClientes() {
-      setLoading(true)
-      setErro(null)
-      console.log('[CarteiraClientes] Buscando clientes para rep_id:', repId)
-
-      try {
-        const { data, error } = await supabase
-          .from('clientes')
-          .select('*')
-          .eq('rep_id', repId)
-          .order('nome')
-
-        console.log('[CarteiraClientes] Resultado:', { data, error })
-
-        if (error) {
-          console.error('[CarteiraClientes] Erro Supabase:', error)
-          setErro(error.message || 'Erro ao carregar clientes')
-        } else {
-          setClientes(data || [])
-          console.log('[CarteiraClientes] Clientes carregados:', data?.length || 0)
-        }
-      } catch (err) {
-        console.error('[CarteiraClientes] Exceção:', err)
-        setErro('Erro de conexão. Verifique sua internet.')
-      } finally {
-        setLoading(false)
-        setCarregouUmaVez(true)
-      }
-    }
-
     fetchClientes()
-  }, [repId, loadingRep])
+  }, [repId, loadingRep, fetchClientes])
+
+  // Refetch quando navegar de volta para esta tela (ex: após cadastrar cliente)
+  useEffect(() => {
+    if (repId && carregouUmaVez) {
+      console.log('[CarteiraClientes] Refetch ao entrar na tela')
+      fetchClientes()
+    }
+  }, [location.key]) // location.key muda a cada navegação
 
   // Calcula dias desde última visita
   function diasDesdeVisita(ultimaVisita) {

@@ -3,7 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 const SUPABASE_URL = 'https://byglymeulgeomoldhrrh.supabase.co'
 const SUPABASE_ANON_KEY = 'sb_publishable_N7Es1GU_4yUNpun4qQDkWQ_4Lhl-6Ii'
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true
+  },
+  global: {
+    headers: {
+      'Cache-Control': 'no-cache'
+    }
+  }
+})
 
 // Cache do rep_id
 let cachedRepId = null
