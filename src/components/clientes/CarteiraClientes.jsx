@@ -8,7 +8,8 @@ function CarteiraClientes() {
   const navigate = useNavigate()
   const { repId, loading: loadingRep } = useRepId()
   const [clientes, setClientes] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [carregouUmaVez, setCarregouUmaVez] = useState(false)
   const [erro, setErro] = useState(null)
   const [busca, setBusca] = useState('')
   const [filtroAtivo, setFiltroAtivo] = useState('todos')
@@ -22,10 +23,10 @@ function CarteiraClientes() {
     // Se ainda está carregando o repId, aguarda
     if (loadingRep) return
 
-    // Se terminou de carregar e repId é null, para de carregar
+    // Se terminou de carregar e repId é null, marca como carregado
     if (!repId) {
       console.log('[CarteiraClientes] repId é null/undefined após carregar')
-      setLoading(false)
+      setCarregouUmaVez(true)
       return
     }
 
@@ -34,22 +35,29 @@ function CarteiraClientes() {
       setErro(null)
       console.log('[CarteiraClientes] Buscando clientes para rep_id:', repId)
 
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq('rep_id', repId)
-        .order('nome')
+      try {
+        const { data, error } = await supabase
+          .from('clientes')
+          .select('*')
+          .eq('rep_id', repId)
+          .order('nome')
 
-      console.log('[CarteiraClientes] Resultado:', { data, error })
+        console.log('[CarteiraClientes] Resultado:', { data, error })
 
-      if (error) {
-        console.error('[CarteiraClientes] Erro Supabase:', error)
-        setErro(error.message || 'Erro ao carregar clientes')
-      } else {
-        setClientes(data || [])
-        console.log('[CarteiraClientes] Clientes carregados:', data?.length || 0)
+        if (error) {
+          console.error('[CarteiraClientes] Erro Supabase:', error)
+          setErro(error.message || 'Erro ao carregar clientes')
+        } else {
+          setClientes(data || [])
+          console.log('[CarteiraClientes] Clientes carregados:', data?.length || 0)
+        }
+      } catch (err) {
+        console.error('[CarteiraClientes] Exceção:', err)
+        setErro('Erro de conexão. Verifique sua internet.')
+      } finally {
+        setLoading(false)
+        setCarregouUmaVez(true)
       }
-      setLoading(false)
     }
 
     fetchClientes()
@@ -127,8 +135,8 @@ function CarteiraClientes() {
     })
   }, [clientes, busca, filtroAtivo])
 
-  // Estado de carregamento
-  if (loadingRep || loading) {
+  // Estado de carregamento inicial
+  if (loadingRep || (loading && !carregouUmaVez)) {
     return <div className="loading">Carregando...</div>
   }
 
@@ -253,7 +261,25 @@ function CarteiraClientes() {
       <div className="clientes-lista">
         {clientesFiltrados.length === 0 ? (
           <div className="empty-state">
-            {busca ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
+            {busca ? (
+              <>
+                <p>Nenhum cliente encontrado</p>
+                <button className="btn-limpar-busca" onClick={() => setBusca('')}>
+                  Limpar busca
+                </button>
+              </>
+            ) : clientes.length === 0 ? (
+              <>
+                <div className="empty-icon">👥</div>
+                <h3>Nenhum cliente cadastrado ainda</h3>
+                <p>Comece adicionando seu primeiro cliente</p>
+                <button className="btn-adicionar-primeiro" onClick={() => navigate('/clientes/novo')}>
+                  + Adicionar primeiro cliente
+                </button>
+              </>
+            ) : (
+              <p>Nenhum cliente neste filtro</p>
+            )}
           </div>
         ) : (
           clientesFiltrados.map(cliente => {

@@ -255,10 +255,61 @@
 
 /* Empty State */
 .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 48px 24px;
+  padding: 60px 24px;
   color: var(--text-secondary);
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px 0;
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 20px 0;
+}
+
+.btn-adicionar-primeiro {
+  padding: 14px 24px;
+  background: var(--success);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
   font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.btn-adicionar-primeiro:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.btn-limpar-busca {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 /* Loading */
