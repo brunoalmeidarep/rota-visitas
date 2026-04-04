@@ -101,7 +101,26 @@
   padding-right: 40px;
 }
 
-/* Mensagem de erro */
+/* Campo com erro */
+.campo-erro {
+  border-color: var(--danger) !important;
+}
+
+.campo-erro-msg {
+  display: block;
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+/* Campo travado (readonly com dados) */
+.campo-travado {
+  background: var(--bg) !important;
+  color: var(--text-secondary) !important;
+  cursor: not-allowed;
+}
+
+/* Mensagem de erro geral */
 .erro-msg {
   background: #fef2f2;
   color: #dc2626;
@@ -110,6 +129,70 @@
   font-size: 13px;
   margin-bottom: 16px;
   text-align: center;
+}
+
+/* Seção título */
+.secao-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 24px 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Campos em linha */
+.campos-linha {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.campos-linha .campo {
+  margin-bottom: 0;
+}
+
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+
+/* Campo com loader */
+.campo-com-loader {
+  position: relative;
+}
+
+.campo-com-loader input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.campo-loader {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Botão destravar */
+.btn-destravar {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  margin-top: -10px;
+  margin-bottom: 18px;
+}
+
+.btn-destravar:hover {
+  text-decoration: underline;
 }
 
 /* Botão Salvar Footer */
@@ -167,86 +250,6 @@
   justify-content: center;
   height: 100vh;
   color: var(--text-secondary);
-}
-
-/* Seção título */
-.secao-titulo {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 24px 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-
-/* Campos em linha */
-.campos-linha {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.campos-linha .campo {
-  margin-bottom: 0;
-}
-
-.flex-1 { flex: 1; }
-.flex-2 { flex: 2; }
-
-/* Campo com loader */
-.campo-com-loader {
-  position: relative;
-}
-
-.campo-com-loader input {
-  width: 100%;
-}
-
-.campo-loader {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-/* Campo preenchido (desabilitado mas com dados) */
-.campo-preenchido {
-  background: var(--bg) !important;
-  color: var(--text) !important;
-}
-
-.campo-preenchido:disabled {
-  opacity: 1;
-}
-
-/* Botão editar campo */
-.btn-editar-campo {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--primary-light);
-  color: var(--primary);
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.campo:has(.btn-editar-campo) {
-  position: relative;
-}
-
-.campo:has(.btn-editar-campo) input {
-  padding-right: 70px;
 }
 
 /* Google Places Autocomplete dropdown */
