@@ -73,6 +73,17 @@ let gastosExpandido    = null;
 let bonifAtual         = [];
 let bonifDetalheId     = null;
 let representadasList  = [];
+let representadasCache = [];  // para gestão de empresas (todos os campos)
+let segmentosCache     = [];  // para gestão de segmentos
+
+// ── CALENDÁRIO ───────────────────────────────────────────────────────
+let calMesDesk          = new Date().getMonth();
+let calAnoDesk          = new Date().getFullYear();
+let calDiaSelecionadoDesk = null;
+let calVisitasCacheDesk = {};
+
+// ── IMPORTAR ─────────────────────────────────────────────────────────
+let _importarFileDesk   = null;
 
 // ── CHECK-IN PEDIDOS ─────────────────────────────────────────────────
 let ciPedidos = [];   // pedidos sendo criados no check-in atual
@@ -242,6 +253,7 @@ async function mostrarApp() {
   await loadClientes();
   carregarLembretesSupabase();
   carregarRepresentadasDesktop();
+  carregarImpostos().then(verificarLembretesDesk);
 }
 
 // Carrega a linha da tabela `representantes` pelo email — igual ao mobile
@@ -4468,4 +4480,519 @@ async function avancarParcelaComp(id) {
   c.parcela_atual = nova;
   renderCompromissos();
   showToast('✓ Parcela marcada como paga');
+}
+
+// ── EMPRESAS ─────────────────────────────────────────────────────────
+
+async function carregarEmpresasDesk() {
+  if (!currentRep) return;
+  const { data } = await sb.from('representadas').select('*').eq('rep_id', currentRep.id).order('nome');
+  representadasCache = data || [];
+}
+
+async function openEmpresas() {
+  document.getElementById('modal-empresas').style.display = 'flex';
+  await carregarEmpresasDesk();
+  renderEmpresasDesk();
+}
+
+function closeEmpresas() {
+  document.getElementById('modal-empresas').style.display = 'none';
+}
+
+function renderEmpresasDesk() {
+  const lista = document.getElementById('empresas-lista');
+  if (!lista) return;
+  if (!representadasCache.length) {
+    lista.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text3);font-size:13px">Nenhuma empresa cadastrada.</div>';
+    return;
+  }
+  lista.innerHTML = representadasCache.map(r => `
+    <div class="gestao-card-desk">
+      <div>
+        <div class="gestao-card-nome-desk">${sanitize(r.nome)}</div>
+        ${r.cnpj ? `<div class="gestao-card-sub-desk">CNPJ: ${sanitize(r.cnpj)}</div>` : ''}
+        ${r.cidade ? `<div class="gestao-card-sub-desk">\u{1F4CD} ${sanitize(r.cidade)}</div>` : ''}
+        ${r.banco ? `<div class="gestao-card-sub-desk">\u{1F3E6} ${sanitize(r.banco)}${r.agencia ? ' Ag. '+sanitize(r.agencia) : ''}${r.conta ? ' C/C '+sanitize(r.conta) : ''}</div>` : ''}
+        ${r.pix ? `<div class="gestao-card-sub-desk">PIX: ${sanitize(r.pix)}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="gestao-btn-sm-desk" onclick="abrirFormEmpresaDesk('${r.id}')">Editar</button>
+        <button class="gestao-btn-sm-desk danger" onclick="deletarEmpresaDesk('${r.id}')">Excluir</button>
+      </div>
+    </div>`).join('');
+}
+
+function abrirFormEmpresaDesk(id) {
+  const form = document.getElementById('empresa-form');
+  const fab  = document.getElementById('empresas-fab');
+  if (!form) return;
+  form.style.display = 'block';
+  if (fab) fab.style.display = 'none';
+  if (id) {
+    const r = representadasCache.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('empresa-form-titulo').textContent = 'Editar Empresa';
+    document.getElementById('emp-id').value       = r.id;
+    document.getElementById('emp-nome').value     = r.nome || '';
+    document.getElementById('emp-cnpj').value     = r.cnpj || '';
+    document.getElementById('emp-cep').value      = r.cep  || '';
+    document.getElementById('emp-endereco').value = r.endereco || '';
+    const cidEl = document.getElementById('emp-cidade');
+    cidEl.value = r.cidade || ''; cidEl.disabled = !!r.cidade;
+    document.getElementById('emp-banco').value    = r.banco    || '';
+    document.getElementById('emp-agencia').value  = r.agencia  || '';
+    document.getElementById('emp-conta').value    = r.conta    || '';
+    document.getElementById('emp-pix').value      = r.pix      || '';
+    document.getElementById('emp-fin-nome').value = r.fin_nome || '';
+    document.getElementById('emp-fin-tel').value  = r.fin_tel  || '';
+    document.getElementById('emp-com-nome').value = r.com_nome || '';
+    document.getElementById('emp-com-tel').value  = r.com_tel  || '';
+    document.getElementById('emp-fis-nome').value = r.fis_nome || '';
+    document.getElementById('emp-fis-tel').value  = r.fis_tel  || '';
+    document.getElementById('emp-fat-nome').value = r.fat_nome || '';
+    document.getElementById('emp-fat-tel').value  = r.fat_tel  || '';
+    document.getElementById('emp-cep-status').textContent = '';
+  } else {
+    document.getElementById('empresa-form-titulo').textContent = 'Nova Empresa';
+    ['emp-id','emp-nome','emp-cnpj','emp-cep','emp-endereco','emp-banco','emp-agencia','emp-conta','emp-pix',
+     'emp-fin-nome','emp-fin-tel','emp-com-nome','emp-com-tel','emp-fis-nome','emp-fis-tel','emp-fat-nome','emp-fat-tel']
+      .forEach(fid => { const el = document.getElementById(fid); if (el) el.value = ''; });
+    const cidEl = document.getElementById('emp-cidade');
+    if (cidEl) { cidEl.value = ''; cidEl.disabled = true; }
+    document.getElementById('emp-cep-status').textContent = '';
+  }
+}
+
+function fecharFormEmpresaDesk() {
+  const form = document.getElementById('empresa-form');
+  const fab  = document.getElementById('empresas-fab');
+  if (form) form.style.display = 'none';
+  if (fab)  fab.style.display  = '';
+}
+
+function mascaraCEPDesk(el) {
+  let v = el.value.replace(/\D/g, '');
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5,8);
+  el.value = v;
+}
+
+async function buscarCEPEmpresaDesk() {
+  const cepEl    = document.getElementById('emp-cep');
+  const statusEl = document.getElementById('emp-cep-status');
+  const cidEl    = document.getElementById('emp-cidade');
+  const endEl    = document.getElementById('emp-endereco');
+  if (!cepEl) return;
+  const cep = cepEl.value.replace(/\D/g,'');
+  if (cep.length < 8) return;
+  statusEl.textContent = 'Buscando...'; statusEl.style.color = 'var(--text3)';
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d   = await res.json();
+    if (d.erro) { statusEl.textContent = 'CEP não encontrado'; statusEl.style.color = 'var(--red)'; cidEl.disabled = false; return; }
+    const cidade = (d.localidade || '') + (d.uf ? ' - ' + d.uf.toUpperCase() : '');
+    cidEl.value = cidade; cidEl.disabled = true;
+    if (!endEl.value) endEl.value = [d.logradouro, d.bairro].filter(Boolean).join(', ');
+    statusEl.textContent = '✓ CEP encontrado'; statusEl.style.color = 'var(--green)';
+  } catch(e) {
+    statusEl.textContent = 'Erro ao buscar CEP'; statusEl.style.color = 'var(--red)';
+    cidEl.disabled = false;
+  }
+}
+
+async function salvarEmpresaDesk() {
+  if (!currentUser) return;
+  const nome = document.getElementById('emp-nome').value.trim();
+  if (!nome) { showToast('Nome obrigatório', true); return; }
+  const id = document.getElementById('emp-id').value;
+  const repId = await getRepId();
+  const payload = {
+    rep_id:   repId, nome,
+    cnpj:     document.getElementById('emp-cnpj').value.trim(),
+    cep:      document.getElementById('emp-cep').value.replace(/\D/g,''),
+    endereco: document.getElementById('emp-endereco').value.trim(),
+    cidade:   document.getElementById('emp-cidade').value.trim(),
+    banco:    document.getElementById('emp-banco').value.trim(),
+    agencia:  document.getElementById('emp-agencia').value.trim(),
+    conta:    document.getElementById('emp-conta').value.trim(),
+    pix:      document.getElementById('emp-pix').value.trim(),
+    fin_nome: document.getElementById('emp-fin-nome').value.trim(),
+    fin_tel:  document.getElementById('emp-fin-tel').value.trim(),
+    com_nome: document.getElementById('emp-com-nome').value.trim(),
+    com_tel:  document.getElementById('emp-com-tel').value.trim(),
+    fis_nome: document.getElementById('emp-fis-nome').value.trim(),
+    fis_tel:  document.getElementById('emp-fis-tel').value.trim(),
+    fat_nome: document.getElementById('emp-fat-nome').value.trim(),
+    fat_tel:  document.getElementById('emp-fat-tel').value.trim(),
+  };
+  let err;
+  if (id) {
+    ({ error: err } = await sb.from('representadas').update(payload).eq('id', id).eq('rep_id', repId));
+  } else {
+    ({ error: err } = await sb.from('representadas').insert(payload));
+  }
+  if (err) { showToast('Erro ao salvar', true); console.error(err); return; }
+  await carregarEmpresasDesk();
+  await carregarRepresentadasDesktop();
+  fecharFormEmpresaDesk();
+  renderEmpresasDesk();
+  showToast('Empresa salva!');
+}
+
+async function deletarEmpresaDesk(id) {
+  const r = representadasCache.find(x => x.id === id);
+  if (!r || !confirm('Excluir "' + r.nome + '"?')) return;
+  const repId = await getRepId();
+  const { error } = await sb.from('representadas').delete().eq('id', id).eq('rep_id', repId);
+  if (error) { showToast('Erro ao excluir', true); return; }
+  await carregarEmpresasDesk();
+  await carregarRepresentadasDesktop();
+  renderEmpresasDesk();
+  showToast('Empresa excluída');
+}
+
+// ── SEGMENTAÇÃO ──────────────────────────────────────────────────────
+
+const _SEGS_DEFAULT_DESK = ['Mat. Construção', 'Construtora', 'Tintas', 'Distribuidora'];
+
+async function carregarSegmentosDesk() {
+  if (!currentRep) return;
+  try {
+    const repId = await getRepId();
+    if (!repId) { if (!segmentosCache.length) segmentosCache = _SEGS_DEFAULT_DESK.map((nome, i) => ({ id: 'def_'+i, nome })); return; }
+    const { data, error } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
+    if (error) throw error;
+    const seen = new Set();
+    const fromDb = (data || []).filter(s => seen.has(s.nome) ? false : seen.add(s.nome));
+    if (fromDb.length) {
+      segmentosCache = fromDb;
+    } else {
+      const { error: insErr } = await sb.from('segmentos').insert(_SEGS_DEFAULT_DESK.map(nome => ({ nome, rep_id: repId })));
+      if (!insErr) {
+        const { data: d2 } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
+        segmentosCache = d2 && d2.length ? d2 : _SEGS_DEFAULT_DESK.map((nome, i) => ({ id: 'def_'+i, nome }));
+      } else {
+        if (!segmentosCache.length) segmentosCache = _SEGS_DEFAULT_DESK.map((nome, i) => ({ id: 'def_'+i, nome }));
+      }
+    }
+  } catch(e) {
+    if (!segmentosCache.length) segmentosCache = _SEGS_DEFAULT_DESK.map((nome, i) => ({ id: 'def_'+i, nome }));
+  }
+}
+
+async function openSegmentos() {
+  document.getElementById('modal-segmentos').style.display = 'flex';
+  await carregarSegmentosDesk();
+  renderSegmentosDesk();
+}
+
+function closeSegmentos() {
+  document.getElementById('modal-segmentos').style.display = 'none';
+}
+
+function renderSegmentosDesk() {
+  const lista = document.getElementById('segmentos-lista');
+  if (!lista) return;
+  if (!segmentosCache.length) {
+    lista.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text3);font-size:13px">Nenhum segmento cadastrado.</div>';
+    return;
+  }
+  lista.innerHTML = segmentosCache.map(s => `
+    <div class="gestao-card-desk">
+      <div class="gestao-card-nome-desk">${sanitize(s.nome)}</div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="gestao-btn-sm-desk" onclick="abrirFormSegmentoDesk('${s.id}')">Editar</button>
+        <button class="gestao-btn-sm-desk danger" onclick="deletarSegmentoDesk('${s.id}')">Excluir</button>
+      </div>
+    </div>`).join('');
+}
+
+function abrirFormSegmentoDesk(id) {
+  const form = document.getElementById('segmento-form');
+  if (!form) return;
+  form.style.display = 'block';
+  if (id) {
+    const s = segmentosCache.find(x => String(x.id) === String(id));
+    document.getElementById('segmento-form-titulo').textContent = 'Editar Segmento';
+    document.getElementById('seg-mgmt-id').value   = id;
+    document.getElementById('seg-mgmt-nome').value = s ? s.nome : '';
+  } else {
+    document.getElementById('segmento-form-titulo').textContent = 'Novo Segmento';
+    document.getElementById('seg-mgmt-id').value   = '';
+    document.getElementById('seg-mgmt-nome').value = '';
+  }
+  setTimeout(() => document.getElementById('seg-mgmt-nome').focus(), 100);
+}
+
+function fecharFormSegmentoDesk() {
+  const form = document.getElementById('segmento-form');
+  if (form) form.style.display = 'none';
+}
+
+async function salvarSegmentoDesk() {
+  if (!currentUser) return;
+  const raw = document.getElementById('seg-mgmt-nome').value.trim();
+  if (!raw) { showToast('Nome obrigatório', true); return; }
+  const nome = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+  const id   = document.getElementById('seg-mgmt-id').value;
+  if (id) {
+    const s = segmentosCache.find(x => String(x.id) === String(id));
+    if (s) s.nome = nome;
+  } else if (!segmentosCache.find(s => s.nome === nome)) {
+    segmentosCache.push({ id: 'local_' + Date.now(), nome });
+    segmentosCache.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+  fecharFormSegmentoDesk();
+  renderSegmentosDesk();
+  showToast(id ? 'Segmento atualizado' : 'Segmento criado');
+  const repId = await getRepId();
+  try {
+    if (id) {
+      await sb.from('segmentos').update({ nome }).eq('id', id).eq('rep_id', repId);
+    } else {
+      const { data, error } = await sb.from('segmentos').insert({ nome, rep_id: repId }).select().single();
+      if (!error && data) {
+        const idx = segmentosCache.findIndex(s => s.nome === nome && String(s.id).startsWith('local_'));
+        if (idx >= 0) segmentosCache[idx] = data;
+        renderSegmentosDesk();
+      }
+    }
+  } catch(e) { console.error('salvarSegmento:', e); }
+}
+
+async function deletarSegmentoDesk(id) {
+  const s = segmentosCache.find(x => String(x.id) === String(id));
+  if (!s || !confirm('Excluir "' + s.nome + '"?')) return;
+  const repId = await getRepId();
+  try {
+    await sb.from('segmentos').delete().eq('id', id).eq('rep_id', repId);
+    await carregarSegmentosDesk();
+    renderSegmentosDesk();
+    showToast('Segmento excluído');
+  } catch(e) { showToast('Erro ao excluir', true); }
+}
+
+// ── IMPORTAR CLIENTES ────────────────────────────────────────────────
+
+function openImportar() {
+  _importarFileDesk = null;
+  document.getElementById('importar-file-label-desk').textContent = 'Selecionar arquivo .xlsx';
+  document.getElementById('importar-preview-desk').style.display = 'none';
+  document.getElementById('importar-progress-desk').style.display = 'none';
+  document.getElementById('importar-footer-desk').style.display = 'none';
+  document.getElementById('modal-importar').style.display = 'flex';
+}
+
+function closeImportar() {
+  document.getElementById('modal-importar').style.display = 'none';
+}
+
+function baixarModeloXlsxDesk() {
+  if (!window.XLSX) { showToast('Aguarde o carregamento', true); return; }
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['nome','comprador','cnpj','cep','endereco','telefone','segmento','ultima_visita','ultima_obs'],
+    ['Exemplo Materiais','João Silva','12.345.678/0001-90','89251-000','Rua das Flores, 100','(47) 99999-9999','Mat. Construção','2024-01-15','Interessado em novidades'],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+  XLSX.writeFile(wb, 'clientes_modelo_importacao.xlsx');
+}
+
+function importarLerArquivoDesk(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _importarFileDesk = file;
+  document.getElementById('importar-file-label-desk').textContent = file.name;
+  document.getElementById('importar-preview-desk').style.display = 'none';
+  document.getElementById('importar-progress-desk').style.display = 'none';
+  const btn = document.getElementById('importar-btn-confirmar-desk');
+  btn.textContent = 'Enviar para processamento';
+  btn.disabled = false;
+  document.getElementById('importar-footer-desk').style.display = 'block';
+}
+
+async function importarConfirmarDesk() {
+  if (!_importarFileDesk || !currentUser) return;
+  const btn  = document.getElementById('importar-btn-confirmar-desk');
+  const prog = document.getElementById('importar-progress-desk');
+  const BUCKET = 'client-import-originals';
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  prog.style.display = 'block';
+  prog.textContent = 'Fazendo upload do arquivo...';
+  const userId = currentUser.id;
+  const ts = Date.now();
+  const safeName = _importarFileDesk.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = `${userId}/${ts}-${safeName}`;
+  try {
+    const { error: uploadError } = await sb.storage.from(BUCKET).upload(storagePath, _importarFileDesk, { upsert: false });
+    if (uploadError) throw uploadError;
+    prog.textContent = 'Registrando importacao...';
+    const { error: dbError } = await sb.from('client_import_files').insert({
+      user_id: userId, original_filename: _importarFileDesk.name,
+      storage_bucket: BUCKET, storage_path: storagePath, status: 'uploaded',
+    });
+    if (dbError) throw dbError;
+    _importarFileDesk = null;
+    prog.style.display = 'none';
+    document.getElementById('importar-footer-desk').style.display = 'none';
+    document.getElementById('importar-preview-texto-desk').innerHTML =
+      '<div style="color:var(--green);font-size:15px;font-weight:700;margin-bottom:8px">Arquivo enviado!</div>' +
+      '<div style="color:var(--text2);font-size:13px;line-height:1.6">Seus clientes serao importados em breve.</div>' +
+      '<button onclick="closeImportar()" style="margin-top:14px;width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">Fechar</button>';
+    document.getElementById('importar-preview-desk').style.display = 'block';
+  } catch (err) {
+    prog.style.display = 'none';
+    btn.disabled = false;
+    btn.textContent = 'Tentar novamente';
+    let msg = 'Erro ao enviar o arquivo.';
+    if (err && err.message) {
+      if (err.message.includes('Bucket not found')) msg = 'Bucket nao encontrado no Supabase.';
+      else msg = err.message;
+    }
+    document.getElementById('importar-preview-texto-desk').innerHTML =
+      '<div style="color:var(--red);font-size:14px;font-weight:600;margin-bottom:6px">Falha no envio</div>' +
+      '<div style="color:var(--text2);font-size:13px">' + msg + '</div>';
+    document.getElementById('importar-preview-desk').style.display = 'block';
+  }
+}
+
+// ── CALENDÁRIO DE VISITAS ────────────────────────────────────────────
+
+async function openCalendario() {
+  calMesDesk = new Date().getMonth();
+  calAnoDesk = new Date().getFullYear();
+  calDiaSelecionadoDesk = new Date().getDate();
+  document.getElementById('modal-calendario').style.display = 'flex';
+  await carregarCalendarioDesk();
+}
+
+function closeCalendario() {
+  document.getElementById('modal-calendario').style.display = 'none';
+}
+
+async function navegarCalMesDesk(delta) {
+  calMesDesk += delta;
+  if (calMesDesk > 11) { calMesDesk = 0; calAnoDesk++; }
+  if (calMesDesk < 0)  { calMesDesk = 11; calAnoDesk--; }
+  calDiaSelecionadoDesk = null;
+  await carregarCalendarioDesk();
+}
+
+async function carregarCalendarioDesk() {
+  const nomesMes = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('cal-mes-titulo-desk').textContent = nomesMes[calMesDesk] + ' ' + calAnoDesk;
+
+  const chaveCache = calAnoDesk + '-' + calMesDesk;
+  let visitas = [];
+  if (calVisitasCacheDesk[chaveCache]) {
+    visitas = calVisitasCacheDesk[chaveCache];
+  } else {
+    const inicio = new Date(calAnoDesk, calMesDesk, 1).toISOString().slice(0, 10);
+    const fim    = new Date(calAnoDesk, calMesDesk + 1, 0).toISOString().slice(0, 10);
+    try {
+      const { data } = await sb.from('visitas').select('id,id_cliente,nome_cliente,cidade,data,hora,obs')
+        .eq('rep_id', currentUser.id).gte('data', inicio).lte('data', fim).order('data');
+      visitas = data || [];
+    } catch(e) { visitas = []; }
+    calVisitasCacheDesk[chaveCache] = visitas;
+  }
+
+  const porDia = {};
+  visitas.forEach(v => {
+    const dia = parseInt(v.data.split('-')[2]);
+    if (!porDia[dia]) porDia[dia] = [];
+    porDia[dia].push(v);
+  });
+
+  const primeiroDia = new Date(calAnoDesk, calMesDesk, 1).getDay();
+  const ultimoDia   = new Date(calAnoDesk, calMesDesk + 1, 0).getDate();
+  const hoje        = new Date();
+  const ehMesAtual  = calMesDesk === hoje.getMonth() && calAnoDesk === hoje.getFullYear();
+
+  let gridHTML = '';
+  const diasMesAnt = new Date(calAnoDesk, calMesDesk, 0).getDate();
+  for (let i = primeiroDia - 1; i >= 0; i--) {
+    gridHTML += '<div class="cal-d-desk outro">' + (diasMesAnt - i) + '</div>';
+  }
+  for (let d = 1; d <= ultimoDia; d++) {
+    const classes = ['cal-d-desk'];
+    if (ehMesAtual && d === hoje.getDate()) classes.push('hoje');
+    if (porDia[d]) classes.push(porDia[d].length >= 4 ? 'com-visita muitas' : 'com-visita');
+    if (d === calDiaSelecionadoDesk) classes.push('selecionado');
+    if (new Date(calAnoDesk, calMesDesk, d).getDay() === 0) classes.push('dom');
+    gridHTML += '<div class="' + classes.join(' ') + '" onclick="selecionarDiaDesk(' + d + ')">' + d + '</div>';
+  }
+  const total = primeiroDia + ultimoDia;
+  const resto = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let d = 1; d <= resto; d++) {
+    gridHTML += '<div class="cal-d-desk outro">' + d + '</div>';
+  }
+  document.getElementById('cal-grid-desk').innerHTML = gridHTML;
+
+  if (calDiaSelecionadoDesk) {
+    renderDiaCalDesk(calDiaSelecionadoDesk, porDia[calDiaSelecionadoDesk] || []);
+  } else {
+    document.getElementById('cal-body-desk').innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">Clique em um dia para ver as visitas</div>';
+  }
+}
+
+async function selecionarDiaDesk(dia) {
+  calDiaSelecionadoDesk = dia;
+  document.querySelectorAll('.cal-d-desk').forEach(el => el.classList.remove('selecionado'));
+  const els = document.querySelectorAll('.cal-d-desk:not(.outro)');
+  if (els[dia - 1]) els[dia - 1].classList.add('selecionado');
+  const chaveCache = calAnoDesk + '-' + calMesDesk;
+  const visitas = calVisitasCacheDesk[chaveCache] || [];
+  const doDia = visitas.filter(v => parseInt(v.data.split('-')[2]) === dia);
+  renderDiaCalDesk(dia, doDia);
+}
+
+function renderDiaCalDesk(dia, visitas) {
+  const nomesDia = ['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
+  const nomesMes = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const diaSemana = new Date(calAnoDesk, calMesDesk, dia).getDay();
+  const titulo = nomesDia[diaSemana] + ', ' + dia + ' de ' + nomesMes[calMesDesk];
+  let html = '<div class="cal-dia-titulo-desk">' + titulo;
+  if (visitas.length) html += ' &middot; ' + visitas.length + ' visita' + (visitas.length > 1 ? 's' : '');
+  html += '</div>';
+  if (!visitas.length) {
+    html += '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Nenhuma visita neste dia</div>';
+  } else {
+    visitas.sort((a, b) => (a.hora||'').localeCompare(b.hora||''));
+    html += visitas.map(v => {
+      const c = clientes.find(x => String(x.id) === String(v.id_cliente));
+      const nome = c ? c.nome : (v.nome_cliente || '');
+      const cidade = (c ? c.cidade : (v.cidade || '')).replace(' - SC','').replace(' - PR','');
+      const obsText = v.obs ? sanitize(v.obs) : '';
+      return '<div class="cal-visita-card-desk">' +
+        '<div class="cal-visita-dot-desk"></div>' +
+        '<div style="flex:1">' +
+          '<div style="font-size:13px;font-weight:700">' + sanitize(nome) + '</div>' +
+          '<div style="font-size:11px;color:var(--text3)">' + sanitize(cidade) + '</div>' +
+          (obsText ? '<div style="font-size:11px;color:var(--text2);margin-top:2px">' + obsText + '</div>' : '') +
+        '</div>' +
+        (v.hora ? '<div style="font-size:12px;color:var(--text3);flex-shrink:0">' + v.hora + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+  document.getElementById('cal-body-desk').innerHTML = html;
+}
+
+// ── LEMBRETES DE IMPOSTOS ────────────────────────────────────────────
+
+async function verificarLembretesDesk() {
+  const hoje = new Date();
+  const chaveHoje = hoje.toISOString().split('T')[0];
+  const chaveImpostos = 'lembrete_imp_desk_' + chaveHoje;
+  if (localStorage.getItem(chaveImpostos)) return;
+  const vencendo = (impostosCache || []).filter(imp => {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth(), imp.dia_vencimento);
+    const diff = (d - hoje) / 86400000;
+    return diff >= 0 && diff <= 7;
+  });
+  if (!vencendo.length) return;
+  localStorage.setItem(chaveImpostos, '1');
+  const nomes = vencendo.map(i => i.nome + ' (dia ' + i.dia_vencimento + ')').join(', ');
+  setTimeout(() => showToast('Imposto vencendo: ' + nomes, false), 3000);
 }

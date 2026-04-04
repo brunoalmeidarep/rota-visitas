@@ -12,6 +12,8 @@
   <!-- PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- SheetJS (importação .xlsx) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <!-- Fontes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -667,7 +669,39 @@
 
     <!-- Ferramentas -->
     <div class="cfg-section">
-      <div class="cfg-section-title">Ferramentas</div>
+      <div class="cfg-section-title">Gestão</div>
+      <div class="cfg-item" onclick="closeConfig();openEmpresas()">
+        <span class="cfg-item-icon">🏢</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Empresas</div>
+          <div class="cfg-item-sub">Representadas e dados bancários</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
+      <div class="cfg-item" onclick="closeConfig();openSegmentos()">
+        <span class="cfg-item-icon">🏷️</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Segmentação</div>
+          <div class="cfg-item-sub">Tipos de cliente</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
+      <div class="cfg-item" onclick="closeConfig();openCalendario()">
+        <span class="cfg-item-icon">📅</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Calendário de visitas</div>
+          <div class="cfg-item-sub">Ver check-ins por dia</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
+      <div class="cfg-item" onclick="closeConfig();openImportar()">
+        <span class="cfg-item-icon">📥</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Importar Clientes</div>
+          <div class="cfg-item-sub">Planilha .xlsx</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
       <div class="cfg-item" onclick="closeConfig();openCadastro()">
         <span class="cfg-item-icon">➕</span>
         <div class="cfg-item-body">
@@ -733,6 +767,158 @@
     <div class="modal-footer">
       <button class="btn-cancel-modal" onclick="fecharPedidoSemVisita()">Cancelar</button>
       <button class="btn-salvar-modal" id="wa-btn-salvar" onclick="salvarPedidoSemVisita()">Salvar pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL EMPRESAS ─────────────────────────────────────────────── -->
+<div id="modal-empresas" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.45);align-items:center;justify-content:center;" onclick="if(event.target===this)closeEmpresas()">
+  <div class="gestao-modal-box">
+    <div class="gestao-modal-header">
+      <div class="gestao-modal-titulo">🏢 Empresas</div>
+      <button class="modal-close" onclick="closeEmpresas()">×</button>
+    </div>
+    <div class="gestao-modal-body">
+      <div id="empresa-form" style="display:none;margin-bottom:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px" id="empresa-form-titulo">Nova Empresa</div>
+        <input type="hidden" id="emp-id">
+        <div class="campo-grupo"><label class="campo-label">Nome da Empresa *</label><input class="campo-input" id="emp-nome" placeholder="Razão social..."></div>
+        <div class="campo-grupo"><label class="campo-label">CNPJ</label><input class="campo-input" id="emp-cnpj" placeholder="00.000.000/0000-00"></div>
+        <div class="campo-grupo">
+          <label class="campo-label">CEP</label>
+          <div style="display:flex;gap:6px">
+            <input class="campo-input" id="emp-cep" type="text" placeholder="00000-000" maxlength="9" style="flex:0 0 130px;margin:0" oninput="mascaraCEPDesk(this)" onblur="buscarCEPEmpresaDesk()">
+            <button class="btn-buscar-cep" onclick="buscarCEPEmpresaDesk()">Buscar</button>
+          </div>
+          <div class="cep-status" id="emp-cep-status"></div>
+        </div>
+        <div class="campo-grupo"><label class="campo-label">Endereço</label><input class="campo-input" id="emp-endereco" placeholder="Rua, número..."></div>
+        <div class="campo-grupo"><label class="campo-label">Cidade</label><input class="campo-input" id="emp-cidade" placeholder="Preenchida pelo CEP..." disabled></div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin:12px 0 8px">Dados Bancários</div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Banco</label><input class="campo-input" id="emp-banco" placeholder="Nome do banco..."></div>
+          <div class="campo-grupo"><label class="campo-label">Agência</label><input class="campo-input" id="emp-agencia" placeholder="0000"></div>
+        </div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Conta</label><input class="campo-input" id="emp-conta" placeholder="00000-0"></div>
+          <div class="campo-grupo"><label class="campo-label">PIX</label><input class="campo-input" id="emp-pix" placeholder="CPF, CNPJ, e-mail..."></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin:12px 0 8px">Contatos</div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Financeiro — Nome</label><input class="campo-input" id="emp-fin-nome" placeholder="Nome..."></div>
+          <div class="campo-grupo"><label class="campo-label">Financeiro — Tel</label><input class="campo-input" id="emp-fin-tel" type="tel" placeholder="(47) 9..."></div>
+        </div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Comercial — Nome</label><input class="campo-input" id="emp-com-nome" placeholder="Nome..."></div>
+          <div class="campo-grupo"><label class="campo-label">Comercial — Tel</label><input class="campo-input" id="emp-com-tel" type="tel" placeholder="(47) 9..."></div>
+        </div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Fiscal — Nome</label><input class="campo-input" id="emp-fis-nome" placeholder="Nome..."></div>
+          <div class="campo-grupo"><label class="campo-label">Fiscal — Tel</label><input class="campo-input" id="emp-fis-tel" type="tel" placeholder="(47) 9..."></div>
+        </div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Faturamento — Nome</label><input class="campo-input" id="emp-fat-nome" placeholder="Nome..."></div>
+          <div class="campo-grupo"><label class="campo-label">Faturamento — Tel</label><input class="campo-input" id="emp-fat-tel" type="tel" placeholder="(47) 9..."></div>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:8px">
+          <button class="btn-cancel-modal" onclick="fecharFormEmpresaDesk()">Cancelar</button>
+          <button class="btn-salvar-modal" onclick="salvarEmpresaDesk()">Salvar</button>
+        </div>
+      </div>
+      <div id="empresas-lista"></div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border)">
+      <button class="cfg-save-btn" id="empresas-fab" onclick="abrirFormEmpresaDesk()">+ Nova Empresa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL SEGMENTAÇÃO ──────────────────────────────────────────── -->
+<div id="modal-segmentos" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.45);align-items:center;justify-content:center;" onclick="if(event.target===this)closeSegmentos()">
+  <div class="gestao-modal-box" style="max-width:480px">
+    <div class="gestao-modal-header">
+      <div class="gestao-modal-titulo">🏷️ Segmentação</div>
+      <button class="modal-close" onclick="closeSegmentos()">×</button>
+    </div>
+    <div class="gestao-modal-body">
+      <div id="segmento-form" style="display:none;margin-bottom:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px" id="segmento-form-titulo">Novo Segmento</div>
+        <input type="hidden" id="seg-mgmt-id">
+        <div class="campo-grupo"><label class="campo-label">Nome do Segmento *</label>
+          <input class="campo-input" id="seg-mgmt-nome" placeholder="Ex: Ferragem, Vidraçaria..."
+            onkeydown="if(event.key==='Enter'){event.preventDefault();salvarSegmentoDesk()}">
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:8px">
+          <button class="btn-cancel-modal" onclick="fecharFormSegmentoDesk()">Cancelar</button>
+          <button class="btn-salvar-modal" onclick="salvarSegmentoDesk()">Salvar</button>
+        </div>
+      </div>
+      <div id="segmentos-lista"></div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border)">
+      <button class="cfg-save-btn" onclick="abrirFormSegmentoDesk()">+ Novo Segmento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL IMPORTAR CLIENTES ────────────────────────────────────── -->
+<div id="modal-importar" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.45);align-items:center;justify-content:center;" onclick="if(event.target===this)closeImportar()">
+  <div class="gestao-modal-box" style="max-width:520px">
+    <div class="gestao-modal-header">
+      <div class="gestao-modal-titulo">📥 Importar Clientes</div>
+      <button class="modal-close" onclick="closeImportar()">×</button>
+    </div>
+    <div class="gestao-modal-body">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px">1. Baixe o modelo</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Preencha a planilha com seus clientes. Colunas: nome, comprador, cnpj, cep, endereco, telefone, segmento, ultima_visita, ultima_obs</p>
+        <button class="cfg-save-btn" style="padding:8px 14px;font-size:12px" onclick="baixarModeloXlsxDesk()">⬇ Baixar modelo (.xlsx)</button>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">2. Selecione o arquivo</div>
+        <label style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;font-size:13px;color:var(--text2)">
+          <span>📎</span>
+          <span id="importar-file-label-desk">Selecionar arquivo .xlsx</span>
+          <input type="file" id="importar-file-desk" accept=".xlsx,.xls" style="display:none" onchange="importarLerArquivoDesk(this)">
+        </label>
+      </div>
+      <div id="importar-preview-desk" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">3. Status</div>
+        <div id="importar-preview-texto-desk" style="font-size:13px;line-height:1.8"></div>
+      </div>
+      <div id="importar-progress-desk" style="display:none;text-align:center;padding:20px;font-size:13px;color:var(--text2)"></div>
+    </div>
+    <div id="importar-footer-desk" style="display:none;padding:14px 20px;border-top:1px solid var(--border)">
+      <button class="cfg-save-btn" id="importar-btn-confirmar-desk" onclick="importarConfirmarDesk()">📤 Enviar para processamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL CALENDÁRIO ───────────────────────────────────────────── -->
+<div id="modal-calendario" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.45);align-items:center;justify-content:center;" onclick="if(event.target===this)closeCalendario()">
+  <div class="gestao-modal-box cal-modal-box">
+    <div class="gestao-modal-header">
+      <button class="btn-cancel-modal" style="border:none;background:none;font-size:13px;color:var(--text2);cursor:pointer;padding:0" onclick="navegarCalMesDesk(-1)">‹</button>
+      <div class="gestao-modal-titulo" id="cal-mes-titulo-desk" style="flex:1;text-align:center"></div>
+      <button class="btn-cancel-modal" style="border:none;background:none;font-size:13px;color:var(--text2);cursor:pointer;padding:0" onclick="navegarCalMesDesk(1)">›</button>
+      <button class="modal-close" style="margin-left:12px" onclick="closeCalendario()">×</button>
+    </div>
+    <div class="gestao-modal-body" style="padding:0">
+      <div class="cal-weekdays-desk">
+        <div class="cal-wd-d dom">D</div>
+        <div class="cal-wd-d">S</div>
+        <div class="cal-wd-d">T</div>
+        <div class="cal-wd-d">Q</div>
+        <div class="cal-wd-d">Q</div>
+        <div class="cal-wd-d">S</div>
+        <div class="cal-wd-d">S</div>
+      </div>
+      <div class="cal-grid-desk" id="cal-grid-desk"></div>
+      <div class="cal-legenda-desk">
+        <div class="cal-leg"><div class="cal-leg-dot" style="background:var(--green)"></div>1-3 visitas</div>
+        <div class="cal-leg"><div class="cal-leg-dot" style="background:var(--orange)"></div>4+ visitas</div>
+      </div>
+      <div class="cal-body-desk" id="cal-body-desk"></div>
     </div>
   </div>
 </div>

@@ -1458,3 +1458,151 @@ html, body {
   backdrop-filter: blur(2px);
 }
 #wa-modal.open { display: flex; }
+
+/* ── MODAIS GESTAO (Empresas / Segmentos / Importar / Calendário) ─── */
+.gestao-modal-box {
+  background: var(--surface);
+  border-radius: 18px;
+  width: 680px;
+  max-width: calc(100vw - 32px);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,.25);
+}
+.gestao-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.gestao-modal-titulo {
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+}
+.gestao-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.gestao-card-desk {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.gestao-card-nome-desk {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.gestao-card-sub-desk {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+.gestao-btn-sm-desk {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background .1s;
+}
+.gestao-btn-sm-desk:hover { background: var(--border); }
+.gestao-btn-sm-desk.danger { color: var(--red); border-color: var(--red-bg); }
+.gestao-btn-sm-desk.danger:hover { background: var(--red-bg); }
+
+/* Calendário Desktop */
+.cal-modal-box { max-width: 720px; }
+.cal-weekdays-desk {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 8px 16px 0;
+}
+.cal-wd-d {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  padding: 6px 0;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.cal-wd-d.dom { color: var(--red); }
+.cal-grid-desk {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  padding: 6px 16px;
+}
+.cal-d-desk {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: background .1s;
+}
+.cal-d-desk:not(.outro):hover { background: var(--blue-bg); }
+.cal-d-desk.outro { color: var(--text3); opacity: .35; cursor: default; }
+.cal-d-desk.dom { color: var(--red); }
+.cal-d-desk.hoje { background: var(--blue-bg); color: var(--blue); font-weight: 800; }
+.cal-d-desk.selecionado { background: var(--blue); color: #fff; font-weight: 800; }
+.cal-d-desk.com-visita::after {
+  content: '';
+  position: absolute;
+  bottom: 3px; left: 50%;
+  transform: translateX(-50%);
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.cal-d-desk.muitas::after { background: var(--orange); }
+.cal-legenda-desk {
+  display: flex;
+  gap: 16px;
+  padding: 4px 18px 6px;
+}
+.cal-leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text3); }
+.cal-leg-dot { width: 7px; height: 7px; border-radius: 50%; }
+.cal-body-desk {
+  border-top: 1px solid var(--border);
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 10px 16px;
+}
+.cal-dia-titulo-desk {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.cal-visita-card-desk {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.cal-visita-card-desk:last-child { border-bottom: none; }
+.cal-visita-dot-desk {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  margin-top: 4px;
+}
