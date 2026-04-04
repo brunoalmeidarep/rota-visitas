@@ -134,8 +134,16 @@ Usar a função getRepId() que faz cache desse valor.
 ---
 
 ## Pendências em andamento
-1. Foreign key empresas — corrigir com getRepId() para qualquer usuário
-2. Desktop.html — Victor desenvolvendo
+1. Foreign key empresas — corrigir com getRepId() para qualquer usuário (mobile, fora do escopo desktop)
+
+## Desktop — Implementado (2026-04-03)
+- Bloco 1: Pedido sem visita (WA/Tel), check-in com múltiplos pedidos, histórico clicável/editável, geocoding ao salvar cliente
+- Bloco 2: PDFs (visitas, vendas, gastos, finanças, top compradores, clientes sumindo)
+- Bloco 3: Auth flows (recuperar senha, nova senha via link), Onboarding primeiro acesso
+- Bloco 4: Empresas (CRUD + dados bancários), Segmentação (CRUD), Importar Clientes (.xlsx → Supabase Storage), Calendário de visitas, lembretes de impostos vencendo
+- representadasCache, segmentosCache adicionados ao estado global
+- SheetJS CDN adicionado para baixar modelo .xlsx
+- verificarLembretesDesk() chamado no login (impostosCache vencendo em 7 dias → showToast)
 
 ---
 
