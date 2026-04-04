@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase'
 import Navbar from './components/shared/Navbar'
 import Login from './components/shared/Login'
 import CarteiraClientes from './components/clientes/CarteiraClientes'
+import CadastroCliente from './components/clientes/CadastroCliente'
 
 // Placeholder components (serão substituídos pelos reais)
 const ListaPedidos = () => <div className="screen"><h1>Pedidos</h1></div>
@@ -45,6 +46,7 @@ function App() {
           <Route path="/" element={<Navigate to="/clientes" replace />} />
           <Route path="/pedidos" element={<ListaPedidos />} />
           <Route path="/clientes" element={<CarteiraClientes />} />
+          <Route path="/clientes/novo" element={<CadastroCliente />} />
           <Route path="/clientes/:id" element={<PerfilCliente />} />
           <Route path="/produtos" element={<ListaProdutos />} />
           <Route path="/planner" element={<Planner />} />
