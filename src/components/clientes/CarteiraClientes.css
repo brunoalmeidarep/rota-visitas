@@ -1,0 +1,271 @@
+.carteira-clientes {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+/* Header */
+.carteira-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.carteira-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.header-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.header-btn:active {
+  transform: scale(0.95);
+  opacity: 0.9;
+}
+
+.header-btn.blue {
+  background: rgba(26, 58, 107, 0.1);
+  color: var(--primary);
+}
+
+.header-btn.green {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+/* Busca */
+.busca-container {
+  position: relative;
+  padding: 12px 16px;
+  background: var(--surface);
+}
+
+.busca-icon {
+  position: absolute;
+  left: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.busca-input {
+  width: 100%;
+  padding: 12px 40px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 15px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.busca-input:focus {
+  border-color: var(--primary);
+}
+
+.busca-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.busca-clear {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Stats Bar */
+.stats-bar {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.stats-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.stat-item {
+  flex: 1;
+  min-width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stat-item:active {
+  background: var(--bg);
+}
+
+.stat-item.active {
+  background: var(--primary-light);
+}
+
+.stat-count {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-count.green { color: var(--success); }
+.stat-count.yellow { color: var(--warning); }
+.stat-count.red { color: var(--danger); }
+.stat-count.gray { color: var(--text-secondary); }
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Lista de Clientes */
+.clientes-lista {
+  flex: 1;
+  padding: 12px 16px;
+  padding-bottom: 100px;
+}
+
+.cliente-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  padding: 14px 16px;
+  background: var(--surface);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.cliente-card:active {
+  transform: scale(0.99);
+}
+
+.cliente-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cliente-nome {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cliente-cidade {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 4px 0;
+}
+
+.cliente-pedido {
+  font-size: 13px;
+  color: var(--success);
+  font-weight: 600;
+  margin: 0;
+}
+
+.pedido-data {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.cliente-visita {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  padding-left: 12px;
+  min-width: 85px;
+}
+
+.visita-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+.visita-dias {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.visita-dias.green { color: var(--success); }
+.visita-dias.yellow { color: var(--warning); }
+.visita-dias.red { color: var(--danger); }
+.visita-dias.gray { color: var(--text-secondary); }
+
+.visita-data {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: var(--text-secondary);
+}

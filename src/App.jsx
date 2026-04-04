@@ -2,10 +2,11 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import Navbar from './components/shared/Navbar'
+import CarteiraClientes from './components/clientes/CarteiraClientes'
 
 // Placeholder components (serão substituídos pelos reais)
 const ListaPedidos = () => <div className="screen"><h1>Pedidos</h1></div>
-const CarteiraClientes = () => <div className="screen"><h1>Clientes</h1></div>
+const PerfilCliente = () => <div className="screen"><h1>Perfil do Cliente</h1></div>
 const ListaProdutos = () => <div className="screen"><h1>Produtos</h1></div>
 const Planner = () => <div className="screen"><h1>Planner</h1></div>
 const Mais = () => <div className="screen"><h1>Mais</h1></div>
@@ -44,6 +45,7 @@ function App() {
           <Route path="/" element={<Navigate to="/clientes" replace />} />
           <Route path="/pedidos" element={<ListaPedidos />} />
           <Route path="/clientes" element={<CarteiraClientes />} />
+          <Route path="/clientes/:id" element={<PerfilCliente />} />
           <Route path="/produtos" element={<ListaProdutos />} />
           <Route path="/planner" element={<Planner />} />
           <Route path="/mais" element={<Mais />} />
