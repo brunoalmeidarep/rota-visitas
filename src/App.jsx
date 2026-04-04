@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import Navbar from './components/shared/Navbar'
+import Login from './components/shared/Login'
 import CarteiraClientes from './components/clientes/CarteiraClientes'
 
 // Placeholder components (serão substituídos pelos reais)
@@ -10,7 +11,6 @@ const PerfilCliente = () => <div className="screen"><h1>Perfil do Cliente</h1></
 const ListaProdutos = () => <div className="screen"><h1>Produtos</h1></div>
 const Planner = () => <div className="screen"><h1>Planner</h1></div>
 const Mais = () => <div className="screen"><h1>Mais</h1></div>
-const Login = () => <div className="screen"><h1>Login</h1></div>
 
 function App() {
   const [user, setUser] = useState(null)
