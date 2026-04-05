@@ -150,165 +150,21 @@ window.initMap = function () {
   if (clientes.length) renderMapMarkers();
 };
 
-// ══════════════════════════════════════════════════════════════════════
-// AUTH DEBUG — TEMPORÁRIO
-// Remover este bloco após o diagnóstico ser concluído.
-// ══════════════════════════════════════════════════════════════════════
-
-const _DBG_LS_KEY = '_authDebugLogs_v2';
-const _DBG_MAX    = 40;    // máximo de eventos mantidos em memória e localStorage
-window._authLogs  = [];    // array global acessível pelo console
-
-// Carrega logs anteriores do localStorage ao iniciar
-(function _dbgRestaurarLogs() {
-  try {
-    const salvo = localStorage.getItem(_DBG_LS_KEY);
-    if (salvo) window._authLogs = JSON.parse(salvo);
-  } catch(e) {}
-})();
-
-function _dbgSalvar(entry) {
-  window._authLogs.unshift(entry);
-  if (window._authLogs.length > _DBG_MAX) window._authLogs.length = _DBG_MAX;
-  try { localStorage.setItem(_DBG_LS_KEY, JSON.stringify(window._authLogs)); } catch(e) {}
-}
-
-function _dbgAtualizarPainel() {
-  const lista = document.getElementById('_dbg_lista');
-  if (!lista) return;
-  lista.innerHTML = window._authLogs.map(e => {
-    const cor = e.tipo === 'err' ? '#ff6b6b' : e.tipo === 'warn' ? '#ffcc00' : '#cce5ff';
-    return `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);
-      color:${cor};font-size:11px;word-break:break-all;white-space:pre-wrap;line-height:1.4">
-      <span style="color:rgba(255,255,255,.35)">${e.hora}</span>
-      <b style="color:${cor}">[${e.grupo}]</b> ${_dbgEscape(e.msg)}
-    </div>`;
-  }).join('');
-}
-
-function _dbgEscape(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function _dbgCopiar() {
-  const txt = window._authLogs.map(e => `${e.hora} [${e.grupo}] ${e.msg}`).join('\n');
-  navigator.clipboard?.writeText(txt).then(() => alert('✓ Logs copiados!')).catch(() => {
-    prompt('Copie os logs abaixo:', txt);
-  });
-}
-
-function _dbgLimpar() {
-  window._authLogs = [];
-  try { localStorage.removeItem(_DBG_LS_KEY); } catch(e) {}
-  _dbgAtualizarPainel();
-}
-
-// Cria painel imediatamente (desktop.js roda no fim do body — DOM já existe)
-(function _dbgCriarPainel() {
-  if (document.getElementById('_dbg_wrap')) return;
-  const w = document.createElement('div');
-  w.id = '_dbg_wrap';
-  w.style.cssText = [
-    'position:fixed',
-    'bottom:0', 'right:0', 'left:0',
-    'z-index:99999',
-    'background:#0a0a10',
-    'border-top:2px solid #00bfff',
-    'font-family:monospace',
-    'box-shadow:0 -4px 32px rgba(0,191,255,.15)',
-    'max-height:260px',
-    'display:flex', 'flex-direction:column',
-  ].join(';');
-  w.innerHTML = `
-    <div id="_dbg_header" style="display:flex;align-items:center;gap:8px;
-      padding:6px 14px;background:#0d1117;border-bottom:1px solid rgba(0,191,255,.2);
-      flex-shrink:0;cursor:pointer" onclick="_dbgToggle()">
-      <span style="color:#00bfff;font-weight:700;font-size:12px;letter-spacing:.5px">
-        🔍 AUTH DEBUG — TEMPORÁRIO
-      </span>
-      <span style="font-size:10px;color:rgba(255,255,255,.4)">
-        ${window.location.origin} &nbsp;|&nbsp; ${SUPABASE_URL}
-      </span>
-      <span style="margin-left:auto;display:flex;gap:6px">
-        <button onclick="event.stopPropagation();_dbgCopiar()"
-          style="background:#1e3a5f;border:none;color:#7dd3fc;font-family:monospace;
-            font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer">
-          📋 copiar
-        </button>
-        <button onclick="event.stopPropagation();_dbgLimpar()"
-          style="background:#3a1515;border:none;color:#fca5a5;font-family:monospace;
-            font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer">
-          🗑 limpar
-        </button>
-        <button onclick="event.stopPropagation();_dbgToggle()"
-          style="background:none;border:none;color:rgba(255,255,255,.4);
-            font-size:14px;cursor:pointer;padding:0 4px" id="_dbg_toggle_btn">▾</button>
-      </span>
-    </div>
-    <div id="_dbg_body" style="overflow-y:auto;flex:1;padding:6px 14px">
-      <div id="_dbg_lista"></div>
-    </div>`;
-  document.body.appendChild(w);
-  _dbgAtualizarPainel();   // mostra logs restaurados do localStorage
-})();
-
-let _dbgExpandido = true;
-function _dbgToggle() {
-  _dbgExpandido = !_dbgExpandido;
-  const body = document.getElementById('_dbg_body');
-  const btn  = document.getElementById('_dbg_toggle_btn');
-  if (body) body.style.display = _dbgExpandido ? '' : 'none';
-  if (btn)  btn.textContent    = _dbgExpandido ? '▾' : '▸';
-}
-
-// API pública de log
-const _dbg = {
-  log(grupo, msg) {
-    const entry = { tipo:'log', grupo, msg: String(msg), hora: new Date().toLocaleTimeString('pt-BR') };
-    console.log(`%c[AUTH][${grupo}]`, 'color:#00bfff;font-weight:bold', msg);
-    _dbgSalvar(entry);
-    _dbgAtualizarPainel();
-  },
-  err(grupo, msg) {
-    const entry = { tipo:'err', grupo, msg: String(msg), hora: new Date().toLocaleTimeString('pt-BR') };
-    console.error(`%c[AUTH][${grupo}] ❌`, 'color:#ff4444;font-weight:bold', msg);
-    _dbgSalvar(entry);
-    _dbgAtualizarPainel();
-  },
-  warn(grupo, msg) {
-    const entry = { tipo:'warn', grupo, msg: String(msg), hora: new Date().toLocaleTimeString('pt-BR') };
-    console.warn(`%c[AUTH][${grupo}] ⚠️`, 'color:#ffcc00;font-weight:bold', msg);
-    _dbgSalvar(entry);
-    _dbgAtualizarPainel();
-  },
-};
-
 // ── AUTH ─────────────────────────────────────────────────────────────
 let _appJaIniciou = false;
 
 async function iniciarApp() {
-  _dbg.log('CONFIG', `Supabase: ${SUPABASE_URL}`);
-  _dbg.log('CONFIG', `Domínio: ${window.location.origin}`);
-  _dbg.log('CONFIG', `URL completa: ${window.location.href}`);
-  _dbg.log('CONFIG', `hCaptcha disponível: ${typeof hcaptcha !== 'undefined'}`);
-
   // Lê URL ANTES do Supabase processar — necessário para fluxo de recovery
-  const _hash = window.location.hash;
+  const _hash        = window.location.hash;
   const hashParams   = new URLSearchParams(_hash.startsWith('#') ? _hash.slice(1) : '');
   const searchParams = new URLSearchParams(window.location.search);
   const _accessToken = hashParams.get('access_token');
   const _refreshToken= hashParams.get('refresh_token') || '';
   const _type        = hashParams.get('type');
 
-  _dbg.log('SESSION', `hash type: ${_type || '(vazio)'}, access_token presente: ${!!_accessToken}`);
-  _dbg.log('SESSION', `search type: ${searchParams.get('type') || '(vazio)'}`);
-
   // Recovery via hash implícito (ex: desktop.html#type=recovery&access_token=...)
   if (_type === 'recovery' && _accessToken) {
-    _dbg.log('SESSION', 'Recovery implícito detectado no hash — chamando setSession()');
-    try { await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken }); } catch(e) {
-      _dbg.err('SESSION', 'setSession falhou: ' + e.message);
-    }
+    try { await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken }); } catch(e) {}
     history.replaceState(null, '', window.location.pathname);
     _mostrarViewLogin('view-nova-senha');
     return;
@@ -316,7 +172,6 @@ async function iniciarApp() {
 
   // Recovery via query string PKCE (ex: desktop.html?type=recovery)
   if (searchParams.get('type') === 'recovery') {
-    _dbg.log('SESSION', 'Recovery PKCE detectado na query string');
     history.replaceState(null, '', window.location.pathname);
     _mostrarViewLogin('view-nova-senha');
     return;
@@ -324,40 +179,30 @@ async function iniciarApp() {
 
   // Listener de estado de auth
   sb.auth.onAuthStateChange((event, session) => {
-    _dbg.log('LISTENER', `evento: ${event} | sessão: ${session ? session.user?.email : 'null'} | _appJaIniciou: ${_appJaIniciou}`);
     if (event === 'PASSWORD_RECOVERY') {
-      _dbg.log('LISTENER', 'PASSWORD_RECOVERY → abrindo tela nova senha');
       _mostrarViewLogin('view-nova-senha');
     } else if (event === 'SIGNED_IN' && session && !_appJaIniciou) {
       _appJaIniciou = true;
       currentUser = session.user;
-      _dbg.log('LISTENER', `SIGNED_IN → mostrarApp() para ${currentUser.email}`);
       mostrarApp();
-    } else if (event === 'SIGNED_IN' && _appJaIniciou) {
-      _dbg.log('LISTENER', 'SIGNED_IN ignorado (flag _appJaIniciou já ativo — evita duplicação)');
     } else if (event === 'SIGNED_OUT') {
       _appJaIniciou = false;
       currentUser = null;
-      _dbg.log('LISTENER', 'SIGNED_OUT → mostrarLogin()');
       mostrarLogin();
     }
   });
 
   // Sessão existente (reload normal)
   try {
-    _dbg.log('SESSION', 'Verificando sessão existente via getSession()...');
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       _appJaIniciou = true;
       currentUser = session.user;
-      _dbg.log('SESSION', `Sessão ativa: ${currentUser.email} → mostrarApp()`);
       mostrarApp();
     } else {
-      _dbg.log('SESSION', 'Sem sessão → mostrarLogin()');
       mostrarLogin();
     }
   } catch(e) {
-    _dbg.err('SESSION', 'getSession() falhou: ' + e.message);
     mostrarLogin();
   }
 }
@@ -412,20 +257,13 @@ async function enviarRecuperacao() {
   const ok    = document.getElementById('rec-ok');
   const btn   = document.getElementById('btn-rec');
 
-  _dbg.log('RESET', `Tentativa iniciada — email: ${email}`);
-  _dbg.log('RESET', `Domínio: ${window.location.origin}`);
-  _dbg.log('RESET', `hCaptcha disponível: ${typeof hcaptcha !== 'undefined'} | widgetId: ${_recCaptchaWidgetId}`);
-
   if (!email) { erro.textContent = 'Informe o e-mail.'; return; }
 
   const captchaToken = typeof hcaptcha !== 'undefined'
     ? hcaptcha.getResponse(_recCaptchaWidgetId ?? undefined)
     : '';
 
-  _dbg.log('RESET', `captchaToken: ${captchaToken ? captchaToken.slice(0,20)+'...' : '(VAZIO)'}`);
-
   if (!captchaToken) {
-    _dbg.err('RESET', 'BLOQUEADO: captchaToken vazio — widget não resolvido');
     erro.textContent = 'Complete o CAPTCHA antes de enviar.';
     return;
   }
@@ -434,33 +272,20 @@ async function enviarRecuperacao() {
   erro.textContent = ''; ok.style.display = 'none';
   try {
     const redirectTo = window.location.href.split('?')[0].split('#')[0];
-    _dbg.log('RESET', `redirectTo: "${redirectTo}"`);
-    // NOTA: captchaToken vai no nível raiz do objeto options (não dentro de options.options)
-    // Supabase v2: resetPasswordForEmail(email, { redirectTo, captchaToken })
-    _dbg.log('RESET', `Chamando resetPasswordForEmail com payload: ${JSON.stringify({ redirectTo, captchaToken: captchaToken.slice(0,20)+'...' })}`);
-
-    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo,
-      captchaToken          // ← nível raiz, não dentro de "options: {}"
-    });
+    // captchaToken vai no nível raiz — Supabase v2: resetPasswordForEmail(email, { redirectTo, captchaToken })
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo, captchaToken });
 
     if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
       hcaptcha.reset(_recCaptchaWidgetId);
 
-    if (error) {
-      _dbg.err('RESET', `ERRO Supabase — message: "${error.message}" | status: ${error.status} | code: ${error.code || '(sem code)'}`);
-      _dbg.err('RESET', `Objeto error completo: ${JSON.stringify(error)}`);
-      throw error;
-    }
+    if (error) throw error;
 
-    _dbg.log('RESET', `Sucesso — link enviado para ${email}`);
     ok.textContent = '✓ Link enviado! Verifique sua caixa de entrada.';
     ok.style.display = 'block';
     btn.textContent = 'Reenviar';
   } catch(e) {
     if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
       hcaptcha.reset(_recCaptchaWidgetId);
-    _dbg.err('RESET', `EXCEÇÃO: ${e.message}`);
     erro.textContent = 'Erro: ' + (e.message || 'tente novamente.');
     btn.textContent = 'Enviar link';
   }
@@ -555,16 +380,10 @@ async function getRepId() {
   return _repIdCache;
 }
 
-// hCaptcha — token do login
+// hCaptcha — token do login (capturado via callback do widget)
 let _loginCaptchaToken = '';
-function onLoginCaptchaSolved(token)  {
-  _loginCaptchaToken = token;
-  _dbg.log('CAPTCHA', `Token de login resolvido: ${token.slice(0,20)}...`);
-}
-function onLoginCaptchaExpired()      {
-  _loginCaptchaToken = '';
-  _dbg.log('CAPTCHA', 'Token de login expirado — necessário resolver novamente');
-}
+function onLoginCaptchaSolved(token)  { _loginCaptchaToken = token; }
+function onLoginCaptchaExpired()      { _loginCaptchaToken = ''; }
 
 async function fazerLogin() {
   const email = document.getElementById('login-email').value.trim();
@@ -572,33 +391,15 @@ async function fazerLogin() {
   const btn   = document.getElementById('btn-login');
   const erro  = document.getElementById('login-erro');
 
-  _dbg.log('LOGIN', `Tentativa iniciada — email: ${email}`);
-  _dbg.log('LOGIN', `Domínio: ${window.location.origin} | URL: ${window.location.href}`);
-
   if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha.'; return; }
 
-  const captchaViaCallback = _loginCaptchaToken;
-  const captchaViaGetResponse = typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '';
-  const captchaToken = captchaViaCallback || captchaViaGetResponse;
-
-  _dbg.log('LOGIN', `hCaptcha disponível: ${typeof hcaptcha !== 'undefined'}`);
-  _dbg.log('LOGIN', `captchaToken via callback: ${captchaViaCallback ? captchaViaCallback.slice(0,20)+'...' : '(vazio)'}`);
-  _dbg.log('LOGIN', `captchaToken via getResponse: ${captchaViaGetResponse ? captchaViaGetResponse.slice(0,20)+'...' : '(vazio)'}`);
-  _dbg.log('LOGIN', `captchaToken final: ${captchaToken ? captchaToken.slice(0,20)+'...' : '(VAZIO — vai bloquear)'}`);
-
-  if (!captchaToken) {
-    _dbg.err('LOGIN', 'BLOQUEADO: captchaToken vazio — widget não resolvido');
-    erro.textContent = 'Complete o CAPTCHA antes de entrar.';
-    return;
-  }
+  const captchaToken = _loginCaptchaToken || (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
+  if (!captchaToken) { erro.textContent = 'Complete o CAPTCHA antes de entrar.'; return; }
 
   btn.disabled = true; btn.textContent = 'Entrando...'; erro.textContent = '';
   _appJaIniciou = true;
 
   try {
-    const payload = { email, password: '***', options: { captchaToken: captchaToken.slice(0,20)+'...' } };
-    _dbg.log('LOGIN', `Chamando signInWithPassword — payload (sem senha): ${JSON.stringify(payload)}`);
-
     const { data, error } = await sb.auth.signInWithPassword({
       email, password: senha,
       options: { captchaToken }
@@ -609,15 +410,10 @@ async function fazerLogin() {
 
     if (error) {
       _appJaIniciou = false;
-      _dbg.err('LOGIN', `ERRO Supabase — message: "${error.message}" | status: ${error.status} | code: ${error.code || '(sem code)'}`);
-      _dbg.err('LOGIN', `Objeto error completo: ${JSON.stringify(error)}`);
-      erro.textContent = `${error.message} [status: ${error.status || '?'}]`;
-    } else {
-      _dbg.log('LOGIN', `Sucesso — user: ${data?.user?.email} | sessão: ${!!data?.session}`);
+      erro.textContent = error.message;
     }
   } catch(e) {
     _appJaIniciou = false;
-    _dbg.err('LOGIN', `EXCEÇÃO: ${e.message}`);
     erro.textContent = 'Erro inesperado: ' + e.message;
   } finally {
     btn.disabled = false; btn.textContent = 'Entrar';
