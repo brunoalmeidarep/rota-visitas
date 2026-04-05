@@ -150,62 +150,143 @@ window.initMap = function () {
   if (clientes.length) renderMapMarkers();
 };
 
-// ── AUTH DEBUG ───────────────────────────────────────────────────────
-// TEMPORÁRIO — remover após diagnóstico confirmado
+// ══════════════════════════════════════════════════════════════════════
+// AUTH DEBUG — TEMPORÁRIO
+// Remover este bloco após o diagnóstico ser concluído.
+// ══════════════════════════════════════════════════════════════════════
+
+const _DBG_LS_KEY = '_authDebugLogs_v2';
+const _DBG_MAX    = 40;    // máximo de eventos mantidos em memória e localStorage
+window._authLogs  = [];    // array global acessível pelo console
+
+// Carrega logs anteriores do localStorage ao iniciar
+(function _dbgRestaurarLogs() {
+  try {
+    const salvo = localStorage.getItem(_DBG_LS_KEY);
+    if (salvo) window._authLogs = JSON.parse(salvo);
+  } catch(e) {}
+})();
+
+function _dbgSalvar(entry) {
+  window._authLogs.unshift(entry);
+  if (window._authLogs.length > _DBG_MAX) window._authLogs.length = _DBG_MAX;
+  try { localStorage.setItem(_DBG_LS_KEY, JSON.stringify(window._authLogs)); } catch(e) {}
+}
+
+function _dbgAtualizarPainel() {
+  const lista = document.getElementById('_dbg_lista');
+  if (!lista) return;
+  lista.innerHTML = window._authLogs.map(e => {
+    const cor = e.tipo === 'err' ? '#ff6b6b' : e.tipo === 'warn' ? '#ffcc00' : '#cce5ff';
+    return `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);
+      color:${cor};font-size:11px;word-break:break-all;white-space:pre-wrap;line-height:1.4">
+      <span style="color:rgba(255,255,255,.35)">${e.hora}</span>
+      <b style="color:${cor}">[${e.grupo}]</b> ${_dbgEscape(e.msg)}
+    </div>`;
+  }).join('');
+}
+
+function _dbgEscape(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function _dbgCopiar() {
+  const txt = window._authLogs.map(e => `${e.hora} [${e.grupo}] ${e.msg}`).join('\n');
+  navigator.clipboard?.writeText(txt).then(() => alert('✓ Logs copiados!')).catch(() => {
+    prompt('Copie os logs abaixo:', txt);
+  });
+}
+
+function _dbgLimpar() {
+  window._authLogs = [];
+  try { localStorage.removeItem(_DBG_LS_KEY); } catch(e) {}
+  _dbgAtualizarPainel();
+}
+
+// Cria painel imediatamente (desktop.js roda no fim do body — DOM já existe)
+(function _dbgCriarPainel() {
+  if (document.getElementById('_dbg_wrap')) return;
+  const w = document.createElement('div');
+  w.id = '_dbg_wrap';
+  w.style.cssText = [
+    'position:fixed',
+    'bottom:0', 'right:0', 'left:0',
+    'z-index:99999',
+    'background:#0a0a10',
+    'border-top:2px solid #00bfff',
+    'font-family:monospace',
+    'box-shadow:0 -4px 32px rgba(0,191,255,.15)',
+    'max-height:260px',
+    'display:flex', 'flex-direction:column',
+  ].join(';');
+  w.innerHTML = `
+    <div id="_dbg_header" style="display:flex;align-items:center;gap:8px;
+      padding:6px 14px;background:#0d1117;border-bottom:1px solid rgba(0,191,255,.2);
+      flex-shrink:0;cursor:pointer" onclick="_dbgToggle()">
+      <span style="color:#00bfff;font-weight:700;font-size:12px;letter-spacing:.5px">
+        🔍 AUTH DEBUG — TEMPORÁRIO
+      </span>
+      <span style="font-size:10px;color:rgba(255,255,255,.4)">
+        ${window.location.origin} &nbsp;|&nbsp; ${SUPABASE_URL}
+      </span>
+      <span style="margin-left:auto;display:flex;gap:6px">
+        <button onclick="event.stopPropagation();_dbgCopiar()"
+          style="background:#1e3a5f;border:none;color:#7dd3fc;font-family:monospace;
+            font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer">
+          📋 copiar
+        </button>
+        <button onclick="event.stopPropagation();_dbgLimpar()"
+          style="background:#3a1515;border:none;color:#fca5a5;font-family:monospace;
+            font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer">
+          🗑 limpar
+        </button>
+        <button onclick="event.stopPropagation();_dbgToggle()"
+          style="background:none;border:none;color:rgba(255,255,255,.4);
+            font-size:14px;cursor:pointer;padding:0 4px" id="_dbg_toggle_btn">▾</button>
+      </span>
+    </div>
+    <div id="_dbg_body" style="overflow-y:auto;flex:1;padding:6px 14px">
+      <div id="_dbg_lista"></div>
+    </div>`;
+  document.body.appendChild(w);
+  _dbgAtualizarPainel();   // mostra logs restaurados do localStorage
+})();
+
+let _dbgExpandido = true;
+function _dbgToggle() {
+  _dbgExpandido = !_dbgExpandido;
+  const body = document.getElementById('_dbg_body');
+  const btn  = document.getElementById('_dbg_toggle_btn');
+  if (body) body.style.display = _dbgExpandido ? '' : 'none';
+  if (btn)  btn.textContent    = _dbgExpandido ? '▾' : '▸';
+}
+
+// API pública de log
 const _dbg = {
-  log(grupo, ...args) {
-    console.log(`%c[AUTH][${grupo}]`, 'color:#00bfff;font-weight:bold', ...args);
-    _dbgPainel(`[${grupo}] ` + args.map(a =>
-      typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' '));
+  log(grupo, msg) {
+    const entry = { tipo:'log', grupo, msg: String(msg), hora: new Date().toLocaleTimeString('pt-BR') };
+    console.log(`%c[AUTH][${grupo}]`, 'color:#00bfff;font-weight:bold', msg);
+    _dbgSalvar(entry);
+    _dbgAtualizarPainel();
   },
-  err(grupo, ...args) {
-    console.error(`%c[AUTH][${grupo}]`, 'color:#ff4444;font-weight:bold', ...args);
-    _dbgPainel(`❌ [${grupo}] ` + args.map(a =>
-      typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), true);
-  }
+  err(grupo, msg) {
+    const entry = { tipo:'err', grupo, msg: String(msg), hora: new Date().toLocaleTimeString('pt-BR') };
+    console.error(`%c[AUTH][${grupo}] ❌`, 'color:#ff4444;font-weight:bold', msg);
+    _dbgSalvar(entry);
+    _dbgAtualizarPainel();
+  },
+  warn(grupo, msg) {
+    const entry = { tipo:'warn', grupo, msg: String(msg), hora: new Date().toLocaleTimeString('pt-BR') };
+    console.warn(`%c[AUTH][${grupo}] ⚠️`, 'color:#ffcc00;font-weight:bold', msg);
+    _dbgSalvar(entry);
+    _dbgAtualizarPainel();
+  },
 };
-
-function _dbgPainel(texto, isErro = false) {
-  let p = document.getElementById('_auth_debug_painel');
-  if (!p) return;
-  const linha = document.createElement('div');
-  linha.style.cssText = `padding:2px 0;border-bottom:1px solid rgba(255,255,255,.07);
-    font-size:10px;color:${isErro ? '#ff6b6b' : 'rgba(255,255,255,.75)'};word-break:break-all;white-space:pre-wrap`;
-  linha.textContent = new Date().toLocaleTimeString('pt-BR') + ' — ' + texto;
-  p.insertBefore(linha, p.firstChild);
-  // Mantém max 20 linhas
-  while (p.children.length > 20) p.removeChild(p.lastChild);
-}
-
-function _dbgIniciarPainel() {
-  if (document.getElementById('_auth_debug_painel')) return;
-  const wrap = document.createElement('div');
-  wrap.id = '_auth_debug_wrap';
-  wrap.style.cssText = `
-    position:fixed;bottom:16px;right:16px;z-index:9999;
-    background:rgba(0,0,0,.92);border:1px solid rgba(255,255,255,.15);
-    border-radius:12px;padding:12px 14px;width:420px;max-height:320px;
-    overflow:hidden;font-family:monospace;box-shadow:0 4px 24px rgba(0,0,0,.5);`;
-  wrap.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <span style="font-size:11px;font-weight:700;color:#00bfff;letter-spacing:.5px">🔍 AUTH DEBUG</span>
-      <button onclick="document.getElementById('_auth_debug_wrap').remove()"
-        style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:12px">✕</button>
-    </div>
-    <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:8px;line-height:1.5">
-      <b style="color:rgba(255,255,255,.7)">Domínio:</b> ${window.location.origin}<br>
-      <b style="color:rgba(255,255,255,.7)">URL:</b> ${window.location.href.slice(0,80)}<br>
-      <b style="color:rgba(255,255,255,.7)">Supabase:</b> ${SUPABASE_URL}
-    </div>
-    <div id="_auth_debug_painel" style="overflow-y:auto;max-height:200px"></div>`;
-  document.body.appendChild(wrap);
-}
 
 // ── AUTH ─────────────────────────────────────────────────────────────
 let _appJaIniciou = false;
 
 async function iniciarApp() {
-  _dbgIniciarPainel();
   _dbg.log('CONFIG', `Supabase: ${SUPABASE_URL}`);
   _dbg.log('CONFIG', `Domínio: ${window.location.origin}`);
   _dbg.log('CONFIG', `URL completa: ${window.location.href}`);
