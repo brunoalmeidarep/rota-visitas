@@ -151,28 +151,63 @@ window.initMap = function () {
 };
 
 // ── AUTH ─────────────────────────────────────────────────────────────
-async function iniciarApp() {
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) { currentUser = session.user; mostrarApp(); }
-    else mostrarLogin();
-  } catch(e) { mostrarLogin(); }
+let _appJaIniciou = false;
 
+async function iniciarApp() {
+  // Lê URL ANTES do Supabase processar — necessário para fluxo de recovery
+  const _hash = window.location.hash;
+  const hashParams   = new URLSearchParams(_hash.startsWith('#') ? _hash.slice(1) : '');
+  const searchParams = new URLSearchParams(window.location.search);
+  const _accessToken = hashParams.get('access_token');
+  const _refreshToken= hashParams.get('refresh_token') || '';
+  const _type        = hashParams.get('type');
+
+  // Recovery via hash implícito (ex: desktop.html#type=recovery&access_token=...)
+  if (_type === 'recovery' && _accessToken) {
+    try { await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken }); } catch(e) {}
+    history.replaceState(null, '', window.location.pathname);
+    _mostrarViewLogin('view-nova-senha');
+    return;
+  }
+
+  // Recovery via query string PKCE (ex: desktop.html?type=recovery)
+  if (searchParams.get('type') === 'recovery') {
+    history.replaceState(null, '', window.location.pathname);
+    _mostrarViewLogin('view-nova-senha');
+    return;
+  }
+
+  // Listener de estado de auth
   sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session) {
+    if (event === 'PASSWORD_RECOVERY') {
+      _mostrarViewLogin('view-nova-senha');
+    } else if (event === 'SIGNED_IN' && session && !_appJaIniciou) {
+      _appJaIniciou = true;
       currentUser = session.user;
       mostrarApp();
-    } else if (event === 'PASSWORD_RECOVERY') {
-      // Usuário clicou no link de recuperação — mostra form nova senha
-      _mostrarViewLogin('view-nova-senha');
     } else if (event === 'SIGNED_OUT') {
+      _appJaIniciou = false;
       currentUser = null;
       mostrarLogin();
     }
   });
+
+  // Sessão existente (reload normal)
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      _appJaIniciou = true;
+      currentUser = session.user;
+      mostrarApp();
+    } else {
+      mostrarLogin();
+    }
+  } catch(e) { mostrarLogin(); }
 }
 
 function _mostrarViewLogin(viewId) {
+  const termos = document.getElementById('screen-termos');
+  if (termos) termos.style.display = 'none';
   document.getElementById('screen-onboarding').style.display = 'none';
   document.getElementById('app').classList.remove('visible');
   document.getElementById('screen-login').style.display = 'flex';
@@ -197,12 +232,21 @@ function aceitarTermos() {
   _mostrarViewLogin('view-login');
 }
 
+let _recCaptchaWidgetId = null;
+
 function mostrarRecuperarSenha() {
   const email = document.getElementById('login-email')?.value.trim() || '';
   if (email) document.getElementById('rec-email').value = email;
   document.getElementById('rec-erro').textContent = '';
   document.getElementById('rec-ok').style.display = 'none';
   _mostrarViewLogin('view-recuperar');
+  // Renderiza hCaptcha no container da recuperação se ainda não foi renderizado
+  const container = document.getElementById('rec-captcha-container');
+  if (container && typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId === null) {
+    _recCaptchaWidgetId = hcaptcha.render(container, {
+      sitekey: 'becedf82-59a0-4206-9230-7de22e4c49f0'
+    });
+  }
 }
 
 async function enviarRecuperacao() {
@@ -211,16 +255,32 @@ async function enviarRecuperacao() {
   const ok    = document.getElementById('rec-ok');
   const btn   = document.getElementById('btn-rec');
   if (!email) { erro.textContent = 'Informe o e-mail.'; return; }
+
+  const captchaToken = typeof hcaptcha !== 'undefined'
+    ? hcaptcha.getResponse(_recCaptchaWidgetId ?? undefined)
+    : '';
+  if (!captchaToken) {
+    erro.textContent = 'Complete o CAPTCHA antes de enviar.';
+    return;
+  }
+
   btn.disabled = true; btn.textContent = 'Enviando...';
   erro.textContent = ''; ok.style.display = 'none';
   try {
     const redirectTo = window.location.href.split('?')[0].split('#')[0];
-    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo,
+      options: { captchaToken }
+    });
+    if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
+      hcaptcha.reset(_recCaptchaWidgetId);
     if (error) throw error;
     ok.textContent = '✓ Link enviado! Verifique sua caixa de entrada.';
     ok.style.display = 'block';
     btn.textContent = 'Reenviar';
   } catch(e) {
+    if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
+      hcaptcha.reset(_recCaptchaWidgetId);
     erro.textContent = 'Erro: ' + (e.message || 'tente novamente.');
     btn.textContent = 'Enviar link';
   }
@@ -239,8 +299,17 @@ async function salvarNovaSenha() {
   try {
     const { error } = await sb.auth.updateUser({ password: senha });
     if (error) throw error;
-    showToast('✓ Senha atualizada! Entrando...');
-    // onAuthStateChange com SIGNED_IN vai chamar mostrarApp automaticamente
+    // Limpa URL para não re-detectar o token de recovery num próximo reload
+    history.replaceState(null, '', window.location.pathname);
+    // Força logout e redireciona para o login com mensagem de sucesso
+    _appJaIniciou = false;
+    await sb.auth.signOut();
+    _mostrarViewLogin('view-login');
+    const erroLogin = document.getElementById('login-erro');
+    if (erroLogin) {
+      erroLogin.style.color = '#34C759';
+      erroLogin.textContent = '✓ Senha alterada com sucesso! Faça login.';
+    }
   } catch(e) {
     erro.textContent = 'Erro: ' + (e.message || 'tente novamente.');
     btn.disabled = false; btn.textContent = 'Salvar nova senha';
@@ -306,16 +375,45 @@ async function getRepId() {
   return _repIdCache;
 }
 
+// hCaptcha — token do login
+let _loginCaptchaToken = '';
+function onLoginCaptchaSolved(token)  { _loginCaptchaToken = token; }
+function onLoginCaptchaExpired()      { _loginCaptchaToken = ''; }
+
 async function fazerLogin() {
   const email = document.getElementById('login-email').value.trim();
   const senha = document.getElementById('login-senha').value;
   const btn   = document.getElementById('btn-login');
   const erro  = document.getElementById('login-erro');
   if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha.'; return; }
+
+  const captchaToken = _loginCaptchaToken ||
+    (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
+  if (!captchaToken) {
+    erro.textContent = 'Complete o CAPTCHA antes de entrar.';
+    return;
+  }
+
   btn.disabled = true; btn.textContent = 'Entrando...'; erro.textContent = '';
-  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
-  if (error) {
-    erro.textContent = 'E-mail ou senha incorretos.';
+  _appJaIniciou = true;
+
+  try {
+    const { error } = await sb.auth.signInWithPassword({
+      email, password: senha,
+      options: { captchaToken }
+    });
+    _loginCaptchaToken = '';
+    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
+    if (error) {
+      _appJaIniciou = false;
+      erro.textContent = error.message?.includes('captcha')
+        ? 'Resolva o CAPTCHA novamente.'
+        : 'E-mail ou senha incorretos.';
+    }
+  } catch(e) {
+    _appJaIniciou = false;
+    erro.textContent = 'Erro inesperado. Tente novamente.';
+  } finally {
     btn.disabled = false; btn.textContent = 'Entrar';
   }
 }
