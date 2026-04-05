@@ -24,6 +24,45 @@
 </head>
 <body>
 
+<!-- ── ACEITE DE TERMOS (primeiro acesso) ──────────────────────────── -->
+<div id="screen-termos" style="display:none">
+  <div class="login-box" style="max-width:460px;gap:14px">
+    <div class="login-logo">Bem-vindo! 👋</div>
+    <div class="login-sub" style="margin-bottom:0">Leia e aceite nossa Política de Privacidade e Termos de Uso antes de começar.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">📋</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Dados que coletamos</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.5">Nome, e-mail, localização GPS (opcional), dados de clientes e registros de visitas e pedidos.</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">🔒</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Como usamos</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.5">Exclusivamente para o funcionamento do app. Dados armazenados com segurança no Supabase e nunca vendidos a terceiros.</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">🗑️</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Seus direitos</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.5">Solicite a exclusão dos seus dados a qualquer momento pelo e-mail contato@minharotarp.com.br.</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.6;text-align:center">
+      Ao continuar, você declara que leu e concorda com a
+      <a href="privacidade.html" target="_blank" style="color:#60a5fa;font-weight:600;text-decoration:none">Política de Privacidade</a>
+      e os
+      <a href="termos.html" target="_blank" style="color:#60a5fa;font-weight:600;text-decoration:none">Termos de Uso</a>.
+    </div>
+    <button class="login-btn" onclick="aceitarTermos()">✓ Li e aceito</button>
+    <div style="font-size:11px;color:rgba(255,255,255,.25);text-align:center">Você só verá esta tela uma vez</div>
+  </div>
+</div>
+
 <!-- ── LOGIN ──────────────────────────────────────────────────────── -->
 <div id="screen-login">
 

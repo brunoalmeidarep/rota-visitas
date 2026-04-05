@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Google Maps
   const s = document.createElement('script');
-  s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&callback=initMap&loading=async`;
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places&callback=initMap&loading=async`;
   s.async = true; s.defer = true;
   document.head.appendChild(s);
 
@@ -183,6 +183,17 @@ function _mostrarViewLogin(viewId) {
 }
 
 function mostrarLogin() {
+  if (!localStorage.getItem('termos_aceitos')) {
+    const t = document.getElementById('screen-termos');
+    if (t) { t.style.display = 'flex'; return; }
+  }
+  _mostrarViewLogin('view-login');
+}
+
+function aceitarTermos() {
+  localStorage.setItem('termos_aceitos', 'true');
+  const t = document.getElementById('screen-termos');
+  if (t) t.style.display = 'none';
   _mostrarViewLogin('view-login');
 }
 
@@ -323,6 +334,7 @@ function _mostrarOnboarding() {
     document.getElementById('ob-media').value = currentRep.media_carro;
   if (currentRep?.preco_gasolina)
     document.getElementById('ob-gasolina').value = currentRep.preco_gasolina;
+  ativarAutocomplete('ob-endereco');
 }
 
 function obMaskCep(el) {
@@ -1041,11 +1053,36 @@ async function carregarRelatorio() {
   const ini = new Date(relAno, relMes, 1).toISOString().slice(0, 10);
   const fim = new Date(relAno, relMes + 1, 0).toISOString().slice(0, 10);
   try {
+    const repId = await getRepId();
     const { data } = await sb.from('visitas').select('*')
       .eq('rep_id', currentUser.id)
       .gte('data', ini).lte('data', fim)
       .order('data', { ascending: false });
     visatasRel = data || [];
+
+    // Inclui pedidos sem visita (WhatsApp/Telefone) no relatório de vendas
+    try {
+      const { data: pedsSemVisita } = await sb.from('pedidos').select('*')
+        .eq('rep_id', repId)
+        .is('visita_id', null)
+        .gte('created_at', ini).lte('created_at', fim + 'T23:59:59');
+      if (pedsSemVisita?.length) {
+        pedsSemVisita.forEach(p => {
+          visatasRel.push({
+            id: null,
+            id_cliente: p.cliente_id,
+            nome_cliente: p.cliente_nome,
+            cidade: clientes.find(c => String(c.id) === String(p.cliente_id))?.cidade || '',
+            data: p.created_at?.slice(0, 10) || ini,
+            valor_pedido: p.valor,
+            pedido_tipo: p.tipo,
+            tipo_contato: p.tipo_contato,
+            representada_nome: p.representada_nome,
+            _semVisita: true,
+          });
+        });
+      }
+    } catch(e2) {}
   } catch(e) { visatasRel = []; }
   renderReport();
 }
@@ -1403,15 +1440,23 @@ function renderDetalheVendas() {
 
   const ordenado = [...comValor].sort((a, b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
 
-  const linhas = ordenado.map(v => `
+  const linhas = ordenado.map(v => {
+    const canal = v.tipo_contato || 'presencial';
+    const canalBadge = canal === 'whatsapp'
+      ? '<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;background:#E8F9ED;color:#1a8a35;margin-left:4px">💬 WA</span>'
+      : canal === 'telefone'
+        ? '<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;background:#f2f2f2;color:#555;margin-left:4px">📞 Tel</span>'
+        : '';
+    return `
     <tr>
       <td class="muted" style="white-space:nowrap">${formatDate(v.data)}</td>
-      <td><strong>${v.nome_cliente || '—'}</strong></td>
+      <td><strong>${v.nome_cliente || '—'}</strong>${canalBadge}</td>
       <td class="muted">${v.cidade || '—'}</td>
       <td class="val-green" style="text-align:right;white-space:nowrap">
         R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2})}
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   return resumo + `
     <div class="det-table-wrap">
@@ -2100,6 +2145,7 @@ function openCadastro() {
   document.getElementById('btn-cad-gps').className = 'btn-gps';
   document.getElementById('btn-cad-gps').textContent = '📍 Usar localização atual';
   renderSegPills();
+  ativarAutocomplete('cad-endereco');
 }
 
 function closeCadastro() {
@@ -2478,6 +2524,23 @@ function geocodeEndereco(endereco, cidade) {
   });
 }
 
+// ── AUTOCOMPLETE DE ENDEREÇO ──────────────────────────
+function ativarAutocomplete(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input || !window.google?.maps?.places) return;
+  const ac = new google.maps.places.Autocomplete(input, {
+    componentRestrictions: { country: 'br' },
+    fields: ['formatted_address']
+  });
+  ac.addListener('place_changed', () => {
+    const place = ac.getPlace();
+    if (place.formatted_address) {
+      input.value = place.formatted_address;
+      input.dispatchEvent(new Event('input'));
+    }
+  });
+}
+
 // ── UTILITÁRIOS ──────────────────────────────────────────────────────
 function formatDate(iso) {
   if (!iso) return '—';
@@ -2602,6 +2665,7 @@ function renderPlannerPanel() {
 
   renderPlannerClientList();
   updatePlannerBtn();
+  ativarAutocomplete('planner-origin-input');
 }
 
 function renderPlannerClientList() {
@@ -3495,6 +3559,7 @@ function openConfig() {
   document.getElementById('cfg-cep-status').textContent = '';
   document.getElementById('config-panel').classList.add('open');
   document.getElementById('config-backdrop').classList.add('open');
+  ativarAutocomplete('cfg-endereco');
 }
 
 function closeConfig() {

@@ -52,6 +52,14 @@ html, body {
   line-height: 1.4;
 }
 
+/* ── ACEITE DE TERMOS ───────────────────────────────────── */
+#screen-termos {
+  position: fixed; inset: 0; z-index: 1001;
+  background: #0f0f12;
+  display: flex; align-items: center; justify-content: center;
+  overflow-y: auto;
+}
+
 /* ── LOGIN ──────────────────────────────────────────────── */
 #screen-login {
   position: fixed; inset: 0; z-index: 999;
