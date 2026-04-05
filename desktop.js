@@ -150,10 +150,67 @@ window.initMap = function () {
   if (clientes.length) renderMapMarkers();
 };
 
+// ── AUTH DEBUG ───────────────────────────────────────────────────────
+// TEMPORÁRIO — remover após diagnóstico confirmado
+const _dbg = {
+  log(grupo, ...args) {
+    console.log(`%c[AUTH][${grupo}]`, 'color:#00bfff;font-weight:bold', ...args);
+    _dbgPainel(`[${grupo}] ` + args.map(a =>
+      typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' '));
+  },
+  err(grupo, ...args) {
+    console.error(`%c[AUTH][${grupo}]`, 'color:#ff4444;font-weight:bold', ...args);
+    _dbgPainel(`❌ [${grupo}] ` + args.map(a =>
+      typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), true);
+  }
+};
+
+function _dbgPainel(texto, isErro = false) {
+  let p = document.getElementById('_auth_debug_painel');
+  if (!p) return;
+  const linha = document.createElement('div');
+  linha.style.cssText = `padding:2px 0;border-bottom:1px solid rgba(255,255,255,.07);
+    font-size:10px;color:${isErro ? '#ff6b6b' : 'rgba(255,255,255,.75)'};word-break:break-all;white-space:pre-wrap`;
+  linha.textContent = new Date().toLocaleTimeString('pt-BR') + ' — ' + texto;
+  p.insertBefore(linha, p.firstChild);
+  // Mantém max 20 linhas
+  while (p.children.length > 20) p.removeChild(p.lastChild);
+}
+
+function _dbgIniciarPainel() {
+  if (document.getElementById('_auth_debug_painel')) return;
+  const wrap = document.createElement('div');
+  wrap.id = '_auth_debug_wrap';
+  wrap.style.cssText = `
+    position:fixed;bottom:16px;right:16px;z-index:9999;
+    background:rgba(0,0,0,.92);border:1px solid rgba(255,255,255,.15);
+    border-radius:12px;padding:12px 14px;width:420px;max-height:320px;
+    overflow:hidden;font-family:monospace;box-shadow:0 4px 24px rgba(0,0,0,.5);`;
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:11px;font-weight:700;color:#00bfff;letter-spacing:.5px">🔍 AUTH DEBUG</span>
+      <button onclick="document.getElementById('_auth_debug_wrap').remove()"
+        style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:12px">✕</button>
+    </div>
+    <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:8px;line-height:1.5">
+      <b style="color:rgba(255,255,255,.7)">Domínio:</b> ${window.location.origin}<br>
+      <b style="color:rgba(255,255,255,.7)">URL:</b> ${window.location.href.slice(0,80)}<br>
+      <b style="color:rgba(255,255,255,.7)">Supabase:</b> ${SUPABASE_URL}
+    </div>
+    <div id="_auth_debug_painel" style="overflow-y:auto;max-height:200px"></div>`;
+  document.body.appendChild(wrap);
+}
+
 // ── AUTH ─────────────────────────────────────────────────────────────
 let _appJaIniciou = false;
 
 async function iniciarApp() {
+  _dbgIniciarPainel();
+  _dbg.log('CONFIG', `Supabase: ${SUPABASE_URL}`);
+  _dbg.log('CONFIG', `Domínio: ${window.location.origin}`);
+  _dbg.log('CONFIG', `URL completa: ${window.location.href}`);
+  _dbg.log('CONFIG', `hCaptcha disponível: ${typeof hcaptcha !== 'undefined'}`);
+
   // Lê URL ANTES do Supabase processar — necessário para fluxo de recovery
   const _hash = window.location.hash;
   const hashParams   = new URLSearchParams(_hash.startsWith('#') ? _hash.slice(1) : '');
@@ -162,9 +219,15 @@ async function iniciarApp() {
   const _refreshToken= hashParams.get('refresh_token') || '';
   const _type        = hashParams.get('type');
 
+  _dbg.log('SESSION', `hash type: ${_type || '(vazio)'}, access_token presente: ${!!_accessToken}`);
+  _dbg.log('SESSION', `search type: ${searchParams.get('type') || '(vazio)'}`);
+
   // Recovery via hash implícito (ex: desktop.html#type=recovery&access_token=...)
   if (_type === 'recovery' && _accessToken) {
-    try { await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken }); } catch(e) {}
+    _dbg.log('SESSION', 'Recovery implícito detectado no hash — chamando setSession()');
+    try { await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken }); } catch(e) {
+      _dbg.err('SESSION', 'setSession falhou: ' + e.message);
+    }
     history.replaceState(null, '', window.location.pathname);
     _mostrarViewLogin('view-nova-senha');
     return;
@@ -172,6 +235,7 @@ async function iniciarApp() {
 
   // Recovery via query string PKCE (ex: desktop.html?type=recovery)
   if (searchParams.get('type') === 'recovery') {
+    _dbg.log('SESSION', 'Recovery PKCE detectado na query string');
     history.replaceState(null, '', window.location.pathname);
     _mostrarViewLogin('view-nova-senha');
     return;
@@ -179,30 +243,42 @@ async function iniciarApp() {
 
   // Listener de estado de auth
   sb.auth.onAuthStateChange((event, session) => {
+    _dbg.log('LISTENER', `evento: ${event} | sessão: ${session ? session.user?.email : 'null'} | _appJaIniciou: ${_appJaIniciou}`);
     if (event === 'PASSWORD_RECOVERY') {
+      _dbg.log('LISTENER', 'PASSWORD_RECOVERY → abrindo tela nova senha');
       _mostrarViewLogin('view-nova-senha');
     } else if (event === 'SIGNED_IN' && session && !_appJaIniciou) {
       _appJaIniciou = true;
       currentUser = session.user;
+      _dbg.log('LISTENER', `SIGNED_IN → mostrarApp() para ${currentUser.email}`);
       mostrarApp();
+    } else if (event === 'SIGNED_IN' && _appJaIniciou) {
+      _dbg.log('LISTENER', 'SIGNED_IN ignorado (flag _appJaIniciou já ativo — evita duplicação)');
     } else if (event === 'SIGNED_OUT') {
       _appJaIniciou = false;
       currentUser = null;
+      _dbg.log('LISTENER', 'SIGNED_OUT → mostrarLogin()');
       mostrarLogin();
     }
   });
 
   // Sessão existente (reload normal)
   try {
+    _dbg.log('SESSION', 'Verificando sessão existente via getSession()...');
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       _appJaIniciou = true;
       currentUser = session.user;
+      _dbg.log('SESSION', `Sessão ativa: ${currentUser.email} → mostrarApp()`);
       mostrarApp();
     } else {
+      _dbg.log('SESSION', 'Sem sessão → mostrarLogin()');
       mostrarLogin();
     }
-  } catch(e) { mostrarLogin(); }
+  } catch(e) {
+    _dbg.err('SESSION', 'getSession() falhou: ' + e.message);
+    mostrarLogin();
+  }
 }
 
 function _mostrarViewLogin(viewId) {
@@ -254,12 +330,21 @@ async function enviarRecuperacao() {
   const erro  = document.getElementById('rec-erro');
   const ok    = document.getElementById('rec-ok');
   const btn   = document.getElementById('btn-rec');
+
+  _dbg.log('RESET', `Tentativa iniciada — email: ${email}`);
+  _dbg.log('RESET', `Domínio: ${window.location.origin}`);
+  _dbg.log('RESET', `hCaptcha disponível: ${typeof hcaptcha !== 'undefined'} | widgetId: ${_recCaptchaWidgetId}`);
+
   if (!email) { erro.textContent = 'Informe o e-mail.'; return; }
 
   const captchaToken = typeof hcaptcha !== 'undefined'
     ? hcaptcha.getResponse(_recCaptchaWidgetId ?? undefined)
     : '';
+
+  _dbg.log('RESET', `captchaToken: ${captchaToken ? captchaToken.slice(0,20)+'...' : '(VAZIO)'}`);
+
   if (!captchaToken) {
+    _dbg.err('RESET', 'BLOQUEADO: captchaToken vazio — widget não resolvido');
     erro.textContent = 'Complete o CAPTCHA antes de enviar.';
     return;
   }
@@ -268,19 +353,33 @@ async function enviarRecuperacao() {
   erro.textContent = ''; ok.style.display = 'none';
   try {
     const redirectTo = window.location.href.split('?')[0].split('#')[0];
-    const { error } = await sb.auth.resetPasswordForEmail(email, {
+    _dbg.log('RESET', `redirectTo: "${redirectTo}"`);
+    // NOTA: captchaToken vai no nível raiz do objeto options (não dentro de options.options)
+    // Supabase v2: resetPasswordForEmail(email, { redirectTo, captchaToken })
+    _dbg.log('RESET', `Chamando resetPasswordForEmail com payload: ${JSON.stringify({ redirectTo, captchaToken: captchaToken.slice(0,20)+'...' })}`);
+
+    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
       redirectTo,
-      options: { captchaToken }
+      captchaToken          // ← nível raiz, não dentro de "options: {}"
     });
+
     if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
       hcaptcha.reset(_recCaptchaWidgetId);
-    if (error) throw error;
+
+    if (error) {
+      _dbg.err('RESET', `ERRO Supabase — message: "${error.message}" | status: ${error.status} | code: ${error.code || '(sem code)'}`);
+      _dbg.err('RESET', `Objeto error completo: ${JSON.stringify(error)}`);
+      throw error;
+    }
+
+    _dbg.log('RESET', `Sucesso — link enviado para ${email}`);
     ok.textContent = '✓ Link enviado! Verifique sua caixa de entrada.';
     ok.style.display = 'block';
     btn.textContent = 'Reenviar';
   } catch(e) {
     if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
       hcaptcha.reset(_recCaptchaWidgetId);
+    _dbg.err('RESET', `EXCEÇÃO: ${e.message}`);
     erro.textContent = 'Erro: ' + (e.message || 'tente novamente.');
     btn.textContent = 'Enviar link';
   }
@@ -377,19 +476,37 @@ async function getRepId() {
 
 // hCaptcha — token do login
 let _loginCaptchaToken = '';
-function onLoginCaptchaSolved(token)  { _loginCaptchaToken = token; }
-function onLoginCaptchaExpired()      { _loginCaptchaToken = ''; }
+function onLoginCaptchaSolved(token)  {
+  _loginCaptchaToken = token;
+  _dbg.log('CAPTCHA', `Token de login resolvido: ${token.slice(0,20)}...`);
+}
+function onLoginCaptchaExpired()      {
+  _loginCaptchaToken = '';
+  _dbg.log('CAPTCHA', 'Token de login expirado — necessário resolver novamente');
+}
 
 async function fazerLogin() {
   const email = document.getElementById('login-email').value.trim();
   const senha = document.getElementById('login-senha').value;
   const btn   = document.getElementById('btn-login');
   const erro  = document.getElementById('login-erro');
+
+  _dbg.log('LOGIN', `Tentativa iniciada — email: ${email}`);
+  _dbg.log('LOGIN', `Domínio: ${window.location.origin} | URL: ${window.location.href}`);
+
   if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha.'; return; }
 
-  const captchaToken = _loginCaptchaToken ||
-    (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
+  const captchaViaCallback = _loginCaptchaToken;
+  const captchaViaGetResponse = typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '';
+  const captchaToken = captchaViaCallback || captchaViaGetResponse;
+
+  _dbg.log('LOGIN', `hCaptcha disponível: ${typeof hcaptcha !== 'undefined'}`);
+  _dbg.log('LOGIN', `captchaToken via callback: ${captchaViaCallback ? captchaViaCallback.slice(0,20)+'...' : '(vazio)'}`);
+  _dbg.log('LOGIN', `captchaToken via getResponse: ${captchaViaGetResponse ? captchaViaGetResponse.slice(0,20)+'...' : '(vazio)'}`);
+  _dbg.log('LOGIN', `captchaToken final: ${captchaToken ? captchaToken.slice(0,20)+'...' : '(VAZIO — vai bloquear)'}`);
+
   if (!captchaToken) {
+    _dbg.err('LOGIN', 'BLOQUEADO: captchaToken vazio — widget não resolvido');
     erro.textContent = 'Complete o CAPTCHA antes de entrar.';
     return;
   }
@@ -398,21 +515,29 @@ async function fazerLogin() {
   _appJaIniciou = true;
 
   try {
-    const { error } = await sb.auth.signInWithPassword({
+    const payload = { email, password: '***', options: { captchaToken: captchaToken.slice(0,20)+'...' } };
+    _dbg.log('LOGIN', `Chamando signInWithPassword — payload (sem senha): ${JSON.stringify(payload)}`);
+
+    const { data, error } = await sb.auth.signInWithPassword({
       email, password: senha,
       options: { captchaToken }
     });
+
     _loginCaptchaToken = '';
     if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
+
     if (error) {
       _appJaIniciou = false;
-      erro.textContent = error.message?.includes('captcha')
-        ? 'Resolva o CAPTCHA novamente.'
-        : 'E-mail ou senha incorretos.';
+      _dbg.err('LOGIN', `ERRO Supabase — message: "${error.message}" | status: ${error.status} | code: ${error.code || '(sem code)'}`);
+      _dbg.err('LOGIN', `Objeto error completo: ${JSON.stringify(error)}`);
+      erro.textContent = `${error.message} [status: ${error.status || '?'}]`;
+    } else {
+      _dbg.log('LOGIN', `Sucesso — user: ${data?.user?.email} | sessão: ${!!data?.session}`);
     }
   } catch(e) {
     _appJaIniciou = false;
-    erro.textContent = 'Erro inesperado. Tente novamente.';
+    _dbg.err('LOGIN', `EXCEÇÃO: ${e.message}`);
+    erro.textContent = 'Erro inesperado: ' + e.message;
   } finally {
     btn.disabled = false; btn.textContent = 'Entrar';
   }
