@@ -111,6 +111,13 @@ let plannerMarkers = [];         // marcadores numerados da rota ativa
 document.addEventListener('DOMContentLoaded', () => {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  // Log de config (desktop-auth-debug.js injeta window.DESK_DEBUG antes deste script)
+  if (window.DESK_DEBUG) {
+    window.DESK_DEBUG.log('[AUTH][CONFIG]', 'Supabase client criado');
+    window.DESK_DEBUG.log('[AUTH][CONFIG]', 'URL:', SUPABASE_URL);
+    window.DESK_DEBUG.log('[AUTH][CONFIG]', 'KEY prefix:', SUPABASE_KEY.slice(0, 30) + '...');
+  }
+
   document.getElementById('header-date').textContent =
     new Date().toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit' });
 
@@ -154,6 +161,8 @@ window.initMap = function () {
 let _appJaIniciou = false;
 
 async function iniciarApp() {
+  const D = window.DESK_DEBUG;
+
   // Lê URL ANTES do Supabase processar — necessário para fluxo de recovery
   const _hash        = window.location.hash;
   const hashParams   = new URLSearchParams(_hash.startsWith('#') ? _hash.slice(1) : '');
@@ -162,9 +171,21 @@ async function iniciarApp() {
   const _refreshToken= hashParams.get('refresh_token') || '';
   const _type        = hashParams.get('type');
 
+  if (D) {
+    D.log('[AUTH][SESSION]', 'iniciarApp — hash type:', _type || '(nenhum)');
+    D.log('[AUTH][SESSION]', 'access_token presente:', !!_accessToken);
+    D.log('[AUTH][SESSION]', 'search type:', searchParams.get('type') || '(nenhum)');
+  }
+
   // Recovery via hash implícito (ex: desktop.html#type=recovery&access_token=...)
   if (_type === 'recovery' && _accessToken) {
-    try { await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken }); } catch(e) {}
+    if (D) D.log('[AUTH][SESSION]', 'Recovery via hash detectado — setSession + view-nova-senha');
+    try {
+      await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken });
+      if (D) D.ok('setSession OK — recovery hash');
+    } catch(e) {
+      if (D) D.err('[AUTH][ERROR]', 'setSession falhou:', e);
+    }
     history.replaceState(null, '', window.location.pathname);
     _mostrarViewLogin('view-nova-senha');
     return;
@@ -172,6 +193,7 @@ async function iniciarApp() {
 
   // Recovery via query string PKCE (ex: desktop.html?type=recovery)
   if (searchParams.get('type') === 'recovery') {
+    if (D) D.log('[AUTH][SESSION]', 'Recovery via query string detectado — view-nova-senha');
     history.replaceState(null, '', window.location.pathname);
     _mostrarViewLogin('view-nova-senha');
     return;
@@ -179,15 +201,18 @@ async function iniciarApp() {
 
   // Listener de estado de auth
   sb.auth.onAuthStateChange((event, session) => {
+    if (D) D.log('[AUTH][SESSION]', 'onAuthStateChange:', event, 'user:', session?.user?.email || 'none');
     if (event === 'PASSWORD_RECOVERY') {
       _mostrarViewLogin('view-nova-senha');
     } else if (event === 'SIGNED_IN' && session && !_appJaIniciou) {
       _appJaIniciou = true;
       currentUser = session.user;
+      if (D) D.ok('SIGNED_IN → mostrarApp: ' + currentUser.email);
       mostrarApp();
     } else if (event === 'SIGNED_OUT') {
       _appJaIniciou = false;
       currentUser = null;
+      if (D) D.log('[AUTH][SESSION]', 'SIGNED_OUT → mostrarLogin');
       mostrarLogin();
     }
   });
@@ -195,6 +220,7 @@ async function iniciarApp() {
   // Sessão existente (reload normal)
   try {
     const { data: { session } } = await sb.auth.getSession();
+    if (D) D.log('[AUTH][SESSION]', 'getSession:', session ? 'sessão ativa: ' + session.user.email : 'sem sessão');
     if (session) {
       _appJaIniciou = true;
       currentUser = session.user;
@@ -203,6 +229,7 @@ async function iniciarApp() {
       mostrarLogin();
     }
   } catch(e) {
+    if (D) D.err('[AUTH][ERROR]', 'getSession falhou:', e);
     mostrarLogin();
   }
 }
@@ -237,21 +264,33 @@ function aceitarTermos() {
 let _recCaptchaWidgetId = null;
 
 function mostrarRecuperarSenha() {
+  const D = window.DESK_DEBUG;
   const email = document.getElementById('login-email')?.value.trim() || '';
   if (email) document.getElementById('rec-email').value = email;
   document.getElementById('rec-erro').textContent = '';
   document.getElementById('rec-ok').style.display = 'none';
   _mostrarViewLogin('view-recuperar');
-  // Renderiza hCaptcha no container da recuperação se ainda não foi renderizado
+
   const container = document.getElementById('rec-captcha-container');
-  if (container && typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId === null) {
-    _recCaptchaWidgetId = hcaptcha.render(container, {
-      sitekey: 'becedf82-59a0-4206-9230-7de22e4c49f0'
-    });
+  if (container && typeof hcaptcha !== 'undefined') {
+    if (_recCaptchaWidgetId === null) {
+      // Primeira abertura: renderiza o widget
+      _recCaptchaWidgetId = hcaptcha.render(container, {
+        sitekey: 'becedf82-59a0-4206-9230-7de22e4c49f0'
+      });
+      if (D) D.log('[AUTH][RESET]', 'hCaptcha widget renderizado — ID:', _recCaptchaWidgetId);
+    } else {
+      // Aberturas subsequentes: reseta token antigo para evitar token expirado/já usado
+      hcaptcha.reset(_recCaptchaWidgetId);
+      if (D) D.log('[AUTH][RESET]', 'hCaptcha widget resetado (ID:', _recCaptchaWidgetId, ')');
+    }
+  } else if (typeof hcaptcha === 'undefined') {
+    if (D) D.err('[AUTH][RESET]', 'hCaptcha ainda não carregou — widget não renderizado');
   }
 }
 
 async function enviarRecuperacao() {
+  const D     = window.DESK_DEBUG;
   const email = document.getElementById('rec-email').value.trim();
   const erro  = document.getElementById('rec-erro');
   const ok    = document.getElementById('rec-ok');
@@ -259,54 +298,121 @@ async function enviarRecuperacao() {
 
   if (!email) { erro.textContent = 'Informe o e-mail.'; return; }
 
+  // Obtém token do widget de recuperação
   const captchaToken = typeof hcaptcha !== 'undefined'
     ? hcaptcha.getResponse(_recCaptchaWidgetId ?? undefined)
     : '';
 
+  if (D) {
+    D.action('Reset de senha');
+    D.log('[AUTH][RESET]', 'email:', email);
+    D.log('[AUTH][RESET]', 'captchaToken presente:', !!captchaToken, '| tamanho:', captchaToken.length);
+    D.log('[AUTH][RESET]', 'widgetId:', _recCaptchaWidgetId);
+    D.log('[AUTH][RESET]', 'hcaptcha disponível:', typeof hcaptcha !== 'undefined');
+  }
+
   if (!captchaToken) {
     erro.textContent = 'Complete o CAPTCHA antes de enviar.';
+    if (D) D.err('[AUTH][RESET]', 'Bloqueado localmente — captchaToken vazio');
     return;
   }
 
   btn.disabled = true; btn.textContent = 'Enviando...';
   erro.textContent = ''; ok.style.display = 'none';
-  try {
-    const redirectTo = window.location.href.split('?')[0].split('#')[0];
-    // captchaToken vai no nível raiz — Supabase v2: resetPasswordForEmail(email, { redirectTo, captchaToken })
-    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo, captchaToken });
 
+  try {
+    // ── redirectTo ────────────────────────────────────────────────────
+    // Usa origem + pathname para ser mais preciso e evitar query/hash.
+    // IMPORTANTE: esta URL deve estar na whitelist do Supabase Auth → Redirect URLs.
+    // Se a recuperação falhar com "Redirect URL not allowed", adicione esta URL no Supabase.
+    const redirectTo = window.location.origin + window.location.pathname;
+
+    if (D) {
+      D.log('[AUTH][RESET]', 'redirectTo:', redirectTo);
+      D.log('[AUTH][RESET]', 'Supabase URL:', SUPABASE_URL);
+      D.redirect(redirectTo);
+    }
+
+    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo,
+      captchaToken,
+    });
+
+    if (D) {
+      D.log('[AUTH][RESET]', 'Resposta Supabase:', { data, error });
+      if (error) {
+        D.err('[AUTH][ERROR]', 'Detalhes do erro:',
+          'message:', error.message,
+          '| status:', error.status,
+          '| code:', error.code || error.error_code || '(sem código)',
+        );
+      }
+    }
+
+    // Reseta captcha independente do resultado
     if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
       hcaptcha.reset(_recCaptchaWidgetId);
 
     if (error) throw error;
 
+    if (D) D.ok('Link de recuperação enviado para ' + email);
     ok.textContent = '✓ Link enviado! Verifique sua caixa de entrada.';
     ok.style.display = 'block';
     btn.textContent = 'Reenviar';
+
   } catch(e) {
     if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
       hcaptcha.reset(_recCaptchaWidgetId);
-    erro.textContent = 'Erro: ' + (e.message || 'tente novamente.');
+
+    const msg = e.message || 'tente novamente.';
+
+    // Detecta erro de captcha explicitamente para mensagem mais clara
+    const isCaptchaErr = /captcha/i.test(msg);
+    if (isCaptchaErr) {
+      erro.textContent = 'Erro de verificação CAPTCHA. Recarregue a página e tente novamente.';
+    } else {
+      erro.textContent = 'Erro: ' + msg;
+    }
+
+    if (D) {
+      D.fail(e);
+      if (isCaptchaErr) {
+        D.err('[AUTH][RESET]', '⚠ Captcha rejeitado pelo servidor Supabase. Verifique se a sitekey',
+          '"becedf82-59a0-4206-9230-7de22e4c49f0" corresponde ao secret configurado no Supabase Dashboard → Auth → Providers → Email → Enable Captcha');
+      }
+    }
     btn.textContent = 'Enviar link';
   }
   btn.disabled = false;
 }
 
 async function salvarNovaSenha() {
+  const D     = window.DESK_DEBUG;
   const senha = document.getElementById('nova-senha').value;
   const conf  = document.getElementById('nova-senha-conf').value;
   const erro  = document.getElementById('nova-senha-erro');
   const btn   = document.getElementById('btn-nova-senha');
+
   if (!senha || senha.length < 6) { erro.textContent = 'Senha deve ter ao menos 6 caracteres.'; return; }
   if (senha !== conf)              { erro.textContent = 'As senhas não conferem.'; return; }
+
+  if (D) {
+    D.action('Salvar nova senha');
+    D.log('[AUTH][RESET]', 'updateUser chamado...');
+  }
+
   btn.disabled = true; btn.textContent = 'Salvando...';
   erro.textContent = '';
+
   try {
     const { error } = await sb.auth.updateUser({ password: senha });
+
+    if (D) D.log('[AUTH][RESET]', 'Resposta updateUser:', { error: error ? error.message : null });
+
     if (error) throw error;
-    // Limpa URL para não re-detectar o token de recovery num próximo reload
+
+    if (D) D.ok('Senha alterada com sucesso');
     history.replaceState(null, '', window.location.pathname);
-    // Força logout e redireciona para o login com mensagem de sucesso
     _appJaIniciou = false;
     await sb.auth.signOut();
     _mostrarViewLogin('view-login');
@@ -316,6 +422,7 @@ async function salvarNovaSenha() {
       erroLogin.textContent = '✓ Senha alterada com sucesso! Faça login.';
     }
   } catch(e) {
+    if (D) D.fail(e);
     erro.textContent = 'Erro: ' + (e.message || 'tente novamente.');
     btn.disabled = false; btn.textContent = 'Salvar nova senha';
   }
@@ -386,6 +493,7 @@ function onLoginCaptchaSolved(token)  { _loginCaptchaToken = token; }
 function onLoginCaptchaExpired()      { _loginCaptchaToken = ''; }
 
 async function fazerLogin() {
+  const D     = window.DESK_DEBUG;
   const email = document.getElementById('login-email').value.trim();
   const senha = document.getElementById('login-senha').value;
   const btn   = document.getElementById('btn-login');
@@ -394,27 +502,80 @@ async function fazerLogin() {
   if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha.'; return; }
 
   const captchaToken = _loginCaptchaToken || (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
-  if (!captchaToken) { erro.textContent = 'Complete o CAPTCHA antes de entrar.'; return; }
+
+  if (D) {
+    D.action('Login');
+    D.log('[AUTH][LOGIN]', 'email:', email);
+    D.log('[AUTH][LOGIN]', 'origin:', window.location.origin);
+    D.log('[AUTH][LOGIN]', 'href:', window.location.href);
+    D.log('[AUTH][LOGIN]', 'captchaToken presente:', !!captchaToken, '| tamanho:', captchaToken.length);
+    D.log('[AUTH][LOGIN]', '_loginCaptchaToken presente:', !!_loginCaptchaToken);
+    D.log('[AUTH][LOGIN]', 'hcaptcha disponível:', typeof hcaptcha !== 'undefined');
+    D.log('[AUTH][LOGIN]', 'Supabase URL:', SUPABASE_URL);
+  }
+
+  if (!captchaToken) {
+    erro.textContent = 'Complete o CAPTCHA antes de entrar.';
+    if (D) D.err('[AUTH][LOGIN]', 'Bloqueado localmente — captchaToken vazio');
+    return;
+  }
 
   btn.disabled = true; btn.textContent = 'Entrando...'; erro.textContent = '';
   _appJaIniciou = true;
 
   try {
+    if (D) D.log('[AUTH][LOGIN]', 'Chamando signInWithPassword...');
+
     const { data, error } = await sb.auth.signInWithPassword({
-      email, password: senha,
+      email,
+      password: senha,
       options: { captchaToken }
     });
 
     _loginCaptchaToken = '';
     if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
 
+    if (D) {
+      D.log('[AUTH][LOGIN]', 'Resposta Supabase:', {
+        user: data?.user?.email || null,
+        session: data?.session ? 'presente' : null,
+        error: error ? { message: error.message, status: error.status, code: error.code || error.error_code } : null,
+      });
+    }
+
     if (error) {
       _appJaIniciou = false;
-      erro.textContent = error.message;
+      const isCaptchaErr = /captcha/i.test(error.message);
+
+      if (D) {
+        D.fail(error);
+        D.err('[AUTH][ERROR]',
+          'message:', error.message,
+          '| status:', error.status,
+          '| code:', error.code || error.error_code || '(sem código)',
+        );
+        if (isCaptchaErr) {
+          D.err('[AUTH][ERROR]', '⚠ Captcha rejeitado pelo servidor Supabase.',
+            'Verifique: Supabase Dashboard → Auth → Providers → Email → Captcha provider secret key.',
+            'A sitekey no HTML é: becedf82-59a0-4206-9230-7de22e4c49f0');
+        }
+      }
+
+      // Mensagem ao usuário: sem mascarar o erro real
+      if (isCaptchaErr) {
+        erro.textContent = 'Erro de verificação CAPTCHA. Recarregue e tente novamente.';
+      } else if (error.message.toLowerCase().includes('invalid login')) {
+        erro.textContent = 'E-mail ou senha incorretos.';
+      } else {
+        erro.textContent = error.message;
+      }
+    } else {
+      if (D) D.ok('Login bem-sucedido: ' + (data?.user?.email || email));
     }
   } catch(e) {
     _appJaIniciou = false;
-    erro.textContent = 'Erro inesperado: ' + e.message;
+    if (D) D.fail(e);
+    erro.textContent = 'Erro inesperado: ' + (e.message || e);
   } finally {
     btn.disabled = false; btn.textContent = 'Entrar';
   }
