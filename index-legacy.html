@@ -21,8 +21,8 @@
                 https://maps.gstatic.com
                 https://*.googleapis.com;
     connect-src 'self'
-                https://byglymeulgeomoldhrrh.supabase.co
-                wss://byglymeulgeomoldhrrh.supabase.co
+                https://fiwpmhrjbovnazagjcjf.supabase.co
+                wss://fiwpmhrjbovnazagjcjf.supabase.co
                 https://maps.googleapis.com
                 https://viacep.com.br
                 https://nominatim.openstreetmap.org
@@ -1006,9 +1006,195 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .vcidade-aplicar-wrap { padding:12px 16px 28px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface); }
 .vcidade-aplicar { width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:13px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer; }
 
+/* ── FREEMIUM / TRIAL ───────────────────────────────── */
+.trial-banner { background:linear-gradient(135deg,#FF9500,#FF6B00); padding:10px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-shrink:0; }
+.trial-banner-text { font-size:13px; font-weight:600; color:#fff; }
+.trial-banner-days { font-weight:800; }
+.trial-banner-btn { background:rgba(255,255,255,.25); border:none; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; color:#fff; cursor:pointer; flex-shrink:0; }
+.trial-banner.expired { background:linear-gradient(135deg,#FF3B30,#D63031); }
+.trial-banner.active-plan { background:linear-gradient(135deg,#34C759,#00B894); }
+
+/* ── PAYWALL ────────────────────────────────────────── */
+#screen-paywall { position:fixed; inset:0; z-index:1002; background:var(--bg); display:none; flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.paywall-header { background:linear-gradient(135deg,#007AFF,#5856D6); padding:40px 20px 30px; text-align:center; flex-shrink:0; }
+.paywall-icon { font-size:48px; margin-bottom:12px; }
+.paywall-title { font-size:24px; font-weight:800; color:#fff; margin-bottom:6px; }
+.paywall-subtitle { font-size:14px; color:rgba(255,255,255,.8); line-height:1.5; }
+.paywall-body { padding:20px; flex:1; }
+.paywall-plans { display:flex; flex-direction:column; gap:12px; margin-bottom:20px; }
+.paywall-plan { background:var(--card); border-radius:16px; padding:20px; border:2px solid var(--border); cursor:pointer; transition:.15s; position:relative; }
+.paywall-plan.selected { border-color:var(--blue); background:var(--blue-bg); }
+.paywall-plan-badge { position:absolute; top:-10px; right:16px; background:var(--green); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:20px; text-transform:uppercase; }
+.paywall-plan-name { font-size:16px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.paywall-plan-price { font-size:28px; font-weight:800; color:var(--blue); }
+.paywall-plan-price small { font-size:14px; font-weight:500; color:var(--text3); }
+.paywall-plan-detail { font-size:12px; color:var(--text3); margin-top:4px; }
+.paywall-plan-saving { font-size:12px; color:var(--green); font-weight:700; margin-top:6px; }
+.paywall-features { background:var(--card); border-radius:16px; padding:16px 20px; margin-bottom:20px; }
+.paywall-features-title { font-size:13px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; }
+.paywall-feature { display:flex; align-items:center; gap:10px; padding:8px 0; font-size:14px; color:var(--text); }
+.paywall-feature-icon { font-size:16px; }
+.paywall-cta { width:100%; background:var(--blue); color:#fff; border:none; border-radius:14px; padding:16px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:12px; }
+.paywall-cta:disabled { opacity:.6; cursor:not-allowed; }
+.paywall-restore { background:none; border:none; color:var(--blue); font-size:14px; font-weight:600; cursor:pointer; width:100%; padding:10px; }
+.paywall-terms { font-size:11px; color:var(--text3); text-align:center; line-height:1.5; margin-top:16px; }
+.paywall-close { position:absolute; top:16px; right:16px; background:rgba(255,255,255,.2); border:none; border-radius:50%; width:32px; height:32px; font-size:18px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+/* ── OVERLAY DE BLOQUEIO (modo expirado) ────────────────── */
+.bloqueio-overlay { position:absolute; inset:0; background:rgba(var(--bg-rgb,28,28,30),.95); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; z-index:100; backdrop-filter:blur(4px); }
+.bloqueio-icon { font-size:48px; margin-bottom:16px; }
+.bloqueio-titulo { font-size:20px; font-weight:800; color:var(--text); text-align:center; margin-bottom:8px; }
+.bloqueio-desc { font-size:14px; color:var(--text2); text-align:center; line-height:1.5; margin-bottom:20px; max-width:280px; }
+.bloqueio-btn { background:var(--blue); color:#fff; border:none; border-radius:12px; padding:14px 28px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; }
+.bloqueio-btn:active { opacity:.8; }
+
+/* ── ONBOARDING 4 PASSOS ───────────────────────────────── */
+#screen-onboarding-novo { position:fixed; inset:0; z-index:1003; background:#111318; display:none; flex-direction:column; }
+.ob-container { flex:1; display:flex; flex-direction:column; max-width:420px; margin:0 auto; width:100%; padding:24px 20px 32px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+
+/* Progress dots */
+.ob-progress { display:flex; justify-content:center; gap:8px; margin-bottom:32px; flex-shrink:0; }
+.ob-dot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.2); transition:all .3s; }
+.ob-dot.active { background:#fff; transform:scale(1.2); }
+.ob-dot.done { background:#34C759; }
+
+/* Steps container */
+.ob-step { display:none; flex-direction:column; flex:1; animation:obFadeIn .4s ease; }
+.ob-step.active { display:flex; }
+@keyframes obFadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+/* Step 1 - Welcome */
+.ob-welcome-icon { font-size:64px; text-align:center; margin-bottom:16px; }
+.ob-welcome-title { font-size:28px; font-weight:800; color:#fff; text-align:center; margin-bottom:8px; line-height:1.2; }
+.ob-welcome-trial { font-size:15px; color:#FF9500; font-weight:600; text-align:center; margin-bottom:32px; }
+.ob-features { display:flex; flex-direction:column; gap:16px; margin-bottom:auto; padding:0 8px; }
+.ob-feature { display:flex; align-items:center; gap:14px; }
+.ob-feature-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+.ob-feature-dot.green { background:#34C759; }
+.ob-feature-dot.blue { background:#007AFF; }
+.ob-feature-dot.orange { background:#FF9500; }
+.ob-feature-dot.purple { background:#AF52DE; }
+.ob-feature-text { font-size:16px; color:rgba(255,255,255,.9); font-weight:500; }
+
+/* Step 2 - Representadas */
+.ob-section-title { font-size:22px; font-weight:800; color:#fff; margin-bottom:6px; }
+.ob-section-desc { font-size:14px; color:rgba(255,255,255,.6); line-height:1.5; margin-bottom:24px; }
+.ob-rep-list { display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+.ob-rep-item { background:rgba(255,255,255,.08); border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:12px; }
+.ob-rep-color { width:28px; height:28px; border-radius:8px; flex-shrink:0; }
+.ob-rep-nome { flex:1; font-size:15px; font-weight:600; color:#fff; }
+.ob-rep-delete { background:none; border:none; color:rgba(255,255,255,.4); font-size:20px; cursor:pointer; padding:4px 8px; }
+.ob-rep-delete:hover { color:#FF3B30; }
+.ob-add-rep { background:rgba(255,255,255,.05); border:2px dashed rgba(255,255,255,.2); border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+.ob-add-rep-row { display:flex; gap:10px; align-items:center; }
+.ob-add-rep-input { flex:1; background:rgba(255,255,255,.1); border:none; border-radius:10px; padding:12px 14px; color:#fff; font-size:15px; font-family:inherit; outline:none; }
+.ob-add-rep-input::placeholder { color:rgba(255,255,255,.35); }
+.ob-color-picker { display:flex; gap:8px; flex-wrap:wrap; }
+.ob-color-option { width:32px; height:32px; border-radius:8px; cursor:pointer; border:2px solid transparent; transition:all .15s; }
+.ob-color-option:hover { transform:scale(1.1); }
+.ob-color-option.selected { border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,.3); }
+.ob-add-rep-btn { background:#007AFF; color:#fff; border:none; border-radius:10px; padding:10px 18px; font-size:14px; font-weight:700; cursor:pointer; flex-shrink:0; }
+.ob-add-rep-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+/* Step 3 - Segmentos */
+.ob-seg-grid { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:auto; }
+.ob-seg-pill { background:rgba(255,255,255,.08); border:1.5px solid rgba(255,255,255,.15); border-radius:24px; padding:10px 18px; font-size:14px; font-weight:600; color:rgba(255,255,255,.8); cursor:pointer; transition:all .15s; }
+.ob-seg-pill:hover { background:rgba(255,255,255,.12); }
+.ob-seg-pill.selected { background:rgba(0,122,255,.3); border-color:#007AFF; color:#fff; }
+.ob-seg-custom { display:flex; gap:8px; width:100%; margin-top:16px; }
+.ob-seg-input { flex:1; background:rgba(255,255,255,.08); border:1.5px dashed rgba(255,255,255,.2); border-radius:24px; padding:10px 18px; font-size:14px; color:#fff; font-family:inherit; outline:none; }
+.ob-seg-input::placeholder { color:rgba(255,255,255,.35); }
+.ob-seg-add-btn { background:#007AFF; color:#fff; border:none; border-radius:24px; padding:10px 16px; font-size:14px; font-weight:700; cursor:pointer; }
+
+/* Step 4 - Conclusão */
+.ob-done-icon { font-size:72px; text-align:center; margin-bottom:20px; }
+.ob-done-title { font-size:26px; font-weight:800; color:#fff; text-align:center; margin-bottom:8px; }
+.ob-done-desc { font-size:15px; color:rgba(255,255,255,.6); text-align:center; line-height:1.5; margin-bottom:32px; }
+.ob-done-summary { background:rgba(255,255,255,.06); border-radius:16px; padding:20px; margin-bottom:auto; }
+.ob-done-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+.ob-done-row:last-child { border-bottom:none; }
+.ob-done-label { font-size:14px; color:rgba(255,255,255,.5); }
+.ob-done-value { font-size:15px; font-weight:700; color:#fff; }
+.ob-done-actions { display:flex; flex-direction:column; gap:12px; }
+.ob-done-btn { width:100%; border:none; border-radius:14px; padding:16px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; }
+.ob-done-btn.primary { background:#007AFF; color:#fff; }
+.ob-done-btn.secondary { background:rgba(255,255,255,.1); color:#fff; }
+.ob-done-btn.tertiary { background:none; border:1.5px solid rgba(255,255,255,.2); color:rgba(255,255,255,.8); }
+
+/* Bottom button */
+.ob-bottom { padding:20px; flex-shrink:0; }
+.ob-btn-next { width:100%; background:#007AFF; color:#fff; border:none; border-radius:14px; padding:16px; font-family:inherit; font-size:17px; font-weight:700; cursor:pointer; }
+.ob-btn-next:disabled { opacity:.5; cursor:not-allowed; }
+.ob-skip { background:none; border:none; color:rgba(255,255,255,.4); font-size:14px; cursor:pointer; width:100%; padding:12px; margin-top:8px; }
+
+/* ── MODAL CONFIG ROTA (bottom sheet) ────────────────── */
+#modal-config-rota { position:fixed; inset:0; z-index:700; background:rgba(0,0,0,.5); display:none; align-items:flex-end; backdrop-filter:blur(4px); }
+#modal-config-rota.open { display:flex; }
+.config-rota-sheet { background:var(--surface); border-radius:20px 20px 0 0; padding:20px 20px 40px; width:100%; max-height:85vh; overflow-y:auto; animation:slideUpSheet .3s ease; }
+@keyframes slideUpSheet { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.config-rota-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 20px; }
+.config-rota-titulo { font-size:20px; font-weight:800; color:var(--text); margin-bottom:6px; }
+.config-rota-desc { font-size:14px; color:var(--text3); line-height:1.5; margin-bottom:24px; }
+.config-rota-section { margin-bottom:20px; }
+.config-rota-label { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.3px; margin-bottom:8px; display:block; }
+.config-rota-input { width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; color:var(--text); font-family:inherit; font-size:15px; outline:none; -webkit-appearance:none; }
+.config-rota-input:focus { border-color:var(--blue); }
+.config-rota-input::placeholder { color:var(--text3); }
+.config-rota-row { display:flex; gap:12px; }
+.config-rota-row > div { flex:1; }
+.config-rota-cep-row { display:flex; gap:8px; margin-bottom:8px; }
+.config-rota-cep-row .config-rota-input { flex:1; }
+.config-rota-btn-cep { background:var(--blue); color:#fff; border:none; border-radius:12px; padding:0 16px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; }
+.config-rota-btn-cep:disabled { opacity:.5; }
+.config-rota-status { font-size:12px; margin-top:4px; min-height:16px; }
+.config-rota-btn-salvar { width:100%; background:var(--blue); color:#fff; border:none; border-radius:14px; padding:16px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer; margin-top:12px; }
+.config-rota-btn-salvar:disabled { opacity:.5; cursor:not-allowed; }
+
 </style>
 </head>
 <body>
+
+<!-- TELA DE PAYWALL (assinatura) -->
+<div id="screen-paywall">
+  <div class="paywall-header" style="position:relative;">
+    <button class="paywall-close" onclick="fecharPaywall()" title="Fechar">×</button>
+    <div class="paywall-icon">🚀</div>
+    <div class="paywall-title">Desbloqueie todo o potencial</div>
+    <div class="paywall-subtitle">Otimize sua rotina de vendas com recursos profissionais</div>
+  </div>
+  <div class="paywall-body">
+    <div class="paywall-plans">
+      <div class="paywall-plan" id="plan-anual" onclick="selecionarPlano('anual')">
+        <div class="paywall-plan-badge">Mais popular</div>
+        <div class="paywall-plan-name">Plano Anual</div>
+        <div class="paywall-plan-price">R$ 549,90 <small>/ano</small></div>
+        <div class="paywall-plan-detail">Equivale a R$ 45,82/mês</div>
+        <div class="paywall-plan-saving">Economia de R$ 168,90 (24%)</div>
+      </div>
+      <div class="paywall-plan selected" id="plan-mensal" onclick="selecionarPlano('mensal')">
+        <div class="paywall-plan-name">Plano Mensal</div>
+        <div class="paywall-plan-price">R$ 59,90 <small>/mês</small></div>
+        <div class="paywall-plan-detail">Cancele quando quiser</div>
+      </div>
+    </div>
+    <div class="paywall-features">
+      <div class="paywall-features-title">O que você ganha</div>
+      <div class="paywall-feature"><span class="paywall-feature-icon">✅</span> Check-in de visitas ilimitado</div>
+      <div class="paywall-feature"><span class="paywall-feature-icon">🗺️</span> Rotas otimizadas no Planner</div>
+      <div class="paywall-feature"><span class="paywall-feature-icon">📊</span> Relatórios completos</div>
+      <div class="paywall-feature"><span class="paywall-feature-icon">💰</span> Controle financeiro</div>
+      <div class="paywall-feature"><span class="paywall-feature-icon">📋</span> Pedidos e orçamentos</div>
+      <div class="paywall-feature"><span class="paywall-feature-icon">☁️</span> Sincronização na nuvem</div>
+    </div>
+    <button class="paywall-cta" id="paywall-cta-btn" onclick="iniciarCompra()">Assinar agora</button>
+    <button class="paywall-restore" onclick="restaurarCompra()">Restaurar compra</button>
+    <div class="paywall-terms">
+      Ao assinar, você concorda com os <a href="termos.html" target="_blank">Termos de Uso</a>.<br>
+      O pagamento será processado de forma segura. Cancele a qualquer momento.
+    </div>
+  </div>
+</div>
+
 <!-- TELA DE ACEITE DE TERMOS (primeiro acesso) -->
 <div id="screen-termos">
   <div class="termos-header">
@@ -1046,13 +1232,115 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     </div>
     <div class="termos-aviso">
       Ao continuar, você declara que leu e concorda com a
-      <a href="privacidade.html" target="_blank">Política de Privacidade</a>
+      <a href="https://minharotarp.com.br/privacidade.html" target="_blank">Política de Privacidade</a>
       e os
-      <a href="termos.html" target="_blank">Termos de Uso</a>
+      <a href="https://minharotarp.com.br/termos.html" target="_blank">Termos de Uso</a>
       do Minha Rota RP.
     </div>
     <button class="termos-btn" onclick="aceitarTermos()">✓ Li e aceito</button>
     <div class="termos-rodape">Você só verá esta tela uma vez</div>
+    <div class="termos-rodape" style="margin-top:16px;">Suporte: <a href="mailto:contato@minharotarp.com.br" style="color:rgba(255,255,255,.5);text-decoration:none;">contato@minharotarp.com.br</a></div>
+  </div>
+</div>
+
+<!-- ONBOARDING 4 PASSOS (novo) -->
+<div id="screen-onboarding-novo">
+  <div class="ob-container">
+    <!-- Progress dots -->
+    <div class="ob-progress">
+      <div class="ob-dot active" data-step="1"></div>
+      <div class="ob-dot" data-step="2"></div>
+      <div class="ob-dot" data-step="3"></div>
+      <div class="ob-dot" data-step="4"></div>
+    </div>
+
+    <!-- PASSO 1 - Boas vindas -->
+    <div class="ob-step active" id="ob-step-1">
+      <div class="ob-welcome-icon">🚀</div>
+      <div class="ob-welcome-title">Bem-vindo ao<br>Minha Rota RP!</div>
+      <div class="ob-welcome-trial">🎁 7 dias grátis para testar tudo</div>
+      <div class="ob-features">
+        <div class="ob-feature">
+          <div class="ob-feature-dot green"></div>
+          <div class="ob-feature-text">Organize sua carteira de clientes</div>
+        </div>
+        <div class="ob-feature">
+          <div class="ob-feature-dot blue"></div>
+          <div class="ob-feature-text">Registre visitas com check-in GPS</div>
+        </div>
+        <div class="ob-feature">
+          <div class="ob-feature-dot orange"></div>
+          <div class="ob-feature-text">Planeje rotas otimizadas</div>
+        </div>
+        <div class="ob-feature">
+          <div class="ob-feature-dot purple"></div>
+          <div class="ob-feature-text">Relatórios e controle financeiro</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASSO 2 - Representadas -->
+    <div class="ob-step" id="ob-step-2">
+      <div class="ob-section-title">Suas representadas</div>
+      <div class="ob-section-desc">Adicione as empresas que você representa. Cada uma terá uma cor para identificação nos pedidos.</div>
+      <div class="ob-rep-list" id="ob-rep-list"></div>
+      <div class="ob-add-rep">
+        <div class="ob-add-rep-row">
+          <input type="text" class="ob-add-rep-input" id="ob-rep-nome" placeholder="Nome da empresa" maxlength="50">
+          <button class="ob-add-rep-btn" id="ob-add-rep-btn" onclick="obAdicionarRep()">Adicionar</button>
+        </div>
+        <div class="ob-color-picker" id="ob-color-picker"></div>
+      </div>
+    </div>
+
+    <!-- PASSO 3 - Segmentos -->
+    <div class="ob-step" id="ob-step-3">
+      <div class="ob-section-title">Segmentos de clientes</div>
+      <div class="ob-section-desc">Selecione os segmentos com os quais você trabalha para organizar sua carteira.</div>
+      <div class="ob-seg-grid" id="ob-seg-grid"></div>
+      <div class="ob-seg-custom">
+        <input type="text" class="ob-seg-input" id="ob-seg-novo" placeholder="Outro segmento...">
+        <button class="ob-seg-add-btn" onclick="obAdicionarSegmento()">+</button>
+      </div>
+    </div>
+
+    <!-- PASSO 4 - Conclusão -->
+    <div class="ob-step" id="ob-step-4">
+      <div class="ob-done-icon">🎉</div>
+      <div class="ob-done-title">Tudo pronto!</div>
+      <div class="ob-done-desc">Seu app está configurado. Comece agora a organizar suas vendas.</div>
+      <div class="ob-done-summary">
+        <div class="ob-done-row">
+          <span class="ob-done-label">Representadas</span>
+          <span class="ob-done-value" id="ob-summary-reps">0</span>
+        </div>
+        <div class="ob-done-row">
+          <span class="ob-done-label">Segmentos</span>
+          <span class="ob-done-value" id="ob-summary-segs">0</span>
+        </div>
+        <div class="ob-done-row">
+          <span class="ob-done-label">Período trial</span>
+          <span class="ob-done-value" style="color:#FF9500;">7 dias grátis</span>
+        </div>
+      </div>
+      <div class="ob-done-actions">
+        <button class="ob-done-btn primary" onclick="obConcluirComCliente()">
+          <span>👥</span> Cadastrar primeiro cliente
+        </button>
+        <button class="ob-done-btn secondary" onclick="obConcluirComRota()">
+          <span>🗺️</span> Planejar primeira rota
+        </button>
+        <button class="ob-done-btn tertiary" onclick="obConcluirExplorar()">
+          Explorar o app
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botão de próximo (passos 1-3) -->
+  <div class="ob-bottom" id="ob-bottom-nav">
+    <button class="ob-btn-next" id="ob-btn-next" onclick="obProximoPasso()">Começar agora</button>
+    <button class="ob-skip" onclick="obPularOnboarding()">Pular configuração</button>
   </div>
 </div>
 
@@ -1072,7 +1360,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
       <button class="login-btn login-btn-secundario" onclick="abrirCadastro()">Criar conta</button>
       <div class="login-esqueci" onclick="esqueceuSenha()">Esqueci minha senha</div>
     </div>
-    <div class="login-versao">Minha Rota RP v1.0</div>
+    <div class="login-versao">Minha Rota RP v1.0.0</div>
   </div>
 </div>
 
@@ -1130,6 +1418,14 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 </div>
 
 <div id="app">
+
+  <!-- BANNER DE TRIAL -->
+  <div id="trial-banner" class="trial-banner" style="display:none;">
+    <div class="trial-banner-text">
+      <span id="trial-banner-msg">🎁 Trial gratuito: <span class="trial-banner-days" id="trial-dias">7</span> dias restantes</span>
+    </div>
+    <button class="trial-banner-btn" onclick="abrirPaywall()">Ver planos</button>
+  </div>
 
   <div class="app-header">
     <div class="header-top">
@@ -1570,8 +1866,47 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
   <div class="rota-detalhe-header">
     <button onclick="fecharDetalheRota()" style="background:none;border:none;color:var(--blue);font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;">← Voltar</button>
     <div id="rota-detalhe-title" style="font-size:17px;font-weight:700;color:var(--text);flex:1;margin-left:8px;"></div>
+    <button id="rota-detalhe-editar" onclick="editarRotaAtual()" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">✏️ Editar</button>
   </div>
   <div class="rota-detalhe-body" id="rota-detalhe-body"></div>
+</div>
+
+<!-- MODAL CONFIG ROTA (bottom sheet) -->
+<div id="modal-config-rota" onclick="if(event.target===this)fecharConfigRota()">
+  <div class="config-rota-sheet">
+    <div class="config-rota-handle"></div>
+    <div class="config-rota-titulo">Configure sua base</div>
+    <div class="config-rota-desc">Precisamos do seu endereço base e dados do veículo para calcular rotas otimizadas.</div>
+
+    <div class="config-rota-section">
+      <label class="config-rota-label">CEP</label>
+      <div class="config-rota-cep-row">
+        <input type="text" class="config-rota-input" id="cfg-rota-cep" placeholder="00000-000" maxlength="9" oninput="cfgRotaMascaraCep(this)">
+        <button class="config-rota-btn-cep" id="cfg-rota-btn-cep" onclick="cfgRotaBuscarCep()">Buscar</button>
+      </div>
+      <div class="config-rota-status" id="cfg-rota-cep-status"></div>
+    </div>
+
+    <div class="config-rota-section">
+      <label class="config-rota-label">Endereço completo</label>
+      <input type="text" class="config-rota-input" id="cfg-rota-endereco" placeholder="Rua, número, bairro, cidade - UF">
+    </div>
+
+    <div class="config-rota-section">
+      <div class="config-rota-row">
+        <div>
+          <label class="config-rota-label">Km/litro do carro</label>
+          <input type="number" class="config-rota-input" id="cfg-rota-media" step="0.1" placeholder="10.0" value="10">
+        </div>
+        <div>
+          <label class="config-rota-label">Preço gasolina R$</label>
+          <input type="number" class="config-rota-input" id="cfg-rota-gasolina" step="0.01" placeholder="6.00" value="6.00">
+        </div>
+      </div>
+    </div>
+
+    <button class="config-rota-btn-salvar" id="cfg-rota-btn-salvar" onclick="cfgRotaSalvar()">Salvar e continuar</button>
+  </div>
 </div>
 
 <!-- ONBOARDING -->
@@ -1681,10 +2016,498 @@ function debugError(...args) { if (isDev) console.error(...args); }
 
 // ── SUPABASE ─────────────────────────────────────────────
 const { createClient } = window.supabase || supabase;
-const sb = createClient('https://byglymeulgeomoldhrrh.supabase.co', 'sb_publishable_N7Es1GU_4yUNpun4qQDkWQ_4Lhl-6Ii');
+const sb = createClient('https://fiwpmhrjbovnazagjcjf.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpd3BtaHJqYm92bmF6YWdqY2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxNDI1MzAsImV4cCI6MjA4OTcxODUzMH0.pHgiICZzqoeLq5uez8_3WwfurHuouV_Cp9kz1ThRsFs');
 let currentUser  = null;
 let currentRep   = null;
 let _repIdCache  = null;
+
+// ── FREEMIUM / TRIAL ─────────────────────────────────────
+const TRIAL_DIAS = 7;
+const PLANO_MENSAL_PRECO = 59.90;
+const PLANO_ANUAL_PRECO = 549.90;
+let _planoSelecionado = 'mensal';
+
+// Calcula dias restantes do trial (retorna número negativo se expirou)
+function calcularDiasTrial() {
+  if (!currentRep?.trial_inicio) return TRIAL_DIAS;
+  const inicio = new Date(currentRep.trial_inicio);
+  const hoje = new Date();
+  const diffMs = hoje - inicio;
+  const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  return TRIAL_DIAS - diffDias;
+}
+
+// Verifica se o usuário tem acesso completo (trial ativo ou plano pago)
+function temAcessoCompleto() {
+  if (!currentRep) return false;
+  // Plano pago ativo
+  if (currentRep.plano === 'mensal' || currentRep.plano === 'anual') return true;
+  // Trial ainda válido
+  return calcularDiasTrial() > 0;
+}
+
+// Verifica se está em trial (não tem plano pago mas trial ativo)
+function estaEmTrial() {
+  if (!currentRep) return false;
+  if (currentRep.plano === 'mensal' || currentRep.plano === 'anual') return false;
+  return calcularDiasTrial() > 0;
+}
+
+// Verifica se o trial expirou sem plano
+function trialExpirou() {
+  if (!currentRep) return false;
+  if (currentRep.plano === 'mensal' || currentRep.plano === 'anual') return false;
+  return calcularDiasTrial() <= 0;
+}
+
+// Retorna status do plano: 'ativo', 'trial' ou 'expirado'
+function getStatusPlano() {
+  if (!currentRep) return 'expirado';
+  if (currentRep.plano === 'mensal' || currentRep.plano === 'anual') return 'ativo';
+  if (calcularDiasTrial() > 0) return 'trial';
+  return 'expirado';
+}
+
+// Constantes do modo gratuito (expirado)
+const LIMITE_CLIENTES_FREE = 15;
+const LIMITE_HISTORICO_DIAS_FREE = 30;
+
+// Atualiza o banner de trial no topo
+function atualizarBannerTrial() {
+  const banner = document.getElementById('trial-banner');
+  const msgEl = document.getElementById('trial-banner-msg');
+  const diasEl = document.getElementById('trial-dias');
+  if (!banner || !currentRep) { if(banner) banner.style.display = 'none'; return; }
+
+  const diasRestantes = calcularDiasTrial();
+  const temPlano = currentRep.plano === 'mensal' || currentRep.plano === 'anual';
+
+  if (temPlano) {
+    // Plano ativo - banner verde (opcional, pode ocultar)
+    banner.style.display = 'none';
+    return;
+  }
+
+  banner.style.display = 'flex';
+  banner.classList.remove('expired', 'active-plan');
+
+  if (diasRestantes > 0) {
+    // Trial ativo
+    msgEl.innerHTML = `🎁 Trial gratuito: <span class="trial-banner-days">${diasRestantes}</span> dia${diasRestantes !== 1 ? 's' : ''} restante${diasRestantes !== 1 ? 's' : ''}`;
+  } else {
+    // Trial expirado
+    banner.classList.add('expired');
+    msgEl.innerHTML = '⚠️ Seu trial expirou. Assine para continuar usando.';
+  }
+}
+
+// Abre a tela de paywall
+function abrirPaywall() {
+  const paywall = document.getElementById('screen-paywall');
+  if (paywall) {
+    paywall.style.display = 'flex';
+    selecionarPlano('mensal');
+  }
+}
+
+// Fecha a tela de paywall
+function fecharPaywall() {
+  const paywall = document.getElementById('screen-paywall');
+  if (paywall) paywall.style.display = 'none';
+}
+
+// Seleciona um plano no paywall
+function selecionarPlano(plano) {
+  _planoSelecionado = plano;
+  const planMensal = document.getElementById('plan-mensal');
+  const planAnual = document.getElementById('plan-anual');
+  if (planMensal) planMensal.classList.toggle('selected', plano === 'mensal');
+  if (planAnual) planAnual.classList.toggle('selected', plano === 'anual');
+}
+
+// ── REVENUECAT INTEGRATION ─────────────────────────────
+const REVENUECAT_API_KEY = 'test_LdgSCheoRkYWQjsVXvimHlcCwDR';
+const REVENUECAT_ENTITLEMENT = 'Minha Rota RP Pro';
+
+let revenueCatInitialized = false;
+let revenueCatOfferings = null;
+
+// Verifica se está rodando no Capacitor
+function isNativePlatform() {
+  return typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+}
+
+// Inicializa RevenueCat após login
+async function inicializarRevenueCat() {
+  if (!isNativePlatform()) {
+    console.log('[RevenueCat] Web - skipping initialization');
+    return false;
+  }
+
+  if (revenueCatInitialized) return true;
+
+  try {
+    const { Purchases } = await import('@revenuecat/purchases-capacitor');
+
+    // Configura com API Key e User ID
+    await Purchases.configure({
+      apiKey: REVENUECAT_API_KEY,
+      appUserID: currentUser?.id || null
+    });
+
+    console.log('[RevenueCat] Initialized for user:', currentUser?.id);
+    revenueCatInitialized = true;
+
+    // Carrega offerings
+    await carregarOfferings();
+
+    return true;
+  } catch (e) {
+    console.error('[RevenueCat] Init error:', e);
+    return false;
+  }
+}
+
+// Carrega offerings (pacotes disponíveis)
+async function carregarOfferings() {
+  if (!isNativePlatform() || !revenueCatInitialized) return;
+
+  try {
+    const { Purchases } = await import('@revenuecat/purchases-capacitor');
+    const offerings = await Purchases.getOfferings();
+    revenueCatOfferings = offerings.current;
+    console.log('[RevenueCat] Offerings loaded:', revenueCatOfferings);
+  } catch (e) {
+    console.error('[RevenueCat] Error loading offerings:', e);
+  }
+}
+
+// Verifica assinatura ativa no RevenueCat
+async function verificarAssinaturaRevenueCat() {
+  if (!isNativePlatform()) {
+    console.log('[RevenueCat] Web - usando verificação local');
+    return false;
+  }
+
+  if (!revenueCatInitialized) {
+    await inicializarRevenueCat();
+  }
+
+  try {
+    const { Purchases } = await import('@revenuecat/purchases-capacitor');
+    const customerInfo = await Purchases.getCustomerInfo();
+
+    // Verifica se tem o entitlement ativo
+    const entitlements = customerInfo.customerInfo?.entitlements?.active || {};
+    const temAssinatura = !!entitlements[REVENUECAT_ENTITLEMENT];
+
+    console.log('[RevenueCat] Has subscription:', temAssinatura, entitlements);
+
+    if (temAssinatura && currentRep) {
+      // Atualiza plano no Supabase se necessário
+      if (currentRep.plano !== 'ativo') {
+        await sb.from('representantes').update({
+          plano: 'ativo',
+          plano_inicio: new Date().toISOString()
+        }).eq('id', currentRep.id);
+
+        currentRep.plano = 'ativo';
+        currentRep.plano_inicio = new Date().toISOString();
+        console.log('[RevenueCat] Updated plan to active in Supabase');
+      }
+      return true;
+    }
+
+    return false;
+  } catch (e) {
+    console.error('[RevenueCat] Error checking subscription:', e);
+    return false;
+  }
+}
+
+// Compra pacote via RevenueCat
+async function comprarPacoteRevenueCat(tipo) {
+  if (!isNativePlatform()) {
+    return { success: false, message: 'Pagamento disponível apenas no app' };
+  }
+
+  if (!revenueCatInitialized) {
+    await inicializarRevenueCat();
+  }
+
+  if (!revenueCatOfferings) {
+    await carregarOfferings();
+  }
+
+  try {
+    const { Purchases } = await import('@revenuecat/purchases-capacitor');
+
+    // Encontra o pacote correto (monthly ou annual)
+    const packageType = tipo === 'anual' ? 'ANNUAL' : 'MONTHLY';
+    const pkg = revenueCatOfferings?.availablePackages?.find(p =>
+      p.packageType === packageType
+    );
+
+    if (!pkg) {
+      console.error('[RevenueCat] Package not found:', packageType);
+      return { success: false, message: 'Pacote não encontrado' };
+    }
+
+    console.log('[RevenueCat] Purchasing package:', pkg);
+    const result = await Purchases.purchasePackage({ aPackage: pkg });
+
+    // Verifica se a compra foi bem-sucedida
+    const entitlements = result.customerInfo?.entitlements?.active || {};
+    const temAssinatura = !!entitlements[REVENUECAT_ENTITLEMENT];
+
+    if (temAssinatura) {
+      return { success: true };
+    } else {
+      return { success: false, message: 'Compra não confirmada' };
+    }
+  } catch (e) {
+    console.error('[RevenueCat] Purchase error:', e);
+
+    // Trata cancelamento pelo usuário
+    if (e.code === 'PURCHASE_CANCELLED' || e.userCancelled) {
+      return { success: false, message: 'Compra cancelada' };
+    }
+
+    return { success: false, message: e.message || 'Erro na compra' };
+  }
+}
+
+// Restaura compras via RevenueCat
+async function restaurarComprasRevenueCat() {
+  if (!isNativePlatform()) {
+    return { success: false, message: 'Restaurar disponível apenas no app' };
+  }
+
+  if (!revenueCatInitialized) {
+    await inicializarRevenueCat();
+  }
+
+  try {
+    const { Purchases } = await import('@revenuecat/purchases-capacitor');
+    const customerInfo = await Purchases.restorePurchases();
+
+    const entitlements = customerInfo.customerInfo?.entitlements?.active || {};
+    const temAssinatura = !!entitlements[REVENUECAT_ENTITLEMENT];
+
+    if (temAssinatura) {
+      // Atualiza no Supabase
+      if (currentRep && currentRep.plano !== 'ativo') {
+        await sb.from('representantes').update({
+          plano: 'ativo',
+          plano_inicio: new Date().toISOString()
+        }).eq('id', currentRep.id);
+
+        currentRep.plano = 'ativo';
+        currentRep.plano_inicio = new Date().toISOString();
+      }
+      return { success: true };
+    }
+
+    return { success: false, message: 'Nenhuma compra encontrada' };
+  } catch (e) {
+    console.error('[RevenueCat] Restore error:', e);
+    return { success: false, message: e.message || 'Erro ao restaurar' };
+  }
+}
+
+// IDs dos produtos (para referência/fallback)
+const RC_PRODUCTS = {
+  mensal: 'minharotarp_pro_monthly',
+  anual: 'minharotarp_pro_yearly'
+};
+
+// Inicia processo de compra via RevenueCat
+async function iniciarCompra() {
+  const btn = document.getElementById('paywall-cta-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Processando...'; }
+
+  try {
+    // Usa RevenueCat no app nativo
+    if (isNativePlatform()) {
+      const result = await comprarPacoteRevenueCat(_planoSelecionado);
+
+      if (result.success) {
+        await salvarPlanoUsuario('ativo');
+        showToast('Assinatura ativada com sucesso!');
+        fecharPaywall();
+        atualizarBannerTrial();
+        aplicarBloqueiosExpirado(); // Remove bloqueios
+      } else {
+        showToast(result.message || 'Erro ao processar pagamento');
+      }
+    } else {
+      // Web fallback: simula ativação para teste (REMOVER EM PRODUÇÃO)
+      if (isDev) {
+        await salvarPlanoUsuario(_planoSelecionado);
+        showToast('(DEV) Plano ativado para teste');
+        fecharPaywall();
+        atualizarBannerTrial();
+        aplicarBloqueiosExpirado();
+      } else {
+        showToast('Pagamento disponível apenas no app');
+      }
+    }
+  } catch (e) {
+    console.error('Erro na compra:', e);
+    showToast('Erro ao processar pagamento');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Assinar agora'; }
+  }
+}
+
+// Restaura compra anterior via RevenueCat
+async function restaurarCompra() {
+  const btn = document.querySelector('.paywall-restore');
+  if (btn) btn.textContent = 'Restaurando...';
+
+  try {
+    if (isNativePlatform()) {
+      const result = await restaurarComprasRevenueCat();
+
+      if (result.success) {
+        showToast('Compra restaurada!');
+        atualizarBannerTrial();
+        aplicarBloqueiosExpirado();
+        fecharPaywall();
+      } else {
+        showToast(result.message || 'Nenhuma compra encontrada');
+      }
+    } else {
+      showToast('Restaurar disponível apenas no app');
+    }
+  } catch (e) {
+    console.error('Erro ao restaurar:', e);
+    showToast('Erro ao restaurar compra');
+  } finally {
+    if (btn) btn.textContent = 'Restaurar compra';
+  }
+}
+
+// Salva o plano no Supabase
+async function salvarPlanoUsuario(plano) {
+  if (!currentRep) return;
+  const { error } = await sb.from('representantes').update({
+    plano: plano,
+    plano_inicio: new Date().toISOString()
+  }).eq('id', currentRep.id);
+
+  if (!error) {
+    currentRep.plano = plano;
+    currentRep.plano_inicio = new Date().toISOString();
+  }
+}
+
+// Inicializa trial para novo usuário
+async function inicializarTrial() {
+  if (!currentRep || currentRep.trial_inicio) return;
+  const { error } = await sb.from('representantes').update({
+    trial_inicio: new Date().toISOString()
+  }).eq('id', currentRep.id);
+
+  if (!error) {
+    currentRep.trial_inicio = new Date().toISOString();
+  }
+}
+
+// Verifica acesso antes de ação bloqueável (check-in, rotas)
+function verificarAcessoOuPaywall(acao = 'esta funcionalidade') {
+  if (temAcessoCompleto()) return true;
+  showToast(`Seu trial expirou. Assine para usar ${acao}.`);
+  abrirPaywall();
+  return false;
+}
+
+// Cria overlay de bloqueio dentro de um container
+function criarOverlayBloqueio(containerId, icone, titulo, descricao) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  // Remove overlay existente se houver
+  const existente = container.querySelector('.bloqueio-overlay');
+  if (existente) existente.remove();
+
+  // Garante position relative no container
+  if (getComputedStyle(container).position === 'static') {
+    container.style.position = 'relative';
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'bloqueio-overlay';
+  overlay.innerHTML = `
+    <div class="bloqueio-icon">${icone}</div>
+    <div class="bloqueio-titulo">${titulo}</div>
+    <div class="bloqueio-desc">${descricao}</div>
+    <button class="bloqueio-btn" onclick="abrirPaywall()">Ver planos</button>
+  `;
+  container.appendChild(overlay);
+}
+
+// Remove overlay de bloqueio
+function removerOverlayBloqueio(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const overlay = container.querySelector('.bloqueio-overlay');
+  if (overlay) overlay.remove();
+}
+
+// Verifica e aplica bloqueios nas abas quando expirado
+function aplicarBloqueiosExpirado() {
+  const status = getStatusPlano();
+
+  if (status === 'expirado') {
+    // Bloqueia aba Relatórios
+    criarOverlayBloqueio('screen-report', '📊', 'Relatórios bloqueados',
+      'Assine para acessar relatórios completos de vendas, visitas e desempenho.');
+
+    // Bloqueia aba Finanças
+    criarOverlayBloqueio('screen-financas', '💰', 'Finanças bloqueadas',
+      'Assine para controlar suas receitas, despesas e impostos.');
+  } else {
+    // Remove bloqueios se tem acesso
+    removerOverlayBloqueio('screen-report');
+    removerOverlayBloqueio('screen-financas');
+  }
+}
+
+// Verifica se pode exportar PDF/Excel
+function podeExportar() {
+  if (getStatusPlano() === 'expirado') {
+    showToast('Exportação bloqueada. Assine para exportar relatórios.');
+    abrirPaywall();
+    return false;
+  }
+  return true;
+}
+
+// Verifica limite de clientes no modo gratuito
+function podeCadastrarCliente() {
+  if (getStatusPlano() !== 'expirado') return true;
+
+  const qtdClientes = clientes?.length || 0;
+  if (qtdClientes >= LIMITE_CLIENTES_FREE) {
+    showToast(`Limite de ${LIMITE_CLIENTES_FREE} clientes atingido. Assine para cadastrar mais.`);
+    abrirPaywall();
+    return false;
+  }
+  return true;
+}
+
+// Filtra histórico de visitas por limite de dias quando expirado
+function filtrarHistoricoPorPlano(visitas) {
+  if (getStatusPlano() !== 'expirado' || !visitas?.length) return visitas;
+
+  const limiteDias = LIMITE_HISTORICO_DIAS_FREE;
+  const dataLimite = new Date();
+  dataLimite.setDate(dataLimite.getDate() - limiteDias);
+  const dataLimiteStr = dataLimite.toISOString().slice(0, 10);
+
+  return visitas.filter(v => v.data >= dataLimiteStr);
+}
 
 // ── AUTH ─────────────────────────────────────────────────
 let _appJaIniciou = false; // true assim que o fluxo principal (getSession ou fazerLogin) assumiu
@@ -1913,6 +2736,12 @@ async function esconderLogin() {
     const emailEl = document.getElementById('config-user-email');
     if (emailEl && currentUser) emailEl.textContent = currentUser.email;
   } catch(e) {}
+
+  // Inicializa RevenueCat (apenas em plataformas nativas)
+  if (isNativePlatform() && currentUser) {
+    inicializarRevenueCat().catch(e => console.warn('[RevenueCat] Init failed:', e));
+  }
+
   loadClientes().then(() => sincronizarUltimasVisitas());
   carregarLembretesSupabase();
   iniciarTarefas();
@@ -1924,6 +2753,20 @@ async function esconderLogin() {
   if (currentRep) carregarImpostos().then(verificarLembretes);
   carregarCompromissos().then(verificarAvancoParcelas);
   setTimeout(verificarBannerTarefas, 2000);
+
+  // Freemium: verifica assinatura RevenueCat primeiro, depois trial/bloqueios
+  if (currentRep) {
+    // Verifica assinatura no RevenueCat (atualiza plano no Supabase se ativo)
+    const temAssinatura = await verificarAssinaturaRevenueCat();
+
+    if (!temAssinatura) {
+      // Se não tem assinatura ativa, inicializa trial normalmente
+      inicializarTrial();
+    }
+
+    atualizarBannerTrial();
+    aplicarBloqueiosExpirado();
+  }
 }
 
 function mostrarLogin() {
@@ -1948,7 +2791,8 @@ function aceitarTermos() {
 function verificarOnboarding() {
   if (!currentRep) return;
   if (!currentRep.onboarding_ok) {
-    document.getElementById('screen-onboarding').style.display = 'flex';
+    // Usa o novo onboarding de 4 passos
+    obIniciarOnboarding();
   }
 }
 
@@ -2001,6 +2845,404 @@ async function obSalvar() {
 
 function obPular() {
   document.getElementById('screen-onboarding').style.display = 'none';
+}
+
+// ── ONBOARDING 4 PASSOS (novo) ─────────────────────────────
+let obPassoAtual = 1;
+let obRepresentadas = [];
+let obSegmentosSelecionados = [];
+let obCorSelecionada = '#007AFF';
+
+const OB_CORES = ['#007AFF','#34C759','#FF9500','#FF3B30','#AF52DE','#5856D6','#FF2D55','#00C7BE','#FF6B00','#8E8E93'];
+const OB_SEGMENTOS_PADRAO = [
+  'Mat. Construção','Construtora','Loja Agrícola','Ferragem','Tintas',
+  'Elétrica','Hidráulica','Madeireira','Atacadista','Varejo','Indústria','Outros'
+];
+
+function obIniciarOnboarding() {
+  obPassoAtual = 1;
+  obRepresentadas = [];
+  obSegmentosSelecionados = [];
+  obCorSelecionada = OB_CORES[0];
+
+  // Renderiza color picker
+  const picker = document.getElementById('ob-color-picker');
+  picker.innerHTML = OB_CORES.map((c, i) =>
+    `<div class="ob-color-option${i===0?' selected':''}" style="background:${c}" data-cor="${c}" onclick="obSelecionarCor('${c}',this)"></div>`
+  ).join('');
+
+  // Renderiza segmentos padrão
+  const grid = document.getElementById('ob-seg-grid');
+  grid.innerHTML = OB_SEGMENTOS_PADRAO.map(s =>
+    `<div class="ob-seg-pill" data-seg="${s}" onclick="obToggleSegmento(this)">${s}</div>`
+  ).join('');
+
+  // Reset visual
+  obAtualizarUI();
+  document.getElementById('screen-onboarding-novo').style.display = 'flex';
+}
+
+function obAtualizarUI() {
+  // Atualiza dots de progresso
+  document.querySelectorAll('.ob-dot').forEach((d, i) => {
+    const step = i + 1;
+    d.classList.remove('active', 'done');
+    if (step === obPassoAtual) d.classList.add('active');
+    else if (step < obPassoAtual) d.classList.add('done');
+  });
+
+  // Mostra/esconde passos
+  document.querySelectorAll('.ob-step').forEach((s, i) => {
+    s.classList.toggle('active', i + 1 === obPassoAtual);
+  });
+
+  // Atualiza botão
+  const btn = document.getElementById('ob-btn-next');
+  const bottomNav = document.getElementById('ob-bottom-nav');
+
+  if (obPassoAtual === 4) {
+    bottomNav.style.display = 'none';
+  } else {
+    bottomNav.style.display = 'block';
+    const textos = ['Começar agora', 'Continuar', 'Finalizar configuração'];
+    btn.textContent = textos[obPassoAtual - 1] || 'Continuar';
+  }
+
+  // Atualiza lista de representadas
+  obRenderizarRepresentadas();
+
+  // Atualiza resumo no passo 4
+  if (obPassoAtual === 4) {
+    document.getElementById('ob-summary-reps').textContent = obRepresentadas.length;
+    document.getElementById('ob-summary-segs').textContent = obSegmentosSelecionados.length;
+  }
+}
+
+function obProximoPasso() {
+  if (obPassoAtual < 4) {
+    obPassoAtual++;
+    obAtualizarUI();
+  }
+}
+
+function obSelecionarCor(cor, el) {
+  obCorSelecionada = cor;
+  document.querySelectorAll('.ob-color-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function obAdicionarRep() {
+  const input = document.getElementById('ob-rep-nome');
+  const nome = input.value.trim();
+  if (!nome) return;
+  if (obRepresentadas.length >= 10) { showToast('Máximo 10 representadas'); return; }
+
+  obRepresentadas.push({ nome, cor: obCorSelecionada });
+  input.value = '';
+
+  // Seleciona próxima cor disponível
+  const usadas = obRepresentadas.map(r => r.cor);
+  const proxima = OB_CORES.find(c => !usadas.includes(c)) || OB_CORES[0];
+  const proxEl = document.querySelector(`.ob-color-option[data-cor="${proxima}"]`);
+  if (proxEl) obSelecionarCor(proxima, proxEl);
+
+  obRenderizarRepresentadas();
+}
+
+function obRemoverRep(idx) {
+  obRepresentadas.splice(idx, 1);
+  obRenderizarRepresentadas();
+}
+
+function obRenderizarRepresentadas() {
+  const lista = document.getElementById('ob-rep-list');
+  if (!lista) return;
+
+  if (obRepresentadas.length === 0) {
+    lista.innerHTML = '';
+    return;
+  }
+
+  lista.innerHTML = obRepresentadas.map((r, i) => `
+    <div class="ob-rep-item">
+      <div class="ob-rep-color" style="background:${r.cor}"></div>
+      <div class="ob-rep-nome">${sanitize(r.nome)}</div>
+      <button class="ob-rep-delete" onclick="obRemoverRep(${i})">×</button>
+    </div>
+  `).join('');
+}
+
+function obToggleSegmento(el) {
+  const seg = el.dataset.seg;
+  el.classList.toggle('selected');
+
+  if (el.classList.contains('selected')) {
+    if (!obSegmentosSelecionados.includes(seg)) obSegmentosSelecionados.push(seg);
+  } else {
+    obSegmentosSelecionados = obSegmentosSelecionados.filter(s => s !== seg);
+  }
+}
+
+function obAdicionarSegmento() {
+  const input = document.getElementById('ob-seg-novo');
+  const nome = input.value.trim();
+  if (!nome) return;
+  if (obSegmentosSelecionados.includes(nome)) { input.value = ''; return; }
+
+  // Adiciona pill customizado
+  const grid = document.getElementById('ob-seg-grid');
+  const pill = document.createElement('div');
+  pill.className = 'ob-seg-pill selected';
+  pill.dataset.seg = nome;
+  pill.textContent = nome;
+  pill.onclick = function() { obToggleSegmento(this); };
+  grid.appendChild(pill);
+
+  obSegmentosSelecionados.push(nome);
+  input.value = '';
+}
+
+async function obSalvarDadosOnboarding() {
+  if (!currentRep) return;
+
+  try {
+    // Salva representadas no Supabase
+    for (const rep of obRepresentadas) {
+      await sb.from('representadas').insert({
+        rep_id: currentRep.id,
+        nome: rep.nome,
+        cor: rep.cor
+      });
+    }
+
+    // Salva segmentos no Supabase
+    for (const seg of obSegmentosSelecionados) {
+      // Verifica se já existe
+      const { data: existe } = await sb.from('segmentos')
+        .select('id')
+        .eq('rep_id', currentRep.id)
+        .eq('nome', seg)
+        .maybeSingle();
+
+      if (!existe) {
+        await sb.from('segmentos').insert({
+          rep_id: currentRep.id,
+          nome: seg
+        });
+      }
+    }
+
+    // Marca onboarding como concluído e inicia trial
+    const agora = new Date().toISOString();
+    await sb.from('representantes').update({
+      onboarding_ok: true,
+      trial_inicio: agora
+    }).eq('id', currentRep.id);
+
+    currentRep.onboarding_ok = true;
+    currentRep.trial_inicio = agora;
+
+    // Atualiza caches locais
+    if (obRepresentadas.length > 0) {
+      const { data: reps } = await sb.from('representadas').select('*').eq('rep_id', currentRep.id);
+      if (reps) representadasCache = reps;
+    }
+    if (obSegmentosSelecionados.length > 0) {
+      const { data: segs } = await sb.from('segmentos').select('*').eq('rep_id', currentRep.id);
+      if (segs) segmentosCache = segs;
+    }
+
+    return true;
+  } catch(e) {
+    console.error('Erro ao salvar onboarding:', e);
+    showToast('Erro ao salvar configuração');
+    return false;
+  }
+}
+
+async function obConcluirComCliente() {
+  const btn = event.target;
+  btn.disabled = true;
+
+  if (await obSalvarDadosOnboarding()) {
+    document.getElementById('screen-onboarding-novo').style.display = 'none';
+    showToast('✓ Configuração salva!');
+    abrirCadastro(); // Abre tela de cadastro de cliente
+  }
+  btn.disabled = false;
+}
+
+async function obConcluirComRota() {
+  const btn = event.target;
+  btn.disabled = true;
+
+  if (await obSalvarDadosOnboarding()) {
+    document.getElementById('screen-onboarding-novo').style.display = 'none';
+    showToast('✓ Configuração salva!');
+    navigateTo('planner'); // Vai para o planner
+  }
+  btn.disabled = false;
+}
+
+async function obConcluirExplorar() {
+  const btn = event.target;
+  btn.disabled = true;
+
+  if (await obSalvarDadosOnboarding()) {
+    document.getElementById('screen-onboarding-novo').style.display = 'none';
+    showToast('✓ Configuração salva!');
+  }
+  btn.disabled = false;
+}
+
+function obPularOnboarding() {
+  // Apenas fecha sem salvar representadas/segmentos
+  // Mas marca onboarding_ok e trial_inicio
+  if (currentRep) {
+    const agora = new Date().toISOString();
+    sb.from('representantes').update({
+      onboarding_ok: true,
+      trial_inicio: agora
+    }).eq('id', currentRep.id);
+    currentRep.onboarding_ok = true;
+    currentRep.trial_inicio = agora;
+  }
+  document.getElementById('screen-onboarding-novo').style.display = 'none';
+}
+
+// Modifica verificarOnboarding para usar o novo
+function verificarOnboardingNovo() {
+  if (!currentRep) return;
+  if (!currentRep.onboarding_ok) {
+    obIniciarOnboarding();
+  }
+}
+
+// ── MODAL CONFIG ROTA (bottom sheet) ───────────────────
+let cfgRotaCallback = null;
+
+function abrirConfigRota(callback) {
+  cfgRotaCallback = callback;
+
+  // Preenche com dados existentes se houver
+  if (currentRep) {
+    if (currentRep.endereco_base) {
+      document.getElementById('cfg-rota-endereco').value = currentRep.endereco_base;
+    }
+    if (currentRep.media_carro) {
+      document.getElementById('cfg-rota-media').value = currentRep.media_carro;
+    }
+    if (currentRep.preco_gasolina) {
+      document.getElementById('cfg-rota-gasolina').value = currentRep.preco_gasolina;
+    }
+  }
+
+  document.getElementById('modal-config-rota').classList.add('open');
+}
+
+function fecharConfigRota() {
+  document.getElementById('modal-config-rota').classList.remove('open');
+  cfgRotaCallback = null;
+}
+
+function cfgRotaMascaraCep(el) {
+  let v = el.value.replace(/\D/g, '');
+  if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5, 8);
+  el.value = v;
+}
+
+async function cfgRotaBuscarCep() {
+  const cep = document.getElementById('cfg-rota-cep').value.replace(/\D/g, '');
+  const st = document.getElementById('cfg-rota-cep-status');
+  const btn = document.getElementById('cfg-rota-btn-cep');
+
+  if (cep.length !== 8) {
+    st.textContent = 'CEP inválido';
+    st.style.color = 'var(--red)';
+    return;
+  }
+
+  btn.disabled = true;
+  st.textContent = 'Buscando...';
+  st.style.color = 'var(--text3)';
+
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d = await r.json();
+
+    if (d.erro) {
+      st.textContent = 'CEP não encontrado';
+      st.style.color = 'var(--red)';
+      btn.disabled = false;
+      return;
+    }
+
+    const end = `${d.logradouro}, ${d.bairro}, ${d.localidade} - ${d.uf}`;
+    document.getElementById('cfg-rota-endereco').value = end;
+    st.textContent = '✓ Endereço encontrado';
+    st.style.color = 'var(--green)';
+  } catch (e) {
+    st.textContent = 'Erro ao buscar CEP';
+    st.style.color = 'var(--red)';
+  }
+
+  btn.disabled = false;
+}
+
+async function cfgRotaSalvar() {
+  const endereco = document.getElementById('cfg-rota-endereco').value.trim();
+  const media = parseFloat(document.getElementById('cfg-rota-media').value) || 10;
+  const gasolina = parseFloat(document.getElementById('cfg-rota-gasolina').value) || 6.0;
+
+  if (!endereco) {
+    showToast('Informe o endereço base');
+    return;
+  }
+
+  const btn = document.getElementById('cfg-rota-btn-salvar');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  try {
+    if (currentRep) {
+      await sb.from('representantes').update({
+        endereco_base: endereco,
+        media_carro: media,
+        preco_gasolina: gasolina
+      }).eq('id', currentRep.id);
+
+      currentRep.endereco_base = endereco;
+      currentRep.media_carro = media;
+      currentRep.preco_gasolina = gasolina;
+    }
+
+    fecharConfigRota();
+    showToast('✓ Configuração salva!');
+
+    // Executa callback (ex: abrir modal de criar rota)
+    if (cfgRotaCallback && typeof cfgRotaCallback === 'function') {
+      cfgRotaCallback();
+    }
+  } catch (e) {
+    console.error('Erro ao salvar config rota:', e);
+    showToast('Erro ao salvar');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Salvar e continuar';
+}
+
+// Função que verifica se precisa configurar antes de criar rota
+function verificarConfigAntesDeRota(callback) {
+  if (!currentRep) return;
+
+  // Se não tem endereço base, abre o modal de config
+  if (!currentRep.endereco_base || !currentRep.media_carro || !currentRep.preco_gasolina) {
+    abrirConfigRota(callback);
+    return false;
+  }
+
+  return true;
 }
 
 // Inicia verificação de auth ao carregar
@@ -2309,6 +3551,10 @@ function showScreen(s) {
       }
     };
     setTimeout(() => _tryMap(0), 50);
+  }
+  // Aplica bloqueios nas abas quando plano expirado
+  if (s === 'report' || s === 'financas') {
+    setTimeout(aplicarBloqueiosExpirado, 100);
   }
 }
 
@@ -2795,7 +4041,11 @@ function filtrarVendasRep(rep) {
   document.querySelectorAll('[id^="vnd-rep-"]').forEach(b => b.classList.remove('active'));
   const btnId = rep ? 'vnd-rep-' + rep.replace(/\s/g,'_') : 'vnd-rep-todas';
   document.getElementById(btnId)?.classList.add('active');
-  const filtered = rep ? (window._vendasTodas||[]).filter(v=>(v.pedido_representada||v.representada_nome)===rep) : (window._vendasTodas||[]);
+  let filtered = rep ? (window._vendasTodas||[]).filter(v=>(v.pedido_representada||v.representada_nome)===rep) : [...(window._vendasTodas||[])];
+
+  // Aplica ordenação atual
+  ordenarVendasLista(filtered);
+
   const body = document.getElementById('rep-detalhe-body');
   const total = filtered.reduce((s,v)=>s+parseFloat(v.valor_pedido||0),0);
   const listaEl = body.querySelector('.vnd-lista');
@@ -3062,6 +4312,10 @@ function getCorRepresentada(nomeRep) {
   return rep?.cor || '#007AFF';
 }
 
+// Estado de ordenação de vendas
+let vendasOrdemAtual = 'valor'; // 'valor' ou 'data'
+let vendasOrdemDir = 'desc';    // 'asc' ou 'desc'
+
 async function _carregarVendasRelatorio() {
   const body = document.getElementById('rep-detalhe-body');
   if (!body || !currentRep) return;
@@ -3132,13 +4386,37 @@ async function _carregarVendasRelatorio() {
     });
   } catch(e) {}
 
-  allPedidos.sort((a,b) => parseFloat(b.valor_pedido||0) - parseFloat(a.valor_pedido||0));
+  // Aplica ordenação
+  ordenarVendasLista(allPedidos);
+
   const repsVendas = [...new Set(allPedidos.map(v=>v.pedido_representada||v.representada_nome).filter(Boolean))];
   const filtroRepHtml = repsVendas.length > 1
     ? '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 4px;">' +
       `<button class="fin-periodo-tab active" id="vnd-rep-todas" onclick="filtrarVendasRep(null)">Todas</button>` +
       repsVendas.map(r=>`<button class="fin-periodo-tab" id="vnd-rep-${r.replace(/\s/g,'_')}" onclick="filtrarVendasRep('${r.replace(/'/g,"\\'")}')">` + r + '</button>').join('') +
       '</div>' : '';
+
+  // Botões de ordenação - novo design com pílulas
+  const isDataDesc = vendasOrdemAtual === 'data' && vendasOrdemDir === 'desc';
+  const isDataAsc = vendasOrdemAtual === 'data' && vendasOrdemDir === 'asc';
+  const isValorDesc = vendasOrdemAtual === 'valor' && vendasOrdemDir === 'desc';
+  const isValorAsc = vendasOrdemAtual === 'valor' && vendasOrdemDir === 'asc';
+
+  const btnStyle = (active) => `padding:6px 10px;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;${active ? 'background:#1a4a8a;color:#60a5fa;' : 'background:transparent;color:var(--text3);'}`;
+
+  const ordenacaoHtml = `<div style="display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);">
+    <div style="display:flex;align-items:center;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:10px;padding:2px 4px;gap:2px;">
+      <span style="font-size:12px;padding:0 6px;">📅 Data</span>
+      <button id="vnd-data-desc" onclick="setOrdemVendas('data','desc')" style="${btnStyle(isDataDesc)}">↓</button>
+      <button id="vnd-data-asc" onclick="setOrdemVendas('data','asc')" style="${btnStyle(isDataAsc)}">↑</button>
+    </div>
+    <div style="display:flex;align-items:center;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:10px;padding:2px 4px;gap:2px;">
+      <span style="font-size:12px;padding:0 6px;">💰 Valor</span>
+      <button id="vnd-valor-desc" onclick="setOrdemVendas('valor','desc')" style="${btnStyle(isValorDesc)}">↓</button>
+      <button id="vnd-valor-asc" onclick="setOrdemVendas('valor','asc')" style="${btnStyle(isValorAsc)}">↑</button>
+    </div>
+  </div>`;
+
   window._vendasTodas = allPedidos;
   window._vendasRepFiltro = null;
   const totalVendas = allPedidos.reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
@@ -3152,10 +4430,75 @@ async function _carregarVendasRelatorio() {
       <div id="vendas-footer-val" style="font-size:20px;font-weight:800;color:#fff;white-space:nowrap;">${formatarMoeda(totalVendas)}</div>
     </div>
   </div>`;
-  const wrapperHtml = `<div style="flex-shrink:0;">${filtroRepHtml}</div>` +
+  const wrapperHtml = `<div style="flex-shrink:0;">${filtroRepHtml}${ordenacaoHtml}</div>` +
     `<div class="vnd-lista-scroll" style="flex:1;overflow-y:auto;min-height:0;">${renderVendasDetalheLista(allPedidos)}</div>` +
     rodapeHtml;
   body.innerHTML = wrapperHtml || '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum pedido no período</div>';
+}
+
+// Ordena lista de vendas conforme estado atual
+function ordenarVendasLista(lista) {
+  lista.sort((a, b) => {
+    if (vendasOrdemAtual === 'valor') {
+      const va = parseFloat(a.valor_pedido || 0);
+      const vb = parseFloat(b.valor_pedido || 0);
+      return vendasOrdemDir === 'desc' ? vb - va : va - vb;
+    } else {
+      const da = a.data || '';
+      const db = b.data || '';
+      return vendasOrdemDir === 'desc' ? db.localeCompare(da) : da.localeCompare(db);
+    }
+  });
+}
+
+// Define ordenação de vendas (novo método direto)
+function setOrdemVendas(tipo, dir) {
+  vendasOrdemAtual = tipo;
+  vendasOrdemDir = dir;
+  reordenarVendasUI();
+}
+
+// Alterna ordenação de vendas (mantido para compatibilidade)
+function alternarOrdemVendas(tipo) {
+  if (vendasOrdemAtual === tipo) {
+    vendasOrdemDir = vendasOrdemDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    vendasOrdemAtual = tipo;
+    vendasOrdemDir = 'desc';
+  }
+  reordenarVendasUI();
+}
+
+// Re-renderiza lista de vendas com nova ordenação
+function reordenarVendasUI() {
+  const vendas = window._vendasRepFiltro
+    ? (window._vendasTodas || []).filter(v => (v.pedido_representada || v.representada_nome) === window._vendasRepFiltro)
+    : (window._vendasTodas || []);
+
+  ordenarVendasLista(vendas);
+
+  // Atualiza lista
+  const scrollEl = document.querySelector('.vnd-lista-scroll');
+  if (scrollEl) scrollEl.innerHTML = renderVendasDetalheLista(vendas);
+
+  // Atualiza botões de ordenação (novo design)
+  const isDataDesc = vendasOrdemAtual === 'data' && vendasOrdemDir === 'desc';
+  const isDataAsc = vendasOrdemAtual === 'data' && vendasOrdemDir === 'asc';
+  const isValorDesc = vendasOrdemAtual === 'valor' && vendasOrdemDir === 'desc';
+  const isValorAsc = vendasOrdemAtual === 'valor' && vendasOrdemDir === 'asc';
+
+  const updateBtn = (id, active) => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.style.background = active ? '#1a4a8a' : 'transparent';
+      btn.style.color = active ? '#60a5fa' : 'var(--text3)';
+    }
+  };
+
+  updateBtn('vnd-data-desc', isDataDesc);
+  updateBtn('vnd-data-asc', isDataAsc);
+  updateBtn('vnd-valor-desc', isValorDesc);
+  updateBtn('vnd-valor-asc', isValorAsc);
 }
 
 async function _carregarOrcamentosRelatorio(periodo) {
@@ -3641,6 +4984,9 @@ function renderDetalheListaComEditRep(rows) {
 }
 
 function exportarPDFDetalhe() {
+  // Verifica acesso para exportação
+  if (!podeExportar()) return;
+
   if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
     showToast('jsPDF não carregado', true); return;
   }
@@ -4062,6 +5408,9 @@ function closeModal(e) {
 
 
 async function doCheckin() {
+  // Verifica acesso (trial ou plano)
+  if (!verificarAcessoOuPaywall('check-in de visitas')) return;
+
   const c   = clientes.find(x => x.id == activeId);
   const obs = document.getElementById('m-obs').value.trim();
   const btn = document.getElementById('btn-checkin');
@@ -4108,6 +5457,9 @@ function openMapsFor(id) {
 
 
 function exportCoords() {
+  // Verifica acesso para exportação
+  if (!podeExportar()) return;
+
   const coords = clientes
     .filter(c => c.lat && c.lng)
     .map(c => `${c.id}|${c.lat}|${c.lng}`)
@@ -4251,6 +5603,9 @@ closeCadastro = function() {
 
 // ── CADASTRO DE CLIENTE ─────────────────────────────────
 function openCadastro() {
+  // Verifica limite de clientes no modo gratuito
+  if (!podeCadastrarCliente()) return;
+
   // Limpa campos
   ['c-razao','c-fantasia','c-cnpj','c-ie','c-fiscal','c-comprador','c-tel','c-email','c-endereco','c-cidade','c-cep']
     .forEach(id => {
@@ -4282,6 +5637,9 @@ function closeCadastro() {
 }
 
 async function salvarCliente() {
+  // Verifica limite de clientes no modo gratuito (fallback de segurança)
+  if (!podeCadastrarCliente()) return;
+
   const cep       = (document.getElementById('c-cep').value || '').replace(/\D/g,'');
   if (!cep || cep.length < 8) {
     const st = document.getElementById('c-cep-status');
@@ -4409,6 +5767,9 @@ async function salvarEdicaoCliente() {
   const cidade    = normalizarCidadeTexto(document.getElementById('c-cidade').value.trim());
   const endereco  = document.getElementById('c-endereco').value.trim();
   const cnpj      = document.getElementById('c-cnpj').value.trim();
+  const ie        = document.getElementById('c-ie')?.value.trim() || '';
+  const fiscal    = document.getElementById('c-fiscal')?.value || '';
+  const email     = document.getElementById('c-email')?.value.trim() || '';
   const segmento  = document.getElementById('c-segmento').value;
   const representadasIds = getRepresentadasSelecionadas();
 
@@ -4432,6 +5793,9 @@ async function salvarEdicaoCliente() {
         cidade:       cidade || c.cidade,
         endereco,
         cnpj,
+        ie,
+        regime_fiscal: fiscal,
+        email,
         cep,
         segmento,
         representadas_ids: representadasIds,
@@ -4451,6 +5815,12 @@ async function salvarEdicaoCliente() {
   }
 
   // Supabase confirmou — atualiza cache local
+
+  // Verifica se endereço ou cidade mudou ANTES de atualizar
+  const enderecoAntigo = c.endereco || '';
+  const cidadeAntiga = c.cidade || '';
+  const enderecoMudou = (endereco !== enderecoAntigo) || (cidade !== cidadeAntiga);
+
   const nomeExibir = fantasia || razao || c.nome.replace(/\s*\([^)]+\)\s*$/, '');
   c.nome        = comprador ? `${nomeExibir} (${comprador})` : nomeExibir;
   c.razaoSocial = razao;
@@ -4460,6 +5830,9 @@ async function salvarEdicaoCliente() {
   if (cidade)   c.cidade   = cidade;
   c.endereco    = endereco;
   c.cnpj        = cnpj;
+  c.ie          = ie;
+  c.fiscal      = fiscal;
+  c.email       = email;
   c.segmento    = segmento;
   c.representadasIds = representadasIds;
   c.cep         = cep;
@@ -4468,7 +5841,57 @@ async function salvarEdicaoCliente() {
   renderList();
   if (gmap) renderMapMarkers();
   if (fbEl2) { fbEl2.textContent = '✓ Dados atualizados'; fbEl2.style.display = 'block'; }
+
+  // Se o endereço mudou e não capturou GPS, faz geocoding para atualizar coordenadas
+  if (enderecoMudou && !coordsCapturadas && endereco && cidade) {
+    console.log('[salvarEdicaoCliente] Endereço mudou, iniciando geocoding...');
+    geocodeClienteAtualizado(c).then(() => {
+      console.log('[salvarEdicaoCliente] Geocoding concluído, novas coords:', c.lat, c.lng);
+    });
+  }
+
   setTimeout(() => { closeCadastro(); if (btnSalvar2) btnSalvar2.disabled = false; }, 1200);
+}
+
+// Geocoding para cliente com endereço atualizado (sem limite de região)
+async function geocodeClienteAtualizado(c) {
+  if (!c.endereco || !c.cidade) return;
+
+  const q = encodeURIComponent(c.endereco + ', ' + c.cidade + ', Brasil');
+  try {
+    const res = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + q + '&key=AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI&region=br&language=pt-BR');
+    const data = await res.json();
+
+    if (data.status === 'OK' && data.results.length > 0) {
+      const loc = data.results[0].geometry.location;
+
+      // Verifica se está no Brasil (limites aproximados)
+      if (loc.lat >= -34 && loc.lat <= 5 && loc.lng >= -74 && loc.lng <= -35) {
+        c.lat = loc.lat;
+        c.lng = loc.lng;
+
+        // Atualiza no Supabase
+        try {
+          await sb.from('clientes').update({ lat: c.lat, lng: c.lng }).eq('id', String(c.id));
+          console.log('[geocodeClienteAtualizado] Coordenadas atualizadas no Supabase');
+        } catch(e) {
+          console.error('[geocodeClienteAtualizado] Erro ao atualizar Supabase:', e);
+        }
+
+        // Atualiza o marcador no mapa
+        if (gmap) {
+          renderMapMarkers();
+          showToast('📍 Localização atualizada no mapa');
+        }
+      } else {
+        console.warn('[geocodeClienteAtualizado] Coordenadas fora do Brasil:', loc);
+      }
+    } else {
+      console.warn('[geocodeClienteAtualizado] Geocoding não encontrou resultados:', data.status);
+    }
+  } catch(e) {
+    console.error('[geocodeClienteAtualizado] Erro no geocoding:', e);
+  }
 }
 
 // Abre cadastro no modo edição
@@ -4492,6 +5915,9 @@ function editarCliente() {
   set('c-tel',       c.tel || '');
   set('c-endereco',  c.endereco || '');
   set('c-cnpj',      c.cnpj || '');
+  set('c-ie',        c.ie || '');
+  set('c-fiscal',    c.fiscal || '');
+  set('c-email',     c.email || '');
 
   // CEP e cidade
   _resetCEPStatus();
@@ -4874,6 +6300,9 @@ function editarVisitaHoje() {
 
 // Botão "💼 Fazer Check-in": expande o form ou, se já visitado, expande para edição
 function fazerCheckin() {
+  // Verifica acesso (trial ou plano) - exceto se já visitou hoje (edição)
+  if (!perfilVisitadoHoje && !verificarAcessoOuPaywall('check-in de visitas')) return;
+
   if (perfilVisitadoHoje) {
     editarVisitaHoje();
     return;
@@ -4890,6 +6319,9 @@ function fazerCheckin() {
 
 // Confirma e salva o check-in presencial
 async function confirmarCheckin() {
+  // Verifica acesso (trial ou plano)
+  if (!verificarAcessoOuPaywall('check-in de visitas')) return;
+
   if (!perfilId || !currentUser) return;
   const c = clientes.find(x => x.id == perfilId);
   if (!c) return;
@@ -5056,11 +6488,17 @@ let waCanalAtual = 'whatsapp'; // 'whatsapp' | 'telefone'
 
 // Abre a partir do perfil do cliente
 function abrirPedidoSemVisita(canal) {
+  // Verifica acesso (trial ou plano)
+  if (!verificarAcessoOuPaywall('pedidos via WhatsApp/Telefone')) return;
+
   waCanalAtual = canal;
   abrirWaPedido(perfilId, canal);
 }
 
 function abrirWaPedido(clienteId, canal) {
+  // Verifica acesso (trial ou plano)
+  if (!verificarAcessoOuPaywall('pedidos via WhatsApp/Telefone')) return;
+
   canal = canal || 'whatsapp';
   waCanalAtual = canal;
   waPedidoClienteId = clienteId;
@@ -5449,15 +6887,43 @@ async function excluirVisitaDetalhe() {
     document.getElementById('exc-confirmar').onclick = () => fechar(true);
   });
   if (!confirmado) return;
-  const { error } = await sb.from('visitas').delete().eq('id', dvVisitaAtual.id).eq('rep_id', await getRepId());
+  const visitaExcluida = dvVisitaAtual;
+  const { error } = await sb.from('visitas').delete().eq('id', visitaExcluida.id).eq('rep_id', await getRepId());
   if (error) { showToast('❌ Erro ao excluir', true); return; }
+
+  // Remove do histórico em memória
   if (historicoVisitas[perfilId]) {
-    historicoVisitas[perfilId] = historicoVisitas[perfilId].filter(v => String(v.id) !== String(dvVisitaAtual.id));
+    historicoVisitas[perfilId] = historicoVisitas[perfilId].filter(v => String(v.id) !== String(visitaExcluida.id));
   }
+
+  // Limpa check-in do dia se a visita excluída for de hoje
+  const c = clientes.find(x => x.id == perfilId);
+  const hoje = dataHojeLocal();
+  if (c && visitaExcluida.data === hoje) {
+    // Verifica se ainda há outra visita de hoje
+    const outraVisitaHoje = (historicoVisitas[perfilId] || []).find(v => v.data === hoje && String(v.id) !== String(visitaExcluida.id));
+    if (!outraVisitaHoje) {
+      c.visitadoHoje = false;
+      c.horaHoje = null;
+      c.ultimaObs = '';
+    }
+  }
+
+  // Limpa do localStorage
+  try {
+    const lsKey = 'hist_' + perfilId;
+    const lsData = JSON.parse(localStorage.getItem(lsKey) || '[]');
+    const lsFiltered = lsData.filter(v => String(v.id) !== String(visitaExcluida.id));
+    localStorage.setItem(lsKey, JSON.stringify(lsFiltered));
+  } catch(e) {}
+
   showToast('✓ Visita excluída');
   fecharDetalheVisita();
-  const c = clientes.find(x => x.id == perfilId);
+
+  // Atualiza renderizações
   if (c) renderHistorico(perfilId, c);
+  renderList();
+  if (plannerCarregado) renderPlanner();
 }
 
 // ── PEDIDOS DA VISITA ─────────────────────────────────
@@ -5719,6 +7185,12 @@ async function salvarModalEditarPedido() {
   fecharModalEditarPedido();
   dvRenderPedidos();
   showToast('✓ Pedido salvo');
+
+  // Atualiza cache do relatório de vendas se veio do relatório
+  if (dvOrigemTela === 'report' && dvVisitaAtual) {
+    atualizarCacheVendasRelatorio(dvVisitaAtual.id, pedidoData);
+  }
+
   // Atualiza histórico com os pedidos salvos
   if (perfilId) {
     buscarHistoricoSupabase(perfilId).then(visitas => {
@@ -5727,6 +7199,76 @@ async function salvarModalEditarPedido() {
       if (cAtual) renderHistorico(perfilId, cAtual);
     });
   }
+}
+
+// Atualiza cache do relatório de vendas após edição de pedido
+function atualizarCacheVendasRelatorio(visitaId, pedidoData) {
+  if (!visitaId) return;
+
+  // Atualiza cache de vendas (lista detalhada)
+  if (window._vendasTodas) {
+    const idx = window._vendasTodas.findIndex(v =>
+      String(v.id) === String(visitaId) ||
+      String(v.visita_id) === String(visitaId)
+    );
+
+    if (idx >= 0) {
+      window._vendasTodas[idx].valor_pedido = pedidoData.valor;
+      window._vendasTodas[idx].pedido_valor = pedidoData.valor;
+      window._vendasTodas[idx].pedido_tipo = pedidoData.tipo;
+      window._vendasTodas[idx].representada_id = pedidoData.representada_id;
+      window._vendasTodas[idx].representada_nome = pedidoData.representada_nome;
+      window._vendasTodas[idx].pedido_representada = pedidoData.representada_nome;
+
+      console.log('[atualizarCacheVendasRelatorio] Cache vendas atualizado:', window._vendasTodas[idx]);
+
+      // Re-renderiza a lista de vendas
+      reordenarVendasUI();
+
+      // Atualiza o total no rodapé da lista
+      const total = (window._vendasRepFiltro
+        ? window._vendasTodas.filter(v => (v.pedido_representada || v.representada_nome) === window._vendasRepFiltro)
+        : window._vendasTodas
+      ).reduce((s, v) => s + parseFloat(v.valor_pedido || 0), 0);
+
+      const footerVal = document.getElementById('vendas-footer-val');
+      if (footerVal) footerVal.textContent = formatarMoeda(total);
+
+      const footerPedidos = document.getElementById('vendas-footer-pedidos');
+      const qtd = window._vendasRepFiltro
+        ? window._vendasTodas.filter(v => (v.pedido_representada || v.representada_nome) === window._vendasRepFiltro).length
+        : window._vendasTodas.length;
+      if (footerPedidos) footerPedidos.textContent = `${qtd} pedido${qtd !== 1 ? 's' : ''}`;
+    }
+  }
+
+  // Atualiza cache principal de visitas (usado pelo resumo)
+  if (visatasDoRelatorio) {
+    const vIdx = visatasDoRelatorio.findIndex(v => String(v.id) === String(visitaId));
+    if (vIdx >= 0) {
+      visatasDoRelatorio[vIdx].valor_pedido = pedidoData.valor;
+      visatasDoRelatorio[vIdx].pedido_valor = pedidoData.valor;
+      visatasDoRelatorio[vIdx].pedido_tipo = pedidoData.tipo;
+      visatasDoRelatorio[vIdx].representada_id = pedidoData.representada_id;
+      visatasDoRelatorio[vIdx].representada_nome = pedidoData.representada_nome;
+      console.log('[atualizarCacheVendasRelatorio] Cache visitas atualizado');
+    }
+  }
+
+  // Atualiza também o cache do ano se existir
+  if (visatasAnoCache) {
+    const aIdx = visatasAnoCache.findIndex(v => String(v.id) === String(visitaId));
+    if (aIdx >= 0) {
+      visatasAnoCache[aIdx].valor_pedido = pedidoData.valor;
+      visatasAnoCache[aIdx].pedido_valor = pedidoData.valor;
+      visatasAnoCache[aIdx].pedido_tipo = pedidoData.tipo;
+      visatasAnoCache[aIdx].representada_id = pedidoData.representada_id;
+      visatasAnoCache[aIdx].representada_nome = pedidoData.representada_nome;
+    }
+  }
+
+  // Atualiza o card de resumo na tela principal de relatório
+  renderReport();
 }
 
 async function converterOrcamentoDV() {
@@ -5831,7 +7373,12 @@ function closeGastosCliente() {
 
 function toggleGastoForm() {
   const f = document.getElementById('gc-form');
-  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  const abrindo = f.style.display === 'none';
+
+  // Verifica acesso ao abrir novo gasto (não ao fechar)
+  if (abrindo && !verificarAcessoOuPaywall('registro de gastos com clientes')) return;
+
+  f.style.display = abrindo ? 'block' : 'none';
 }
 
 function gcNfSelecionada(input) {
@@ -5991,6 +7538,10 @@ function closeBonificacoes() {
 function toggleBonifForm() {
   const f = document.getElementById('bonif-form');
   const abrindo = f.style.display === 'none';
+
+  // Verifica acesso ao abrir nova bonificação (não ao fechar)
+  if (abrindo && !verificarAcessoOuPaywall('registro de bonificações')) return;
+
   f.style.display = abrindo ? 'block' : 'none';
   if (abrindo) {
     bonifEditId = null;
@@ -6273,6 +7824,9 @@ async function carregarBonifResumoPerfil() {
 }
 
 async function checkinPerfil() {
+  // Verifica acesso (trial ou plano)
+  if (!verificarAcessoOuPaywall('check-in de visitas')) return;
+
   if (!perfilId) return;
   const obs = document.getElementById('p-obs').value.trim();
   const c = clientes.find(x => x.id == perfilId);
@@ -6343,7 +7897,11 @@ function openMapsPerfil() {
 
 function renderHistorico(id, c) {
   const container = document.getElementById('p-historico');
-  const visitas = historicoVisitas[id] || [];
+  const visitasOriginal = historicoVisitas[id] || [];
+
+  // Aplica limite de histórico quando plano expirado (últimos 30 dias)
+  let visitas = filtrarHistoricoPorPlano(visitasOriginal);
+  const historicoLimitado = getStatusPlano() === 'expirado' && visitasOriginal.length > visitas.length;
 
   // Inclui presenciais e WhatsApp; exclui apenas itens sem tipo relevante
   let items = [...visitas];
@@ -6384,7 +7942,14 @@ function renderHistorico(id, c) {
   const SVG_MALETA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.51 16.49 1 14.64 1h-5.28C7.51 1 6 2.51 6 4.64c0 .48.11.92.18 1.36H4C2.9 6 2 6.9 2 8v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-5.36-3c.74 0 1.36.62 1.36 1.36 0 .48-.1.92-.18 1.64H8.18C8.1 5.28 8 4.84 8 4.36 8 3.62 8.62 3 9.36 3h5.28zM20 19H4V8h16v11z"/></svg>`;
   const SVG_WA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><path fill="white" d="M24 4C12.97 4 4 12.97 4 24c0 3.6 1 7 2.7 9.9L4 44l10.4-2.7C17 43 20.4 44 24 44c11.03 0 20-8.97 20-20S35.03 4 24 4zm7.9 27.9c-.3.9-1.8 1.7-2.5 1.8-.6.1-1.4.1-2.3-.1-.5-.1-1.2-.4-2-.7-3.5-1.5-5.8-5-6-5.2-.2-.3-1.5-2-1.5-3.8 0-1.8.9-2.7 1.3-3.1.3-.3.8-.5 1.2-.5h.8c.3 0 .6.1.8.7.3.8 1 2.6 1.1 2.8.1.2.1.4 0 .7-.1.2-.2.4-.4.6-.2.2-.4.5-.5.6-.2.2-.3.4-.1.7.2.3 1 1.6 2.1 2.6 1.5 1.3 2.7 1.7 3.1 1.9.3.1.6.1.8-.1.3-.3.6-.7.9-1.1.2-.3.5-.3.8-.2.3.1 2 .9 2.3 1.1.3.2.6.3.7.4.1.3.1 1-.2 1.9z"/></svg>`;
 
-  container.innerHTML = items.map((v, i) => {
+  // Aviso de histórico limitado se plano expirado
+  const avisoLimitado = historicoLimitado
+    ? `<div style="background:var(--orange-bg);color:var(--orange);padding:10px 14px;border-radius:10px;margin-bottom:10px;font-size:12px;text-align:center;cursor:pointer" onclick="abrirPaywall()">
+        🔒 Histórico limitado aos últimos ${LIMITE_HISTORICO_DIAS_FREE} dias. <u>Assine para ver tudo</u>
+      </div>`
+    : '';
+
+  container.innerHTML = avisoLimitado + items.map((v, i) => {
     const tipo = v.tipo || 'visita';
     const isWhatsApp = tipo === 'whatsapp';
     const isHoje = v.data === dataHojeLocal();
@@ -7007,6 +8572,9 @@ function pfResetForm() {
 }
 
 async function pfRegistrar() {
+  // Verifica acesso (trial ou plano)
+  if (!verificarAcessoOuPaywall('registro de pedidos e orçamentos')) return;
+
   if (!perfilId || !currentUser) return;
   const c = clientes.find(x => x.id == perfilId);
   if (!c) return;
@@ -7468,6 +9036,9 @@ function navegarPlanner(delta) {
 }
 
 function setViewPlanner(view) {
+  // Verifica acesso para rotas
+  if (view === 'rotas' && !verificarAcessoOuPaywall('rotas no planner')) return;
+
   plannerPeriodo = view;
   // 'hoje' usa a visão semanal mas fixa no dia atual
   if (view === 'hoje') {
@@ -9151,6 +10722,9 @@ function formatarDataBR(dataStr) {
 }
 
 async function gerarPDFFinanceiro() {
+  // Verifica acesso para exportação
+  if (!podeExportar()) return;
+
   if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
     showToast('jsPDF não carregado', true); return;
   }
@@ -9946,6 +11520,7 @@ function renderRotas() {
         ${r.tempo_estimado ? `<span>⏱ ${Math.round(r.tempo_estimado/60)}h${Math.round((r.tempo_estimado%3600)/60).toString().padStart(2,'0')}min</span>` : ''}
       </div>
       <div class="rota-card-acoes">
+        <button class="rota-btn-sm" onclick="event.stopPropagation();editarRotaPorId('${r.id}')">✏️ Editar</button>
         <button class="rota-btn-sm" onclick="event.stopPropagation();abrirGoogleMapsRota('${r.id}')">↗ Google Maps</button>
         <button class="rota-btn-sm danger" onclick="event.stopPropagation();excluirRota('${r.id}')" style="color:var(--red);border-color:var(--red)">🗑</button>
       </div>
@@ -9955,13 +11530,29 @@ function renderRotas() {
 }
 
 // ── AUTOCOMPLETE DE ENDEREÇO ──────────────────────────
+const _autocompleteAtivado = new Set();
+
 function ativarAutocomplete(inputId) {
   const input = document.getElementById(inputId);
-  if (!input || !window.google?.maps?.places) return;
+  if (!input) return;
+
+  // Evita ativar duas vezes no mesmo campo
+  if (_autocompleteAtivado.has(inputId)) return;
+
+  // Se Google Maps Places ainda não carregou, tenta novamente em 500ms
+  if (!window.google?.maps?.places) {
+    setTimeout(() => ativarAutocomplete(inputId), 500);
+    return;
+  }
+
+  _autocompleteAtivado.add(inputId);
+
   const ac = new google.maps.places.Autocomplete(input, {
     componentRestrictions: { country: 'br' },
-    fields: ['formatted_address']
+    fields: ['formatted_address', 'geometry'],
+    types: ['address']
   });
+
   ac.addListener('place_changed', () => {
     const place = ac.getPlace();
     if (place.formatted_address) {
@@ -9969,6 +11560,12 @@ function ativarAutocomplete(inputId) {
       input.dispatchEvent(new Event('input'));
     }
   });
+}
+
+// Ativa autocomplete nos campos de rota quando o modal abre
+function ativarAutocompletesRota() {
+  ativarAutocomplete('rota-partida-input');
+  ativarAutocomplete('rota-chegada-input');
 }
 
 // ── ROTA: PARTIDA/CHEGADA/VIAGEM ──────────────────────
@@ -9984,6 +11581,28 @@ function setRotaPartida(tipo, btn) {
   const inp = document.getElementById('rota-partida-input');
   if (inp) inp.style.display = tipo === 'outro' ? 'block' : 'none';
   if (tipo === 'outro') ativarAutocomplete('rota-partida-input');
+
+  // Captura GPS imediatamente quando selecionado
+  if (tipo === 'gps' && btn) {
+    btn.innerHTML = '⏳ Obtendo...';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        btn.innerHTML = '📍 GPS ✓';
+        btn.style.background = 'var(--green)';
+        btn.style.color = '#fff';
+        showToast('📍 Localização obtida com sucesso');
+      },
+      err => {
+        btn.innerHTML = '📍 GPS ❌';
+        btn.style.background = 'var(--red-bg)';
+        btn.style.color = 'var(--red)';
+        showToast('❌ Não foi possível obter localização', true);
+        // Fallback para casa
+        setTimeout(() => setRotaPartida('casa', document.getElementById('rp-casa')), 2000);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  }
 }
 
 function setRotaChegada(tipo, btn) {
@@ -10065,6 +11684,17 @@ async function resolverEnderecoPonto(tipo, inputId) {
 }
 
 function abrirNovaRota() {
+  // Verifica acesso (trial ou plano)
+  if (!verificarAcessoOuPaywall('criação de rotas')) return;
+
+  // Verifica se tem configuração de endereço base
+  if (!verificarConfigAntesDeRota(abrirNovaRotaInterno)) return;
+
+  abrirNovaRotaInterno();
+}
+
+function abrirNovaRotaInterno() {
+  rotaEditandoId = null; // Garante que é criação, não edição
   novaRotaCidadesSel = [];
   novaRotaClientesSel = [];
   rotaPartidaTipo = 'casa';
@@ -10081,10 +11711,18 @@ function abrirNovaRota() {
   document.getElementById('rota-viagem-cidade-sel').style.display = 'none';
   ['rp-casa','rp-gps','rp-outro'].forEach(id => document.getElementById(id).classList.toggle('active', id==='rp-casa'));
   ['rc-casa','rc-hotel','rc-outra'].forEach(id => document.getElementById(id).classList.toggle('active', id==='rc-casa'));
+  // Reseta estilo dos botões GPS (caso tenha sido usado antes)
+  const gpsBtn = document.getElementById('rp-gps');
+  if (gpsBtn) { gpsBtn.innerHTML = '📍 GPS'; gpsBtn.style.background = ''; gpsBtn.style.color = ''; }
+  // Texto do botão de criar
+  const btnCriar = document.getElementById('btn-criar-rota');
+  if (btnCriar) btnCriar.textContent = 'Criar Rota';
   renderCidadesPillsRota();
   renderClientesRota();
   document.getElementById('rota-modal').classList.add('open');
   document.body.style.overflow = 'hidden';
+  // Ativa autocomplete nos campos de endereço
+  ativarAutocompletesRota();
 }
 
 function fecharModalRota(e) {
@@ -10133,33 +11771,61 @@ async function atualizarHintHospedagem() {
   } catch(e) { el.innerHTML = ''; }
 }
 
+// Helpers para comparação de IDs (podem ser string ou number)
+function normalizeId(id) {
+  return String(id).trim();
+}
+
+function idInList(id, list) {
+  const nid = normalizeId(id);
+  return list.some(item => normalizeId(item) === nid);
+}
+
 function renderClientesRota() {
   const el = document.getElementById('rota-clientes-lista');
   if (!el) return;
+
+  // Se está em modo de edição, usa a função específica
+  if (rotaEditandoId) {
+    renderClientesRotaEditMode();
+    return;
+  }
+
   const filtrados = novaRotaCidadesSel.length
     ? clientes.filter(c => novaRotaCidadesSel.includes(c.cidade))
     : clientes;
-  el.innerHTML = filtrados.map(c => `
+
+  el.innerHTML = filtrados.map(c => {
+    const isSel = idInList(c.id, novaRotaClientesSel);
+    return `
     <div class="rota-cliente-item" onclick="toggleClienteRota('${c.id}')">
-      <div class="rota-cliente-check ${novaRotaClientesSel.includes(String(c.id))?'sel':''}">
-        ${novaRotaClientesSel.includes(String(c.id))?'✓':''}
+      <div class="rota-cliente-check ${isSel ? 'sel' : ''}">
+        ${isSel ? '✓' : ''}
       </div>
       <div>
         <div class="rota-cliente-nome">${sanitize(c.nome)}</div>
-        <div class="rota-cliente-cidade">${sanitize(c.cidade||'')}</div>
+        <div class="rota-cliente-cidade">${sanitize(c.cidade || '')}</div>
       </div>
     </div>
-  `).join('') || '<div style="text-align:center;padding:24px;color:var(--text3)">Selecione cidades acima</div>';
+  `;
+  }).join('') || '<div style="text-align:center;padding:24px;color:var(--text3)">Selecione cidades acima</div>';
 }
 
 function toggleClienteRota(id) {
-  const sid = String(id);
-  const i = novaRotaClientesSel.indexOf(sid);
-  if (i >= 0) novaRotaClientesSel.splice(i,1); else novaRotaClientesSel.push(sid);
+  const nid = normalizeId(id);
+  const idx = novaRotaClientesSel.findIndex(item => normalizeId(item) === nid);
+  if (idx >= 0) {
+    novaRotaClientesSel.splice(idx, 1);
+  } else {
+    novaRotaClientesSel.push(nid);
+  }
   renderClientesRota();
 }
 
 async function salvarNovaRota() {
+  // Verifica acesso (trial ou plano)
+  if (!verificarAcessoOuPaywall('criação de rotas')) return;
+
   const nome = document.getElementById('rota-nome-input').value.trim();
   if (!nome) { showToast('Dê um nome para a rota'); return; }
   if (novaRotaClientesSel.length < 2) { showToast('Selecione ao menos 2 clientes'); return; }
@@ -10221,7 +11887,7 @@ async function salvarNovaRota() {
     tempoEstimado = Math.round(kmTotal / 60 * 3600);
   }
 
-  const { error } = await sb.from('rotas').insert({
+  const dadosRota = {
     nome,
     clientes_ids: novaRotaClientesSel,
     ordem_otimizada: ordemOtimizada,
@@ -10233,12 +11899,28 @@ async function salvarNovaRota() {
     tipo_chegada: rotaChegadaTipo,
     ponto_chegada: endChegada,
     nome_hotel: rotaChegadaTipo === 'hotel' ? endChegada : null
-  });
+  };
+
+  let error;
+  if (rotaEditandoId) {
+    // Editando rota existente
+    const res = await sb.from('rotas').update(dadosRota).eq('id', rotaEditandoId).eq('rep_id', repId);
+    error = res.error;
+  } else {
+    // Criando nova rota
+    const res = await sb.from('rotas').insert(dadosRota);
+    error = res.error;
+  }
+
+  const isEdit = !!rotaEditandoId;
+  rotaEditandoId = null;
 
   if (btn) { btn.disabled = false; btn.textContent = 'Criar Rota'; }
   if (error) { showToast('Erro ao salvar rota'); return; }
   document.getElementById('rota-modal').classList.remove('open');
-  showToast(fonte === 'google' ? '✓ Rota otimizada pelo Google!' : '✓ Rota salva!');
+  document.body.style.overflow = '';
+  const msgSucesso = isEdit ? '✓ Rota atualizada!' : (fonte === 'google' ? '✓ Rota otimizada pelo Google!' : '✓ Rota salva!');
+  showToast(msgSucesso);
   await carregarRotas();
   renderRotas();
 }
@@ -10320,6 +12002,160 @@ function abrirDetalheRota(id) {
 
 function fecharDetalheRota() {
   document.getElementById('rota-detalhe').classList.remove('open');
+  rotaEditandoId = null;
+}
+
+let rotaEditandoId = null;
+
+// Edita rota pelo ID (chamado direto da lista)
+function editarRotaPorId(id) {
+  const rota = rotasCache.find(r => r.id === id);
+  if (!rota) {
+    showToast('Rota não encontrada');
+    return;
+  }
+  abrirEdicaoRota(rota);
+}
+
+// Edita rota existente (chamado do painel de detalhe)
+function editarRotaAtual() {
+  const titleEl = document.getElementById('rota-detalhe-title');
+  const nomeRota = titleEl?.textContent?.trim() || '';
+  if (!nomeRota) { showToast('Nome da rota não encontrado'); return; }
+
+  const rota = rotasCache.find(r => r.nome === nomeRota);
+  if (!rota) { showToast('Rota não encontrada'); return; }
+
+  // Fecha o painel de detalhe
+  const detalheEl = document.getElementById('rota-detalhe');
+  if (detalheEl) detalheEl.classList.remove('open');
+
+  abrirEdicaoRota(rota);
+}
+
+// Lógica comum de edição de rota
+function abrirEdicaoRota(rota) {
+  // Guarda ID da rota sendo editada
+  rotaEditandoId = rota.id;
+
+  // Reseta variáveis de estado
+  rotaModoViagem = false;
+  rotaViagemCidades = [];
+
+  // Preenche nome
+  const nomeInput = document.getElementById('rota-nome-input');
+  if (nomeInput) nomeInput.value = rota.nome;
+
+  // Configura tipo de partida
+  rotaPartidaTipo = rota.tipo_partida || 'casa';
+  document.querySelectorAll('[id^="rp-"]').forEach(btn => {
+    const tipo = btn.id.replace('rp-', '');
+    btn.classList.toggle('active', tipo === rotaPartidaTipo);
+  });
+  const inpPartida = document.getElementById('rota-partida-input');
+  if (inpPartida) {
+    inpPartida.style.display = rotaPartidaTipo === 'outro' ? 'block' : 'none';
+    inpPartida.value = rota.ponto_partida || '';
+  }
+
+  // Configura tipo de chegada
+  rotaChegadaTipo = rota.tipo_chegada || 'casa';
+  document.querySelectorAll('[id^="rc-"]').forEach(btn => {
+    const tipo = btn.id.replace('rc-', '');
+    btn.classList.toggle('active', tipo === rotaChegadaTipo);
+  });
+  const inpChegada = document.getElementById('rota-chegada-input');
+  if (inpChegada) {
+    inpChegada.style.display = ['hotel', 'outra'].includes(rotaChegadaTipo) ? 'block' : 'none';
+    inpChegada.value = rota.ponto_chegada || '';
+  }
+
+  // Carrega IDs dos clientes da rota (usa ordem otimizada se disponível)
+  const idsRota = rota.ordem_otimizada || rota.clientes_ids || [];
+  novaRotaClientesSel = idsRota.map(id => String(id).trim()).filter(Boolean);
+
+  // Extrai cidades dos clientes selecionados
+  const cidadesSet = new Set();
+  novaRotaClientesSel.forEach(id => {
+    const cli = clientes.find(c => String(c.id) === id);
+    if (cli?.cidade) cidadesSet.add(cli.cidade);
+  });
+  novaRotaCidadesSel = Array.from(cidadesSet);
+
+  // Reseta UI de modo viagem
+  const viagemSw = document.getElementById('rota-viagem-sw');
+  if (viagemSw) viagemSw.classList.remove('on');
+  const viagemWrap = document.getElementById('rota-viagem-wrap');
+  if (viagemWrap) viagemWrap.style.display = 'none';
+  const viagemSel = document.getElementById('rota-viagem-cidade-sel');
+  if (viagemSel) viagemSel.style.display = 'none';
+
+  // Renderiza interface
+  renderCidadesPillsRota();
+  renderClientesRota();
+
+  // Abre modal
+  const modal = document.getElementById('rota-modal');
+  if (modal) modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Atualiza botão
+  const btnCriar = document.getElementById('btn-criar-rota');
+  if (btnCriar) btnCriar.textContent = 'Salvar alterações';
+
+  // Ativa autocomplete
+  setTimeout(() => ativarAutocompletesRota(), 100);
+
+  console.log('[editarRota] Editando:', rota.nome, 'IDs:', novaRotaClientesSel, 'Cidades:', novaRotaCidadesSel);
+}
+
+function renderClientesRotaEditMode() {
+  const el = document.getElementById('rota-clientes-lista');
+  if (!el) return;
+
+  // Filtra por cidades selecionadas
+  let filtrados;
+  if (novaRotaCidadesSel.length) {
+    filtrados = clientes.filter(c => novaRotaCidadesSel.includes(c.cidade));
+  } else {
+    filtrados = clientes;
+  }
+
+  // Ordena: selecionados primeiro (na ordem da rota), depois os demais
+  const selecionados = [];
+  const naoSelecionados = [];
+
+  // Primeiro adiciona os selecionados na ordem correta
+  novaRotaClientesSel.forEach(id => {
+    const cliente = filtrados.find(c => normalizeId(c.id) === id);
+    if (cliente) selecionados.push(cliente);
+  });
+
+  // Depois adiciona os não selecionados
+  filtrados.forEach(c => {
+    if (!idInList(c.id, novaRotaClientesSel)) {
+      naoSelecionados.push(c);
+    }
+  });
+
+  const ordenados = [...selecionados, ...naoSelecionados];
+
+  el.innerHTML = ordenados.map(c => {
+    const isSel = idInList(c.id, novaRotaClientesSel);
+    return `
+    <div class="rota-cliente-item" onclick="toggleClienteRota('${c.id}')">
+      <div class="rota-cliente-check ${isSel ? 'sel' : ''}">
+        ${isSel ? '✓' : ''}
+      </div>
+      <div>
+        <div class="rota-cliente-nome">${sanitize(c.nome)}</div>
+        <div class="rota-cliente-cidade">${sanitize(c.cidade || '')}</div>
+      </div>
+    </div>
+  `;
+  }).join('') || '<div style="text-align:center;padding:24px;color:var(--text3)">Nenhum cliente encontrado</div>';
+
+  console.log('[editarRota] Renderizados:', ordenados.length, 'clientes,', selecionados.length, 'selecionados');
 }
 
 function abrirGoogleMapsRota(id) {
@@ -10353,10 +12189,19 @@ async function excluirRota(id) {
   if (!confirm('Excluir esta rota?')) return;
   const { error } = await sb.from('rotas').delete().eq('id', id);
   if (error) { showToast('Erro ao excluir rota'); return; }
+
+  // Remove do cache local
   rotasCache = rotasCache.filter(r => r.id !== id);
-  const el = document.getElementById('rotas-lista');
-  if (el) el.innerHTML = '';
+
+  // Fecha o detalhe se estiver aberto
+  const detalhe = document.getElementById('rota-detalhe');
+  if (detalhe && detalhe.classList.contains('open')) {
+    fecharDetalheRota();
+  }
+
+  // Re-renderiza a listagem de rotas
   renderRotas();
+
   showToast('Rota excluída');
 }
 
@@ -11523,7 +13368,7 @@ if ('serviceWorker' in navigator) {
         <div class="config-item">
           <div class="config-item-left">
             <div class="config-item-icon">ℹ️</div>
-            <div><div class="config-item-nome">Versão do aplicativo</div><div class="config-item-sub">Minha Rota RP v1.0</div></div>
+            <div><div class="config-item-nome">Versão do aplicativo</div><div class="config-item-sub">Minha Rota RP v1.0.0</div></div>
           </div>
         </div>
         <div class="config-item" onclick="localStorage.removeItem('force_mobile');window.location.href='desktop.html'">
@@ -11533,6 +13378,14 @@ if ('serviceWorker' in navigator) {
           </div>
           <div class="config-item-right">›</div>
         </div>
+        <a href="mailto:contato@minharotarp.com.br" class="config-item" style="text-decoration:none;color:inherit;">
+          <div class="config-item-left">
+            <div class="config-item-icon">💬</div>
+            <div><div class="config-item-nome">Suporte</div><div class="config-item-sub">contato@minharotarp.com.br</div></div>
+          </div>
+          <div class="config-item-right">›</div>
+        </a>
+
         <div class="config-item danger" onclick="closeConfig();fazerLogout()">
           <div class="config-item-left">
             <div class="config-item-icon">⏻</div>
