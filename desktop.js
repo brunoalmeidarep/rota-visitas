@@ -73,6 +73,30 @@ let gastosExpandido    = null;
 let bonifAtual         = [];
 let bonifDetalheId     = null;
 let representadasList  = [];
+let representadasCache = [];  // para gestão de empresas (todos os campos)
+let segmentosCache     = [];  // para gestão de segmentos
+
+// ── CALENDÁRIO ───────────────────────────────────────────────────────
+let calMesDesk          = new Date().getMonth();
+let calAnoDesk          = new Date().getFullYear();
+let calDiaSelecionadoDesk = null;
+let calVisitasCacheDesk = {};
+
+// ── IMPORTAR ─────────────────────────────────────────────────────────
+let _importarFileDesk   = null;
+
+// ── CHECK-IN PEDIDOS ─────────────────────────────────────────────────
+let ciPedidos = [];   // pedidos sendo criados no check-in atual
+
+// ── PEDIDO SEM VISITA ────────────────────────────────────────────────
+let waCanal   = null; // 'whatsapp' | 'telefone'
+let waPedidos = [];   // pedidos do modal WA/Tel
+
+// ── DETALHE VISITA ───────────────────────────────────────────────────
+let visitasHistoricoCache = {};  // { visitaId: visita }
+let visitaDetAtual        = null;
+let visitaModoEdicao      = false;
+let pedidosVisitaAtual    = [];
 
 // ── PLANNER ──────────────────────────────────────────────────────────
 let plannerMode    = false;
@@ -87,12 +111,19 @@ let plannerMarkers = [];         // marcadores numerados da rota ativa
 document.addEventListener('DOMContentLoaded', () => {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  // Log de config (desktop-auth-debug.js injeta window.DESK_DEBUG antes deste script)
+  if (window.DESK_DEBUG) {
+    window.DESK_DEBUG.log('[AUTH][CONFIG]', 'Supabase client criado');
+    window.DESK_DEBUG.log('[AUTH][CONFIG]', 'URL:', SUPABASE_URL);
+    window.DESK_DEBUG.log('[AUTH][CONFIG]', 'KEY prefix:', SUPABASE_KEY.slice(0, 30) + '...');
+  }
+
   document.getElementById('header-date').textContent =
     new Date().toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit' });
 
   // Google Maps
   const s = document.createElement('script');
-  s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&callback=initMap&loading=async`;
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places&callback=initMap&loading=async`;
   s.async = true; s.defer = true;
   document.head.appendChild(s);
 
@@ -127,35 +158,294 @@ window.initMap = function () {
 };
 
 // ── AUTH ─────────────────────────────────────────────────────────────
+let _appJaIniciou = false;
+
 async function iniciarApp() {
+  const D = window.DESK_DEBUG;
+
+  // Lê URL ANTES do Supabase processar — necessário para fluxo de recovery
+  const _hash        = window.location.hash;
+  const hashParams   = new URLSearchParams(_hash.startsWith('#') ? _hash.slice(1) : '');
+  const searchParams = new URLSearchParams(window.location.search);
+  const _accessToken = hashParams.get('access_token');
+  const _refreshToken= hashParams.get('refresh_token') || '';
+  const _type        = hashParams.get('type');
+
+  if (D) {
+    D.log('[AUTH][SESSION]', 'iniciarApp — hash type:', _type || '(nenhum)');
+    D.log('[AUTH][SESSION]', 'access_token presente:', !!_accessToken);
+    D.log('[AUTH][SESSION]', 'search type:', searchParams.get('type') || '(nenhum)');
+  }
+
+  // Recovery via hash implícito (ex: desktop.html#type=recovery&access_token=...)
+  if (_type === 'recovery' && _accessToken) {
+    if (D) D.log('[AUTH][SESSION]', 'Recovery via hash detectado — setSession + view-nova-senha');
+    try {
+      await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken });
+      if (D) D.ok('setSession OK — recovery hash');
+    } catch(e) {
+      if (D) D.err('[AUTH][ERROR]', 'setSession falhou:', e);
+    }
+    history.replaceState(null, '', window.location.pathname);
+    _mostrarViewLogin('view-nova-senha');
+    return;
+  }
+
+  // Recovery via query string PKCE (ex: desktop.html?type=recovery)
+  if (searchParams.get('type') === 'recovery') {
+    if (D) D.log('[AUTH][SESSION]', 'Recovery via query string detectado — view-nova-senha');
+    history.replaceState(null, '', window.location.pathname);
+    _mostrarViewLogin('view-nova-senha');
+    return;
+  }
+
+  // Listener de estado de auth
+  sb.auth.onAuthStateChange((event, session) => {
+    if (D) D.log('[AUTH][SESSION]', 'onAuthStateChange:', event, 'user:', session?.user?.email || 'none');
+    if (event === 'PASSWORD_RECOVERY') {
+      _mostrarViewLogin('view-nova-senha');
+    } else if (event === 'SIGNED_IN' && session && !_appJaIniciou) {
+      _appJaIniciou = true;
+      currentUser = session.user;
+      if (D) D.ok('SIGNED_IN → mostrarApp: ' + currentUser.email);
+      mostrarApp();
+    } else if (event === 'SIGNED_OUT') {
+      _appJaIniciou = false;
+      currentUser = null;
+      if (D) D.log('[AUTH][SESSION]', 'SIGNED_OUT → mostrarLogin');
+      mostrarLogin();
+    }
+  });
+
+  // Sessão existente (reload normal)
   try {
     const { data: { session } } = await sb.auth.getSession();
-    if (session) { currentUser = session.user; mostrarApp(); }
-    else mostrarLogin();
-  } catch(e) { mostrarLogin(); }
+    if (D) D.log('[AUTH][SESSION]', 'getSession:', session ? 'sessão ativa: ' + session.user.email : 'sem sessão');
+    if (session) {
+      _appJaIniciou = true;
+      currentUser = session.user;
+      mostrarApp();
+    } else {
+      mostrarLogin();
+    }
+  } catch(e) {
+    if (D) D.err('[AUTH][ERROR]', 'getSession falhou:', e);
+    mostrarLogin();
+  }
+}
 
-  sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session) { currentUser = session.user; mostrarApp(); }
-    else if (event === 'SIGNED_OUT') { currentUser = null; mostrarLogin(); }
+function _mostrarViewLogin(viewId) {
+  const termos = document.getElementById('screen-termos');
+  if (termos) termos.style.display = 'none';
+  document.getElementById('screen-onboarding').style.display = 'none';
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('screen-login').style.display = 'flex';
+  ['view-login', 'view-recuperar', 'view-nova-senha'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === viewId ? 'flex' : 'none';
   });
 }
 
 function mostrarLogin() {
-  document.getElementById('screen-login').style.display = 'flex';
-  document.getElementById('app').classList.remove('visible');
+  if (!localStorage.getItem('termos_aceitos')) {
+    const t = document.getElementById('screen-termos');
+    if (t) { t.style.display = 'flex'; return; }
+  }
+  _mostrarViewLogin('view-login');
+}
+
+function aceitarTermos() {
+  localStorage.setItem('termos_aceitos', 'true');
+  const t = document.getElementById('screen-termos');
+  if (t) t.style.display = 'none';
+  _mostrarViewLogin('view-login');
+}
+
+let _recCaptchaWidgetId = null;
+
+function mostrarRecuperarSenha() {
+  const D = window.DESK_DEBUG;
+  const email = document.getElementById('login-email')?.value.trim() || '';
+  if (email) document.getElementById('rec-email').value = email;
+  document.getElementById('rec-erro').textContent = '';
+  document.getElementById('rec-ok').style.display = 'none';
+  _mostrarViewLogin('view-recuperar');
+
+  const container = document.getElementById('rec-captcha-container');
+  if (container && typeof hcaptcha !== 'undefined') {
+    if (_recCaptchaWidgetId === null) {
+      // Primeira abertura: renderiza o widget
+      _recCaptchaWidgetId = hcaptcha.render(container, {
+        sitekey: 'becedf82-59a0-4206-9230-7de22e4c49f0'
+      });
+      if (D) D.log('[AUTH][RESET]', 'hCaptcha widget renderizado — ID:', _recCaptchaWidgetId);
+    } else {
+      // Aberturas subsequentes: reseta token antigo para evitar token expirado/já usado
+      hcaptcha.reset(_recCaptchaWidgetId);
+      if (D) D.log('[AUTH][RESET]', 'hCaptcha widget resetado (ID:', _recCaptchaWidgetId, ')');
+    }
+  } else if (typeof hcaptcha === 'undefined') {
+    if (D) D.err('[AUTH][RESET]', 'hCaptcha ainda não carregou — widget não renderizado');
+  }
+}
+
+async function enviarRecuperacao() {
+  const D     = window.DESK_DEBUG;
+  const email = document.getElementById('rec-email').value.trim();
+  const erro  = document.getElementById('rec-erro');
+  const ok    = document.getElementById('rec-ok');
+  const btn   = document.getElementById('btn-rec');
+
+  if (!email) { erro.textContent = 'Informe o e-mail.'; return; }
+
+  // Obtém token do widget de recuperação
+  const captchaToken = typeof hcaptcha !== 'undefined'
+    ? hcaptcha.getResponse(_recCaptchaWidgetId ?? undefined)
+    : '';
+
+  if (D) {
+    D.action('Reset de senha');
+    D.log('[AUTH][RESET]', 'email:', email);
+    D.log('[AUTH][RESET]', 'captchaToken presente:', !!captchaToken, '| tamanho:', captchaToken.length);
+    D.log('[AUTH][RESET]', 'widgetId:', _recCaptchaWidgetId);
+    D.log('[AUTH][RESET]', 'hcaptcha disponível:', typeof hcaptcha !== 'undefined');
+  }
+
+  if (!captchaToken) {
+    erro.textContent = 'Complete o CAPTCHA antes de enviar.';
+    if (D) D.err('[AUTH][RESET]', 'Bloqueado localmente — captchaToken vazio');
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  erro.textContent = ''; ok.style.display = 'none';
+
+  try {
+    // ── redirectTo ────────────────────────────────────────────────────
+    // Usa origem + pathname para ser mais preciso e evitar query/hash.
+    // IMPORTANTE: esta URL deve estar na whitelist do Supabase Auth → Redirect URLs.
+    // Se a recuperação falhar com "Redirect URL not allowed", adicione esta URL no Supabase.
+    const redirectTo = window.location.origin + window.location.pathname;
+
+    if (D) {
+      D.log('[AUTH][RESET]', 'redirectTo:', redirectTo);
+      D.log('[AUTH][RESET]', 'Supabase URL:', SUPABASE_URL);
+      D.redirect(redirectTo);
+    }
+
+    const { data, error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo,
+      captchaToken,
+    });
+
+    if (D) {
+      D.log('[AUTH][RESET]', 'Resposta Supabase:', { data, error });
+      if (error) {
+        D.err('[AUTH][ERROR]', 'Detalhes do erro:',
+          'message:', error.message,
+          '| status:', error.status,
+          '| code:', error.code || error.error_code || '(sem código)',
+        );
+      }
+    }
+
+    // Reseta captcha independente do resultado
+    if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
+      hcaptcha.reset(_recCaptchaWidgetId);
+
+    if (error) throw error;
+
+    if (D) D.ok('Link de recuperação enviado para ' + email);
+    ok.textContent = '✓ Link enviado! Verifique sua caixa de entrada.';
+    ok.style.display = 'block';
+    btn.textContent = 'Reenviar';
+
+  } catch(e) {
+    if (typeof hcaptcha !== 'undefined' && _recCaptchaWidgetId !== null)
+      hcaptcha.reset(_recCaptchaWidgetId);
+
+    const msg = e.message || 'tente novamente.';
+
+    // Detecta erro de captcha explicitamente para mensagem mais clara
+    const isCaptchaErr = /captcha/i.test(msg);
+    if (isCaptchaErr) {
+      erro.textContent = 'Erro de verificação CAPTCHA. Recarregue a página e tente novamente.';
+    } else {
+      erro.textContent = 'Erro: ' + msg;
+    }
+
+    if (D) {
+      D.fail(e);
+      if (isCaptchaErr) {
+        D.err('[AUTH][RESET]', '⚠ Captcha rejeitado pelo servidor Supabase. Verifique se a sitekey',
+          '"becedf82-59a0-4206-9230-7de22e4c49f0" corresponde ao secret configurado no Supabase Dashboard → Auth → Providers → Email → Enable Captcha');
+      }
+    }
+    btn.textContent = 'Enviar link';
+  }
+  btn.disabled = false;
+}
+
+async function salvarNovaSenha() {
+  const D     = window.DESK_DEBUG;
+  const senha = document.getElementById('nova-senha').value;
+  const conf  = document.getElementById('nova-senha-conf').value;
+  const erro  = document.getElementById('nova-senha-erro');
+  const btn   = document.getElementById('btn-nova-senha');
+
+  if (!senha || senha.length < 6) { erro.textContent = 'Senha deve ter ao menos 6 caracteres.'; return; }
+  if (senha !== conf)              { erro.textContent = 'As senhas não conferem.'; return; }
+
+  if (D) {
+    D.action('Salvar nova senha');
+    D.log('[AUTH][RESET]', 'updateUser chamado...');
+  }
+
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  erro.textContent = '';
+
+  try {
+    const { error } = await sb.auth.updateUser({ password: senha });
+
+    if (D) D.log('[AUTH][RESET]', 'Resposta updateUser:', { error: error ? error.message : null });
+
+    if (error) throw error;
+
+    if (D) D.ok('Senha alterada com sucesso');
+    history.replaceState(null, '', window.location.pathname);
+    _appJaIniciou = false;
+    await sb.auth.signOut();
+    _mostrarViewLogin('view-login');
+    const erroLogin = document.getElementById('login-erro');
+    if (erroLogin) {
+      erroLogin.style.color = '#34C759';
+      erroLogin.textContent = '✓ Senha alterada com sucesso! Faça login.';
+    }
+  } catch(e) {
+    if (D) D.fail(e);
+    erro.textContent = 'Erro: ' + (e.message || 'tente novamente.');
+    btn.disabled = false; btn.textContent = 'Salvar nova senha';
+  }
 }
 
 async function mostrarApp() {
   document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-onboarding').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   document.getElementById('header-user').textContent = currentUser?.email ?? '';
   if (currentUser?.email === ADMIN_EMAIL) {
     document.getElementById('tab-admin-btn').style.display = 'inline-block';
   }
   await carregarRepresentante();
+  // Onboarding: primeira abertura sem endereço configurado
+  if (currentRep && !currentRep.onboarding_ok) {
+    _mostrarOnboarding();
+    return;
+  }
   await loadClientes();
   carregarLembretesSupabase();
   carregarRepresentadasDesktop();
+  carregarImpostos().then(verificarLembretesDesk);
 }
 
 // Carrega a linha da tabela `representantes` pelo email — igual ao mobile
@@ -197,21 +487,193 @@ async function getRepId() {
   return _repIdCache;
 }
 
+// hCaptcha — token do login (capturado via callback do widget)
+let _loginCaptchaToken = '';
+function onLoginCaptchaSolved(token)  { _loginCaptchaToken = token; }
+function onLoginCaptchaExpired()      { _loginCaptchaToken = ''; }
+
 async function fazerLogin() {
+  const D     = window.DESK_DEBUG;
   const email = document.getElementById('login-email').value.trim();
   const senha = document.getElementById('login-senha').value;
   const btn   = document.getElementById('btn-login');
   const erro  = document.getElementById('login-erro');
+
   if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha.'; return; }
+
+  const captchaToken = _loginCaptchaToken || (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
+
+  if (D) {
+    D.action('Login');
+    D.log('[AUTH][LOGIN]', 'email:', email);
+    D.log('[AUTH][LOGIN]', 'origin:', window.location.origin);
+    D.log('[AUTH][LOGIN]', 'href:', window.location.href);
+    D.log('[AUTH][LOGIN]', 'captchaToken presente:', !!captchaToken, '| tamanho:', captchaToken.length);
+    D.log('[AUTH][LOGIN]', '_loginCaptchaToken presente:', !!_loginCaptchaToken);
+    D.log('[AUTH][LOGIN]', 'hcaptcha disponível:', typeof hcaptcha !== 'undefined');
+    D.log('[AUTH][LOGIN]', 'Supabase URL:', SUPABASE_URL);
+  }
+
+  if (!captchaToken) {
+    erro.textContent = 'Complete o CAPTCHA antes de entrar.';
+    if (D) D.err('[AUTH][LOGIN]', 'Bloqueado localmente — captchaToken vazio');
+    return;
+  }
+
   btn.disabled = true; btn.textContent = 'Entrando...'; erro.textContent = '';
-  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
-  if (error) {
-    erro.textContent = 'E-mail ou senha incorretos.';
+  _appJaIniciou = true;
+
+  try {
+    if (D) D.log('[AUTH][LOGIN]', 'Chamando signInWithPassword...');
+
+    const { data, error } = await sb.auth.signInWithPassword({
+      email,
+      password: senha,
+      options: { captchaToken }
+    });
+
+    _loginCaptchaToken = '';
+    if (typeof hcaptcha !== 'undefined') hcaptcha.reset();
+
+    if (D) {
+      D.log('[AUTH][LOGIN]', 'Resposta Supabase:', {
+        user: data?.user?.email || null,
+        session: data?.session ? 'presente' : null,
+        error: error ? { message: error.message, status: error.status, code: error.code || error.error_code } : null,
+      });
+    }
+
+    if (error) {
+      _appJaIniciou = false;
+      const isCaptchaErr = /captcha/i.test(error.message);
+
+      if (D) {
+        D.fail(error);
+        D.err('[AUTH][ERROR]',
+          'message:', error.message,
+          '| status:', error.status,
+          '| code:', error.code || error.error_code || '(sem código)',
+        );
+        if (isCaptchaErr) {
+          D.err('[AUTH][ERROR]', '⚠ Captcha rejeitado pelo servidor Supabase.',
+            'Verifique: Supabase Dashboard → Auth → Providers → Email → Captcha provider secret key.',
+            'A sitekey no HTML é: becedf82-59a0-4206-9230-7de22e4c49f0');
+        }
+      }
+
+      // Mensagem ao usuário: sem mascarar o erro real
+      if (isCaptchaErr) {
+        erro.textContent = 'Erro de verificação CAPTCHA. Recarregue e tente novamente.';
+      } else if (error.message.toLowerCase().includes('invalid login')) {
+        erro.textContent = 'E-mail ou senha incorretos.';
+      } else {
+        erro.textContent = error.message;
+      }
+    } else {
+      if (D) D.ok('Login bem-sucedido: ' + (data?.user?.email || email));
+    }
+  } catch(e) {
+    _appJaIniciou = false;
+    if (D) D.fail(e);
+    erro.textContent = 'Erro inesperado: ' + (e.message || e);
+  } finally {
     btn.disabled = false; btn.textContent = 'Entrar';
   }
 }
 
 function fazerLogout() { _repIdCache = null; sb.auth.signOut(); }
+
+// ── ONBOARDING ───────────────────────────────────────────────────────
+function _mostrarOnboarding() {
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-onboarding').style.display = 'flex';
+  // Preenche endereço base se já existir (edição do onboarding)
+  if (currentRep?.endereco_base)
+    document.getElementById('ob-endereco').value = currentRep.endereco_base;
+  if (currentRep?.media_carro)
+    document.getElementById('ob-media').value = currentRep.media_carro;
+  if (currentRep?.preco_gasolina)
+    document.getElementById('ob-gasolina').value = currentRep.preco_gasolina;
+  ativarAutocomplete('ob-endereco');
+}
+
+function obMaskCep(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 8);
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
+  el.value = v;
+}
+
+async function obBuscarCep() {
+  const cep = document.getElementById('ob-cep').value.replace(/\D/g, '');
+  const status = document.getElementById('ob-cep-status');
+  if (cep.length !== 8) return;
+  status.textContent = 'Buscando endereço...'; status.style.color = 'rgba(255,255,255,.4)';
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d = await r.json();
+    if (d.erro) { status.textContent = 'CEP não encontrado.'; return; }
+    document.getElementById('ob-endereco').value =
+      `${d.logradouro}, ${d.bairro}, ${d.localidade} - ${d.uf}`;
+    status.textContent = '✓ Endereço encontrado'; status.style.color = '#34C759';
+  } catch(e) { status.textContent = 'Erro ao buscar CEP.'; }
+}
+
+async function obSalvar() {
+  const endereco = document.getElementById('ob-endereco').value.trim();
+  const media    = parseFloat(document.getElementById('ob-media').value)    || 10;
+  const gasolina = parseFloat(document.getElementById('ob-gasolina').value) || 6.0;
+  const erro     = document.getElementById('ob-erro');
+  const btn      = document.getElementById('btn-ob');
+
+  if (!endereco) { erro.textContent = 'Informe o endereço base.'; return; }
+  btn.disabled = true; btn.textContent = 'Salvando...'; erro.textContent = '';
+
+  try {
+    // Geocodifica endereço base para lat/lng
+    let lat_base = currentRep?.lat_base || null;
+    let lng_base = currentRep?.lng_base || null;
+    const coords = await geocodeEndereco(endereco, '');
+    if (coords) { lat_base = coords.lat; lng_base = coords.lng; }
+
+    await sb.from('representantes').update({
+      endereco_base: endereco,
+      media_carro:   media,
+      preco_gasolina: gasolina,
+      onboarding_ok: true,
+      lat_base, lng_base,
+    }).eq('id', currentRep.id);
+
+    currentRep.endereco_base  = endereco;
+    currentRep.media_carro    = media;
+    currentRep.preco_gasolina = gasolina;
+    currentRep.onboarding_ok  = true;
+    if (lat_base) { currentRep.lat_base = lat_base; currentRep.lng_base = lng_base; }
+
+    document.getElementById('screen-onboarding').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    await loadClientes();
+    carregarLembretesSupabase();
+    carregarRepresentadasDesktop();
+    showToast('✓ Perfil configurado!');
+  } catch(e) {
+    erro.textContent = 'Erro ao salvar: ' + (e.message || '');
+    btn.disabled = false; btn.textContent = 'Salvar e começar';
+  }
+}
+
+function obPular() {
+  // Marca onboarding como ok mesmo sem preencher (não vai pedir de novo)
+  if (currentRep) {
+    sb.from('representantes').update({ onboarding_ok: true }).eq('id', currentRep.id).then(() => {});
+    currentRep.onboarding_ok = true;
+  }
+  document.getElementById('screen-onboarding').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  loadClientes();
+  carregarLembretesSupabase();
+  carregarRepresentadasDesktop();
+}
 
 // ── CLIENTES ─────────────────────────────────────────────────────────
 async function loadClientes() {
@@ -498,18 +960,24 @@ function renderDetail(c) {
         </button>
         <button class="det-btn secondary maps" onclick="abrirMaps(${c.id})" title="Abrir no Google Maps">↗</button>
       </div>
+      ${!visitadoHoje ? `
+      <div class="det-pedido-canais">
+        <button class="det-btn-canal wa" onclick="abrirPedidoSemVisita('whatsapp')">💬 WhatsApp</button>
+        <button class="det-btn-canal tel" onclick="abrirPedidoSemVisita('telefone')">📞 Telefone</button>
+      </div>` : ''}
     </div>
 
     <!-- FORM CHECK-IN (oculto até clicar) -->
     <div id="checkin-form-wrap" class="det-section" style="display:none">
-      <div class="det-section-title">Registrar visita</div>
+      <div class="det-section-title">Registrar visita presencial</div>
       <div class="checkin-form">
-        <textarea class="checkin-obs" id="checkin-obs" placeholder="Observações, pedido feito, retornar em X dias..."></textarea>
-        <div class="checkin-valor-row">
-          <span class="checkin-valor-pre">R$</span>
-          <input type="number" class="checkin-valor-input" id="checkin-valor" placeholder="Valor do pedido (opcional)" step="0.01" min="0">
+        <textarea class="checkin-obs" id="checkin-obs" placeholder="Observações, próximo contato, decisões..."></textarea>
+        <div class="ci-pedidos-header">
+          <span class="ci-pedidos-label">Pedidos desta visita</span>
+          <button type="button" class="ci-add-btn" onclick="ciAdicionarPedido()">+ Adicionar</button>
         </div>
-        <button class="det-btn primary" onclick="doCheckin(${c.id})">✓ Confirmar visita</button>
+        <div id="ci-pedidos-list"><div class="ci-empty">Nenhum pedido — clique em "+ Adicionar" para incluir.</div></div>
+        <button class="det-btn primary" style="margin-top:4px" onclick="doCheckin(${c.id})">✓ Confirmar visita</button>
       </div>
     </div>
 
@@ -587,6 +1055,10 @@ function toggleCheckinForm() {
   const wrap = document.getElementById('checkin-form-wrap');
   if (!wrap) return;
   const visible = wrap.style.display !== 'none';
+  if (!visible) {
+    ciPedidos = [];
+    ciRenderPedidos();
+  }
   wrap.style.display = visible ? 'none' : 'block';
   if (!visible) document.getElementById('checkin-obs')?.focus();
 }
@@ -596,20 +1068,21 @@ async function doCheckin(id) {
   const c = clientes.find(x => x.id === id);
   if (!c || c.visitadoHoje) return;
 
-  const obs      = document.getElementById('checkin-obs')?.value.trim() || '';
-  const valorRaw = document.getElementById('checkin-valor')?.value;
-  const valor    = valorRaw ? parseFloat(valorRaw) : null;
-  const hora     = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const data     = new Date().toISOString().slice(0, 10);
+  const obs  = document.getElementById('checkin-obs')?.value.trim() || '';
+  const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const data = new Date().toISOString().slice(0, 10);
+
+  // Snapshot dos pedidos antes de re-renderizar
+  const pedidosSnap = [...ciPedidos];
 
   c.visitadoHoje = true;
   c.horaHoje     = hora;
   c.ultimaVisita = data;
   if (obs) c.ultimaObs = obs;
 
-  // Salva local para restaurar no reload
   localStorage.setItem(`checkin_${c.id}_${data}`, JSON.stringify({ hora, obs }));
 
+  ciPedidos = [];
   renderList();
   renderCounters();
   renderDetail(c);
@@ -619,6 +1092,9 @@ async function doCheckin(id) {
   }
 
   try {
+    const repId = await getRepId();
+    const totalPedidos = pedidosSnap.reduce((s, p) => s + (p.valor || 0), 0);
+
     const payload = {
       id_cliente:   String(c.id),
       nome_cliente: c.nome,
@@ -628,13 +1104,106 @@ async function doCheckin(id) {
       rep_id:       currentUser.id,
       tipo:         'visita',
     };
-    if (valor !== null) payload.valor_pedido = valor;
-    await sb.from('visitas').insert(payload);
+    if (totalPedidos > 0) payload.valor_pedido = totalPedidos;
+
+    const { data: visitaData, error: errV } = await sb.from('visitas').insert(payload).select().single();
+    if (errV) throw errV;
+
+    // Salva pedidos se existirem
+    if (pedidosSnap.length > 0 && visitaData?.id) {
+      const pedidosPayload = pedidosSnap.map(p => ({
+        visita_id:         visitaData.id,
+        rep_id:            repId,
+        cliente_id:        String(c.id),
+        cliente_nome:      c.nome,
+        representada_id:   p.representada_id   || null,
+        representada_nome: p.representada_nome || null,
+        tipo:              p.tipo   || 'pedido',
+        valor:             p.valor  || 0,
+        status:            p.status || null,
+        tipo_contato:      null,   // presencial
+      }));
+      await sb.from('pedidos').insert(pedidosPayload);
+    }
+
     await sb.from('clientes').update({ ultima_visita: data }).eq('id', String(c.id));
     showToast('✓ Visita registrada!');
   } catch(e) {
+    console.warn('doCheckin:', e);
     showToast('⚠️ Salvo localmente', true);
   }
+}
+
+// ── CHECK-IN — gerenciamento de pedidos ──────────────────────────────
+function ciRenderPedidos() {
+  const el = document.getElementById('ci-pedidos-list');
+  if (!el) return;
+  if (!ciPedidos.length) {
+    el.innerHTML = '<div class="ci-empty">Nenhum pedido — clique em "+ Adicionar" para incluir.</div>';
+    return;
+  }
+  el.innerHTML = ciPedidos.map((p, idx) => {
+    const repOpts = representadasList.map(r =>
+      `<option value="${r.id}" data-nome="${r.nome}"${p.representada_id == r.id ? ' selected' : ''}>${r.nome}</option>`
+    ).join('');
+    return `
+      <div class="ci-pedido-card">
+        <div class="ci-pedido-row">
+          <select class="ci-select" onchange="ciSetRep(${idx},this)">
+            <option value="">Representada (opcional)...</option>${repOpts}
+          </select>
+          <button class="ci-remove-btn" onclick="ciRemoverPedido(${idx})">×</button>
+        </div>
+        <div class="ci-pedido-row">
+          <div class="ci-tipo-btns">
+            <button class="ci-tipo-btn${p.tipo==='pedido'?' active':''}" onclick="ciSetTipo(${idx},'pedido')">Pedido</button>
+            <button class="ci-tipo-btn${p.tipo==='orcamento'?' active':''}" onclick="ciSetTipo(${idx},'orcamento')">Orçamento</button>
+          </div>
+          <input class="ci-valor-input" type="text" inputmode="decimal" placeholder="R$ 0,00"
+            value="${p.valor ? p.valor.toFixed(2).replace('.',',') : ''}"
+            oninput="ciSetValor(${idx},this)" onblur="maskMoeda(this)">
+        </div>
+        ${p.tipo==='orcamento' ? `
+        <div class="ci-status-row">
+          <span class="ci-status-label">Status:</span>
+          <button class="ci-status-btn${p.status==='aberto'?' active':''}" onclick="ciSetStatus(${idx},'aberto')">Aberto</button>
+          <button class="ci-status-btn${p.status==='ganho'?' active':''}" onclick="ciSetStatus(${idx},'ganho')">Ganho</button>
+          <button class="ci-status-btn${p.status==='perdido'?' active':''}" onclick="ciSetStatus(${idx},'perdido')">Perdido</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function ciAdicionarPedido() {
+  ciPedidos.push({ representada_id: null, representada_nome: null, tipo: 'pedido', valor: 0, status: null });
+  ciRenderPedidos();
+}
+
+function ciRemoverPedido(idx) {
+  ciPedidos.splice(idx, 1);
+  ciRenderPedidos();
+}
+
+function ciSetRep(idx, sel) {
+  const opt = sel.options[sel.selectedIndex];
+  ciPedidos[idx].representada_id   = sel.value || null;
+  ciPedidos[idx].representada_nome = opt.dataset.nome || null;
+}
+
+function ciSetTipo(idx, tipo) {
+  ciPedidos[idx].tipo   = tipo;
+  ciPedidos[idx].status = tipo === 'orcamento' ? 'aberto' : null;
+  ciRenderPedidos();
+}
+
+function ciSetValor(idx, el) {
+  const v = el.value.replace(/\./g, '').replace(',', '.');
+  ciPedidos[idx].valor = parseFloat(v) || 0;
+}
+
+function ciSetStatus(idx, status) {
+  ciPedidos[idx].status = status;
+  ciRenderPedidos();
 }
 
 // ── HISTÓRICO ────────────────────────────────────────────────────────
@@ -649,29 +1218,38 @@ async function carregarHistorico(clienteId) {
       .eq('rep_id', currentUser.id)
       .order('data', { ascending: false })
       .order('hora', { ascending: false })
-      .limit(20);
+      .limit(30);
     if (error) throw error;
     const visitas = data || [];
     if (!visitas.length) {
       el.innerHTML = `<div class="hist-obs-empty" style="padding:8px 0">Nenhuma visita registrada ainda.</div>`;
       return;
     }
+    // Cacheia para o detalhe
+    visitas.forEach(v => { visitasHistoricoCache[v.id] = v; });
+
     const hoje = new Date().toISOString().slice(0, 10);
     el.innerHTML = visitas.map(v => {
-      const isHoje   = v.data === hoje;
+      const isHoje    = v.data === hoje;
       const diasAtras = Math.floor((Date.now() - new Date(v.data + 'T00:00:00')) / 86400000);
-      const isRecent = diasAtras <= 7;
-      const dotClass = isHoje ? 'hoje' : isRecent ? 'recent' : '';
-      const icon = isHoje ? '🟡' : isRecent ? '🟢' : '·';
-      const valorStr = v.valor_pedido ? `<div class="hist-valor">R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>` : '';
+      const isRecent  = diasAtras <= 7;
+      const dotClass  = isHoje ? 'hoje' : isRecent ? 'recent' : '';
+      const icon      = isHoje ? '🟡' : isRecent ? '🟢' : '·';
+      const valorStr  = v.valor_pedido
+        ? `<div class="hist-valor">R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>`
+        : '';
+      const canalBadge = v.via_whatsapp
+        ? `<span class="hist-canal-badge wa">💬 WhatsApp</span>`
+        : '';
       return `
-        <div class="hist-item">
+        <div class="hist-item clickable" onclick="abrirDetalheVisita('${v.id}')">
           <div class="hist-dot ${dotClass}">${icon}</div>
           <div class="hist-content">
-            <div class="hist-data">${formatDate(v.data)} às ${v.hora || '—'}</div>
+            <div class="hist-data">${formatDate(v.data)} às ${v.hora || '—'} ${canalBadge}</div>
             ${v.obs ? `<div class="hist-obs">${v.obs}</div>` : `<div class="hist-obs-empty">Sem observação</div>`}
             ${valorStr}
           </div>
+          <div class="hist-arrow">›</div>
         </div>`;
     }).join('');
   } catch(e) {
@@ -736,11 +1314,36 @@ async function carregarRelatorio() {
   const ini = new Date(relAno, relMes, 1).toISOString().slice(0, 10);
   const fim = new Date(relAno, relMes + 1, 0).toISOString().slice(0, 10);
   try {
+    const repId = await getRepId();
     const { data } = await sb.from('visitas').select('*')
       .eq('rep_id', currentUser.id)
       .gte('data', ini).lte('data', fim)
       .order('data', { ascending: false });
     visatasRel = data || [];
+
+    // Inclui pedidos sem visita (WhatsApp/Telefone) no relatório de vendas
+    try {
+      const { data: pedsSemVisita } = await sb.from('pedidos').select('*')
+        .eq('rep_id', repId)
+        .is('visita_id', null)
+        .gte('created_at', ini).lte('created_at', fim + 'T23:59:59');
+      if (pedsSemVisita?.length) {
+        pedsSemVisita.forEach(p => {
+          visatasRel.push({
+            id: null,
+            id_cliente: p.cliente_id,
+            nome_cliente: p.cliente_nome,
+            cidade: clientes.find(c => String(c.id) === String(p.cliente_id))?.cidade || '',
+            data: p.created_at?.slice(0, 10) || ini,
+            valor_pedido: p.valor,
+            pedido_tipo: p.tipo,
+            tipo_contato: p.tipo_contato,
+            representada_nome: p.representada_nome,
+            _semVisita: true,
+          });
+        });
+      }
+    } catch(e2) {}
   } catch(e) { visatasRel = []; }
   renderReport();
 }
@@ -954,6 +1557,7 @@ function renderRadarSection(rows) {
 
 // ── RELATÓRIO DETALHE ────────────────────────────────────────────────
 async function abrirDetalheRelatorio(tipo) {
+  relDetalheAtivo = tipo;
   document.getElementById('rep-body').style.display = 'none';
   const det = document.getElementById('rep-detail');
   det.style.display = 'flex';
@@ -976,6 +1580,11 @@ async function abrirDetalheRelatorio(tipo) {
   document.getElementById('rep-detail-titulo').textContent = titulos[tipo] || tipo;
   document.getElementById('rep-detail-meta').textContent = periodoLabel;
 
+  // Mostra botão PDF apenas para tipos exportáveis
+  const exportaveis = ['visitas','vendas','top-compradores','mais-lucrativos','clientes-sumindo'];
+  const btnPdf = document.getElementById('btn-pdf-relatorio');
+  if (btnPdf) btnPdf.style.display = exportaveis.includes(tipo) ? '' : 'none';
+
   const body = document.getElementById('rep-detail-body');
   body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Carregando...</div>';
 
@@ -996,6 +1605,7 @@ async function abrirDetalheRelatorio(tipo) {
 }
 
 function fecharDetalheRelatorio() {
+  relDetalheAtivo = null;
   const det = document.getElementById('rep-detail');
   const body = document.getElementById('rep-body');
   if (det)  det.style.display = 'none';
@@ -1091,15 +1701,23 @@ function renderDetalheVendas() {
 
   const ordenado = [...comValor].sort((a, b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
 
-  const linhas = ordenado.map(v => `
+  const linhas = ordenado.map(v => {
+    const canal = v.tipo_contato || 'presencial';
+    const canalBadge = canal === 'whatsapp'
+      ? '<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;background:#E8F9ED;color:#1a8a35;margin-left:4px">💬 WA</span>'
+      : canal === 'telefone'
+        ? '<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;background:#f2f2f2;color:#555;margin-left:4px">📞 Tel</span>'
+        : '';
+    return `
     <tr>
       <td class="muted" style="white-space:nowrap">${formatDate(v.data)}</td>
-      <td><strong>${v.nome_cliente || '—'}</strong></td>
+      <td><strong>${v.nome_cliente || '—'}</strong>${canalBadge}</td>
       <td class="muted">${v.cidade || '—'}</td>
       <td class="val-green" style="text-align:right;white-space:nowrap">
         R$ ${parseFloat(v.valor_pedido).toLocaleString('pt-BR',{minimumFractionDigits:2})}
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   return resumo + `
     <div class="det-table-wrap">
@@ -1788,6 +2406,7 @@ function openCadastro() {
   document.getElementById('btn-cad-gps').className = 'btn-gps';
   document.getElementById('btn-cad-gps').textContent = '📍 Usar localização atual';
   renderSegPills();
+  ativarAutocomplete('cad-endereco');
 }
 
 function closeCadastro() {
@@ -1861,6 +2480,12 @@ async function salvarCliente() {
       lat:          novoClienteCoords?.lat || null,
       lng:          novoClienteCoords?.lng || null,
     };
+    // Geocoding automático se não tiver GPS mas tiver endereço/cidade
+    if (!novoClienteCoords && (payload.endereco || payload.cep) && cidade) {
+      btn.textContent = 'Geocodificando...';
+      const coords = await geocodeEndereco(payload.endereco || payload.cep, cidade);
+      if (coords) { payload.lat = coords.lat; payload.lng = coords.lng; }
+    }
     const { data, error } = await sb.from('clientes').insert(payload).select().single();
     if (error) throw error;
     clientes.push(mapCliente(data));
@@ -1871,6 +2496,310 @@ async function salvarCliente() {
     showToast('Erro ao salvar: ' + (e.message || ''), true);
   }
   btn.disabled = false; btn.textContent = 'Salvar cliente';
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────────────
+
+function _novoPDF(titulo, subtitulo) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  doc.setFont('helvetica');
+
+  // Cabeçalho
+  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+  doc.text(titulo, 14, 18);
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120);
+  doc.text(subtitulo, 14, 25);
+  doc.setTextColor(0);
+  return doc;
+}
+
+function _nomePeriodo() {
+  if (relFiltro === 'hoje')   return 'Hoje — ' + new Date().toLocaleDateString('pt-BR');
+  if (relFiltro === 'semana') return 'Esta semana';
+  const n = new Date(relAno, relMes, 1)
+    .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
+let relDetalheAtivo = null; // tipo aberto no detalhe do relatório
+
+function exportarPDFRelatorio() {
+  if (!relDetalheAtivo) return;
+  if (relDetalheAtivo === 'visitas')          exportarPDFVisitas();
+  else if (relDetalheAtivo === 'vendas')      exportarPDFVendas();
+  else if (relDetalheAtivo === 'top-compradores') exportarPDFTopCompradores();
+  else if (relDetalheAtivo === 'clientes-sumindo') exportarPDFClientesSumindo();
+  else if (relDetalheAtivo === 'mais-lucrativos')  exportarPDFMaisLucrativos();
+  else showToast('Exportação não disponível para este tipo', true);
+}
+
+function exportarPDFVisitas() {
+  if (!relRowsAtual.length) { showToast('Nenhuma visita para exportar', true); return; }
+  const periodo = _nomePeriodo();
+  const doc = _novoPDF('Relatório de Visitas', periodo);
+
+  const rows = [...relRowsAtual].sort((a, b) => b.data.localeCompare(a.data));
+  const body = rows.map(v => [
+    formatDate(v.data),
+    v.hora || '—',
+    v.nome_cliente || '—',
+    v.cidade || '—',
+    v.obs ? (v.obs.length > 60 ? v.obs.slice(0, 60) + '…' : v.obs) : '',
+    v.valor_pedido ? 'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '',
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Hora', 'Cliente', 'Cidade', 'Observação', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [0, 122, 255], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 20 }, 1: { cellWidth: 14 }, 5: { cellWidth: 26, halign: 'right' } },
+    alternateRowStyles: { fillColor: [245, 245, 250] },
+  });
+
+  const total = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
+  if (total > 0) {
+    const y = doc.lastAutoTable.finalY + 6;
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text(`Total: R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits:2})}`, 14, y);
+  }
+
+  doc.save(`visitas_${periodo.replace(/\s/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFVendas() {
+  const rows = relRowsAtual.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+  if (!rows.length) { showToast('Nenhuma venda com valor para exportar', true); return; }
+  const periodo = _nomePeriodo();
+  const doc = _novoPDF('Relatório de Vendas', periodo);
+
+  const ordenado = [...rows].sort((a, b) => parseFloat(b.valor_pedido) - parseFloat(a.valor_pedido));
+  const body = ordenado.map(v => [
+    formatDate(v.data),
+    v.nome_cliente || '—',
+    v.cidade || '—',
+    v.representada_nome || v.pedido_representada || '—',
+    'R$ ' + parseFloat(v.valor_pedido).toLocaleString('pt-BR', {minimumFractionDigits:2}),
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Cliente', 'Cidade', 'Representada', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [52, 199, 89], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 4: { halign: 'right', cellWidth: 30 } },
+    alternateRowStyles: { fillColor: [245, 250, 245] },
+  });
+
+  const total = rows.reduce((s, v) => s + parseFloat(v.valor_pedido), 0);
+  const y = doc.lastAutoTable.finalY + 6;
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+  doc.text(`Total vendido: R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits:2})}`, 14, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  doc.text(`${rows.length} pedidos com valor`, 14, y + 6);
+
+  doc.save(`vendas_${periodo.replace(/\s/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFTopCompradores() {
+  const comValor = relRowsAtual.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+  if (!comValor.length) { showToast('Sem dados de valor para exportar', true); return; }
+  const periodo = _nomePeriodo();
+  const doc = _novoPDF('Top Compradores', periodo);
+
+  const byCliente = {};
+  comValor.forEach(v => {
+    const k = v.id_cliente;
+    if (!byCliente[k]) byCliente[k] = { nome: v.nome_cliente, cidade: v.cidade, total: 0, pedidos: 0 };
+    byCliente[k].total   += parseFloat(v.valor_pedido);
+    byCliente[k].pedidos += 1;
+  });
+  const ranking = Object.values(byCliente).sort((a, b) => b.total - a.total);
+  const body = ranking.map((r, i) => [
+    `#${i+1}`,
+    r.nome,
+    r.cidade || '—',
+    String(r.pedidos),
+    'R$ ' + r.total.toLocaleString('pt-BR', {minimumFractionDigits:2}),
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['#', 'Cliente', 'Cidade', 'Pedidos', 'Total']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [255, 149, 0], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 10 }, 3: { halign: 'center' }, 4: { halign: 'right', cellWidth: 32 } },
+    alternateRowStyles: { fillColor: [255, 249, 240] },
+  });
+
+  doc.save(`top_compradores_${periodo.replace(/\s/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFClientesSumindo() {
+  const sumindo = clientes
+    .filter(c => { const st = getStatus(c); return st === 'blue' || st === 'red'; })
+    .map(c => {
+      const dias = c.ultimaVisita
+        ? Math.floor((Date.now() - new Date(c.ultimaVisita + 'T00:00:00')) / 86400000)
+        : null;
+      return { ...c, dias };
+    })
+    .sort((a, b) => (b.dias ?? 9999) - (a.dias ?? 9999));
+
+  if (!sumindo.length) { showToast('Nenhum cliente sumindo', true); return; }
+  const doc = _novoPDF('Clientes Sumindo', new Date().toLocaleDateString('pt-BR'));
+
+  const body = sumindo.map(c => [
+    c.nome,
+    c.cidade || '—',
+    STATUS_LABELS[getStatus(c)],
+    c.ultimaVisita ? formatDate(c.ultimaVisita) : 'Nunca',
+    c.dias !== null ? `${c.dias} dias` : '—',
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Cliente', 'Cidade', 'Status', 'Última visita', 'Dias sem visita']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [255, 59, 48], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 4: { halign: 'right' } },
+    alternateRowStyles: { fillColor: [255, 245, 245] },
+  });
+
+  doc.save('clientes_sumindo.pdf');
+  showToast('✓ PDF gerado!');
+}
+
+function exportarPDFMaisLucrativos() {
+  exportarPDFTopCompradores(); // mesma lógica com nome diferente
+}
+
+async function exportarPDFGastos() {
+  const c = clientes.find(x => x.id === activeId);
+  if (!c) return;
+  if (!gastosClienteAtual.length) { showToast('Nenhum gasto para exportar', true); return; }
+
+  const doc = _novoPDF('Gastos com Cliente', c.nome);
+  const sorted = [...gastosClienteAtual].sort((a, b) => b.data.localeCompare(a.data));
+  const body = sorted.map(g => [
+    new Date(g.data + 'T12:00:00').toLocaleDateString('pt-BR'),
+    g.descricao || '—',
+    g.url_comprovante ? 'Sim' : '—',
+    'R$ ' + (g.valor || 0).toFixed(2).replace('.', ','),
+  ]);
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Descrição', 'NF', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [0, 122, 255], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 3: { halign: 'right', cellWidth: 28 } },
+    alternateRowStyles: { fillColor: [245, 245, 250] },
+  });
+
+  const total = gastosClienteAtual.reduce((s, g) => s + (g.valor || 0), 0);
+  const y = doc.lastAutoTable.finalY + 6;
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+  doc.text(`Total: R$ ${total.toFixed(2).replace('.', ',')}`, 14, y);
+
+  doc.save(`gastos_${c.nome.replace(/\s+/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+async function exportarPDFFinancas() {
+  if (!lancamentosCache.length) { showToast('Nenhum lançamento no período', true); return; }
+
+  const periodo = (() => {
+    const p = finTab === 'resumo' ? finPeriodoResumo : finPeriodo;
+    if (p === 'hoje')   return 'Hoje — ' + new Date().toLocaleDateString('pt-BR');
+    if (p === 'semana') return 'Esta semana';
+    return 'Este mês';
+  })();
+  const doc = _novoPDF('Finanças — Lançamentos', periodo);
+
+  const sorted = [...lancamentosCache].sort((a, b) => b.data.localeCompare(a.data));
+  const body = sorted.map(l => {
+    const isHosp = l.categoria === 'Hospedagem';
+    const desc = isHosp ? (l.hotel_nome || l.descricao || 'Hospedagem') : (l.descricao || l.categoria);
+    return [
+      new Date(l.data + 'T12:00:00').toLocaleDateString('pt-BR'),
+      l.tipo === 'receita' ? 'Receita' : 'Gasto',
+      l.categoria || '—',
+      desc,
+      (l.tipo === 'receita' ? '+' : '-') + 'R$ ' + Number(l.valor).toFixed(2).replace('.', ','),
+    ];
+  });
+
+  doc.autoTable({
+    startY: 30,
+    head: [['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor']],
+    body,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [52, 199, 89], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 4: { halign: 'right', cellWidth: 30 } },
+    alternateRowStyles: { fillColor: [245, 250, 245] },
+    bodyStyles: {
+      didParseCell: (data) => {
+        if (data.column.index === 4 && data.cell.text[0]?.startsWith('-'))
+          data.cell.styles.textColor = [255, 59, 48];
+        if (data.column.index === 4 && data.cell.text[0]?.startsWith('+'))
+          data.cell.styles.textColor = [52, 199, 89];
+      }
+    },
+  });
+
+  const receitas = lancamentosCache.filter(l => l.tipo === 'receita').reduce((s, l) => s + Number(l.valor), 0);
+  const gastos   = lancamentosCache.filter(l => l.tipo === 'gasto').reduce((s, l) => s + Number(l.valor), 0);
+  const saldo    = receitas - gastos;
+  const y = doc.lastAutoTable.finalY + 8;
+  doc.setFontSize(9);
+  doc.text(`Receitas: R$ ${receitas.toFixed(2).replace('.',',')}   Gastos: R$ ${gastos.toFixed(2).replace('.',',')}   Saldo: R$ ${saldo.toFixed(2).replace('.',',')}`, 14, y);
+
+  doc.save(`financas_${periodo.replace(/[\s\/—]/g,'_')}.pdf`);
+  showToast('✓ PDF gerado!');
+}
+
+// ── GEOCODING ─────────────────────────────────────────────────────────
+function geocodeEndereco(endereco, cidade) {
+  return new Promise(resolve => {
+    if (!window.google?.maps?.Geocoder) { resolve(null); return; }
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: `${endereco}, ${cidade}, Brasil` }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const loc = results[0].geometry.location;
+        resolve({ lat: loc.lat(), lng: loc.lng() });
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+// ── AUTOCOMPLETE DE ENDEREÇO ──────────────────────────
+function ativarAutocomplete(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input || !window.google?.maps?.places) return;
+  const ac = new google.maps.places.Autocomplete(input, {
+    componentRestrictions: { country: 'br' },
+    fields: ['formatted_address']
+  });
+  ac.addListener('place_changed', () => {
+    const place = ac.getPlace();
+    if (place.formatted_address) {
+      input.value = place.formatted_address;
+      input.dispatchEvent(new Event('input'));
+    }
+  });
 }
 
 // ── UTILITÁRIOS ──────────────────────────────────────────────────────
@@ -1997,6 +2926,7 @@ function renderPlannerPanel() {
 
   renderPlannerClientList();
   updatePlannerBtn();
+  ativarAutocomplete('planner-origin-input');
 }
 
 function renderPlannerClientList() {
@@ -2601,6 +3531,8 @@ function setFinTab(tab) {
   });
   const novoBtn = document.getElementById('fin-novo-btn');
   if (novoBtn) novoBtn.style.display = tab === 'lancamentos' ? 'block' : 'none';
+  const pdfBtn = document.getElementById('fin-pdf-btn');
+  if (pdfBtn) pdfBtn.style.display = tab === 'lancamentos' ? 'block' : 'none';
   if (tab === 'lancamentos')  carregarLancamentos().then(renderLancamentos);
   if (tab === 'impostos')     carregarImpostos().then(renderImpostos);
   if (tab === 'resumo')       carregarLancamentos().then(renderResumoFin);
@@ -2888,6 +3820,7 @@ function openConfig() {
   document.getElementById('cfg-cep-status').textContent = '';
   document.getElementById('config-panel').classList.add('open');
   document.getElementById('config-backdrop').classList.add('open');
+  ativarAutocomplete('cfg-endereco');
 }
 
 function closeConfig() {
@@ -2941,6 +3874,134 @@ async function salvarConfigPerfil() {
 
 // ── GASTOS COM CLIENTE ────────────────────────────────────────────────
 
+// ── PEDIDO SEM VISITA (WhatsApp / Telefone) ───────────────────────────
+function abrirPedidoSemVisita(canal) {
+  const c = clientes.find(x => x.id === activeId);
+  if (!c) return;
+  waCanal   = canal;
+  waPedidos = [{ representada_id: null, representada_nome: null, tipo: 'pedido', valor: 0, status: null }];
+
+  document.getElementById('wa-modal-titulo').textContent =
+    canal === 'whatsapp' ? '💬 Pedido via WhatsApp' : '📞 Pedido via Telefone';
+  document.getElementById('wa-cliente-nome').textContent = c.nome + ' · ' + c.cidade;
+  document.getElementById('wa-obs').value = '';
+
+  waRenderPedidos();
+  document.getElementById('wa-modal').classList.add('open');
+}
+
+function fecharPedidoSemVisita() {
+  document.getElementById('wa-modal').classList.remove('open');
+  waCanal   = null;
+  waPedidos = [];
+}
+
+async function salvarPedidoSemVisita() {
+  const c = clientes.find(x => x.id === activeId);
+  if (!c || !waCanal) return;
+  if (!waPedidos.length) { showToast('Adicione ao menos um pedido', true); return; }
+
+  const obs = document.getElementById('wa-obs')?.value.trim() || '';
+  const btn = document.getElementById('wa-btn-salvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  try {
+    const repId = await getRepId();
+    const pedidosPayload = waPedidos.map(p => ({
+      visita_id:         null,         // sem visita
+      rep_id:            repId,
+      cliente_id:        String(c.id),
+      cliente_nome:      c.nome,
+      representada_id:   p.representada_id   || null,
+      representada_nome: p.representada_nome || null,
+      tipo:              p.tipo   || 'pedido',
+      valor:             p.valor  || 0,
+      status:            p.status || null,
+      tipo_contato:      waCanal,      // 'whatsapp' | 'telefone'
+      obs:               obs || null,
+    }));
+    const { error } = await sb.from('pedidos').insert(pedidosPayload);
+    if (error) throw error;
+    // Regra: NÃO atualiza ultima_visita
+    showToast(`✓ Pedido via ${waCanal === 'whatsapp' ? 'WhatsApp' : 'Telefone'} registrado!`);
+    fecharPedidoSemVisita();
+  } catch(e) {
+    showToast('Erro ao salvar: ' + (e.message || ''), true);
+  }
+  btn.disabled = false; btn.textContent = 'Salvar pedido';
+}
+
+function waRenderPedidos() {
+  const el = document.getElementById('wa-pedidos-list');
+  if (!el) return;
+  if (!waPedidos.length) {
+    el.innerHTML = '<div class="ci-empty">Nenhum pedido adicionado.</div>';
+    return;
+  }
+  el.innerHTML = waPedidos.map((p, idx) => {
+    const repOpts = representadasList.map(r =>
+      `<option value="${r.id}" data-nome="${r.nome}"${p.representada_id == r.id ? ' selected' : ''}>${r.nome}</option>`
+    ).join('');
+    return `
+      <div class="ci-pedido-card">
+        <div class="ci-pedido-row">
+          <select class="ci-select" onchange="waSetRep(${idx},this)">
+            <option value="">Representada (opcional)...</option>${repOpts}
+          </select>
+          <button class="ci-remove-btn" onclick="waRemoverPedido(${idx})">×</button>
+        </div>
+        <div class="ci-pedido-row">
+          <div class="ci-tipo-btns">
+            <button class="ci-tipo-btn${p.tipo==='pedido'?' active':''}" onclick="waSetTipo(${idx},'pedido')">Pedido</button>
+            <button class="ci-tipo-btn${p.tipo==='orcamento'?' active':''}" onclick="waSetTipo(${idx},'orcamento')">Orçamento</button>
+          </div>
+          <input class="ci-valor-input" type="text" inputmode="decimal" placeholder="R$ 0,00"
+            value="${p.valor ? p.valor.toFixed(2).replace('.',',') : ''}"
+            oninput="waSetValor(${idx},this)" onblur="maskMoeda(this)">
+        </div>
+        ${p.tipo==='orcamento' ? `
+        <div class="ci-status-row">
+          <span class="ci-status-label">Status:</span>
+          <button class="ci-status-btn${p.status==='aberto'?' active':''}" onclick="waSetStatus(${idx},'aberto')">Aberto</button>
+          <button class="ci-status-btn${p.status==='ganho'?' active':''}" onclick="waSetStatus(${idx},'ganho')">Ganho</button>
+          <button class="ci-status-btn${p.status==='perdido'?' active':''}" onclick="waSetStatus(${idx},'perdido')">Perdido</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function waAdicionarPedido() {
+  waPedidos.push({ representada_id: null, representada_nome: null, tipo: 'pedido', valor: 0, status: null });
+  waRenderPedidos();
+}
+
+function waRemoverPedido(idx) {
+  waPedidos.splice(idx, 1);
+  waRenderPedidos();
+}
+
+function waSetRep(idx, sel) {
+  const opt = sel.options[sel.selectedIndex];
+  waPedidos[idx].representada_id   = sel.value || null;
+  waPedidos[idx].representada_nome = opt.dataset.nome || null;
+}
+
+function waSetTipo(idx, tipo) {
+  waPedidos[idx].tipo   = tipo;
+  waPedidos[idx].status = tipo === 'orcamento' ? 'aberto' : null;
+  waRenderPedidos();
+}
+
+function waSetValor(idx, el) {
+  const v = el.value.replace(/\./g, '').replace(',', '.');
+  waPedidos[idx].valor = parseFloat(v) || 0;
+}
+
+function waSetStatus(idx, status) {
+  waPedidos[idx].status = status;
+  waRenderPedidos();
+}
+
 async function carregarRepresentadasDesktop() {
   if (!currentRep) return;
   const { data } = await sb.from('representadas').select('id,nome').eq('rep_id', currentRep.id).order('nome');
@@ -2950,19 +4011,202 @@ async function carregarRepresentadasDesktop() {
 function showDetailOverlay(panelId) {
   document.getElementById('detail-empty').style.display = 'none';
   document.getElementById('detail-body').style.display = 'none';
-  ['panel-gastos', 'panel-bonif'].forEach(id => {
+  ['panel-gastos', 'panel-bonif', 'panel-visita-detalhe'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === panelId ? 'flex' : 'none';
   });
 }
 
 function fecharPainelDetalhe() {
-  ['panel-gastos', 'panel-bonif'].forEach(id => {
+  ['panel-gastos', 'panel-bonif', 'panel-visita-detalhe'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
   const c = clientes.find(x => x.id === activeId);
   if (c) renderDetail(c);
+}
+
+// ── DETALHE VISITA ───────────────────────────────────────────────────
+function abrirDetalheVisita(visitaId) {
+  const v = visitasHistoricoCache[visitaId];
+  if (!v) return;
+  visitaDetAtual    = v;
+  visitaModoEdicao  = false;
+  pedidosVisitaAtual = [];
+
+  document.getElementById('vd-titulo').textContent =
+    formatDate(v.data) + ' às ' + (v.hora || '—');
+  document.getElementById('vd-btn-edit').style.display = '';
+
+  showDetailOverlay('panel-visita-detalhe');
+  renderDetalheVisitaView();
+  carregarPedidosVisita(visitaId);
+}
+
+function fecharDetalheVisita() {
+  fecharPainelDetalhe();
+}
+
+function ativarEdicaoVisita() {
+  visitaModoEdicao = true;
+  renderDetalheVisitaView();
+  document.getElementById('vd-btn-edit').style.display = 'none';
+}
+
+function cancelarEdicaoVisita() {
+  visitaModoEdicao = false;
+  renderDetalheVisitaView();
+  document.getElementById('vd-btn-edit').style.display = '';
+}
+
+function renderDetalheVisitaView() {
+  const v    = visitaDetAtual;
+  const body = document.getElementById('vd-body');
+  if (!v || !body) return;
+
+  const diasAtras = Math.floor((Date.now() - new Date(v.data + 'T00:00:00')) / 86400000);
+  const diasLabel = diasAtras === 0 ? 'Hoje' : diasAtras === 1 ? 'Ontem' : `${diasAtras} dias atrás`;
+
+  const obsHtml = visitaModoEdicao
+    ? `<textarea class="checkin-obs" id="vd-obs-edit" style="min-height:70px">${v.obs || ''}</textarea>`
+    : (v.obs
+        ? `<div class="vd-obs-text">${v.obs}</div>`
+        : `<div class="hist-obs-empty">Sem observação</div>`);
+
+  body.innerHTML = `
+    <div class="vd-meta-block">
+      <div class="vd-meta"><span class="vd-meta-label">Data</span><span class="vd-meta-val">${formatDate(v.data)}</span></div>
+      <div class="vd-meta"><span class="vd-meta-label">Hora</span><span class="vd-meta-val">${v.hora || '—'}</span></div>
+      <div class="vd-meta"><span class="vd-meta-label">Período</span><span class="vd-meta-val" style="color:var(--text3)">${diasLabel}</span></div>
+      ${v.cidade ? `<div class="vd-meta"><span class="vd-meta-label">Cidade</span><span class="vd-meta-val">${v.cidade}</span></div>` : ''}
+    </div>
+
+    <div class="det-section-title" style="margin:14px 0 6px">Observação</div>
+    ${obsHtml}
+
+    <div class="det-section-title" style="margin:14px 0 6px">Pedidos</div>
+    <div id="vd-pedidos-list"><div style="font-size:12px;color:var(--text3);padding:4px 0">Carregando...</div></div>
+
+    ${visitaModoEdicao ? `
+    <div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <button class="det-btn danger" style="flex:0 0 auto;background:var(--red-bg);color:var(--red)" onclick="excluirVisitaDetalhe()">🗑 Excluir</button>
+      <button class="det-btn secondary" onclick="cancelarEdicaoVisita()">Cancelar</button>
+      <button class="det-btn primary" onclick="salvarEdicaoVisita()">Salvar</button>
+    </div>` : ''}
+  `;
+
+  if (pedidosVisitaAtual.length) renderPedidosVisita();
+}
+
+async function carregarPedidosVisita(visitaId) {
+  try {
+    const { data } = await sb.from('pedidos').select('*').eq('visita_id', visitaId);
+    pedidosVisitaAtual = data || [];
+    renderPedidosVisita();
+  } catch(e) {
+    const el = document.getElementById('vd-pedidos-list');
+    if (el) el.innerHTML = '<div style="font-size:12px;color:var(--text3)">Erro ao carregar pedidos.</div>';
+  }
+}
+
+function renderPedidosVisita() {
+  const el = document.getElementById('vd-pedidos-list');
+  if (!el) return;
+  if (!pedidosVisitaAtual.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">Nenhum pedido registrado nesta visita.</div>';
+    return;
+  }
+  el.innerHTML = pedidosVisitaAtual.map(p => {
+    const valor      = p.valor ? `R$ ${parseFloat(p.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—';
+    const tipoLabel  = p.tipo === 'orcamento' ? 'Orçamento' : 'Pedido';
+    const tipoCor    = p.tipo === 'orcamento' ? 'var(--orange)' : 'var(--green)';
+    const statusMap  = { aberto:'Aberto', ganho:'Ganho', perdido:'Perdido', fechado:'Fechado' };
+    const statusLabel = p.status ? statusMap[p.status] || p.status : null;
+    const podeConverter = p.tipo === 'orcamento' && p.status !== 'fechado';
+    return `
+      <div class="vd-pedido-card">
+        <div class="vd-pedido-top">
+          <span class="vd-pedido-tipo" style="color:${tipoCor}">${tipoLabel}</span>
+          <span class="vd-pedido-valor">${valor}</span>
+        </div>
+        ${p.representada_nome ? `<div class="vd-pedido-rep">${p.representada_nome}</div>` : ''}
+        ${statusLabel ? `<div class="vd-pedido-status">${statusLabel}</div>` : ''}
+        ${visitaModoEdicao ? `
+        <div class="vd-pedido-actions">
+          ${podeConverter ? `<button class="gc-item-action-btn" onclick="converterOrcamento('${p.id}')">→ Converter em pedido</button>` : ''}
+          <button class="gc-item-action-btn danger" onclick="excluirPedidoVisita('${p.id}')">Excluir</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+async function salvarEdicaoVisita() {
+  if (!visitaDetAtual) return;
+  const obs = document.getElementById('vd-obs-edit')?.value.trim() || '';
+  const btns = document.querySelectorAll('#vd-body .det-btn');
+  btns.forEach(b => b.disabled = true);
+  try {
+    await sb.from('visitas').update({ obs }).eq('id', visitaDetAtual.id);
+    visitaDetAtual.obs = obs;
+    visitasHistoricoCache[visitaDetAtual.id] = { ...visitaDetAtual };
+    visitaModoEdicao = false;
+    renderDetalheVisitaView();
+    document.getElementById('vd-btn-edit').style.display = '';
+    renderPedidosVisita();
+    showToast('✓ Visita atualizada!');
+  } catch(e) {
+    showToast('Erro ao salvar', true);
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+async function excluirVisitaDetalhe() {
+  if (!visitaDetAtual) return;
+  if (!confirm('Excluir esta visita? A ação não pode ser desfeita.')) return;
+  try {
+    await sb.from('pedidos').delete().eq('visita_id', visitaDetAtual.id);
+    await sb.from('visitas').delete().eq('id', visitaDetAtual.id);
+    delete visitasHistoricoCache[visitaDetAtual.id];
+    // Atualiza ultima_visita do cliente local
+    const c = clientes.find(x => x.id === activeId);
+    if (c) {
+      const { data: last } = await sb.from('visitas')
+        .select('data').eq('id_cliente', String(activeId))
+        .order('data', { ascending: false }).limit(1).maybeSingle();
+      c.ultimaVisita = last?.data || null;
+      c.visitadoHoje = false;
+    }
+    showToast('✓ Visita excluída');
+    renderList();
+    renderCounters();
+    fecharDetalheVisita();
+  } catch(e) {
+    showToast('Erro ao excluir', true);
+  }
+}
+
+async function excluirPedidoVisita(pedidoId) {
+  if (!confirm('Excluir este pedido?')) return;
+  try {
+    await sb.from('pedidos').delete().eq('id', pedidoId);
+    pedidosVisitaAtual = pedidosVisitaAtual.filter(p => p.id !== pedidoId);
+    renderPedidosVisita();
+    showToast('✓ Pedido excluído');
+  } catch(e) {
+    showToast('Erro ao excluir pedido', true);
+  }
+}
+
+async function converterOrcamento(pedidoId) {
+  try {
+    await sb.from('pedidos').update({ tipo: 'pedido', status: 'fechado' }).eq('id', pedidoId);
+    const idx = pedidosVisitaAtual.findIndex(p => p.id === pedidoId);
+    if (idx !== -1) { pedidosVisitaAtual[idx].tipo = 'pedido'; pedidosVisitaAtual[idx].status = 'fechado'; }
+    renderPedidosVisita();
+    showToast('✓ Convertido para pedido!');
+  } catch(e) {
+    showToast('Erro ao converter', true);
+  }
 }
 
 function openGastosCliente() {
@@ -3562,4 +4806,519 @@ async function avancarParcelaComp(id) {
   c.parcela_atual = nova;
   renderCompromissos();
   showToast('✓ Parcela marcada como paga');
+}
+
+// ── EMPRESAS ─────────────────────────────────────────────────────────
+
+async function carregarEmpresasDesk() {
+  if (!currentRep) return;
+  const { data } = await sb.from('representadas').select('*').eq('rep_id', currentRep.id).order('nome');
+  representadasCache = data || [];
+}
+
+async function openEmpresas() {
+  document.getElementById('modal-empresas').style.display = 'flex';
+  await carregarEmpresasDesk();
+  renderEmpresasDesk();
+}
+
+function closeEmpresas() {
+  document.getElementById('modal-empresas').style.display = 'none';
+}
+
+function renderEmpresasDesk() {
+  const lista = document.getElementById('empresas-lista');
+  if (!lista) return;
+  if (!representadasCache.length) {
+    lista.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text3);font-size:13px">Nenhuma empresa cadastrada.</div>';
+    return;
+  }
+  lista.innerHTML = representadasCache.map(r => `
+    <div class="gestao-card-desk">
+      <div>
+        <div class="gestao-card-nome-desk">${sanitize(r.nome)}</div>
+        ${r.cnpj ? `<div class="gestao-card-sub-desk">CNPJ: ${sanitize(r.cnpj)}</div>` : ''}
+        ${r.cidade ? `<div class="gestao-card-sub-desk">\u{1F4CD} ${sanitize(r.cidade)}</div>` : ''}
+        ${r.banco ? `<div class="gestao-card-sub-desk">\u{1F3E6} ${sanitize(r.banco)}${r.agencia ? ' Ag. '+sanitize(r.agencia) : ''}${r.conta ? ' C/C '+sanitize(r.conta) : ''}</div>` : ''}
+        ${r.pix ? `<div class="gestao-card-sub-desk">PIX: ${sanitize(r.pix)}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="gestao-btn-sm-desk" onclick="abrirFormEmpresaDesk('${r.id}')">Editar</button>
+        <button class="gestao-btn-sm-desk danger" onclick="deletarEmpresaDesk('${r.id}')">Excluir</button>
+      </div>
+    </div>`).join('');
+}
+
+function abrirFormEmpresaDesk(id) {
+  const form = document.getElementById('empresa-form');
+  const fab  = document.getElementById('empresas-fab');
+  if (!form) return;
+  form.style.display = 'block';
+  if (fab) fab.style.display = 'none';
+  if (id) {
+    const r = representadasCache.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('empresa-form-titulo').textContent = 'Editar Empresa';
+    document.getElementById('emp-id').value       = r.id;
+    document.getElementById('emp-nome').value     = r.nome || '';
+    document.getElementById('emp-cnpj').value     = r.cnpj || '';
+    document.getElementById('emp-cep').value      = r.cep  || '';
+    document.getElementById('emp-endereco').value = r.endereco || '';
+    const cidEl = document.getElementById('emp-cidade');
+    cidEl.value = r.cidade || ''; cidEl.disabled = !!r.cidade;
+    document.getElementById('emp-banco').value    = r.banco    || '';
+    document.getElementById('emp-agencia').value  = r.agencia  || '';
+    document.getElementById('emp-conta').value    = r.conta    || '';
+    document.getElementById('emp-pix').value      = r.pix      || '';
+    document.getElementById('emp-fin-nome').value = r.fin_nome || '';
+    document.getElementById('emp-fin-tel').value  = r.fin_tel  || '';
+    document.getElementById('emp-com-nome').value = r.com_nome || '';
+    document.getElementById('emp-com-tel').value  = r.com_tel  || '';
+    document.getElementById('emp-fis-nome').value = r.fis_nome || '';
+    document.getElementById('emp-fis-tel').value  = r.fis_tel  || '';
+    document.getElementById('emp-fat-nome').value = r.fat_nome || '';
+    document.getElementById('emp-fat-tel').value  = r.fat_tel  || '';
+    document.getElementById('emp-cep-status').textContent = '';
+  } else {
+    document.getElementById('empresa-form-titulo').textContent = 'Nova Empresa';
+    ['emp-id','emp-nome','emp-cnpj','emp-cep','emp-endereco','emp-banco','emp-agencia','emp-conta','emp-pix',
+     'emp-fin-nome','emp-fin-tel','emp-com-nome','emp-com-tel','emp-fis-nome','emp-fis-tel','emp-fat-nome','emp-fat-tel']
+      .forEach(fid => { const el = document.getElementById(fid); if (el) el.value = ''; });
+    const cidEl = document.getElementById('emp-cidade');
+    if (cidEl) { cidEl.value = ''; cidEl.disabled = true; }
+    document.getElementById('emp-cep-status').textContent = '';
+  }
+}
+
+function fecharFormEmpresaDesk() {
+  const form = document.getElementById('empresa-form');
+  const fab  = document.getElementById('empresas-fab');
+  if (form) form.style.display = 'none';
+  if (fab)  fab.style.display  = '';
+}
+
+function mascaraCEPDesk(el) {
+  let v = el.value.replace(/\D/g, '');
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5,8);
+  el.value = v;
+}
+
+async function buscarCEPEmpresaDesk() {
+  const cepEl    = document.getElementById('emp-cep');
+  const statusEl = document.getElementById('emp-cep-status');
+  const cidEl    = document.getElementById('emp-cidade');
+  const endEl    = document.getElementById('emp-endereco');
+  if (!cepEl) return;
+  const cep = cepEl.value.replace(/\D/g,'');
+  if (cep.length < 8) return;
+  statusEl.textContent = 'Buscando...'; statusEl.style.color = 'var(--text3)';
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d   = await res.json();
+    if (d.erro) { statusEl.textContent = 'CEP não encontrado'; statusEl.style.color = 'var(--red)'; cidEl.disabled = false; return; }
+    const cidade = (d.localidade || '') + (d.uf ? ' - ' + d.uf.toUpperCase() : '');
+    cidEl.value = cidade; cidEl.disabled = true;
+    if (!endEl.value) endEl.value = [d.logradouro, d.bairro].filter(Boolean).join(', ');
+    statusEl.textContent = '✓ CEP encontrado'; statusEl.style.color = 'var(--green)';
+  } catch(e) {
+    statusEl.textContent = 'Erro ao buscar CEP'; statusEl.style.color = 'var(--red)';
+    cidEl.disabled = false;
+  }
+}
+
+async function salvarEmpresaDesk() {
+  if (!currentUser) return;
+  const nome = document.getElementById('emp-nome').value.trim();
+  if (!nome) { showToast('Nome obrigatório', true); return; }
+  const id = document.getElementById('emp-id').value;
+  const repId = await getRepId();
+  const payload = {
+    rep_id:   repId, nome,
+    cnpj:     document.getElementById('emp-cnpj').value.trim(),
+    cep:      document.getElementById('emp-cep').value.replace(/\D/g,''),
+    endereco: document.getElementById('emp-endereco').value.trim(),
+    cidade:   document.getElementById('emp-cidade').value.trim(),
+    banco:    document.getElementById('emp-banco').value.trim(),
+    agencia:  document.getElementById('emp-agencia').value.trim(),
+    conta:    document.getElementById('emp-conta').value.trim(),
+    pix:      document.getElementById('emp-pix').value.trim(),
+    fin_nome: document.getElementById('emp-fin-nome').value.trim(),
+    fin_tel:  document.getElementById('emp-fin-tel').value.trim(),
+    com_nome: document.getElementById('emp-com-nome').value.trim(),
+    com_tel:  document.getElementById('emp-com-tel').value.trim(),
+    fis_nome: document.getElementById('emp-fis-nome').value.trim(),
+    fis_tel:  document.getElementById('emp-fis-tel').value.trim(),
+    fat_nome: document.getElementById('emp-fat-nome').value.trim(),
+    fat_tel:  document.getElementById('emp-fat-tel').value.trim(),
+  };
+  let err;
+  if (id) {
+    ({ error: err } = await sb.from('representadas').update(payload).eq('id', id).eq('rep_id', repId));
+  } else {
+    ({ error: err } = await sb.from('representadas').insert(payload));
+  }
+  if (err) { showToast('Erro ao salvar', true); console.error(err); return; }
+  await carregarEmpresasDesk();
+  await carregarRepresentadasDesktop();
+  fecharFormEmpresaDesk();
+  renderEmpresasDesk();
+  showToast('Empresa salva!');
+}
+
+async function deletarEmpresaDesk(id) {
+  const r = representadasCache.find(x => x.id === id);
+  if (!r || !confirm('Excluir "' + r.nome + '"?')) return;
+  const repId = await getRepId();
+  const { error } = await sb.from('representadas').delete().eq('id', id).eq('rep_id', repId);
+  if (error) { showToast('Erro ao excluir', true); return; }
+  await carregarEmpresasDesk();
+  await carregarRepresentadasDesktop();
+  renderEmpresasDesk();
+  showToast('Empresa excluída');
+}
+
+// ── SEGMENTAÇÃO ──────────────────────────────────────────────────────
+
+const _SEGS_DEFAULT_DESK = ['Mat. Construção', 'Construtora', 'Tintas', 'Distribuidora'];
+
+async function carregarSegmentosDesk() {
+  if (!currentRep) return;
+  try {
+    const repId = await getRepId();
+    if (!repId) { if (!segmentosCache.length) segmentosCache = _SEGS_DEFAULT_DESK.map((nome, i) => ({ id: 'def_'+i, nome })); return; }
+    const { data, error } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
+    if (error) throw error;
+    const seen = new Set();
+    const fromDb = (data || []).filter(s => seen.has(s.nome) ? false : seen.add(s.nome));
+    if (fromDb.length) {
+      segmentosCache = fromDb;
+    } else {
+      const { error: insErr } = await sb.from('segmentos').insert(_SEGS_DEFAULT_DESK.map(nome => ({ nome, rep_id: repId })));
+      if (!insErr) {
+        const { data: d2 } = await sb.from('segmentos').select('*').eq('rep_id', repId).order('nome');
+        segmentosCache = d2 && d2.length ? d2 : _SEGS_DEFAULT_DESK.map((nome, i) => ({ id: 'def_'+i, nome }));
+      } else {
+        if (!segmentosCache.length) segmentosCache = _SEGS_DEFAULT_DESK.map((nome, i) => ({ id: 'def_'+i, nome }));
+      }
+    }
+  } catch(e) {
+    if (!segmentosCache.length) segmentosCache = _SEGS_DEFAULT_DESK.map((nome, i) => ({ id: 'def_'+i, nome }));
+  }
+}
+
+async function openSegmentos() {
+  document.getElementById('modal-segmentos').style.display = 'flex';
+  await carregarSegmentosDesk();
+  renderSegmentosDesk();
+}
+
+function closeSegmentos() {
+  document.getElementById('modal-segmentos').style.display = 'none';
+}
+
+function renderSegmentosDesk() {
+  const lista = document.getElementById('segmentos-lista');
+  if (!lista) return;
+  if (!segmentosCache.length) {
+    lista.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text3);font-size:13px">Nenhum segmento cadastrado.</div>';
+    return;
+  }
+  lista.innerHTML = segmentosCache.map(s => `
+    <div class="gestao-card-desk">
+      <div class="gestao-card-nome-desk">${sanitize(s.nome)}</div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="gestao-btn-sm-desk" onclick="abrirFormSegmentoDesk('${s.id}')">Editar</button>
+        <button class="gestao-btn-sm-desk danger" onclick="deletarSegmentoDesk('${s.id}')">Excluir</button>
+      </div>
+    </div>`).join('');
+}
+
+function abrirFormSegmentoDesk(id) {
+  const form = document.getElementById('segmento-form');
+  if (!form) return;
+  form.style.display = 'block';
+  if (id) {
+    const s = segmentosCache.find(x => String(x.id) === String(id));
+    document.getElementById('segmento-form-titulo').textContent = 'Editar Segmento';
+    document.getElementById('seg-mgmt-id').value   = id;
+    document.getElementById('seg-mgmt-nome').value = s ? s.nome : '';
+  } else {
+    document.getElementById('segmento-form-titulo').textContent = 'Novo Segmento';
+    document.getElementById('seg-mgmt-id').value   = '';
+    document.getElementById('seg-mgmt-nome').value = '';
+  }
+  setTimeout(() => document.getElementById('seg-mgmt-nome').focus(), 100);
+}
+
+function fecharFormSegmentoDesk() {
+  const form = document.getElementById('segmento-form');
+  if (form) form.style.display = 'none';
+}
+
+async function salvarSegmentoDesk() {
+  if (!currentUser) return;
+  const raw = document.getElementById('seg-mgmt-nome').value.trim();
+  if (!raw) { showToast('Nome obrigatório', true); return; }
+  const nome = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+  const id   = document.getElementById('seg-mgmt-id').value;
+  if (id) {
+    const s = segmentosCache.find(x => String(x.id) === String(id));
+    if (s) s.nome = nome;
+  } else if (!segmentosCache.find(s => s.nome === nome)) {
+    segmentosCache.push({ id: 'local_' + Date.now(), nome });
+    segmentosCache.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+  fecharFormSegmentoDesk();
+  renderSegmentosDesk();
+  showToast(id ? 'Segmento atualizado' : 'Segmento criado');
+  const repId = await getRepId();
+  try {
+    if (id) {
+      await sb.from('segmentos').update({ nome }).eq('id', id).eq('rep_id', repId);
+    } else {
+      const { data, error } = await sb.from('segmentos').insert({ nome, rep_id: repId }).select().single();
+      if (!error && data) {
+        const idx = segmentosCache.findIndex(s => s.nome === nome && String(s.id).startsWith('local_'));
+        if (idx >= 0) segmentosCache[idx] = data;
+        renderSegmentosDesk();
+      }
+    }
+  } catch(e) { console.error('salvarSegmento:', e); }
+}
+
+async function deletarSegmentoDesk(id) {
+  const s = segmentosCache.find(x => String(x.id) === String(id));
+  if (!s || !confirm('Excluir "' + s.nome + '"?')) return;
+  const repId = await getRepId();
+  try {
+    await sb.from('segmentos').delete().eq('id', id).eq('rep_id', repId);
+    await carregarSegmentosDesk();
+    renderSegmentosDesk();
+    showToast('Segmento excluído');
+  } catch(e) { showToast('Erro ao excluir', true); }
+}
+
+// ── IMPORTAR CLIENTES ────────────────────────────────────────────────
+
+function openImportar() {
+  _importarFileDesk = null;
+  document.getElementById('importar-file-label-desk').textContent = 'Selecionar arquivo .xlsx';
+  document.getElementById('importar-preview-desk').style.display = 'none';
+  document.getElementById('importar-progress-desk').style.display = 'none';
+  document.getElementById('importar-footer-desk').style.display = 'none';
+  document.getElementById('modal-importar').style.display = 'flex';
+}
+
+function closeImportar() {
+  document.getElementById('modal-importar').style.display = 'none';
+}
+
+function baixarModeloXlsxDesk() {
+  if (!window.XLSX) { showToast('Aguarde o carregamento', true); return; }
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['nome','comprador','cnpj','cep','endereco','telefone','segmento','ultima_visita','ultima_obs'],
+    ['Exemplo Materiais','João Silva','12.345.678/0001-90','89251-000','Rua das Flores, 100','(47) 99999-9999','Mat. Construção','2024-01-15','Interessado em novidades'],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+  XLSX.writeFile(wb, 'clientes_modelo_importacao.xlsx');
+}
+
+function importarLerArquivoDesk(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _importarFileDesk = file;
+  document.getElementById('importar-file-label-desk').textContent = file.name;
+  document.getElementById('importar-preview-desk').style.display = 'none';
+  document.getElementById('importar-progress-desk').style.display = 'none';
+  const btn = document.getElementById('importar-btn-confirmar-desk');
+  btn.textContent = 'Enviar para processamento';
+  btn.disabled = false;
+  document.getElementById('importar-footer-desk').style.display = 'block';
+}
+
+async function importarConfirmarDesk() {
+  if (!_importarFileDesk || !currentUser) return;
+  const btn  = document.getElementById('importar-btn-confirmar-desk');
+  const prog = document.getElementById('importar-progress-desk');
+  const BUCKET = 'client-import-originals';
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  prog.style.display = 'block';
+  prog.textContent = 'Fazendo upload do arquivo...';
+  const userId = currentUser.id;
+  const ts = Date.now();
+  const safeName = _importarFileDesk.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = `${userId}/${ts}-${safeName}`;
+  try {
+    const { error: uploadError } = await sb.storage.from(BUCKET).upload(storagePath, _importarFileDesk, { upsert: false });
+    if (uploadError) throw uploadError;
+    prog.textContent = 'Registrando importacao...';
+    const { error: dbError } = await sb.from('client_import_files').insert({
+      user_id: userId, original_filename: _importarFileDesk.name,
+      storage_bucket: BUCKET, storage_path: storagePath, status: 'uploaded',
+    });
+    if (dbError) throw dbError;
+    _importarFileDesk = null;
+    prog.style.display = 'none';
+    document.getElementById('importar-footer-desk').style.display = 'none';
+    document.getElementById('importar-preview-texto-desk').innerHTML =
+      '<div style="color:var(--green);font-size:15px;font-weight:700;margin-bottom:8px">Arquivo enviado!</div>' +
+      '<div style="color:var(--text2);font-size:13px;line-height:1.6">Seus clientes serao importados em breve.</div>' +
+      '<button onclick="closeImportar()" style="margin-top:14px;width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">Fechar</button>';
+    document.getElementById('importar-preview-desk').style.display = 'block';
+  } catch (err) {
+    prog.style.display = 'none';
+    btn.disabled = false;
+    btn.textContent = 'Tentar novamente';
+    let msg = 'Erro ao enviar o arquivo.';
+    if (err && err.message) {
+      if (err.message.includes('Bucket not found')) msg = 'Bucket nao encontrado no Supabase.';
+      else msg = err.message;
+    }
+    document.getElementById('importar-preview-texto-desk').innerHTML =
+      '<div style="color:var(--red);font-size:14px;font-weight:600;margin-bottom:6px">Falha no envio</div>' +
+      '<div style="color:var(--text2);font-size:13px">' + msg + '</div>';
+    document.getElementById('importar-preview-desk').style.display = 'block';
+  }
+}
+
+// ── CALENDÁRIO DE VISITAS ────────────────────────────────────────────
+
+async function openCalendario() {
+  calMesDesk = new Date().getMonth();
+  calAnoDesk = new Date().getFullYear();
+  calDiaSelecionadoDesk = new Date().getDate();
+  document.getElementById('modal-calendario').style.display = 'flex';
+  await carregarCalendarioDesk();
+}
+
+function closeCalendario() {
+  document.getElementById('modal-calendario').style.display = 'none';
+}
+
+async function navegarCalMesDesk(delta) {
+  calMesDesk += delta;
+  if (calMesDesk > 11) { calMesDesk = 0; calAnoDesk++; }
+  if (calMesDesk < 0)  { calMesDesk = 11; calAnoDesk--; }
+  calDiaSelecionadoDesk = null;
+  await carregarCalendarioDesk();
+}
+
+async function carregarCalendarioDesk() {
+  const nomesMes = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('cal-mes-titulo-desk').textContent = nomesMes[calMesDesk] + ' ' + calAnoDesk;
+
+  const chaveCache = calAnoDesk + '-' + calMesDesk;
+  let visitas = [];
+  if (calVisitasCacheDesk[chaveCache]) {
+    visitas = calVisitasCacheDesk[chaveCache];
+  } else {
+    const inicio = new Date(calAnoDesk, calMesDesk, 1).toISOString().slice(0, 10);
+    const fim    = new Date(calAnoDesk, calMesDesk + 1, 0).toISOString().slice(0, 10);
+    try {
+      const { data } = await sb.from('visitas').select('id,id_cliente,nome_cliente,cidade,data,hora,obs')
+        .eq('rep_id', currentUser.id).gte('data', inicio).lte('data', fim).order('data');
+      visitas = data || [];
+    } catch(e) { visitas = []; }
+    calVisitasCacheDesk[chaveCache] = visitas;
+  }
+
+  const porDia = {};
+  visitas.forEach(v => {
+    const dia = parseInt(v.data.split('-')[2]);
+    if (!porDia[dia]) porDia[dia] = [];
+    porDia[dia].push(v);
+  });
+
+  const primeiroDia = new Date(calAnoDesk, calMesDesk, 1).getDay();
+  const ultimoDia   = new Date(calAnoDesk, calMesDesk + 1, 0).getDate();
+  const hoje        = new Date();
+  const ehMesAtual  = calMesDesk === hoje.getMonth() && calAnoDesk === hoje.getFullYear();
+
+  let gridHTML = '';
+  const diasMesAnt = new Date(calAnoDesk, calMesDesk, 0).getDate();
+  for (let i = primeiroDia - 1; i >= 0; i--) {
+    gridHTML += '<div class="cal-d-desk outro">' + (diasMesAnt - i) + '</div>';
+  }
+  for (let d = 1; d <= ultimoDia; d++) {
+    const classes = ['cal-d-desk'];
+    if (ehMesAtual && d === hoje.getDate()) classes.push('hoje');
+    if (porDia[d]) classes.push(porDia[d].length >= 4 ? 'com-visita muitas' : 'com-visita');
+    if (d === calDiaSelecionadoDesk) classes.push('selecionado');
+    if (new Date(calAnoDesk, calMesDesk, d).getDay() === 0) classes.push('dom');
+    gridHTML += '<div class="' + classes.join(' ') + '" onclick="selecionarDiaDesk(' + d + ')">' + d + '</div>';
+  }
+  const total = primeiroDia + ultimoDia;
+  const resto = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let d = 1; d <= resto; d++) {
+    gridHTML += '<div class="cal-d-desk outro">' + d + '</div>';
+  }
+  document.getElementById('cal-grid-desk').innerHTML = gridHTML;
+
+  if (calDiaSelecionadoDesk) {
+    renderDiaCalDesk(calDiaSelecionadoDesk, porDia[calDiaSelecionadoDesk] || []);
+  } else {
+    document.getElementById('cal-body-desk').innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px">Clique em um dia para ver as visitas</div>';
+  }
+}
+
+async function selecionarDiaDesk(dia) {
+  calDiaSelecionadoDesk = dia;
+  document.querySelectorAll('.cal-d-desk').forEach(el => el.classList.remove('selecionado'));
+  const els = document.querySelectorAll('.cal-d-desk:not(.outro)');
+  if (els[dia - 1]) els[dia - 1].classList.add('selecionado');
+  const chaveCache = calAnoDesk + '-' + calMesDesk;
+  const visitas = calVisitasCacheDesk[chaveCache] || [];
+  const doDia = visitas.filter(v => parseInt(v.data.split('-')[2]) === dia);
+  renderDiaCalDesk(dia, doDia);
+}
+
+function renderDiaCalDesk(dia, visitas) {
+  const nomesDia = ['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];
+  const nomesMes = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const diaSemana = new Date(calAnoDesk, calMesDesk, dia).getDay();
+  const titulo = nomesDia[diaSemana] + ', ' + dia + ' de ' + nomesMes[calMesDesk];
+  let html = '<div class="cal-dia-titulo-desk">' + titulo;
+  if (visitas.length) html += ' &middot; ' + visitas.length + ' visita' + (visitas.length > 1 ? 's' : '');
+  html += '</div>';
+  if (!visitas.length) {
+    html += '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Nenhuma visita neste dia</div>';
+  } else {
+    visitas.sort((a, b) => (a.hora||'').localeCompare(b.hora||''));
+    html += visitas.map(v => {
+      const c = clientes.find(x => String(x.id) === String(v.id_cliente));
+      const nome = c ? c.nome : (v.nome_cliente || '');
+      const cidade = (c ? c.cidade : (v.cidade || '')).replace(' - SC','').replace(' - PR','');
+      const obsText = v.obs ? sanitize(v.obs) : '';
+      return '<div class="cal-visita-card-desk">' +
+        '<div class="cal-visita-dot-desk"></div>' +
+        '<div style="flex:1">' +
+          '<div style="font-size:13px;font-weight:700">' + sanitize(nome) + '</div>' +
+          '<div style="font-size:11px;color:var(--text3)">' + sanitize(cidade) + '</div>' +
+          (obsText ? '<div style="font-size:11px;color:var(--text2);margin-top:2px">' + obsText + '</div>' : '') +
+        '</div>' +
+        (v.hora ? '<div style="font-size:12px;color:var(--text3);flex-shrink:0">' + v.hora + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+  document.getElementById('cal-body-desk').innerHTML = html;
+}
+
+// ── LEMBRETES DE IMPOSTOS ────────────────────────────────────────────
+
+async function verificarLembretesDesk() {
+  const hoje = new Date();
+  const chaveHoje = hoje.toISOString().split('T')[0];
+  const chaveImpostos = 'lembrete_imp_desk_' + chaveHoje;
+  if (localStorage.getItem(chaveImpostos)) return;
+  const vencendo = (impostosCache || []).filter(imp => {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth(), imp.dia_vencimento);
+    const diff = (d - hoje) / 86400000;
+    return diff >= 0 && diff <= 7;
+  });
+  if (!vencendo.length) return;
+  localStorage.setItem(chaveImpostos, '1');
+  const nomes = vencendo.map(i => i.nome + ' (dia ' + i.dia_vencimento + ')').join(', ');
+  setTimeout(() => showToast('Imposto vencendo: ' + nomes, false), 3000);
 }

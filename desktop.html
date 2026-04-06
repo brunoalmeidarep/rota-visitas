@@ -8,6 +8,14 @@
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+  <!-- hCaptcha (proteção anti-bot — obrigatório pelo Supabase) -->
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+
+  <!-- PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- SheetJS (importação .xlsx) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <!-- Fontes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,9 +26,50 @@
 </head>
 <body>
 
+<!-- ── ACEITE DE TERMOS (primeiro acesso) ──────────────────────────── -->
+<div id="screen-termos" style="display:none">
+  <div class="login-box" style="max-width:460px;gap:14px">
+    <div class="login-logo">Bem-vindo! 👋</div>
+    <div class="login-sub" style="margin-bottom:0">Leia e aceite nossa Política de Privacidade e Termos de Uso antes de começar.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">📋</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Dados que coletamos</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.5">Nome, e-mail, localização GPS (opcional), dados de clientes e registros de visitas e pedidos.</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">🔒</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Como usamos</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.5">Exclusivamente para o funcionamento do app. Dados armazenados com segurança no Supabase e nunca vendidos a terceiros.</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">🗑️</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Seus direitos</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.5">Solicite a exclusão dos seus dados a qualquer momento pelo e-mail contato@minharotarp.com.br.</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.6;text-align:center">
+      Ao continuar, você declara que leu e concorda com a
+      <a href="privacidade.html" target="_blank" style="color:#60a5fa;font-weight:600;text-decoration:none">Política de Privacidade</a>
+      e os
+      <a href="termos.html" target="_blank" style="color:#60a5fa;font-weight:600;text-decoration:none">Termos de Uso</a>.
+    </div>
+    <button class="login-btn" onclick="aceitarTermos()">✓ Li e aceito</button>
+    <div style="font-size:11px;color:rgba(255,255,255,.25);text-align:center">Você só verá esta tela uma vez</div>
+  </div>
+</div>
+
 <!-- ── LOGIN ──────────────────────────────────────────────────────── -->
 <div id="screen-login">
-  <div class="login-box">
+
+  <!-- View: login normal -->
+  <div class="login-box" id="view-login">
     <div class="login-logo">Minha Rota RP</div>
     <div class="login-sub">Gestão Comercial · Desktop</div>
     <input class="login-input" id="login-email" type="email"
@@ -29,8 +78,79 @@
       placeholder="Senha" autocomplete="current-password"
       onkeydown="if(event.key==='Enter') fazerLogin()">
     <div class="login-erro" id="login-erro"></div>
+    <div class="h-captcha" data-sitekey="becedf82-59a0-4206-9230-7de22e4c49f0"
+      data-callback="onLoginCaptchaSolved"
+      data-expired-callback="onLoginCaptchaExpired"
+      style="margin:4px 0"></div>
     <button class="login-btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
+    <button class="login-link" onclick="mostrarRecuperarSenha()">Esqueci minha senha</button>
     <div class="login-versao">v2.0 desktop · Mundo do Rep</div>
+  </div>
+
+  <!-- View: recuperar senha (enviar link) -->
+  <div class="login-box" id="view-recuperar" style="display:none">
+    <div class="login-logo">Recuperar senha</div>
+    <div class="login-sub" style="margin-bottom:4px">Enviaremos um link para o seu e-mail</div>
+    <input class="login-input" id="rec-email" type="email"
+      placeholder="seu@email.com" autocomplete="email"
+      onkeydown="if(event.key==='Enter') enviarRecuperacao()">
+    <div class="login-erro" id="rec-erro"></div>
+    <div class="login-ok" id="rec-ok" style="display:none"></div>
+    <div id="rec-captcha-container" style="margin:4px 0"></div>
+    <button class="login-btn" id="btn-rec" onclick="enviarRecuperacao()">Enviar link</button>
+    <button class="login-link" onclick="mostrarLogin()">← Voltar ao login</button>
+  </div>
+
+  <!-- View: nova senha (após clicar no link do e-mail) -->
+  <div class="login-box" id="view-nova-senha" style="display:none">
+    <div class="login-logo">Nova senha</div>
+    <div class="login-sub" style="margin-bottom:4px">Crie sua nova senha de acesso</div>
+    <input class="login-input" id="nova-senha" type="password"
+      placeholder="Nova senha (mín. 6 caracteres)"
+      onkeydown="if(event.key==='Enter') salvarNovaSenha()">
+    <input class="login-input" id="nova-senha-conf" type="password"
+      placeholder="Confirmar nova senha"
+      onkeydown="if(event.key==='Enter') salvarNovaSenha()">
+    <div class="login-erro" id="nova-senha-erro"></div>
+    <button class="login-btn" id="btn-nova-senha" onclick="salvarNovaSenha()">Salvar nova senha</button>
+  </div>
+
+</div>
+
+<!-- ── ONBOARDING ──────────────────────────────────────────────────── -->
+<div id="screen-onboarding" style="display:none">
+  <div class="login-box" style="gap:10px">
+    <div class="login-logo">Bem-vindo!</div>
+    <div class="login-sub" style="margin-bottom:4px">Configure seu perfil para começar</div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;width:100%">
+      <label class="ob-label">Endereço base (sua casa ou escritório)</label>
+      <div style="display:flex;gap:6px">
+        <input class="login-input" id="ob-cep" type="text" placeholder="CEP"
+          maxlength="9" style="flex:0 0 110px;margin:0"
+          oninput="obMaskCep(this)" onblur="obBuscarCep()">
+        <input class="login-input" id="ob-endereco" type="text"
+          placeholder="Endereço completo" style="flex:1;margin:0">
+      </div>
+      <div class="login-erro" id="ob-cep-status" style="text-align:left"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;width:100%">
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <label class="ob-label">Consumo (km/L)</label>
+        <input class="login-input" id="ob-media" type="number" placeholder="Ex: 12"
+          step="0.1" min="1" style="margin:0">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <label class="ob-label">Preço da gasolina (R$)</label>
+        <input class="login-input" id="ob-gasolina" type="number" placeholder="Ex: 6.20"
+          step="0.01" min="1" style="margin:0">
+      </div>
+    </div>
+
+    <div class="login-erro" id="ob-erro"></div>
+    <button class="login-btn" id="btn-ob" onclick="obSalvar()">Salvar e começar</button>
+    <button class="login-link" onclick="obPular()">Pular por agora</button>
   </div>
 </div>
 
@@ -133,6 +253,7 @@
           <div class="det-overlay-header">
             <button class="det-overlay-back" onclick="fecharPainelDetalhe()">← Voltar</button>
             <div class="det-overlay-titulo" id="gc-titulo">Gastos — Cliente</div>
+            <button class="det-overlay-action secondary" onclick="exportarPDFGastos()" title="Exportar PDF">📥</button>
             <button class="det-overlay-action" onclick="toggleGastoForm()">+ Novo</button>
           </div>
           <div class="det-overlay-body">
@@ -224,6 +345,16 @@
 
         </div>
 
+        <!-- PAINEL DETALHE VISITA -->
+        <div id="panel-visita-detalhe" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+          <div class="det-overlay-header">
+            <button class="det-overlay-back" onclick="fecharDetalheVisita()">← Histórico</button>
+            <div class="det-overlay-titulo" id="vd-titulo">Detalhes da visita</div>
+            <button class="det-overlay-action" id="vd-btn-edit" onclick="ativarEdicaoVisita()">✏ Editar</button>
+          </div>
+          <div class="det-overlay-body" id="vd-body"></div>
+        </div>
+
       </aside>
 
     </div><!-- /tab-mapa -->
@@ -248,6 +379,7 @@
             <button class="rep-detail-back" onclick="fecharDetalheRelatorio()">← Voltar ao relatório</button>
             <h2 id="rep-detail-titulo"></h2>
             <div id="rep-detail-meta"></div>
+            <button class="rep-pdf-btn" id="btn-pdf-relatorio" onclick="exportarPDFRelatorio()" title="Exportar PDF">📥 PDF</button>
           </div>
           <div id="rep-detail-body"></div>
         </div>
@@ -264,6 +396,7 @@
         <button class="fin-subtab"        id="fin-subtab-resumo"       onclick="setFinTab('resumo')">📊 Resumo</button>
         <button class="fin-subtab"        id="fin-subtab-compromissos" onclick="setFinTab('compromissos')">📅 Compromissos</button>
         <button class="fin-novo-btn" id="fin-novo-btn" onclick="abrirModalLancamento()">+ Novo lançamento</button>
+        <button class="fin-novo-btn" id="fin-pdf-btn" onclick="exportarPDFFinancas()" title="Exportar PDF do período">📥 PDF</button>
       </div>
 
       <!-- LANÇAMENTOS -->
@@ -582,7 +715,39 @@
 
     <!-- Ferramentas -->
     <div class="cfg-section">
-      <div class="cfg-section-title">Ferramentas</div>
+      <div class="cfg-section-title">Gestão</div>
+      <div class="cfg-item" onclick="closeConfig();openEmpresas()">
+        <span class="cfg-item-icon">🏢</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Empresas</div>
+          <div class="cfg-item-sub">Representadas e dados bancários</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
+      <div class="cfg-item" onclick="closeConfig();openSegmentos()">
+        <span class="cfg-item-icon">🏷️</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Segmentação</div>
+          <div class="cfg-item-sub">Tipos de cliente</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
+      <div class="cfg-item" onclick="closeConfig();openCalendario()">
+        <span class="cfg-item-icon">📅</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Calendário de visitas</div>
+          <div class="cfg-item-sub">Ver check-ins por dia</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
+      <div class="cfg-item" onclick="closeConfig();openImportar()">
+        <span class="cfg-item-icon">📥</span>
+        <div class="cfg-item-body">
+          <div class="cfg-item-nome">Importar Clientes</div>
+          <div class="cfg-item-sub">Planilha .xlsx</div>
+        </div>
+        <span class="cfg-item-chevron">›</span>
+      </div>
       <div class="cfg-item" onclick="closeConfig();openCadastro()">
         <span class="cfg-item-icon">➕</span>
         <div class="cfg-item-body">
@@ -630,9 +795,185 @@
   </div>
 </div>
 
+<!-- ── MODAL PEDIDO SEM VISITA (WhatsApp / Telefone) ──────────────── -->
+<div id="wa-modal" onclick="if(event.target===this)fecharPedidoSemVisita()">
+  <div class="modal-box" style="max-width:480px;width:100%">
+    <button class="modal-close" onclick="fecharPedidoSemVisita()">×</button>
+    <div class="modal-title" id="wa-modal-titulo">💬 Pedido via WhatsApp</div>
+    <div style="font-size:12px;color:var(--text3);margin:-8px 0 14px" id="wa-cliente-nome"></div>
+
+    <div id="wa-pedidos-list"></div>
+    <button type="button" class="ci-add-btn" style="width:100%;margin:8px 0" onclick="waAdicionarPedido()">+ Adicionar pedido</button>
+
+    <div class="campo-grupo" style="margin-top:4px">
+      <label class="campo-label">Observação (opcional)</label>
+      <textarea class="campo-input checkin-obs" id="wa-obs" placeholder="Anotações sobre o pedido..." style="min-height:60px;resize:none"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel-modal" onclick="fecharPedidoSemVisita()">Cancelar</button>
+      <button class="btn-salvar-modal" id="wa-btn-salvar" onclick="salvarPedidoSemVisita()">Salvar pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL EMPRESAS ─────────────────────────────────────────────── -->
+<div id="modal-empresas" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.45);align-items:center;justify-content:center;" onclick="if(event.target===this)closeEmpresas()">
+  <div class="gestao-modal-box">
+    <div class="gestao-modal-header">
+      <div class="gestao-modal-titulo">🏢 Empresas</div>
+      <button class="modal-close" onclick="closeEmpresas()">×</button>
+    </div>
+    <div class="gestao-modal-body">
+      <div id="empresa-form" style="display:none;margin-bottom:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px" id="empresa-form-titulo">Nova Empresa</div>
+        <input type="hidden" id="emp-id">
+        <div class="campo-grupo"><label class="campo-label">Nome da Empresa *</label><input class="campo-input" id="emp-nome" placeholder="Razão social..."></div>
+        <div class="campo-grupo"><label class="campo-label">CNPJ</label><input class="campo-input" id="emp-cnpj" placeholder="00.000.000/0000-00"></div>
+        <div class="campo-grupo">
+          <label class="campo-label">CEP</label>
+          <div style="display:flex;gap:6px">
+            <input class="campo-input" id="emp-cep" type="text" placeholder="00000-000" maxlength="9" style="flex:0 0 130px;margin:0" oninput="mascaraCEPDesk(this)" onblur="buscarCEPEmpresaDesk()">
+            <button class="btn-buscar-cep" onclick="buscarCEPEmpresaDesk()">Buscar</button>
+          </div>
+          <div class="cep-status" id="emp-cep-status"></div>
+        </div>
+        <div class="campo-grupo"><label class="campo-label">Endereço</label><input class="campo-input" id="emp-endereco" placeholder="Rua, número..."></div>
+        <div class="campo-grupo"><label class="campo-label">Cidade</label><input class="campo-input" id="emp-cidade" placeholder="Preenchida pelo CEP..." disabled></div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin:12px 0 8px">Dados Bancários</div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Banco</label><input class="campo-input" id="emp-banco" placeholder="Nome do banco..."></div>
+          <div class="campo-grupo"><label class="campo-label">Agência</label><input class="campo-input" id="emp-agencia" placeholder="0000"></div>
+        </div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Conta</label><input class="campo-input" id="emp-conta" placeholder="00000-0"></div>
+          <div class="campo-grupo"><label class="campo-label">PIX</label><input class="campo-input" id="emp-pix" placeholder="CPF, CNPJ, e-mail..."></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin:12px 0 8px">Contatos</div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Financeiro — Nome</label><input class="campo-input" id="emp-fin-nome" placeholder="Nome..."></div>
+          <div class="campo-grupo"><label class="campo-label">Financeiro — Tel</label><input class="campo-input" id="emp-fin-tel" type="tel" placeholder="(47) 9..."></div>
+        </div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Comercial — Nome</label><input class="campo-input" id="emp-com-nome" placeholder="Nome..."></div>
+          <div class="campo-grupo"><label class="campo-label">Comercial — Tel</label><input class="campo-input" id="emp-com-tel" type="tel" placeholder="(47) 9..."></div>
+        </div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Fiscal — Nome</label><input class="campo-input" id="emp-fis-nome" placeholder="Nome..."></div>
+          <div class="campo-grupo"><label class="campo-label">Fiscal — Tel</label><input class="campo-input" id="emp-fis-tel" type="tel" placeholder="(47) 9..."></div>
+        </div>
+        <div class="campo-row">
+          <div class="campo-grupo"><label class="campo-label">Faturamento — Nome</label><input class="campo-input" id="emp-fat-nome" placeholder="Nome..."></div>
+          <div class="campo-grupo"><label class="campo-label">Faturamento — Tel</label><input class="campo-input" id="emp-fat-tel" type="tel" placeholder="(47) 9..."></div>
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:8px">
+          <button class="btn-cancel-modal" onclick="fecharFormEmpresaDesk()">Cancelar</button>
+          <button class="btn-salvar-modal" onclick="salvarEmpresaDesk()">Salvar</button>
+        </div>
+      </div>
+      <div id="empresas-lista"></div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border)">
+      <button class="cfg-save-btn" id="empresas-fab" onclick="abrirFormEmpresaDesk()">+ Nova Empresa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL SEGMENTAÇÃO ──────────────────────────────────────────── -->
+<div id="modal-segmentos" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.45);align-items:center;justify-content:center;" onclick="if(event.target===this)closeSegmentos()">
+  <div class="gestao-modal-box" style="max-width:480px">
+    <div class="gestao-modal-header">
+      <div class="gestao-modal-titulo">🏷️ Segmentação</div>
+      <button class="modal-close" onclick="closeSegmentos()">×</button>
+    </div>
+    <div class="gestao-modal-body">
+      <div id="segmento-form" style="display:none;margin-bottom:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px" id="segmento-form-titulo">Novo Segmento</div>
+        <input type="hidden" id="seg-mgmt-id">
+        <div class="campo-grupo"><label class="campo-label">Nome do Segmento *</label>
+          <input class="campo-input" id="seg-mgmt-nome" placeholder="Ex: Ferragem, Vidraçaria..."
+            onkeydown="if(event.key==='Enter'){event.preventDefault();salvarSegmentoDesk()}">
+        </div>
+        <div class="modal-footer" style="padding:0;margin-top:8px">
+          <button class="btn-cancel-modal" onclick="fecharFormSegmentoDesk()">Cancelar</button>
+          <button class="btn-salvar-modal" onclick="salvarSegmentoDesk()">Salvar</button>
+        </div>
+      </div>
+      <div id="segmentos-lista"></div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border)">
+      <button class="cfg-save-btn" onclick="abrirFormSegmentoDesk()">+ Novo Segmento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL IMPORTAR CLIENTES ────────────────────────────────────── -->
+<div id="modal-importar" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.45);align-items:center;justify-content:center;" onclick="if(event.target===this)closeImportar()">
+  <div class="gestao-modal-box" style="max-width:520px">
+    <div class="gestao-modal-header">
+      <div class="gestao-modal-titulo">📥 Importar Clientes</div>
+      <button class="modal-close" onclick="closeImportar()">×</button>
+    </div>
+    <div class="gestao-modal-body">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px">1. Baixe o modelo</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Preencha a planilha com seus clientes. Colunas: nome, comprador, cnpj, cep, endereco, telefone, segmento, ultima_visita, ultima_obs</p>
+        <button class="cfg-save-btn" style="padding:8px 14px;font-size:12px" onclick="baixarModeloXlsxDesk()">⬇ Baixar modelo (.xlsx)</button>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">2. Selecione o arquivo</div>
+        <label style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;font-size:13px;color:var(--text2)">
+          <span>📎</span>
+          <span id="importar-file-label-desk">Selecionar arquivo .xlsx</span>
+          <input type="file" id="importar-file-desk" accept=".xlsx,.xls" style="display:none" onchange="importarLerArquivoDesk(this)">
+        </label>
+      </div>
+      <div id="importar-preview-desk" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">3. Status</div>
+        <div id="importar-preview-texto-desk" style="font-size:13px;line-height:1.8"></div>
+      </div>
+      <div id="importar-progress-desk" style="display:none;text-align:center;padding:20px;font-size:13px;color:var(--text2)"></div>
+    </div>
+    <div id="importar-footer-desk" style="display:none;padding:14px 20px;border-top:1px solid var(--border)">
+      <button class="cfg-save-btn" id="importar-btn-confirmar-desk" onclick="importarConfirmarDesk()">📤 Enviar para processamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL CALENDÁRIO ───────────────────────────────────────────── -->
+<div id="modal-calendario" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.45);align-items:center;justify-content:center;" onclick="if(event.target===this)closeCalendario()">
+  <div class="gestao-modal-box cal-modal-box">
+    <div class="gestao-modal-header">
+      <button class="btn-cancel-modal" style="border:none;background:none;font-size:13px;color:var(--text2);cursor:pointer;padding:0" onclick="navegarCalMesDesk(-1)">‹</button>
+      <div class="gestao-modal-titulo" id="cal-mes-titulo-desk" style="flex:1;text-align:center"></div>
+      <button class="btn-cancel-modal" style="border:none;background:none;font-size:13px;color:var(--text2);cursor:pointer;padding:0" onclick="navegarCalMesDesk(1)">›</button>
+      <button class="modal-close" style="margin-left:12px" onclick="closeCalendario()">×</button>
+    </div>
+    <div class="gestao-modal-body" style="padding:0">
+      <div class="cal-weekdays-desk">
+        <div class="cal-wd-d dom">D</div>
+        <div class="cal-wd-d">S</div>
+        <div class="cal-wd-d">T</div>
+        <div class="cal-wd-d">Q</div>
+        <div class="cal-wd-d">Q</div>
+        <div class="cal-wd-d">S</div>
+        <div class="cal-wd-d">S</div>
+      </div>
+      <div class="cal-grid-desk" id="cal-grid-desk"></div>
+      <div class="cal-legenda-desk">
+        <div class="cal-leg"><div class="cal-leg-dot" style="background:var(--green)"></div>1-3 visitas</div>
+        <div class="cal-leg"><div class="cal-leg-dot" style="background:var(--orange)"></div>4+ visitas</div>
+      </div>
+      <div class="cal-body-desk" id="cal-body-desk"></div>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
+<!-- Debug de autenticação (temporário — remover após estabilizar) -->
+<script src="desktop-auth-debug.js"></script>
 <!-- JS principal -->
 <script src="desktop.js"></script>
 
