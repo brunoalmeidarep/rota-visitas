@@ -4474,6 +4474,11 @@ async function salvarEdicaoCliente() {
   const cidade    = normalizarCidadeTexto(document.getElementById('c-cidade').value.trim());
   const endereco  = document.getElementById('c-endereco').value.trim();
   const cnpj      = document.getElementById('c-cnpj').value.trim();
+
+  // Verifica se endereço mudou ANTES de atualizar o cache
+  const enderecoAntigo = c.endereco || '';
+  const cidadeAntiga = c.cidade || '';
+  const enderecoMudou = (endereco !== enderecoAntigo) || (cidade !== cidadeAntiga);
   const segmento  = document.getElementById('c-segmento').value;
   const representadasIds = getRepresentadasSelecionadas();
 
@@ -4533,6 +4538,12 @@ async function salvarEdicaoCliente() {
   renderList();
   if (gmap) renderMapMarkers();
   if (fbEl2) { fbEl2.textContent = '✓ Dados atualizados'; fbEl2.style.display = 'block'; }
+
+  // Se endereço mudou e não capturou GPS, faz geocoding para atualizar coordenadas
+  if (enderecoMudou && !coordsCapturadas && endereco && cidade) {
+    geocodeCliente(c);
+  }
+
   setTimeout(() => { closeCadastro(); if (btnSalvar2) btnSalvar2.disabled = false; }, 1200);
 }
 
@@ -5784,6 +5795,8 @@ async function salvarModalEditarPedido() {
   fecharModalEditarPedido();
   dvRenderPedidos();
   showToast('✓ Pedido salvo');
+  // Atualiza card de resumo do relatório
+  if (typeof renderReport === 'function') renderReport();
   // Atualiza histórico com os pedidos salvos
   if (perfilId) {
     buscarHistoricoSupabase(perfilId).then(visitas => {
