@@ -1,0 +1,13 @@
+{
+  "appId": "com.mundodorep.app",
+  "appName": "Mundo do Rep",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}
