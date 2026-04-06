@@ -3132,7 +3132,16 @@ async function _carregarVendasRelatorio() {
     });
   } catch(e) {}
 
-  allPedidos.sort((a,b) => parseFloat(b.valor_pedido||0) - parseFloat(a.valor_pedido||0));
+  // Ordena conforme configuração atual
+  if (vendasOrdemAtual === 'valor') {
+    allPedidos.sort((a,b) => vendasOrdemDir === 'desc'
+      ? parseFloat(b.valor_pedido||0) - parseFloat(a.valor_pedido||0)
+      : parseFloat(a.valor_pedido||0) - parseFloat(b.valor_pedido||0));
+  } else {
+    allPedidos.sort((a,b) => vendasOrdemDir === 'desc'
+      ? (b.data||'').localeCompare(a.data||'')
+      : (a.data||'').localeCompare(b.data||''));
+  }
   const repsVendas = [...new Set(allPedidos.map(v=>v.pedido_representada||v.representada_nome).filter(Boolean))];
   const filtroRepHtml = repsVendas.length > 1
     ? '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 4px;">' +
@@ -3152,10 +3161,66 @@ async function _carregarVendasRelatorio() {
       <div id="vendas-footer-val" style="font-size:20px;font-weight:800;color:#fff;white-space:nowrap;">${formatarMoeda(totalVendas)}</div>
     </div>
   </div>`;
-  const wrapperHtml = `<div style="flex-shrink:0;">${filtroRepHtml}</div>` +
+  const isDataDesc = vendasOrdemAtual === 'data' && vendasOrdemDir === 'desc';
+  const isDataAsc = vendasOrdemAtual === 'data' && vendasOrdemDir === 'asc';
+  const isValorDesc = vendasOrdemAtual === 'valor' && vendasOrdemDir === 'desc';
+  const isValorAsc = vendasOrdemAtual === 'valor' && vendasOrdemDir === 'asc';
+  const btnStyle = (active) => `padding:4px 8px;border:none;border-radius:6px;font-size:12px;cursor:pointer;${active ? 'background:var(--blue);color:#fff;' : 'background:transparent;color:var(--text2);'}`;
+  const ordenacaoHtml = `<div style="display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);">
+    <div style="display:flex;align-items:center;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:10px;padding:2px 4px;gap:2px;">
+      <span style="font-size:12px;padding:0 6px;">Data</span>
+      <button id="vnd-data-desc" onclick="setOrdemVendas('data','desc')" style="${btnStyle(isDataDesc)}">&#8595;</button>
+      <button id="vnd-data-asc" onclick="setOrdemVendas('data','asc')" style="${btnStyle(isDataAsc)}">&#8593;</button>
+    </div>
+    <div style="display:flex;align-items:center;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:10px;padding:2px 4px;gap:2px;">
+      <span style="font-size:12px;padding:0 6px;">Valor</span>
+      <button id="vnd-valor-desc" onclick="setOrdemVendas('valor','desc')" style="${btnStyle(isValorDesc)}">&#8595;</button>
+      <button id="vnd-valor-asc" onclick="setOrdemVendas('valor','asc')" style="${btnStyle(isValorAsc)}">&#8593;</button>
+    </div>
+  </div>`;
+  const wrapperHtml = `<div style="flex-shrink:0;">${filtroRepHtml}${ordenacaoHtml}</div>` +
     `<div class="vnd-lista-scroll" style="flex:1;overflow-y:auto;min-height:0;">${renderVendasDetalheLista(allPedidos)}</div>` +
     rodapeHtml;
   body.innerHTML = wrapperHtml || '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum pedido no período</div>';
+}
+
+function setOrdemVendas(tipo, dir) {
+  vendasOrdemAtual = tipo;
+  vendasOrdemDir = dir;
+  reordenarVendasUI();
+}
+
+function reordenarVendasUI() {
+  const vendas = window._vendasRepFiltro
+    ? (window._vendasTodas || []).filter(v => (v.pedido_representada || v.representada_nome) === window._vendasRepFiltro)
+    : (window._vendasTodas || []);
+
+  if (vendasOrdemAtual === 'valor') {
+    vendas.sort((a,b) => vendasOrdemDir === 'desc'
+      ? parseFloat(b.valor_pedido||0) - parseFloat(a.valor_pedido||0)
+      : parseFloat(a.valor_pedido||0) - parseFloat(b.valor_pedido||0));
+  } else {
+    vendas.sort((a,b) => vendasOrdemDir === 'desc'
+      ? (b.data||'').localeCompare(a.data||'')
+      : (a.data||'').localeCompare(b.data||''));
+  }
+
+  const lista = document.querySelector('.vnd-lista-scroll');
+  if (lista) lista.innerHTML = renderVendasDetalheLista(vendas);
+
+  // Atualiza botões
+  const isDataDesc = vendasOrdemAtual === 'data' && vendasOrdemDir === 'desc';
+  const isDataAsc = vendasOrdemAtual === 'data' && vendasOrdemDir === 'asc';
+  const isValorDesc = vendasOrdemAtual === 'valor' && vendasOrdemDir === 'desc';
+  const isValorAsc = vendasOrdemAtual === 'valor' && vendasOrdemDir === 'asc';
+  const updateBtn = (id, active) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.style.cssText = `padding:4px 8px;border:none;border-radius:6px;font-size:12px;cursor:pointer;${active ? 'background:var(--blue);color:#fff;' : 'background:transparent;color:var(--text2);'}`;
+  };
+  updateBtn('vnd-data-desc', isDataDesc);
+  updateBtn('vnd-data-asc', isDataAsc);
+  updateBtn('vnd-valor-desc', isValorDesc);
+  updateBtn('vnd-valor-asc', isValorAsc);
 }
 
 async function _carregarOrcamentosRelatorio(periodo) {
@@ -7263,6 +7328,8 @@ let relMes = new Date().getMonth();
 let relAno = new Date().getFullYear();
 let visatasDoRelatorio = [];
 let repFiltroAtual = 'mes'; // 'mes' | 'semana' | 'hoje' | 'ano'
+let vendasOrdemAtual = 'data'; // 'data' | 'valor'
+let vendasOrdemDir = 'desc'; // 'desc' | 'asc'
 let repRepresentadasFiltro = []; // [] = todas
 let repFiltroDropdownOpen = false;
 let repDetalheAtual = null;
