@@ -1538,7 +1538,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
     <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;">Ponto de chegada</div>
     <div class="rota-ponto-row">
       <button class="rota-ponto-pill active" id="rc-casa" onclick="setRotaChegada('casa',this)">🏠 Casa</button>
-      <button class="rota-ponto-pill" id="rc-hotel" onclick="setRotaChegada('hotel',this)">🏨 Hotel</button>
+      <button class="rota-ponto-pill" id="rc-gps" onclick="setRotaChegada('gps',this)">📍 GPS</button>
       <button class="rota-ponto-pill" id="rc-outra" onclick="setRotaChegada('outra',this)">✏️ Outro</button>
     </div>
     <input class="campo-input rota-custom-input" id="rota-chegada-input" placeholder="Digite o endereço de chegada...">
@@ -10069,13 +10069,12 @@ function setRotaPartida(tipo, btn) {
 
 function setRotaChegada(tipo, btn) {
   rotaChegadaTipo = tipo;
-  ['rc-casa','rc-hotel','rc-outra'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+  ['rc-casa','rc-gps','rc-outra'].forEach(id => document.getElementById(id)?.classList.remove('active'));
   if (btn) btn.classList.add('active');
   const inp = document.getElementById('rota-chegada-input');
-  if (inp) inp.style.display = (tipo === 'hotel' || tipo === 'outra') ? 'block' : 'none';
-  if (inp && tipo === 'hotel') inp.placeholder = 'Nome/endereço do hotel...';
+  if (inp) inp.style.display = tipo === 'outra' ? 'block' : 'none';
   if (inp && tipo === 'outra') inp.placeholder = 'Digite o endereço de chegada...';
-  if (tipo === 'hotel' || tipo === 'outra') ativarAutocomplete('rota-chegada-input');
+  if (tipo === 'outra') ativarAutocomplete('rota-chegada-input');
 }
 
 function toggleModoViagem() {
@@ -10161,7 +10160,7 @@ function abrirNovaRota() {
   document.getElementById('rota-viagem-wrap').style.display = 'none';
   document.getElementById('rota-viagem-cidade-sel').style.display = 'none';
   ['rp-casa','rp-gps','rp-outro'].forEach(id => document.getElementById(id).classList.toggle('active', id==='rp-casa'));
-  ['rc-casa','rc-hotel','rc-outra'].forEach(id => document.getElementById(id).classList.toggle('active', id==='rc-casa'));
+  ['rc-casa','rc-gps','rc-outra'].forEach(id => document.getElementById(id).classList.toggle('active', id==='rc-casa'));
   renderCidadesPillsRota();
   renderClientesRota();
   document.getElementById('rota-modal').classList.add('open');
@@ -10313,7 +10312,7 @@ async function salvarNovaRota() {
     ponto_partida: endPartida,
     tipo_chegada: rotaChegadaTipo,
     ponto_chegada: endChegada,
-    nome_hotel: rotaChegadaTipo === 'hotel' ? endChegada : null
+    nome_hotel: null
   };
 
   let error;
@@ -10386,8 +10385,8 @@ function abrirDetalheRota(id) {
   const startIcon = {casa:'🏠', gps:'📍', outro:'✏️'}[rota.tipo_partida] || '🏠';
   const startLabel = rota.tipo_partida === 'casa' ? 'Endereço base' : (rota.tipo_partida === 'gps' ? 'Localização GPS' : 'Endereço personalizado');
   const startAddr = rota.ponto_partida || currentRep?.endereco_base || '';
-  const endIcon = {casa:'🏠', hotel:'🏨', outra:'✏️'}[rota.tipo_chegada] || '🏠';
-  const endLabel = rota.tipo_chegada === 'casa' ? 'Endereço base' : (rota.tipo_chegada === 'hotel' ? 'Hotel' : 'Endereço personalizado');
+  const endIcon = {casa:'🏠', gps:'📍', outra:'✏️'}[rota.tipo_chegada] || '🏠';
+  const endLabel = rota.tipo_chegada === 'casa' ? 'Endereço base' : (rota.tipo_chegada === 'gps' ? 'Localização GPS' : 'Endereço personalizado');
   const endAddr = rota.ponto_chegada || (rota.tipo_chegada === 'casa' ? currentRep?.endereco_base : '') || '';
 
   document.getElementById('rota-detalhe-title').textContent = rota.nome;
@@ -10467,7 +10466,7 @@ function abrirEdicaoRota(rota) {
   });
   const inpChegada = document.getElementById('rota-chegada-input');
   if (inpChegada) {
-    inpChegada.style.display = ['hotel', 'outra'].includes(rotaChegadaTipo) ? 'block' : 'none';
+    inpChegada.style.display = rotaChegadaTipo === 'outra' ? 'block' : 'none';
     inpChegada.value = rota.ponto_chegada || '';
   }
 
