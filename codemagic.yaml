@@ -1,0 +1,91 @@
+workflows:
+  ios-release:
+    name: iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.minharotarp.app
+      vars:
+        APP_ID: com.minharotarp.app
+        BUNDLE_ID: com.minharotarp.app
+        APP_VERSION: "1.0.0"
+        BUILD_NUMBER: "1"
+      node: 18
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+
+      - name: Install Capacitor CLI
+        script: |
+          npm install -g @capacitor/cli
+
+      - name: Create Capacitor config
+        script: |
+          cat > capacitor.config.json << EOF
+          {
+            "appId": "com.minharotarp.app",
+            "appName": "Minha Rota RP",
+            "webDir": ".",
+            "server": {
+              "androidScheme": "https"
+            },
+            "ios": {
+              "contentInset": "automatic"
+            }
+          }
+          EOF
+
+      - name: Add iOS platform
+        script: |
+          npx cap add ios || true
+
+      - name: Sync Capacitor
+        script: |
+          npx cap sync ios
+
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Set version and build number
+        script: |
+          cd ios/App
+          agvtool new-marketing-version $APP_VERSION
+          agvtool new-version -all $BUILD_NUMBER
+
+      - name: Build iOS app
+        script: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/App.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme App \
+            --archive-directory ios/App/build
+
+    artifacts:
+      - ios/App/build/**/*.ipa
+      - ios/App/build/**/*.xcarchive
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
