@@ -11,8 +11,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.minharotarp.app
-        certificate: Minha Rota RP Distribution
-        provisioning_profile: minha_rota_rp_appstore
       vars:
         APP_ID: com.minharotarp.app
         BUNDLE_ID: com.minharotarp.app
