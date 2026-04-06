@@ -9946,6 +9946,7 @@ function renderRotas() {
         ${r.tempo_estimado ? `<span>⏱ ${Math.round(r.tempo_estimado/60)}h${Math.round((r.tempo_estimado%3600)/60).toString().padStart(2,'0')}min</span>` : ''}
       </div>
       <div class="rota-card-acoes">
+        <button class="rota-btn-sm" onclick="event.stopPropagation();editarRotaPorId('${r.id}')">✏️ Editar</button>
         <button class="rota-btn-sm" onclick="event.stopPropagation();abrirGoogleMapsRota('${r.id}')">↗ Google Maps</button>
         <button class="rota-btn-sm danger" onclick="event.stopPropagation();excluirRota('${r.id}')" style="color:var(--red);border-color:var(--red)">🗑</button>
       </div>
@@ -10221,7 +10222,7 @@ async function salvarNovaRota() {
     tempoEstimado = Math.round(kmTotal / 60 * 3600);
   }
 
-  const { error } = await sb.from('rotas').insert({
+  const dadosRota = {
     nome,
     clientes_ids: novaRotaClientesSel,
     ordem_otimizada: ordemOtimizada,
@@ -10233,12 +10234,26 @@ async function salvarNovaRota() {
     tipo_chegada: rotaChegadaTipo,
     ponto_chegada: endChegada,
     nome_hotel: rotaChegadaTipo === 'hotel' ? endChegada : null
-  });
+  };
+
+  let error;
+  if (rotaEditandoId) {
+    const res = await sb.from('rotas').update(dadosRota).eq('id', rotaEditandoId).eq('rep_id', repId);
+    error = res.error;
+  } else {
+    const res = await sb.from('rotas').insert(dadosRota);
+    error = res.error;
+  }
+
+  const isEdit = !!rotaEditandoId;
+  rotaEditandoId = null;
 
   if (btn) { btn.disabled = false; btn.textContent = 'Criar Rota'; }
   if (error) { showToast('Erro ao salvar rota'); return; }
   document.getElementById('rota-modal').classList.remove('open');
-  showToast(fonte === 'google' ? '✓ Rota otimizada pelo Google!' : '✓ Rota salva!');
+  document.body.style.overflow = '';
+  const msgSucesso = isEdit ? '✓ Rota atualizada!' : (fonte === 'google' ? '✓ Rota otimizada pelo Google!' : '✓ Rota salva!');
+  showToast(msgSucesso);
   await carregarRotas();
   renderRotas();
 }
@@ -10320,6 +10335,88 @@ function abrirDetalheRota(id) {
 
 function fecharDetalheRota() {
   document.getElementById('rota-detalhe').classList.remove('open');
+  rotaEditandoId = null;
+}
+
+let rotaEditandoId = null;
+
+// Helpers para comparação de IDs
+function normalizeId(id) {
+  return String(id).trim();
+}
+
+function idInList(id, list) {
+  const nid = normalizeId(id);
+  return list.some(item => normalizeId(item) === nid);
+}
+
+// Edita rota pelo ID (chamado da lista)
+function editarRotaPorId(id) {
+  const rota = rotasCache.find(r => r.id === id);
+  if (!rota) {
+    showToast('Rota não encontrada');
+    return;
+  }
+  abrirEdicaoRota(rota);
+}
+
+// Lógica comum de edição de rota
+function abrirEdicaoRota(rota) {
+  rotaEditandoId = rota.id;
+  rotaModoViagem = false;
+  rotaViagemCidades = [];
+
+  const nomeInput = document.getElementById('rota-nome-input');
+  if (nomeInput) nomeInput.value = rota.nome;
+
+  rotaPartidaTipo = rota.tipo_partida || 'casa';
+  document.querySelectorAll('[id^="rp-"]').forEach(btn => {
+    const tipo = btn.id.replace('rp-', '');
+    btn.classList.toggle('active', tipo === rotaPartidaTipo);
+  });
+  const inpPartida = document.getElementById('rota-partida-input');
+  if (inpPartida) {
+    inpPartida.style.display = rotaPartidaTipo === 'outro' ? 'block' : 'none';
+    inpPartida.value = rota.ponto_partida || '';
+  }
+
+  rotaChegadaTipo = rota.tipo_chegada || 'casa';
+  document.querySelectorAll('[id^="rc-"]').forEach(btn => {
+    const tipo = btn.id.replace('rc-', '');
+    btn.classList.toggle('active', tipo === rotaChegadaTipo);
+  });
+  const inpChegada = document.getElementById('rota-chegada-input');
+  if (inpChegada) {
+    inpChegada.style.display = ['hotel', 'outra'].includes(rotaChegadaTipo) ? 'block' : 'none';
+    inpChegada.value = rota.ponto_chegada || '';
+  }
+
+  const idsRota = rota.ordem_otimizada || rota.clientes_ids || [];
+  novaRotaClientesSel = idsRota.map(id => String(id).trim()).filter(Boolean);
+
+  const cidadesSet = new Set();
+  novaRotaClientesSel.forEach(id => {
+    const cli = clientes.find(c => String(c.id) === id);
+    if (cli?.cidade) cidadesSet.add(cli.cidade);
+  });
+  novaRotaCidadesSel = Array.from(cidadesSet);
+
+  const viagemSw = document.getElementById('rota-viagem-sw');
+  if (viagemSw) viagemSw.classList.remove('on');
+  const viagemWrap = document.getElementById('rota-viagem-wrap');
+  if (viagemWrap) viagemWrap.style.display = 'none';
+
+  renderCidadesPillsRota();
+  renderClientesRota();
+
+  const modal = document.getElementById('rota-modal');
+  if (modal) modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  const btnCriar = document.getElementById('btn-criar-rota');
+  if (btnCriar) btnCriar.textContent = 'Salvar alterações';
+
+  setTimeout(() => ativarAutocompletesRota(), 100);
 }
 
 function abrirGoogleMapsRota(id) {
