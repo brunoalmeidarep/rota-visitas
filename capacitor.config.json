@@ -6,7 +6,8 @@
     "androidScheme": "https"
   },
   "ios": {
-    "contentInset": "automatic"
+    "contentInset": "automatic",
+    "minVersion": "14.0"
   },
   "plugins": {
     "SplashScreen": {
