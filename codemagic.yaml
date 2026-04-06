@@ -24,31 +24,16 @@ workflows:
     scripts:
       - name: Install dependencies
         script: |
-          npm install
+          npm install --legacy-peer-deps
 
-      - name: Install Capacitor CLI
+      - name: Copy web assets to www
         script: |
-          npm install -g @capacitor/cli
-
-      - name: Create Capacitor config
-        script: |
-          cat > capacitor.config.json << EOF
-          {
-            "appId": "com.minharotarp.app",
-            "appName": "Minha Rota RP",
-            "webDir": ".",
-            "server": {
-              "androidScheme": "https"
-            },
-            "ios": {
-              "contentInset": "automatic"
-            }
-          }
-          EOF
-
-      - name: Add iOS platform
-        script: |
-          npx cap add ios || true
+          mkdir -p www
+          cp index.html www/
+          cp manifest.json www/ 2>/dev/null || true
+          cp sw.js www/ 2>/dev/null || true
+          cp -r icons www/ 2>/dev/null || true
+          cp *.png www/ 2>/dev/null || true
 
       - name: Sync Capacitor
         script: |
@@ -78,9 +63,7 @@ workflows:
             -sdk iphoneos \
             -archivePath $CM_BUILD_DIR/build/App.xcarchive \
             archive \
-            DEVELOPMENT_TEAM=$TEAM_ID \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="minha_rota_rp_appstore"
+            DEVELOPMENT_TEAM=$TEAM_ID
 
       - name: Export IPA
         script: |
@@ -92,8 +75,6 @@ workflows:
     artifacts:
       - build/**/*.ipa
       - build/**/*.xcarchive
-      - ios/App/build/**/*.ipa
-      - ios/App/build/**/*.xcarchive
 
     publishing:
       app_store_connect:

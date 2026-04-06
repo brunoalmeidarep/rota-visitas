@@ -1,9 +1,12 @@
 {
-  "appId": "com.mundodorep.app",
-  "appName": "Mundo do Rep",
+  "appId": "com.minharotarp.app",
+  "appName": "Minha Rota RP",
   "webDir": "www",
   "server": {
     "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic"
   },
   "plugins": {
     "SplashScreen": {
