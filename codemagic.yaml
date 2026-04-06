@@ -4,6 +4,9 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m1
 
+    integrations:
+      app_store_connect: Codemagic
+
     environment:
       ios_signing:
         distribution_type: app_store
@@ -19,9 +22,6 @@ workflows:
       node: 18
       xcode: latest
       cocoapods: default
-
-    integrations:
-      app_store_connect: Codemagic
 
     scripts:
       - name: Install dependencies
@@ -71,14 +71,6 @@ workflows:
           agvtool new-marketing-version $APP_VERSION
           agvtool new-version -all $BUILD_NUMBER
 
-      - name: Update signing settings
-        script: |
-          cd ios/App
-          xcode-project use-profiles \
-            --project App.xcodeproj \
-            --scheme App \
-            --export-options-plist ~/export_options.plist
-
       - name: Build iOS archive
         script: |
           cd ios/App
@@ -108,8 +100,5 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        api_key: Codemagic
-        issuer_id: a7cfc2a3-4714-4f05-925e-29aa492ef87b
-        key_id: MN29GVLB23
         submit_to_testflight: true
         submit_to_app_store: false
