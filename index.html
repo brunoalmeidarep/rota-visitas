@@ -90,8 +90,8 @@
 }
 
 /* ── BASE ───────────────────────────────────────────── */
-html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscroll-behavior:none; -webkit-overflow-scrolling:none; position:fixed; width:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); }
-#app { min-height:100vh; min-height:-webkit-fill-available; overflow:hidden; position:fixed; inset:0; width:100%; max-width:430px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; background:var(--bg); padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscroll-behavior:none; -webkit-overflow-scrolling:none; position:fixed; inset:0; width:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; background:#1c1c1e; background:var(--bg); color:var(--text); }
+#app { min-height:100vh; min-height:-webkit-fill-available; overflow:hidden; position:fixed; top:0; bottom:0; left:0; right:0; width:100%; max-width:430px; margin:0 auto; display:flex; flex-direction:column; background:#1c1c1e; background:var(--bg); padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); }
 
 
 
@@ -5829,21 +5829,23 @@ async function salvarModalEditarPedido() {
   fecharModalEditarPedido();
   dvRenderPedidos();
   showToast('✓ Pedido salvo');
-  // Recarrega dados do relatório do Supabase para sincronizar todas as telas
-  if (typeof carregarPeriodoRelatorio === 'function') {
-    carregarPeriodoRelatorio().then(() => {
-      if (typeof renderReport === 'function') renderReport();
-    });
-  } else if (typeof renderReport === 'function') {
-    renderReport();
-  }
+  // Força recarregar dados frescos do Supabase para sincronizar TODAS as telas
+  console.log('[PEDIDO] Recarregando dados do relatório...');
+  try {
+    if (typeof carregarPeriodoRelatorio === 'function') {
+      await carregarPeriodoRelatorio();
+      console.log('[PEDIDO] Relatório recarregado, visatasDoRelatorio:', visatasDoRelatorio?.length);
+    }
+  } catch(e) { console.error('[PEDIDO] Erro ao recarregar relatório:', e); }
   // Atualiza histórico com os pedidos salvos
   if (perfilId) {
-    buscarHistoricoSupabase(perfilId).then(visitas => {
+    try {
+      const visitas = await buscarHistoricoSupabase(perfilId);
       historicoVisitas[perfilId] = visitas;
       const cAtual = clientes.find(x => x.id == perfilId);
       if (cAtual) renderHistorico(perfilId, cAtual);
-    });
+      console.log('[PEDIDO] Histórico atualizado para cliente:', perfilId);
+    } catch(e) { console.error('[PEDIDO] Erro ao atualizar histórico:', e); }
   }
 }
 
@@ -7343,10 +7345,11 @@ async function buscarVisitasPeriodo(mes, ano) {
     }
     return visitas.map(v => {
       const peds = pedidosByVisita[v.id] || [];
-      const pedidoFechado = peds.find(p => p.tipo === 'pedido');
-      if (pedidoFechado && v.pedido_tipo !== 'pedido') {
-        const valorTotal = peds.filter(p => p.tipo === 'pedido').reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
-        return { ...v, _pedidos: peds, pedido_tipo: 'pedido', valor_pedido: valorTotal || v.valor_pedido };
+      const pedidosFechados = peds.filter(p => p.tipo === 'pedido');
+      // Sempre recalcula o valor total dos pedidos da tabela pedidos
+      if (pedidosFechados.length > 0) {
+        const valorTotal = pedidosFechados.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
+        return { ...v, _pedidos: peds, pedido_tipo: 'pedido', valor_pedido: valorTotal, pedido_valor: valorTotal };
       }
       return { ...v, _pedidos: peds };
     });
