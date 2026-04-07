@@ -11680,9 +11680,10 @@ if ('serviceWorker' in navigator) {
 <div class="config-overlay" id="config-overlay" onclick="closeConfig(event)">
       <div class="config-sheet" onclick="event.stopPropagation()">
         <div class="config-handle"></div>
-        <div class="config-titulo" style="display:flex;align-items:center;justify-content:space-between">
-          <span>Configurações</span>
-          <button onclick="closeConfig()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3);padding:0 4px;line-height:1;-webkit-tap-highlight-color:transparent">✕</button>
+        <div class="config-titulo" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <button onclick="closeConfig()" style="background:none;border:none;color:var(--blue);font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;padding:0;">← Voltar</button>
+          <span style="flex:1;text-align:center;">Configurações</span>
+          <div style="width:60px;"></div>
         </div>
         <div class="config-item" id="config-admin-item" style="display:none" onclick="closeConfig();openAdmin()">
           <div class="config-item-left">
