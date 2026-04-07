@@ -91,12 +91,12 @@
 
 /* ── BASE ───────────────────────────────────────────── */
 html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscroll-behavior:none; -webkit-overflow-scrolling:none; position:fixed; inset:0; width:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; background:#1c1c1e; background:var(--bg); color:var(--text); }
-#app { min-height:100vh; min-height:-webkit-fill-available; overflow:hidden; position:fixed; top:0; bottom:0; left:0; right:0; width:100%; max-width:430px; margin:0 auto; display:flex; flex-direction:column; background:#1c1c1e; background:var(--bg); padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); }
+#app { min-height:100vh; min-height:-webkit-fill-available; overflow:hidden; position:fixed; top:0; bottom:0; left:0; right:0; width:100%; max-width:430px; margin:0 auto; display:flex; flex-direction:column; background:#1c1c1e; background:var(--bg); padding-bottom:env(safe-area-inset-bottom); }
 
 
 
 /* ── HEADER ─────────────────────────────────────────── */
-.app-header { background:var(--surface); padding:12px 16px 0; flex-shrink:0; box-shadow:0 1px 0 var(--border); }
+.app-header { background:var(--surface); padding:12px 16px 0; padding-top:calc(env(safe-area-inset-top) + 12px); flex-shrink:0; box-shadow:0 1px 0 var(--border); }
 .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .header-title { font-size:22px; font-weight:800; color:var(--text); letter-spacing:-.5px; }
 .header-actions { display:flex; gap:6px; align-items:center; }
@@ -249,7 +249,7 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 /* ── TELA DE PERFIL ─────────────────────────────────── */
 #screen-perfil,#screen-cadastro,#screen-admin,#screen-importar { display:none; flex-direction:column; height:100%; background:var(--bg); position:fixed; top:0;left:0;right:0;bottom:0; z-index:500; animation:slideIn .22s ease; }
 @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
-.perfil-header,.cadastro-header,.admin-header { background:var(--surface); padding:12px 16px 14px; flex-shrink:0; box-shadow:0 1px 0 var(--border); }
+.perfil-header,.cadastro-header,.admin-header { background:var(--surface); padding:12px 16px 14px; padding-top:calc(env(safe-area-inset-top) + 12px); flex-shrink:0; box-shadow:0 1px 0 var(--border); }
 .perfil-top-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .perfil-back { background:none; border:none; color:var(--blue); font-family:inherit; font-size:15px; font-weight:500; cursor:pointer; padding:0; display:flex; align-items:center; gap:4px; }
 .btn-editar-perfil { background:none; border:1.5px solid var(--border); border-radius:8px; padding:4px 10px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; flex-shrink:0; }
@@ -3188,13 +3188,13 @@ async function _carregarVendasRelatorio() {
   const isValorAsc = vendasOrdemAtual === 'valor' && vendasOrdemDir === 'asc';
   const btnStyle = (active) => `padding:4px 8px;border:none;border-radius:6px;font-size:12px;cursor:pointer;${active ? 'background:var(--blue);color:#fff;' : 'background:transparent;color:var(--text2);'}`;
   const ordenacaoHtml = `<div style="display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface);">
-    <div style="display:flex;align-items:center;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:10px;padding:2px 4px;gap:2px;">
-      <span style="font-size:12px;padding:0 6px;">Data</span>
+    <div style="display:flex;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:2px 4px;gap:2px;">
+      <span style="font-size:12px;padding:0 6px;color:var(--text);">Data</span>
       <button id="vnd-data-desc" onclick="setOrdemVendas('data','desc')" style="${btnStyle(isDataDesc)}">&#8595;</button>
       <button id="vnd-data-asc" onclick="setOrdemVendas('data','asc')" style="${btnStyle(isDataAsc)}">&#8593;</button>
     </div>
-    <div style="display:flex;align-items:center;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:10px;padding:2px 4px;gap:2px;">
-      <span style="font-size:12px;padding:0 6px;">Valor</span>
+    <div style="display:flex;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:2px 4px;gap:2px;">
+      <span style="font-size:12px;padding:0 6px;color:var(--text);">Valor</span>
       <button id="vnd-valor-desc" onclick="setOrdemVendas('valor','desc')" style="${btnStyle(isValorDesc)}">&#8595;</button>
       <button id="vnd-valor-asc" onclick="setOrdemVendas('valor','asc')" style="${btnStyle(isValorAsc)}">&#8593;</button>
     </div>
