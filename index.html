@@ -157,7 +157,7 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 .card-wa-pedido-btn { background:#25D366;color:#fff;border:none;border-radius:8px;padding:6px 8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:3px;flex-shrink:0; }
 
 /* ── MAPA ───────────────────────────────────────────── */
-#map { flex:1; }
+#map { flex:1; touch-action:pan-x pan-y; -webkit-transform:translateZ(0); transform:translateZ(0); will-change:transform; }
 .map-legend { display:none; }
 .geo-bar { background:var(--surface); padding:6px 16px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; border-bottom:1px solid var(--border); }
 #geo-status { font-size:11px; color:var(--text3); }
@@ -2035,6 +2035,7 @@ window.initMap = function() {
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
+      gestureHandling: 'greedy',
       styles: [
         { elementType: 'geometry', stylers: [{ color: '#1a1a1e' }] },
         { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a1e' }] },
