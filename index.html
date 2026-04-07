@@ -57,7 +57,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="icon-16.png">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>Minha Rota RP</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
@@ -90,7 +90,7 @@
 }
 
 /* ── BASE ───────────────────────────────────────────── */
-html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); }
+html,body { height:100%; overflow:hidden; position:fixed; width:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); }
 #app { height:100vh; display:flex; flex-direction:column; overflow:hidden; max-width:430px; margin:0 auto; background:var(--bg); }
 
 
@@ -589,11 +589,11 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
 
 /* ── SISTEMA DE TELAS ───────────────────────────────── */
 .screens { flex:1; overflow:hidden; position:relative; min-height:0; isolation:isolate; }
-.screen { display:none; flex-direction:column; width:100%; height:100%; }
+.screen { display:none; flex-direction:column; position:absolute; inset:0; }
 .screen.active { display:flex; }
 
 
-#screen-map { overflow:hidden; }
+#screen-map { overflow:hidden; touch-action:none; }
 #screen-map #map { flex:1; min-height:0; }
 
 
@@ -616,6 +616,9 @@ html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','S
   background-color: #0f172a;
   background-size: cover;
   background-position: center top;
+  position: fixed;
+  inset: 0;
+  z-index: 999;
 }
 #screen-login::before {
   content:'';
