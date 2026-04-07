@@ -90,8 +90,8 @@
 }
 
 /* ── BASE ───────────────────────────────────────────── */
-html,body { height:100%; overflow:hidden; overscroll-behavior:none; -webkit-overflow-scrolling:none; position:fixed; width:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); }
-#app { height:100%; overflow:hidden; position:fixed; width:100%; max-width:430px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; background:var(--bg); }
+html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscroll-behavior:none; -webkit-overflow-scrolling:none; position:fixed; width:100%; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); }
+#app { min-height:100vh; min-height:-webkit-fill-available; overflow:hidden; position:fixed; inset:0; width:100%; max-width:430px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; background:var(--bg); padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
 
 
 
@@ -178,7 +178,7 @@ html,body { height:100%; overflow:hidden; overscroll-behavior:none; -webkit-over
 .prog-fill { height:100%; background:var(--green); border-radius:3px; transition:width .5s; }
 
 /* ── NAVBAR ─────────────────────────────────────────── */
-.navbar { background:var(--surface); border-top:1px solid var(--border); padding:8px 0 22px; display:flex; flex-shrink:0; position:fixed; bottom:0; left:0; right:0; z-index:50; }
+.navbar { background:var(--surface); border-top:1px solid var(--border); padding:8px 0 calc(env(safe-area-inset-bottom) + 8px); display:flex; flex-shrink:0; position:fixed; bottom:0; left:0; right:0; z-index:50; }
 .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; border:none; background:none; padding:4px 0; }
 .nav-icon { font-size:22px; }
 .nav-label { font-size:10px; font-weight:500; color:var(--text3); }
@@ -5796,9 +5796,20 @@ async function salvarModalEditarPedido() {
   };
   if (dvPedidoEditando && !dvPedidoEditando._legado) {
     // UPDATE pedido existente
+    console.log('[PEDIDO] Atualizando pedido:', dvPedidoEditando.id, 'novo valor:', valor);
     const { error } = await sb.from('pedidos').update(pedidoData).eq('id', dvPedidoEditando.id).eq('rep_id', repId);
-    if (error) { showToast('❌ Erro ao salvar', true); return; }
+    if (error) { console.error('[PEDIDO] Erro:', error); showToast('❌ Erro ao salvar', true); return; }
     Object.assign(dvPedidoEditando, pedidoData);
+    // Atualiza a tabela visitas com o valor total dos pedidos desta visita
+    if (dvVisitaAtual?.id) {
+      const totalPedidos = dvPedidosCache.filter(p => p.tipo === 'pedido').reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
+      await sb.from('visitas').update({ valor_pedido: totalPedidos, pedido_valor: totalPedidos }).eq('id', dvVisitaAtual.id).eq('rep_id', repId);
+      // Atualiza cache local do relatório
+      if (typeof visatasDoRelatorio !== 'undefined') {
+        const vIdx = visatasDoRelatorio.findIndex(v => String(v.id) === String(dvVisitaAtual.id));
+        if (vIdx >= 0) { visatasDoRelatorio[vIdx].valor_pedido = totalPedidos; visatasDoRelatorio[vIdx].pedido_valor = totalPedidos; }
+      }
+    }
   } else if (dvPedidoEditando?._legado) {
     // Pedido legado: INSERT na tabela pedidos e limpa da visita
     const { data, error } = await sb.from('pedidos').insert(pedidoData).select().maybeSingle();
@@ -5818,8 +5829,14 @@ async function salvarModalEditarPedido() {
   fecharModalEditarPedido();
   dvRenderPedidos();
   showToast('✓ Pedido salvo');
-  // Atualiza card de resumo do relatório
-  if (typeof renderReport === 'function') renderReport();
+  // Recarrega dados do relatório do Supabase para sincronizar todas as telas
+  if (typeof carregarPeriodoRelatorio === 'function') {
+    carregarPeriodoRelatorio().then(() => {
+      if (typeof renderReport === 'function') renderReport();
+    });
+  } else if (typeof renderReport === 'function') {
+    renderReport();
+  }
   // Atualiza histórico com os pedidos salvos
   if (perfilId) {
     buscarHistoricoSupabase(perfilId).then(visitas => {
@@ -6660,9 +6677,13 @@ function esqueceuSenha() {
   const el = document.getElementById('screen-esqueci-senha');
   el.style.display = 'flex';
   el.style.flexDirection = 'column';
-  // Renderiza hCaptcha dedicado na primeira abertura; reseta nas seguintes
-  if (typeof hcaptcha !== 'undefined') {
-    const container = document.getElementById('esqueci-captcha-container');
+  // No Capacitor, esconde o container do captcha
+  const isCapacitor = typeof window.Capacitor !== 'undefined';
+  const container = document.getElementById('esqueci-captcha-container');
+  if (isCapacitor) {
+    if (container) container.style.display = 'none';
+  } else if (typeof hcaptcha !== 'undefined' && container) {
+    container.style.display = 'block';
     if (esqueciWidgetId === null) {
       esqueciWidgetId = hcaptcha.render(container, { sitekey: 'becedf82-59a0-4206-9230-7de22e4c49f0' });
     } else {

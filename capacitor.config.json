@@ -6,7 +6,7 @@
     "androidScheme": "https"
   },
   "ios": {
-    "contentInset": "automatic",
+    "contentInset": "always",
     "minVersion": "13.0"
   },
   "plugins": {
