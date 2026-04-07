@@ -1862,8 +1862,8 @@ async function fazerLogin() {
   }
 
   // No Capacitor (iOS/Android), pula o hCaptcha pois capacitor://localhost não é suportado
-  const isCapacitor = typeof window.Capacitor !== 'undefined';
-  const captchaToken = isCapacitor ? 'capacitor-bypass' : (_loginCaptchaToken || (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : ''));
+  const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  const captchaToken = isCapacitor ? null : (_loginCaptchaToken || (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : ''));
   if (!captchaToken && !isCapacitor) {
     erro.textContent = 'Complete o CAPTCHA antes de entrar.';
     return;
@@ -6680,7 +6680,7 @@ function esqueceuSenha() {
   el.style.display = 'flex';
   el.style.flexDirection = 'column';
   // No Capacitor, esconde o container do captcha
-  const isCapacitor = typeof window.Capacitor !== 'undefined';
+  const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
   const container = document.getElementById('esqueci-captcha-container');
   if (isCapacitor) {
     if (container) container.style.display = 'none';
@@ -6708,25 +6708,44 @@ async function enviarRecuperacao() {
 
   if (!email) { erroEl.textContent = 'Digite seu e-mail.'; return; }
 
-  // No Capacitor (iOS/Android), pula o hCaptcha
-  const isCapacitor = typeof window.Capacitor !== 'undefined';
-  const captchaToken = isCapacitor ? 'capacitor-bypass' : (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse(esqueciWidgetId ?? undefined) : '');
-  if (!captchaToken && !isCapacitor) { erroEl.textContent = 'Complete o CAPTCHA antes de enviar.'; return; }
+  // Detecta Capacitor (iOS/Android nativo)
+  const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  console.log('[RECUPERAR] isCapacitor:', isCapacitor, 'Capacitor:', typeof window.Capacitor);
+
+  // No Capacitor, pula validação de captcha
+  if (!isCapacitor) {
+    const captchaToken = typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse(esqueciWidgetId ?? undefined) : '';
+    if (!captchaToken) { erroEl.textContent = 'Complete o CAPTCHA antes de enviar.'; return; }
+  }
 
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
 
-  const resetOptions = { redirectTo: 'https://minharotarp.com.br' };
-  if (!isCapacitor) resetOptions.captchaToken = captchaToken;
-  const { error } = await sb.auth.resetPasswordForEmail(email, resetOptions);
+  try {
+    let result;
+    if (isCapacitor) {
+      // No Capacitor, chama SEM options de captcha
+      console.log('[RECUPERAR] Chamando resetPasswordForEmail sem captcha');
+      result = await sb.auth.resetPasswordForEmail(email, { redirectTo: 'https://minharotarp.com.br' });
+    } else {
+      // Na web, inclui captcha
+      const captchaToken = hcaptcha.getResponse(esqueciWidgetId ?? undefined);
+      result = await sb.auth.resetPasswordForEmail(email, { redirectTo: 'https://minharotarp.com.br', captchaToken });
+    }
 
-  if (typeof hcaptcha !== 'undefined' && esqueciWidgetId !== null) hcaptcha.reset(esqueciWidgetId);
-  if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
+    if (typeof hcaptcha !== 'undefined' && esqueciWidgetId !== null) hcaptcha.reset(esqueciWidgetId);
+    if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
 
-  if (!error) {
-    erroEl.style.color = '#4ade80';
-    erroEl.textContent = '✓ Link enviado! Verifique sua caixa de entrada.';
-  } else {
-    erroEl.textContent = 'Erro ao enviar: ' + (error.message || 'tente novamente.');
+    if (!result.error) {
+      erroEl.style.color = '#4ade80';
+      erroEl.textContent = '✓ Link enviado! Verifique sua caixa de entrada.';
+    } else {
+      console.error('[RECUPERAR] Erro:', result.error);
+      erroEl.textContent = 'Erro ao enviar: ' + (result.error.message || 'tente novamente.');
+    }
+  } catch(e) {
+    console.error('[RECUPERAR] Exception:', e);
+    if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
+    erroEl.textContent = 'Erro ao enviar: ' + (e.message || 'tente novamente.');
   }
 }
 
@@ -6798,8 +6817,8 @@ async function fazerCadastro() {
   if (senha !== confirmar) { erro.textContent = 'As senhas não coincidem.'; return; }
 
   // No Capacitor (iOS/Android), pula o hCaptcha
-  const isCapacitor = typeof window.Capacitor !== 'undefined';
-  const captchaToken = isCapacitor ? 'capacitor-bypass' : (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
+  const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  const captchaToken = isCapacitor ? null : (typeof hcaptcha !== 'undefined' ? hcaptcha.getResponse() : '');
   if (!captchaToken && !isCapacitor) { erro.textContent = 'Complete o CAPTCHA antes de continuar.'; return; }
 
   btn.disabled = true;
