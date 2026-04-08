@@ -45,7 +45,7 @@ let markers       = {};   // { clienteId: marker }
 let activeId      = null;
 let filterStatus  = null;
 let filterCidade  = null;
-let activeTab     = 'mapa';
+let activeTab     = 'relatorio';
 let relMes            = new Date().getMonth();
 let relAno            = new Date().getFullYear();
 let relFiltro         = 'mes'; // 'hoje' | 'semana' | 'mes'
@@ -455,6 +455,7 @@ async function mostrarApp() {
     return;
   }
   await loadClientes();
+  showTab('relatorio'); // Relatórios é a tela inicial do desktop
   carregarLembretesSupabase();
   carregarRepresentadasDesktop();
   carregarImpostos().then(verificarLembretesDesk);
@@ -1382,15 +1383,16 @@ function setRelFiltro(filtro, btn) {
 }
 
 function renderReport() {
-  const hoje      = new Date();
-  const ehAtual   = relMes === hoje.getMonth() && relAno === hoje.getFullYear();
-  const nomeMes   = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const hoje    = new Date();
+  const ehAtual = relMes === hoje.getMonth() && relAno === hoje.getFullYear();
+  const nomeMes = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   // Título e navegação
-  document.getElementById('rep-mes-titulo').textContent =
-    relFiltro === 'hoje' ? 'Hoje' :
+  const tituloLabel =
+    relFiltro === 'hoje'   ? 'Hoje' :
     relFiltro === 'semana' ? 'Esta semana' :
     nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+  document.getElementById('rep-mes-titulo').textContent = tituloLabel;
   document.getElementById('rep-nav-prev').style.display = relFiltro === 'mes' ? '' : 'none';
   document.getElementById('rep-nav-next').style.display = relFiltro === 'mes' ? '' : 'none';
   document.getElementById('rep-nav-next').disabled = ehAtual && relFiltro === 'mes';
@@ -1405,15 +1407,23 @@ function renderReport() {
     const iniSem = new Date(hoje); iniSem.setDate(hoje.getDate() - dSem); iniSem.setHours(0,0,0,0);
     rows = rows.filter(v => new Date(v.data + 'T00:00:00') >= iniSem);
   }
-
-  const totalVisitas = rows.length;
-  const totalVendas  = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
-  const orcAbertos   = rows.filter(v => v.tipo === 'orcamento' && (!v.status_orcamento || v.status_orcamento === 'aberto')).length;
-
-  // Salva estado para uso nas telas de detalhe
   relRowsAtual = rows;
 
-  // Conversão: clientes visitados no período / total carteira
+  // ── Métricas de vendas ───────────────────────────────────────────
+  const totalVisitas   = rows.length;
+  const rowsComValor   = rows.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
+  const totalVendas    = rows.reduce((s, v) => s + (parseFloat(v.valor_pedido) || 0), 0);
+  const ticketMedio    = rowsComValor.length ? totalVendas / rowsComValor.length : 0;
+  const orcAbertos     = rows.filter(v =>
+    (v.pedido_tipo === 'orcamento' || v.tipo === 'orcamento') &&
+    (!v.status_orcamento || v.status_orcamento === 'aberto')
+  ).length;
+  const visitasComPedido = rowsComValor.length;
+  const visitasSemPedido = totalVisitas - visitasComPedido;
+  const pctComPedido     = totalVisitas ? Math.round(visitasComPedido / totalVisitas * 100) : 0;
+  const clientesUnicos   = [...new Set(rows.map(v => v.id_cliente))].length;
+
+  // ── Métricas de conversão ────────────────────────────────────────
   let visitados;
   if (relFiltro === 'hoje') {
     visitados = clientes.filter(c => c.visitadoHoje).length;
@@ -1427,150 +1437,278 @@ function renderReport() {
     }).length;
   } else {
     visitados = clientes.filter(c => {
-      if (c.visitadoHoje && relFiltro === 'mes' && ehAtual) return true;
+      if (c.visitadoHoje && ehAtual) return true;
       if (!c.ultimaVisita) return false;
       const d = new Date(c.ultimaVisita + 'T00:00:00');
       return d.getMonth() === relMes && d.getFullYear() === relAno;
     }).length;
   }
   const pctConv = clientes.length ? Math.round(visitados / clientes.length * 100) : 0;
-
-  // Salva métricas para o detalhe
   relEstAtual = { visitados, pctConv, totalVendas, totalVisitas };
 
-  // Top cidades
+  // ── Métricas de carteira ─────────────────────────────────────────
+  const ativos    = clientes.filter(c => getStatus(c) === 'green' || getStatus(c) === 'today').length;
+  const emRisco   = clientes.filter(c => getStatus(c) === 'blue').length;
+  const criticos  = clientes.filter(c => getStatus(c) === 'red').length;
+  const semVisita = clientes.filter(c => getStatus(c) === 'purple').length;
+  const totalCart = clientes.length;
+  const pctAtivos = totalCart ? Math.round(ativos / totalCart * 100) : 0;
+
+  // ── Top cidades ──────────────────────────────────────────────────
   const byCidade = {};
-  rows.forEach(v => { byCidade[v.cidade] = (byCidade[v.cidade] || 0) + 1; });
+  rows.forEach(v => { if (v.cidade) byCidade[v.cidade] = (byCidade[v.cidade] || 0) + 1; });
   const topCidades = Object.entries(byCidade).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
+  // ── Render ───────────────────────────────────────────────────────
   document.getElementById('rep-body').innerHTML = `
-    <div class="rep-card clickable" onclick="abrirDetalheRelatorio('visitas')" title="Ver detalhes de visitas">
-      <div class="rep-card-icon">🤝</div>
-      <div class="rep-card-val" style="color:var(--blue)">${totalVisitas}</div>
-      <div class="rep-card-label">Visitas</div>
-      <div class="rep-card-sub">registradas · clique para detalhar</div>
-    </div>
-    <div class="rep-card clickable" onclick="abrirDetalheRelatorio('vendas')" title="Ver detalhes de vendas">
-      <div class="rep-card-icon">💰</div>
-      <div class="rep-card-val" style="color:var(--green);font-size:${totalVendas>=10000?'18':totalVendas>=1000?'20':'24'}px">
-        R$ ${totalVendas.toLocaleString('pt-BR', {minimumFractionDigits:2})}
+
+    <!-- ── SEÇÃO 1: RESUMO GERAL ───────────────────────────────── -->
+    <div class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Resumo Geral</span>
+        <span class="dash-section-desc">Visão consolidada · ${tituloLabel}</span>
       </div>
-      <div class="rep-card-label">Vendas</div>
-      <div class="rep-card-sub">total pedidos · clique para detalhar</div>
-    </div>
-    <div class="rep-card clickable" onclick="abrirDetalheRelatorio('conversao')" title="Ver detalhes de conversão">
-      <div class="rep-card-icon">📊</div>
-      <div class="rep-card-val" style="color:var(--purple)">${pctConv}%</div>
-      <div class="rep-card-label">Conversão</div>
-      <div class="rep-card-sub">${visitados} / ${clientes.length} clientes · clique para detalhar</div>
-    </div>
-    <div class="rep-card rep-card-wide rep-progresso">
-      <div class="det-section-title">Progresso da carteira no ${relFiltro === 'mes' ? nomeMes : 'período'}</div>
-      <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:4px">
-        <span style="font-size:13px;color:var(--text2)">${visitados} visitados</span>
-        <span style="font-size:13px;font-weight:700;color:var(--text)">${pctConv}%</span>
+      <div class="dash-kpi-grid">
+        <div class="dash-kpi clickable" onclick="abrirDetalheRelatorio('visitas')">
+          <div class="dash-kpi-val" style="color:var(--blue)">${totalVisitas}</div>
+          <div class="dash-kpi-label">Visitas</div>
+          <div class="dash-kpi-sub">registradas · ver detalhe →</div>
+        </div>
+        <div class="dash-kpi clickable" onclick="abrirDetalheRelatorio('vendas')">
+          <div class="dash-kpi-val" style="color:var(--green);font-size:${totalVendas>=100000?'15':totalVendas>=10000?'18':'22'}px">
+            R$&nbsp;${totalVendas.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+          </div>
+          <div class="dash-kpi-label">Vendas</div>
+          <div class="dash-kpi-sub">total pedidos · ver detalhe →</div>
+        </div>
+        <div class="dash-kpi clickable" onclick="abrirDetalheRelatorio('conversao')">
+          <div class="dash-kpi-val" style="color:var(--purple)">${pctConv}%</div>
+          <div class="dash-kpi-label">Conversão</div>
+          <div class="dash-kpi-sub">${visitados} de ${totalCart} clientes · ver detalhe →</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--text)">${totalCart}</div>
+          <div class="dash-kpi-label">Total da carteira</div>
+          <div class="dash-kpi-sub">clientes cadastrados</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--green)">${ativos}</div>
+          <div class="dash-kpi-label">Ativos ≤30 dias</div>
+          <div class="dash-kpi-sub">${pctAtivos}% da carteira</div>
+        </div>
+        <div class="dash-kpi clickable" onclick="abrirDetalheRelatorio('clientes-sumindo')">
+          <div class="dash-kpi-val" style="color:var(--red)">${emRisco + criticos + semVisita}</div>
+          <div class="dash-kpi-label">Em risco</div>
+          <div class="dash-kpi-sub">atrasados + nunca visitados · ver →</div>
+        </div>
       </div>
-      <div class="rep-prog-bar"><div class="rep-prog-fill" style="width:${pctConv}%"></div></div>
-      <div style="margin-top:6px;font-size:11px;color:var(--text3)">${clientes.length - visitados} clientes restantes</div>
-    </div>
-    ${topCidades.length ? `
-    <div class="rep-card rep-card-wide">
-      <div class="det-section-title" style="margin-bottom:12px">Top cidades</div>
-      ${topCidades.map(([cidade, n]) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-          <span style="font-size:13px;color:var(--text)">${cidade}</span>
-          <span style="font-size:13px;font-weight:700;color:var(--blue)">${n} visitas</span>
-        </div>`).join('')}
-    </div>` : ''}
-    ${orcAbertos > 0 ? `
-    <div class="rep-card rep-card-wide" style="border-color:var(--orange);background:var(--orange-bg)">
-      <div class="rep-card-icon">📋</div>
-      <div style="font-size:15px;font-weight:700;color:var(--orange)">${orcAbertos} orçamento${orcAbertos>1?'s':''} em aberto</div>
-      <div style="font-size:12px;color:var(--text3);margin-top:4px">Acompanhe no app mobile</div>
-    </div>` : ''}
-
-    ${renderRadarSection(rows)}
-  `;
-}
-
-// ── RADAR COMERCIAL — seção do dashboard ─────────────────────────────
-function renderRadarSection(rows) {
-  // Pré-calcula contadores para exibir nos cards antes de abrir o detalhe
-  const comValor     = rows.filter(v => v.valor_pedido && parseFloat(v.valor_pedido) > 0);
-  const byCliente    = {};
-  comValor.forEach(v => {
-    const k = v.id_cliente;
-    if (!byCliente[k]) byCliente[k] = { nome: v.nome_cliente, cidade: v.cidade, total: 0, pedidos: 0 };
-    byCliente[k].total   += parseFloat(v.valor_pedido);
-    byCliente[k].pedidos += 1;
-  });
-  const rankingCount = Object.keys(byCliente).length;
-
-  const sumindoCount = clientes.filter(c => {
-    const st = getStatus(c);
-    return st === 'blue' || st === 'red';
-  }).length;
-
-  const potencialCount = clientes.filter(c => {
-    const st = getStatus(c);
-    return (st === 'blue' || st === 'red') && comValor.some(v => v.id_cliente == c.id);
-  }).length || clientes.filter(c => getStatus(c) === 'red').length;
-
-  return `
-    <div class="rep-radar-header">
-      <span class="rep-radar-titulo">⚡ Radar Comercial</span>
-      <span class="rep-radar-sub">Insights automáticos da carteira</span>
-    </div>
-
-    <div class="rep-card rep-radar-card clickable"
-         onclick="abrirDetalheRelatorio('top-compradores')"
-         title="Ver ranking de compradores">
-      <div class="rep-card-icon">🏆</div>
-      <div class="rep-card-val" style="color:var(--orange)">${rankingCount}</div>
-      <div class="rep-card-label">Top compradores</div>
-      <div class="rep-card-sub">clientes com pedido no período</div>
-    </div>
-
-    <div class="rep-card rep-radar-card clickable"
-         onclick="abrirDetalheRelatorio('mais-lucrativos')"
-         title="Ver clientes mais lucrativos">
-      <div class="rep-card-icon">💎</div>
-      <div class="rep-card-val" style="color:var(--green);font-size:20px">
-        R$ ${rankingCount > 0
-          ? (Object.values(byCliente).sort((a,b)=>b.total-a.total)[0].total)
-              .toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
-          : '—'}
+      <div class="dash-progress-block">
+        <div class="dash-progress-labels">
+          <span style="color:var(--text2)">${visitados} visitados no período</span>
+          <span style="font-weight:700;color:var(--text)">${pctConv}%</span>
+        </div>
+        <div class="rep-prog-bar"><div class="rep-prog-fill" style="width:${pctConv}%"></div></div>
+        <div class="dash-progress-sub">${totalCart - visitados} clientes restantes na carteira</div>
       </div>
-      <div class="rep-card-label">Mais lucrativos</div>
-      <div class="rep-card-sub">${rankingCount > 0 ? 'maior pedido individual' : 'sem pedidos com valor'}</div>
     </div>
 
-    <div class="rep-card rep-radar-card clickable"
-         onclick="abrirDetalheRelatorio('clientes-sumindo')"
-         title="Ver clientes sem visita recente">
-      <div class="rep-card-icon">⚠️</div>
-      <div class="rep-card-val" style="color:var(--red)">${sumindoCount}</div>
-      <div class="rep-card-label">Clientes sumindo</div>
-      <div class="rep-card-sub">sem visita há mais de 30 dias</div>
+    <!-- ── SEÇÃO 2: PERFORMANCE COMERCIAL ─────────────────────── -->
+    <div class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Performance Comercial</span>
+        <span class="dash-section-desc">Análise de vendas, pedidos e conversão</span>
+      </div>
+      <div class="dash-kpi-grid">
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--orange);font-size:${ticketMedio>=10000?'16':ticketMedio>=1000?'18':'22'}px">
+            ${ticketMedio > 0 ? 'R$&nbsp;' + ticketMedio.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}
+          </div>
+          <div class="dash-kpi-label">Ticket médio</div>
+          <div class="dash-kpi-sub">por pedido com valor registrado</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--text)">${rowsComValor.length}</div>
+          <div class="dash-kpi-label">Pedidos com valor</div>
+          <div class="dash-kpi-sub">de ${totalVisitas} visitas no período</div>
+        </div>
+        ${orcAbertos > 0 ? `
+        <div class="dash-kpi" style="border-color:rgba(255,149,0,.3);background:var(--orange-bg)">
+          <div class="dash-kpi-val" style="color:var(--orange)">${orcAbertos}</div>
+          <div class="dash-kpi-label">Orçamentos em aberto</div>
+          <div class="dash-kpi-sub">aguardando fechamento</div>
+        </div>` : ''}
+      </div>
+      <div class="dash-cards-grid">
+        <div class="rep-card clickable" onclick="abrirDetalheRelatorio('vendas')">
+          <div class="rep-card-icon">💰</div>
+          <div class="rep-card-label">Detalhamento de vendas</div>
+          <div class="rep-card-sub">por cliente e representada →</div>
+        </div>
+        <div class="rep-card clickable" onclick="abrirDetalheRelatorio('conversao')">
+          <div class="rep-card-icon">📊</div>
+          <div class="rep-card-label">Análise de conversão</div>
+          <div class="rep-card-sub">por etapa e faixa de tempo →</div>
+        </div>
+        <div class="rep-card clickable" onclick="abrirDetalheRelatorio('visitas')">
+          <div class="rep-card-icon">🤝</div>
+          <div class="rep-card-label">Histórico de visitas</div>
+          <div class="rep-card-sub">detalhado por cliente →</div>
+        </div>
+        ${topCidades.length ? `
+        <div class="rep-card" style="text-align:left;cursor:default">
+          <div class="rep-card-label" style="margin-bottom:10px;text-align:left">🗺 Top cidades</div>
+          ${topCidades.map(([cidade, n]) => `
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:12px;color:var(--text2)">${cidade}</span>
+              <span style="font-size:12px;font-weight:700;color:var(--blue)">${n} vis.</span>
+            </div>`).join('')}
+        </div>` : ''}
+      </div>
     </div>
 
-    <div class="rep-card rep-radar-card clickable"
-         onclick="abrirDetalheRelatorio('quedas')"
-         title="Ver ranking de queda vs mês anterior">
-      <div class="rep-card-icon">📉</div>
-      <div class="rep-card-val" style="color:var(--red)">—</div>
-      <div class="rep-card-label">Maiores quedas</div>
-      <div class="rep-card-sub">ranking vs mês anterior</div>
+    <!-- ── SEÇÃO 3: CARTEIRA DE CLIENTES ──────────────────────── -->
+    <div class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Carteira de Clientes</span>
+        <span class="dash-section-desc">Distribuição e status de cobertura</span>
+      </div>
+      <div class="dash-kpi-grid">
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--green)">${ativos}</div>
+          <div class="dash-kpi-label">Ativos ≤30 dias</div>
+          <div class="dash-kpi-sub">${totalCart ? Math.round(ativos/totalCart*100) : 0}% da carteira</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--orange)">${emRisco}</div>
+          <div class="dash-kpi-label">Em risco 31–60 dias</div>
+          <div class="dash-kpi-sub">atenção necessária</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--red)">${criticos}</div>
+          <div class="dash-kpi-label">Críticos +60 dias</div>
+          <div class="dash-kpi-sub">alto risco de perda</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--purple)">${semVisita}</div>
+          <div class="dash-kpi-label">Nunca visitados</div>
+          <div class="dash-kpi-sub">prospects sem contato</div>
+        </div>
+      </div>
+      ${totalCart > 0 ? `
+      <div class="dash-distrib-bar">
+        <div class="dash-distrib-seg" style="flex:${Math.max(ativos,1)};background:var(--green)" title="Ativos: ${ativos}"></div>
+        <div class="dash-distrib-seg" style="flex:${Math.max(emRisco,0)};background:var(--orange)" title="Em risco: ${emRisco}"></div>
+        <div class="dash-distrib-seg" style="flex:${Math.max(criticos,0)};background:var(--red)" title="Críticos: ${criticos}"></div>
+        <div class="dash-distrib-seg" style="flex:${Math.max(semVisita,0)};background:var(--purple)" title="Nunca visitados: ${semVisita}"></div>
+      </div>
+      <div class="dash-distrib-legend">
+        <span style="color:var(--green)">● Ativos (${ativos})</span>
+        <span style="color:var(--orange)">● Em risco (${emRisco})</span>
+        <span style="color:var(--red)">● Críticos (${criticos})</span>
+        <span style="color:var(--purple)">● Nunca visitados (${semVisita})</span>
+      </div>` : ''}
     </div>
 
-    <div class="rep-card rep-radar-card clickable"
-         onclick="abrirDetalheRelatorio('potencial')"
-         title="Ver clientes com potencial não visitado">
-      <div class="rep-card-icon">🎯</div>
-      <div class="rep-card-val" style="color:var(--purple)">${potencialCount}</div>
-      <div class="rep-card-label">Potencial não visitado</div>
-      <div class="rep-card-sub">compradores atrasados na agenda</div>
+    <!-- ── SEÇÃO 4: ALERTAS ────────────────────────────────────── -->
+    <div class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Alertas</span>
+        <span class="dash-section-desc">Situações que exigem atenção imediata</span>
+      </div>
+      <div class="dash-alerts-grid">
+        <div class="dash-alert-card clickable ${emRisco+criticos>0?'dash-alert-danger':''}" onclick="abrirDetalheRelatorio('clientes-sumindo')">
+          <div class="dash-alert-info">
+            <div class="dash-alert-label" style="color:${emRisco+criticos>0?'var(--red)':'var(--green)'}">
+              ${emRisco+criticos>0 ? '⚠️ Clientes atrasados' : '✅ Sem atrasos críticos'}
+            </div>
+            <div class="dash-alert-sub">${emRisco+criticos>0 ? 'sem visita há mais de 30 dias · ver lista →' : 'carteira bem coberta no período'}</div>
+          </div>
+          <div class="dash-alert-count" style="color:${emRisco+criticos>0?'var(--red)':'var(--green)'}">
+            ${emRisco + criticos}
+          </div>
+        </div>
+        <div class="dash-alert-card clickable" onclick="abrirDetalheRelatorio('quedas')">
+          <div class="dash-alert-info">
+            <div class="dash-alert-label">📉 Maiores quedas</div>
+            <div class="dash-alert-sub">clientes com queda vs mês anterior · ver ranking →</div>
+          </div>
+          <div class="dash-alert-count" style="color:var(--orange); font-size:20px">→</div>
+        </div>
+        ${semVisita > 0 ? `
+        <div class="dash-alert-card clickable" onclick="abrirDetalheRelatorio('clientes-sumindo')">
+          <div class="dash-alert-info">
+            <div class="dash-alert-label" style="color:var(--purple)">👻 Nunca visitados</div>
+            <div class="dash-alert-sub">prospects sem nenhuma visita registrada · ver lista →</div>
+          </div>
+          <div class="dash-alert-count" style="color:var(--purple)">${semVisita}</div>
+        </div>` : ''}
+        ${orcAbertos > 0 ? `
+        <div class="dash-alert-card dash-alert-warn">
+          <div class="dash-alert-info">
+            <div class="dash-alert-label" style="color:var(--orange)">📋 Orçamentos parados</div>
+            <div class="dash-alert-sub">aguardando resposta do cliente</div>
+          </div>
+          <div class="dash-alert-count" style="color:var(--orange)">${orcAbertos}</div>
+        </div>` : ''}
+      </div>
     </div>
+
+    <!-- ── SEÇÃO 5: OPORTUNIDADES ──────────────────────────────── -->
+    <div class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Oportunidades</span>
+        <span class="dash-section-desc">Clientes com maior potencial de resultado</span>
+      </div>
+      <div class="dash-cards-grid">
+        <div class="rep-card rep-radar-card clickable" onclick="abrirDetalheRelatorio('top-compradores')">
+          <div class="rep-card-icon">🏆</div>
+          <div class="rep-card-label">Top compradores</div>
+          <div class="rep-card-sub">ranking por volume no período →</div>
+        </div>
+        <div class="rep-card rep-radar-card clickable" onclick="abrirDetalheRelatorio('mais-lucrativos')">
+          <div class="rep-card-icon">💎</div>
+          <div class="rep-card-label">Mais lucrativos</div>
+          <div class="rep-card-sub">maior valor individual →</div>
+        </div>
+        <div class="rep-card rep-radar-card clickable" onclick="abrirDetalheRelatorio('potencial')">
+          <div class="rep-card-icon">🎯</div>
+          <div class="rep-card-label">Potencial não visitado</div>
+          <div class="rep-card-sub">compradores atrasados na agenda →</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SEÇÃO 6: PRODUTIVIDADE ──────────────────────────────── -->
+    <div class="dash-section">
+      <div class="dash-section-header">
+        <span class="dash-section-title">Produtividade</span>
+        <span class="dash-section-desc">Atividade e eficiência das visitas</span>
+      </div>
+      <div class="dash-kpi-grid">
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--green)">${visitasComPedido}</div>
+          <div class="dash-kpi-label">Visitas com pedido</div>
+          <div class="dash-kpi-sub">${pctComPedido}% das visitas geraram valor</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--text3)">${visitasSemPedido}</div>
+          <div class="dash-kpi-label">Visitas sem pedido</div>
+          <div class="dash-kpi-sub">relacionamento / prospecção</div>
+        </div>
+        <div class="dash-kpi clickable" onclick="abrirDetalheRelatorio('visitas')">
+          <div class="dash-kpi-val" style="color:var(--blue)">${clientesUnicos}</div>
+          <div class="dash-kpi-label">Clientes únicos</div>
+          <div class="dash-kpi-sub">visitados no período · ver →</div>
+        </div>
+        ${topCidades.length ? `
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" style="color:var(--blue);font-size:${topCidades[0][1]>=100?'18':'22'}px">${topCidades[0][1]}</div>
+          <div class="dash-kpi-label">Cidade mais visitada</div>
+          <div class="dash-kpi-sub">${topCidades[0][0]}</div>
+        </div>` : ''}
+      </div>
+    </div>
+
   `;
 }
 

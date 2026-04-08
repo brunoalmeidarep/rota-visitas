@@ -182,10 +182,10 @@
 
   <!-- TABS -->
   <nav id="tab-bar">
-    <button class="tab-btn active" data-tab="mapa"      onclick="showTab('mapa')">🗺 Mapa &amp; Lista</button>
-    <button class="tab-btn"        data-tab="relatorio" onclick="showTab('relatorio')">📊 Relatório</button>
+    <button class="tab-btn active" data-tab="relatorio" onclick="showTab('relatorio')">📊 Relatórios</button>
     <button class="tab-btn"        data-tab="financas"  onclick="showTab('financas'); initFinancas()">💰 Finanças</button>
     <button class="tab-btn"        data-tab="tarefas"   onclick="showTab('tarefas'); renderTarefas()">📋 Tarefas</button>
+    <button class="tab-btn"        data-tab="clientes"  onclick="showTab('clientes')">👥 Clientes</button>
     <button class="tab-btn"        data-tab="admin"     id="tab-admin-btn"
       onclick="showTab('admin'); carregarReps()" style="display:none">⚙ Admin</button>
   </nav>
@@ -193,8 +193,8 @@
   <!-- CONTEÚDO -->
   <div id="main">
 
-    <!-- ── TAB MAPA & LISTA ──────────────────────────────────────── -->
-    <div id="tab-mapa" class="tab-pane active">
+    <!-- ── TAB CLIENTES ──────────────────────────────────────────── -->
+    <div id="tab-clientes" class="tab-pane">
 
       <!-- Sidebar esquerda -->
       <aside id="sidebar">
@@ -232,8 +232,8 @@
 
       </aside>
 
-      <!-- Mapa central -->
-      <div id="map-wrap">
+      <!-- Mapa (removido da experiência desktop principal — preservado para uso interno) -->
+      <div id="map-wrap" style="display:none">
         <div id="map"></div>
         <div id="map-overlay">Carregando mapa...</div>
       </div>
@@ -357,10 +357,10 @@
 
       </aside>
 
-    </div><!-- /tab-mapa -->
+    </div><!-- /tab-clientes -->
 
     <!-- ── TAB RELATÓRIO ─────────────────────────────────────────── -->
-    <div id="tab-relatorio" class="tab-pane" style="flex-direction:column">
+    <div id="tab-relatorio" class="tab-pane active" style="flex-direction:column">
         <div id="rep-nav">
           <button class="rep-nav-btn" id="rep-nav-prev" onclick="navegarMes(-1)">‹</button>
           <div id="rep-mes-titulo" style="flex:1;text-align:center;font-size:15px;font-weight:700"></div>
