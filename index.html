@@ -4278,27 +4278,43 @@ async function salvarOuAbrirPDF(doc, nomeArquivo) {
 
   if (isCapacitor) {
     try {
-      const pdfBase64 = doc.output('datauristring');
-      // Usar Share nativo do Capacitor
-      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share) {
-        await window.Capacitor.Plugins.Share.share({
+      const Plugins = window.Capacitor.Plugins;
+      if (Plugins && Plugins.Filesystem && Plugins.Share) {
+        // Gera PDF em base64 (sem o prefixo data:)
+        const pdfBase64 = doc.output('datauristring').split(',')[1];
+        const fileName = 'relatorio_' + Date.now() + '.pdf';
+
+        // Salva arquivo no cache
+        await Plugins.Filesystem.writeFile({
+          path: fileName,
+          data: pdfBase64,
+          directory: 'CACHE'
+        });
+
+        // Obtém URI do arquivo
+        const fileResult = await Plugins.Filesystem.getUri({
+          path: fileName,
+          directory: 'CACHE'
+        });
+
+        // Abre no visualizador nativo via share sheet
+        await Plugins.Share.share({
           title: 'Relatório Minha Rota RP',
-          url: pdfBase64,
-          dialogTitle: 'Compartilhar PDF'
+          url: fileResult.uri,
+          dialogTitle: 'Abrir PDF'
         });
       } else {
         // Fallback: abre em nova aba
-        const newWindow = window.open(pdfBase64, '_blank');
-        if (!newWindow) {
-          const blob = doc.output('blob');
-          const blobUrl = URL.createObjectURL(blob);
-          window.open(blobUrl, '_blank');
-        }
+        const pdfBase64 = doc.output('datauristring');
+        window.open(pdfBase64, '_blank');
       }
     } catch (e) {
-      console.error('[PDF] Erro ao compartilhar:', e);
-      // Fallback: tenta download normal
-      try { doc.save(nomeArquivo); } catch(e2) {}
+      console.error('[PDF] Erro ao abrir:', e);
+      // Fallback: tenta abrir base64 direto
+      try {
+        const pdfBase64 = doc.output('datauristring');
+        window.open(pdfBase64, '_blank');
+      } catch(e2) {}
     }
   } else {
     // Na web, faz download normal
@@ -9705,7 +9721,6 @@ async function gerarPDFFinanceiro() {
   addFooter();
   const nomeArq = `financeiro_${finPeriodoResumo}_${ini}_${fim}.pdf`;
   salvarOuAbrirPDF(doc, nomeArq);
-  showToast('✓ PDF gerado');
 }
 
 async function carregarBonifFin() {
