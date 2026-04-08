@@ -4287,7 +4287,7 @@ async function salvarOuAbrirPDF(doc, nomeArquivo) {
   if (isCapacitor) {
     try {
       const Plugins = window.Capacitor.Plugins;
-      if (Plugins && Plugins.Filesystem) {
+      if (Plugins && Plugins.Filesystem && Plugins.Share) {
         // Gera PDF em base64 (sem o prefixo data:)
         const pdfBase64 = doc.output('datauristring').split(',')[1];
         const fileName = nomeArquivo.replace(/\.pdf$/i, '') + '_' + Date.now() + '.pdf';
@@ -4305,22 +4305,13 @@ async function salvarOuAbrirPDF(doc, nomeArquivo) {
           directory: 'CACHE'
         });
 
-        // Abre no visualizador nativo com FileOpener
-        if (Plugins.FileOpener) {
-          await Plugins.FileOpener.open({
-            filePath: fileResult.uri,
-            contentType: 'application/pdf',
-            openWithDefault: true
-          });
-        } else if (Plugins.Share) {
-          // Fallback: usa Share com files
-          await Plugins.Share.share({
-            files: [fileResult.uri],
-            dialogTitle: 'PDF — Minha Rota RP'
-          });
-        } else {
-          window.open(doc.output('datauristring'), '_blank');
-        }
+        // Abre no visualizador nativo via Share com URL do arquivo local
+        // No iOS, passar URL de arquivo local abre Quick Look antes do share sheet
+        await Plugins.Share.share({
+          title: nomeArquivo.replace(/\.pdf$/i, ''),
+          url: fileResult.uri,
+          dialogTitle: 'PDF — Minha Rota RP'
+        });
       } else {
         // Fallback: abre em nova aba
         window.open(doc.output('datauristring'), '_blank');
