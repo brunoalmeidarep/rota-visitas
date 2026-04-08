@@ -1014,8 +1014,8 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 .vcidade-aplicar { width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:13px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer; }
 
 /* ── PAYWALL ─────────────────────────────────────────── */
-#screen-paywall { display:none; position:fixed; inset:0; z-index:1100; background:linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); flex-direction:column; align-items:center; overflow-y:auto; }
-#screen-paywall.open { display:flex; }
+#screen-paywall { display:none; position:fixed; inset:0; z-index:1100; background:#1a1a2e; flex-direction:column; align-items:center; overflow-y:auto; opacity:0; transition:opacity 0.15s ease-out; }
+#screen-paywall.open { display:flex; opacity:1; }
 .paywall-inner { width:100%; max-width:400px; padding:40px 24px 60px; display:flex; flex-direction:column; align-items:center; }
 .paywall-logo { font-size:56px; margin-bottom:8px; }
 .paywall-app-name { font-size:22px; font-weight:800; color:#fff; margin-bottom:32px; letter-spacing:-0.5px; }
@@ -2038,12 +2038,20 @@ let planoSelecionado = 'mensal';
 
 function abrirPaywall() {
   const pw = document.getElementById('screen-paywall');
-  if (pw) pw.classList.add('open');
+  if (pw) {
+    pw.style.display = 'flex';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => pw.classList.add('open'));
+    });
+  }
 }
 
 function fecharPaywall() {
   const pw = document.getElementById('screen-paywall');
-  if (pw) pw.classList.remove('open');
+  if (pw) {
+    pw.classList.remove('open');
+    setTimeout(() => { if (!pw.classList.contains('open')) pw.style.display = 'none'; }, 150);
+  }
 }
 
 function selecionarPlano(plano) {
@@ -4279,7 +4287,7 @@ async function salvarOuAbrirPDF(doc, nomeArquivo) {
   if (isCapacitor) {
     try {
       const Plugins = window.Capacitor.Plugins;
-      if (Plugins && Plugins.Filesystem && Plugins.Share) {
+      if (Plugins && Plugins.Filesystem) {
         // Gera PDF em base64 (sem o prefixo data:)
         const pdfBase64 = doc.output('datauristring').split(',')[1];
         const fileName = nomeArquivo.replace(/\.pdf$/i, '') + '_' + Date.now() + '.pdf';
@@ -4297,23 +4305,30 @@ async function salvarOuAbrirPDF(doc, nomeArquivo) {
           directory: 'CACHE'
         });
 
-        // Abre no visualizador nativo usando files (mostra preview primeiro)
-        await Plugins.Share.share({
-          files: [fileResult.uri],
-          dialogTitle: 'PDF — Minha Rota RP'
-        });
+        // Abre no visualizador nativo com FileOpener
+        if (Plugins.FileOpener) {
+          await Plugins.FileOpener.open({
+            filePath: fileResult.uri,
+            contentType: 'application/pdf',
+            openWithDefault: true
+          });
+        } else if (Plugins.Share) {
+          // Fallback: usa Share com files
+          await Plugins.Share.share({
+            files: [fileResult.uri],
+            dialogTitle: 'PDF — Minha Rota RP'
+          });
+        } else {
+          window.open(doc.output('datauristring'), '_blank');
+        }
       } else {
         // Fallback: abre em nova aba
-        const pdfBase64 = doc.output('datauristring');
-        window.open(pdfBase64, '_blank');
+        window.open(doc.output('datauristring'), '_blank');
       }
     } catch (e) {
       console.error('[PDF] Erro ao abrir:', e);
       // Fallback: tenta abrir base64 direto
-      try {
-        const pdfBase64 = doc.output('datauristring');
-        window.open(pdfBase64, '_blank');
-      } catch(e2) {}
+      try { window.open(doc.output('datauristring'), '_blank'); } catch(e2) {}
     }
   } else {
     // Na web, faz download normal
