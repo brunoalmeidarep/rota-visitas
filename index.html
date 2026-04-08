@@ -368,7 +368,7 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 
 /* ── CALENDÁRIO ─────────────────────────────────────── */
 #screen-calendario { display:none; flex-direction:column; height:100%; background:var(--bg); position:absolute; top:0;left:0;right:0;bottom:0; z-index:200; animation:slideIn .22s ease; }
-.cal-header { background:var(--surface); padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.cal-header { background:var(--surface); padding:14px 16px; padding-top:calc(env(safe-area-inset-top) + 14px); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
 .cal-back { background:none;border:none;color:var(--blue); font-family:inherit;font-size:15px;font-weight:500; cursor:pointer;display:flex;align-items:center;gap:4px; }
 .cal-mes-titulo { font-size:17px;font-weight:700;color:var(--text); }
 .cal-nav { display:flex;gap:4px; }
@@ -807,7 +807,7 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 
 /* ── TELAS GESTÃO (Empresas / Segmentos) ─────────────── */
 #screen-empresas,#screen-segmentos { display:none; flex-direction:column; height:100%; background:var(--bg); position:fixed; top:0;left:0;right:0;bottom:0; z-index:500; animation:slideIn .22s ease; }
-.gestao-header { background:var(--surface); padding:12px 16px 14px; flex-shrink:0; box-shadow:0 1px 0 var(--border); display:flex; align-items:center; justify-content:space-between; }
+.gestao-header { background:var(--surface); padding:12px 16px 14px; padding-top:calc(env(safe-area-inset-top) + 12px); flex-shrink:0; box-shadow:0 1px 0 var(--border); display:flex; align-items:center; justify-content:space-between; }
 .gestao-titulo { font-size:17px; font-weight:700; flex:1; text-align:center; }
 .gestao-body { flex:1; overflow-y:auto; padding:16px; padding-bottom:90px; -webkit-overflow-scrolling:touch; }
 .gestao-card { background:var(--card); border-radius:14px; padding:14px 16px; margin-bottom:10px; box-shadow:var(--shadow); }
@@ -918,7 +918,7 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 /* Detalhe da rota */
 .rota-detalhe { display:none; position:fixed; inset:0; background:var(--bg); z-index:700; flex-direction:column; animation:slideIn .22s ease; }
 .rota-detalhe.open { display:flex; }
-.rota-detalhe-header { background:var(--surface); padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; }
+.rota-detalhe-header { background:var(--surface); padding:14px 16px; padding-top:calc(env(safe-area-inset-top) + 14px); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0; }
 .rota-detalhe-body { flex:1; overflow-y:auto; padding:14px; padding-bottom:100px; }
 .rota-trecho { background:var(--card); border-radius:12px; padding:12px 14px; margin-bottom:8px; box-shadow:var(--shadow); display:flex; align-items:center; gap:10px; }
 .rota-trecho-num { width:28px; height:28px; border-radius:50%; background:var(--blue); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -1411,7 +1411,7 @@ if (typeof window.Capacitor !== 'undefined') {
 
 <!-- TELA MEU PERFIL -->
 <div id="screen-meu-perfil" style="display:none;flex-direction:column;height:100%;background:var(--bg);position:fixed;top:0;left:0;right:0;bottom:0;z-index:500;animation:slideIn .22s ease;">
-  <div style="background:var(--surface);padding:12px 16px 14px;flex-shrink:0;box-shadow:0 1px 0 var(--border);display:flex;align-items:center;gap:12px;">
+  <div style="background:var(--surface);padding:12px 16px 14px;padding-top:calc(env(safe-area-inset-top) + 12px);flex-shrink:0;box-shadow:0 1px 0 var(--border);display:flex;align-items:center;gap:12px;">
     <button onclick="fecharMeuPerfil()" style="background:none;border:none;color:var(--blue);font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;">← Voltar</button>
     <div style="font-size:17px;font-weight:700;color:var(--text);">⚙️ Meu Perfil</div>
   </div>
@@ -2463,9 +2463,9 @@ function renderList() {
     filtered = filtered.filter(c => c.segmento === segmentoFiltro);
   }
 
-  // Filtro de cidade
-  if (cidadeFiltro) {
-    filtered = filtered.filter(c => c.cidade.replace(' - SC','').replace(' - PR','').trim() === cidadeFiltro);
+  // Filtro de cidade (múltipla seleção)
+  if (cidadesFiltro.length > 0) {
+    filtered = filtered.filter(c => cidadesFiltro.includes(c.cidade.replace(' - SC','').replace(' - PR','').trim()));
   }
 
   let toShow;
@@ -3469,12 +3469,7 @@ async function _carregarVisitasRelatorio(rows, periodoAtual) {
   }
   const totalGeral = rows.length;
   const totalFiltrado = rowsFiltradas.length;
-  // Cards de totais
-  const cardGastos = totalGastosClientes > 0
-    ? `<div style="flex:1.2;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 12px;box-shadow:var(--shadow);">
-        <div style="font-size:18px;font-weight:800;color:var(--red);">${formatarMoeda(totalGastosClientes)}</div>
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-top:3px;">💸 Gasto clientes</div>
-      </div>` : '';
+  // Cards de totais (removido card de gastos — BUG 4)
   let cardsHtml;
   if (visitasCidadesFiltro.length > 0) {
     cardsHtml = `<div style="display:flex;gap:8px;padding:8px 14px 4px;">
@@ -3488,10 +3483,7 @@ async function _carregarVisitasRelatorio(rows, periodoAtual) {
           ${visitasCidadesFiltro.length} cidade${visitasCidadesFiltro.length > 1 ? 's' : ''}
         </div>
       </div>
-      ${cardGastos}
     </div>`;
-  } else if (totalGastosClientes > 0) {
-    cardsHtml = `<div style="display:flex;gap:8px;padding:8px 14px 4px;">${cardGastos}</div>`;
   } else {
     cardsHtml = '';
   }
@@ -6680,7 +6672,10 @@ function esqueceuSenha() {
   el.style.display = 'flex';
   el.style.flexDirection = 'column';
   // No Capacitor, esconde o container do captcha
-  const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  const isCapacitor = (typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'ionic:' ||
+    (typeof window.Capacitor !== 'undefined' && window.Capacitor.getPlatform && window.Capacitor.getPlatform() !== 'web');
   const container = document.getElementById('esqueci-captcha-container');
   if (isCapacitor) {
     if (container) container.style.display = 'none';
@@ -6708,9 +6703,12 @@ async function enviarRecuperacao() {
 
   if (!email) { erroEl.textContent = 'Digite seu e-mail.'; return; }
 
-  // Detecta Capacitor (iOS/Android nativo)
-  const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
-  console.log('[RECUPERAR] isCapacitor:', isCapacitor, 'Capacitor:', typeof window.Capacitor);
+  // Detecta Capacitor (iOS/Android nativo) — múltiplas verificações
+  const isCapacitor = (typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'ionic:' ||
+    (typeof window.Capacitor !== 'undefined' && window.Capacitor.getPlatform && window.Capacitor.getPlatform() !== 'web');
+  console.log('[RECUPERAR] isCapacitor:', isCapacitor, 'protocol:', window.location.protocol);
 
   // No Capacitor, pula validação de captcha
   if (!isCapacitor) {
@@ -8294,8 +8292,8 @@ function sincronizarPillStatus() {
 
 
 
-// ── FILTRO DE CIDADE NA LISTA ────────────────────────
-var cidadeFiltro = '';
+// ── FILTRO DE CIDADE NA LISTA (MÚLTIPLA SELEÇÃO) ────────────────────────
+var cidadesFiltro = [];
 
 function abrirFiltroCidade() {
   renderFiltroCidades();
@@ -8326,35 +8324,40 @@ function renderFiltroCidades() {
   if (!lista) return;
   lista.innerHTML = '';
 
-  // Item "Todas"
+  // Item "Todas" (limpar filtro)
   const divAll = document.createElement('div');
-  divAll.className = 'cidade-filtro-item' + (cidadeFiltro === '' ? ' ativa' : '');
+  divAll.className = 'cidade-filtro-item' + (cidadesFiltro.length === 0 ? ' ativa' : '');
   divAll.innerHTML = '<div><div class="cidade-filtro-nome">Todas as cidades</div><div class="cidade-filtro-qtd">' + clientes.length + ' clientes</div></div>' +
-    (cidadeFiltro === '' ? '<span class="cidade-filtro-check">✓</span>' : '');
-  divAll.onclick = () => selecionarCidade('');
+    (cidadesFiltro.length === 0 ? '<span class="cidade-filtro-check">✓</span>' : '');
+  divAll.onclick = () => { cidadesFiltro = []; atualizarTagCidade(); renderList(); renderFiltroCidades(); };
   lista.appendChild(divAll);
 
-  // Cidades
+  // Cidades (multi-select com toggle)
   cidades.forEach(([cidade, qtd]) => {
-    const ativa = cidadeFiltro === cidade;
+    const ativa = cidadesFiltro.includes(cidade);
     const div = document.createElement('div');
     div.className = 'cidade-filtro-item' + (ativa ? ' ativa' : '');
     div.innerHTML = '<div><div class="cidade-filtro-nome">' + cidade + '</div><div class="cidade-filtro-qtd">' + qtd + ' clientes</div></div>' +
       (ativa ? '<span class="cidade-filtro-check">✓</span>' : '');
-    div.onclick = () => selecionarCidade(cidade);
+    div.onclick = () => toggleCidadeFiltro(cidade);
     lista.appendChild(div);
   });
 }
 
-function selecionarCidade(cidade) {
-  cidadeFiltro = cidade;
-  fecharFiltroCidade();
+function toggleCidadeFiltro(cidade) {
+  const idx = cidadesFiltro.indexOf(cidade);
+  if (idx >= 0) {
+    cidadesFiltro.splice(idx, 1);
+  } else {
+    cidadesFiltro.push(cidade);
+  }
   atualizarTagCidade();
   renderList();
+  renderFiltroCidades();
 }
 
 function limparFiltroCidade() {
-  cidadeFiltro = '';
+  cidadesFiltro = [];
   atualizarTagCidade();
   renderList();
 }
@@ -8363,14 +8366,22 @@ function atualizarTagCidade() {
   const tag = document.getElementById('cidade-ativa-tag');
   const nome = document.getElementById('cidade-ativa-nome');
   const box = document.getElementById('search-inner-box');
+  const btnFiltro = document.querySelector('[onclick="abrirFiltroCidade()"]');
   if (!tag) return;
-  if (cidadeFiltro) {
+  if (cidadesFiltro.length > 0) {
     tag.style.display = 'flex';
-    if (nome) nome.textContent = cidadeFiltro + ' ✕';
+    if (cidadesFiltro.length === 1) {
+      if (nome) nome.textContent = cidadesFiltro[0] + ' ✕';
+    } else {
+      if (nome) nome.textContent = cidadesFiltro.length + ' cidades ✕';
+    }
     if (box) box.style.border = '1px solid rgba(0,122,255,.4)';
+    if (btnFiltro) btnFiltro.innerHTML = '📍<span style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center">' + cidadesFiltro.length + '</span>';
+    if (btnFiltro) btnFiltro.style.position = 'relative';
   } else {
     tag.style.display = 'none';
     if (box) box.style.border = 'none';
+    if (btnFiltro) btnFiltro.innerHTML = '📍';
   }
 }
 
@@ -10317,7 +10328,10 @@ async function salvarNovaRota() {
   if (!repId) { showToast('Faça login primeiro'); return; }
 
   const btn = document.getElementById('btn-criar-rota');
+  const textoOriginal = rotaEditandoId ? 'Salvar alterações' : 'Criar Rota';
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Otimizando rota...'; }
+
+  try {
 
   // Resolve partida e chegada
   const endPartida = await resolverEnderecoPonto(rotaPartidaTipo, 'rota-partida-input');
@@ -10397,14 +10411,19 @@ async function salvarNovaRota() {
   const isEdit = !!rotaEditandoId;
   rotaEditandoId = null;
 
-  if (btn) { btn.disabled = false; btn.textContent = 'Criar Rota'; }
-  if (error) { showToast('Erro ao salvar rota'); return; }
+  if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
+  if (error) { showToast('Erro ao salvar rota: ' + (error.message || 'tente novamente')); return; }
   document.getElementById('rota-modal').classList.remove('open');
   document.body.style.overflow = '';
   const msgSucesso = isEdit ? '✓ Rota atualizada!' : (fonte === 'google' ? '✓ Rota otimizada pelo Google!' : '✓ Rota salva!');
   showToast(msgSucesso);
   await carregarRotas();
   renderRotas();
+  } catch (e) {
+    console.error('[ROTA] Erro ao salvar:', e);
+    if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
+    showToast('Erro ao salvar rota: ' + (e.message || 'tente novamente'));
+  }
 }
 
 // Chama Google Directions API com optimizeWaypoints:true
