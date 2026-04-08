@@ -162,6 +162,7 @@ let _appJaIniciou = false;
 
 async function iniciarApp() {
   const D = window.DESK_DEBUG;
+  if (D) D.log('[AUTH][BOOT]', 'iniciarApp iniciando — URL:', window.location.href);
 
   // Lê URL ANTES do Supabase processar — necessário para fluxo de recovery
   const _hash        = window.location.hash;
@@ -172,9 +173,9 @@ async function iniciarApp() {
   const _type        = hashParams.get('type');
 
   if (D) {
-    D.log('[AUTH][SESSION]', 'iniciarApp — hash type:', _type || '(nenhum)');
-    D.log('[AUTH][SESSION]', 'access_token presente:', !!_accessToken);
-    D.log('[AUTH][SESSION]', 'search type:', searchParams.get('type') || '(nenhum)');
+    D.log('[AUTH][BOOT]', 'hash type:', _type || '(nenhum)');
+    D.log('[AUTH][BOOT]', 'access_token presente:', !!_accessToken);
+    D.log('[AUTH][BOOT]', 'search type:', searchParams.get('type') || '(nenhum)');
   }
 
   // Recovery via hash implícito (ex: desktop.html#type=recovery&access_token=...)
@@ -200,37 +201,46 @@ async function iniciarApp() {
   }
 
   // Listener de estado de auth
+  // Nota: INITIAL_SESSION é disparado pelo Supabase v2 na inicialização com sessão existente;
+  // SIGNED_IN é disparado após login bem-sucedido ou token refresh.
+  // Ambos só ativam mostrarApp() se _appJaIniciou ainda for false (evita double-call).
   sb.auth.onAuthStateChange((event, session) => {
-    if (D) D.log('[AUTH][SESSION]', 'onAuthStateChange:', event, 'user:', session?.user?.email || 'none');
+    if (D) D.log('[AUTH][SESSION]', 'onAuthStateChange:', event, 'user:', session?.user?.email || 'none', '_appJaIniciou:', _appJaIniciou);
     if (event === 'PASSWORD_RECOVERY') {
       _mostrarViewLogin('view-nova-senha');
-    } else if (event === 'SIGNED_IN' && session && !_appJaIniciou) {
+    } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session && !_appJaIniciou) {
       _appJaIniciou = true;
       currentUser = session.user;
-      if (D) D.ok('SIGNED_IN → mostrarApp: ' + currentUser.email);
+      if (D) D.ok('[AUTH][UI] ' + event + ' → mostrarApp: ' + currentUser.email);
       mostrarApp();
     } else if (event === 'SIGNED_OUT') {
       _appJaIniciou = false;
       currentUser = null;
-      if (D) D.log('[AUTH][SESSION]', 'SIGNED_OUT → mostrarLogin');
+      if (D) D.log('[AUTH][UI]', 'SIGNED_OUT → mostrarLogin');
       mostrarLogin();
     }
   });
 
   // Sessão existente (reload normal)
+  // Verifica !_appJaIniciou para evitar double-call caso onAuthStateChange já tenha atuado.
   try {
+    if (D) D.log('[AUTH][SESSION_RESTORE]', 'verificando sessão existente via getSession...');
     const { data: { session } } = await sb.auth.getSession();
-    if (D) D.log('[AUTH][SESSION]', 'getSession:', session ? 'sessão ativa: ' + session.user.email : 'sem sessão');
-    if (session) {
+    if (D) D.log('[AUTH][SESSION_RESTORE]', session ? 'sessão ativa: ' + session.user.email : 'sem sessão', '| _appJaIniciou:', _appJaIniciou);
+    if (session && !_appJaIniciou) {
+      if (D) D.log('[AUTH][UI]', 'sessão restaurada → mostrarApp');
       _appJaIniciou = true;
       currentUser = session.user;
       mostrarApp();
-    } else {
+    } else if (!session && !_appJaIniciou) {
+      if (D) D.log('[AUTH][UI]', 'sem sessão → mostrarLogin');
       mostrarLogin();
+    } else if (session && _appJaIniciou) {
+      if (D) D.log('[AUTH][SESSION_RESTORE]', 'sessão ativa mas app já iniciou via onAuthStateChange — sem double-call');
     }
   } catch(e) {
     if (D) D.err('[AUTH][ERROR]', 'getSession falhou:', e);
-    mostrarLogin();
+    if (!_appJaIniciou) mostrarLogin();
   }
 }
 
@@ -429,6 +439,8 @@ async function salvarNovaSenha() {
 }
 
 async function mostrarApp() {
+  const D = window.DESK_DEBUG;
+  if (D) D.log('[AUTH][UI]', 'mostrarApp — ocultando tela de login, exibindo app para:', currentUser?.email);
   document.getElementById('screen-login').style.display = 'none';
   document.getElementById('screen-onboarding').style.display = 'none';
   document.getElementById('app').classList.add('visible');
@@ -570,7 +582,14 @@ async function fazerLogin() {
         erro.textContent = error.message;
       }
     } else {
-      if (D) D.ok('Login bem-sucedido: ' + (data?.user?.email || email));
+      // Login bem-sucedido — _appJaIniciou foi setado antes do signInWithPassword para bloquear
+      // o onAuthStateChange de chamar mostrarApp() em paralelo. Aqui chamamos explicitamente.
+      currentUser = data.user;
+      if (D) {
+        D.ok('[AUTH][POST_LOGIN] Login bem-sucedido: ' + currentUser.email);
+        D.log('[AUTH][UI]', 'pós-login → chamando mostrarApp');
+      }
+      await mostrarApp();
     }
   } catch(e) {
     _appJaIniciou = false;
