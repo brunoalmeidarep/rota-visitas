@@ -4107,7 +4107,36 @@ function exportarPDFDetalhe() {
   }
 
   addFooterRodape();
-  doc.save('relatorio_' + tipo + '_' + filtroLabel.replace(/[\s/]/g, '_') + '.pdf');
+  salvarOuAbrirPDF(doc, 'relatorio_' + tipo + '_' + filtroLabel.replace(/[\s/]/g, '_') + '.pdf');
+}
+
+// Helper para salvar PDF (funciona em iOS/Capacitor e Web)
+function salvarOuAbrirPDF(doc, nomeArquivo) {
+  const isCapacitor = (typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'ionic:';
+
+  if (isCapacitor) {
+    // No iOS/Capacitor, abre o PDF em nova aba via base64
+    try {
+      const pdfBase64 = doc.output('datauristring');
+      const newWindow = window.open(pdfBase64, '_blank');
+      if (!newWindow) {
+        // Fallback: tenta usar o blob URL
+        const blob = doc.output('blob');
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+      }
+      showToast('📄 PDF gerado!');
+    } catch (e) {
+      console.error('[PDF] Erro ao abrir:', e);
+      // Último fallback: tenta download normal
+      doc.save(nomeArquivo);
+    }
+  } else {
+    // Na web, faz download normal
+    doc.save(nomeArquivo);
+  }
 }
 
 // ── MODAL ──────────────────────────────────────────────
@@ -9219,10 +9248,12 @@ function renderLancamentos() {
       <div class="fin-card">
         ${items.map(l => {
           const isHosp = l.categoria === 'Hospedagem';
+          const isCliente = l.categoria === 'Clientes' && l.cliente_nome;
           const desc = isHosp ? (l.hotel_nome || l.descricao || 'Hospedagem') : (l.descricao || l.categoria);
-          const sub = isHosp
+          let sub = isHosp
             ? [l.hotel_cidade, l.hotel_estrelas ? '⭐'.repeat(l.hotel_estrelas) : ''].filter(Boolean).join(' · ')
             : (l.categoria + (l.mes_referencia ? ' • '+l.mes_referencia : ''));
+          if (isCliente) sub = l.categoria + ' • ' + l.cliente_nome;
           return `
           <div class="fin-item">
             <div class="fin-item-info">
@@ -9454,7 +9485,7 @@ async function gerarPDFFinanceiro() {
 
   addFooter();
   const nomeArq = `financeiro_${finPeriodoResumo}_${ini}_${fim}.pdf`;
-  doc.save(nomeArq);
+  salvarOuAbrirPDF(doc, nomeArq);
   showToast('✓ PDF gerado');
 }
 
@@ -10328,99 +10359,135 @@ async function salvarNovaRota() {
   if (!repId) { showToast('Faça login primeiro'); return; }
 
   const btn = document.getElementById('btn-criar-rota');
-  const textoOriginal = rotaEditandoId ? 'Salvar alterações' : 'Criar Rota';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Otimizando rota...'; }
-
-  try {
-
-  // Resolve partida e chegada
-  const endPartida = await resolverEnderecoPonto(rotaPartidaTipo, 'rota-partida-input');
-  const endChegada = await resolverEnderecoPonto(rotaChegadaTipo, 'rota-chegada-input');
-
-  const clientesSel = clientes.filter(c => novaRotaClientesSel.includes(String(c.id)) && c.lat && c.lng);
-  let kmTotal = 0;
-  let tempoEstimado = 0;
-  let ordemOtimizada = clientesSel.map(c => String(c.id));
-  let fonte = 'haversine';
-
-  try {
-    if (window.google && google.maps && google.maps.DirectionsService) {
-      if (rotaModoViagem && rotaViagemCidades.length > 1) {
-        // Rota de viagem: otimiza por cidade em sequência
-        let ordemFinal = [];
-        let kmAcum = 0, tempoAcum = 0;
-        for (let ci = 0; ci < rotaViagemCidades.length; ci++) {
-          const cidade = rotaViagemCidades[ci];
-          const clientesCidade = clientesSel.filter(c => c.cidade === cidade);
-          if (!clientesCidade.length) continue;
-          const origemCidade = ci === 0 ? endPartida : null;
-          const destinoCidade = ci === rotaViagemCidades.length - 1 ? endChegada : null;
-          try {
-            const res = await otimizarRotaGoogle(clientesCidade, origemCidade, destinoCidade);
-            const route = res.routes[0];
-            route.waypoint_order.forEach(i => ordemFinal.push(String(clientesCidade[i].id)));
-            route.legs.forEach(leg => { kmAcum += leg.distance.value/1000; tempoAcum += leg.duration.value; });
-          } catch {
-            clientesCidade.forEach(c => ordemFinal.push(String(c.id)));
-          }
-        }
-        ordemOtimizada = ordemFinal;
-        kmTotal = kmAcum; tempoEstimado = tempoAcum;
-        fonte = 'google';
-      } else {
-        const resultado = await otimizarRotaGoogle(clientesSel, endPartida, endChegada);
-        const route = resultado.routes[0];
-        ordemOtimizada = route.waypoint_order.map(i => String(clientesSel[i].id));
-        route.legs.forEach(leg => { kmTotal += leg.distance.value/1000; tempoEstimado += leg.duration.value; });
-        fonte = 'google';
-      }
-    } else { throw new Error('Maps não disponível'); }
-  } catch(e) {
-    console.warn('Fallback Haversine:', e);
-    for (let i = 0; i < clientesSel.length - 1; i++) {
-      const a = clientesSel[i], b = clientesSel[i+1];
-      if (a.lat && b.lat) kmTotal += calcDistKm(a.lat, a.lng, b.lat, b.lng);
-    }
-    kmTotal = Math.round(kmTotal * 1.3 * 10) / 10;
-    tempoEstimado = Math.round(kmTotal / 60 * 3600);
-  }
-
-  const dadosRota = {
-    nome,
-    clientes_ids: novaRotaClientesSel,
-    ordem_otimizada: ordemOtimizada,
-    km_total: Math.round(kmTotal * 10) / 10,
-    tempo_estimado: Math.round(tempoEstimado),
-    rep_id: repId,
-    tipo_partida: rotaPartidaTipo,
-    ponto_partida: endPartida,
-    tipo_chegada: rotaChegadaTipo,
-    ponto_chegada: endChegada,
-    nome_hotel: null
-  };
-
-  let error;
-  if (rotaEditandoId) {
-    const res = await sb.from('rotas').update(dadosRota).eq('id', rotaEditandoId).eq('rep_id', repId);
-    error = res.error;
-  } else {
-    const res = await sb.from('rotas').insert(dadosRota);
-    error = res.error;
-  }
-
   const isEdit = !!rotaEditandoId;
-  rotaEditandoId = null;
+  const textoOriginal = isEdit ? 'Salvar alterações' : 'Criar Rota';
 
-  if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
-  if (error) { showToast('Erro ao salvar rota: ' + (error.message || 'tente novamente')); return; }
-  document.getElementById('rota-modal').classList.remove('open');
-  document.body.style.overflow = '';
-  const msgSucesso = isEdit ? '✓ Rota atualizada!' : (fonte === 'google' ? '✓ Rota otimizada pelo Google!' : '✓ Rota salva!');
-  showToast(msgSucesso);
-  await carregarRotas();
-  renderRotas();
+  // Timeout de 15 segundos para evitar loop infinito
+  let timeoutId = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('Tempo limite excedido')), 15000);
+  });
+
+  try {
+    // EDIÇÃO: apenas atualiza dados sem re-otimizar
+    if (isEdit) {
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+
+      const endPartida = await resolverEnderecoPonto(rotaPartidaTipo, 'rota-partida-input');
+      const endChegada = await resolverEnderecoPonto(rotaChegadaTipo, 'rota-chegada-input');
+
+      // Busca a rota existente para manter km_total e tempo_estimado
+      const rotaExistente = rotasCache.find(r => r.id === rotaEditandoId);
+
+      const dadosUpdate = {
+        nome,
+        clientes_ids: novaRotaClientesSel,
+        ordem_otimizada: novaRotaClientesSel, // mantém a ordem selecionada pelo usuário
+        tipo_partida: rotaPartidaTipo,
+        ponto_partida: endPartida,
+        tipo_chegada: rotaChegadaTipo,
+        ponto_chegada: endChegada
+      };
+
+      const updatePromise = sb.from('rotas').update(dadosUpdate).eq('id', rotaEditandoId).eq('rep_id', repId);
+      const res = await Promise.race([updatePromise, timeoutPromise]);
+      clearTimeout(timeoutId);
+
+      if (res.error) { throw new Error(res.error.message || 'Erro ao atualizar'); }
+
+      rotaEditandoId = null;
+      if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
+      document.getElementById('rota-modal').classList.remove('open');
+      document.body.style.overflow = '';
+      showToast('✓ Rota atualizada!');
+      await carregarRotas();
+      renderRotas();
+      return;
+    }
+
+    // CRIAÇÃO: otimiza a rota com Google Maps
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Otimizando rota...'; }
+
+    const endPartida = await resolverEnderecoPonto(rotaPartidaTipo, 'rota-partida-input');
+    const endChegada = await resolverEnderecoPonto(rotaChegadaTipo, 'rota-chegada-input');
+
+    const clientesSel = clientes.filter(c => novaRotaClientesSel.includes(String(c.id)) && c.lat && c.lng);
+    let kmTotal = 0;
+    let tempoEstimado = 0;
+    let ordemOtimizada = clientesSel.map(c => String(c.id));
+    let fonte = 'haversine';
+
+    try {
+      if (window.google && google.maps && google.maps.DirectionsService) {
+        if (rotaModoViagem && rotaViagemCidades.length > 1) {
+          let ordemFinal = [];
+          let kmAcum = 0, tempoAcum = 0;
+          for (let ci = 0; ci < rotaViagemCidades.length; ci++) {
+            const cidade = rotaViagemCidades[ci];
+            const clientesCidade = clientesSel.filter(c => c.cidade === cidade);
+            if (!clientesCidade.length) continue;
+            const origemCidade = ci === 0 ? endPartida : null;
+            const destinoCidade = ci === rotaViagemCidades.length - 1 ? endChegada : null;
+            try {
+              const res = await Promise.race([otimizarRotaGoogle(clientesCidade, origemCidade, destinoCidade), timeoutPromise]);
+              const route = res.routes[0];
+              route.waypoint_order.forEach(i => ordemFinal.push(String(clientesCidade[i].id)));
+              route.legs.forEach(leg => { kmAcum += leg.distance.value/1000; tempoAcum += leg.duration.value; });
+            } catch {
+              clientesCidade.forEach(c => ordemFinal.push(String(c.id)));
+            }
+          }
+          ordemOtimizada = ordemFinal;
+          kmTotal = kmAcum; tempoEstimado = tempoAcum;
+          fonte = 'google';
+        } else {
+          const resultado = await Promise.race([otimizarRotaGoogle(clientesSel, endPartida, endChegada), timeoutPromise]);
+          const route = resultado.routes[0];
+          ordemOtimizada = route.waypoint_order.map(i => String(clientesSel[i].id));
+          route.legs.forEach(leg => { kmTotal += leg.distance.value/1000; tempoEstimado += leg.duration.value; });
+          fonte = 'google';
+        }
+      } else { throw new Error('Maps não disponível'); }
+    } catch(e) {
+      console.warn('Fallback Haversine:', e);
+      for (let i = 0; i < clientesSel.length - 1; i++) {
+        const a = clientesSel[i], b = clientesSel[i+1];
+        if (a.lat && b.lat) kmTotal += calcDistKm(a.lat, a.lng, b.lat, b.lng);
+      }
+      kmTotal = Math.round(kmTotal * 1.3 * 10) / 10;
+      tempoEstimado = Math.round(kmTotal / 60 * 3600);
+    }
+
+    clearTimeout(timeoutId);
+
+    const dadosRota = {
+      nome,
+      clientes_ids: novaRotaClientesSel,
+      ordem_otimizada: ordemOtimizada,
+      km_total: Math.round(kmTotal * 10) / 10,
+      tempo_estimado: Math.round(tempoEstimado),
+      rep_id: repId,
+      tipo_partida: rotaPartidaTipo,
+      ponto_partida: endPartida,
+      tipo_chegada: rotaChegadaTipo,
+      ponto_chegada: endChegada,
+      nome_hotel: null
+    };
+
+    const res = await sb.from('rotas').insert(dadosRota);
+    if (res.error) { throw new Error(res.error.message || 'Erro ao criar'); }
+
+    rotaEditandoId = null;
+    if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
+    document.getElementById('rota-modal').classList.remove('open');
+    document.body.style.overflow = '';
+    showToast(fonte === 'google' ? '✓ Rota otimizada pelo Google!' : '✓ Rota salva!');
+    await carregarRotas();
+    renderRotas();
   } catch (e) {
+    clearTimeout(timeoutId);
     console.error('[ROTA] Erro ao salvar:', e);
+    rotaEditandoId = null;
     if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
     showToast('Erro ao salvar rota: ' + (e.message || 'tente novamente'));
   }
