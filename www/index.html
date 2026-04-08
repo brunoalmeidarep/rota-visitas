@@ -1014,8 +1014,18 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 .vcidade-aplicar { width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:13px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer; }
 
 /* ── PAYWALL ─────────────────────────────────────────── */
-#screen-paywall { display:none; position:fixed; inset:0; z-index:1100; background:#1a1a2e; flex-direction:column; align-items:center; overflow-y:auto; opacity:0; transition:opacity 0.15s ease-out; }
-#screen-paywall.open { display:flex; opacity:1; }
+#screen-paywall { position:fixed; inset:0; z-index:1100; background:#1a1a2e; display:flex; flex-direction:column; align-items:center; overflow-y:auto; visibility:hidden; opacity:0; transform:translateY(20px); transition:opacity 0.12s ease-out, transform 0.12s ease-out, visibility 0s linear 0.12s; will-change:opacity,transform; }
+#screen-paywall.open { visibility:visible; opacity:1; transform:translateY(0); transition:opacity 0.12s ease-out, transform 0.12s ease-out, visibility 0s linear 0s; }
+
+/* ── PDF VIEWER ─────────────────────────────────────── */
+#screen-pdf-viewer { position:fixed; inset:0; z-index:1200; background:#000; display:flex; flex-direction:column; visibility:hidden; opacity:0; transition:opacity 0.15s ease-out, visibility 0s linear 0.15s; }
+#screen-pdf-viewer.open { visibility:visible; opacity:1; transition:opacity 0.15s ease-out; }
+.pdf-viewer-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; padding-top:calc(env(safe-area-inset-top) + 12px); background:#1a1a2e; flex-shrink:0; }
+.pdf-viewer-title { font-size:16px; font-weight:700; color:#fff; flex:1; text-align:center; }
+.pdf-viewer-btn { background:rgba(255,255,255,0.15); border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; color:#fff; cursor:pointer; }
+.pdf-viewer-close { background:none; border:none; font-size:24px; color:#fff; cursor:pointer; padding:4px 8px; }
+.pdf-viewer-body { flex:1; background:#333; display:flex; align-items:center; justify-content:center; overflow:auto; }
+.pdf-viewer-body iframe, .pdf-viewer-body embed, .pdf-viewer-body object { width:100%; height:100%; border:none; }
 .paywall-inner { width:100%; max-width:400px; padding:40px 24px 60px; display:flex; flex-direction:column; align-items:center; }
 .paywall-logo { font-size:56px; margin-bottom:8px; }
 .paywall-app-name { font-size:22px; font-weight:800; color:#fff; margin-bottom:32px; letter-spacing:-0.5px; }
@@ -1214,6 +1224,16 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
       <button class="paywall-link" onclick="window.open('termos.html','_blank')">Termos de uso e Privacidade</button>
     </div>
   </div>
+</div>
+
+<!-- ── TELA PDF VIEWER ─────────────────────────────────── -->
+<div id="screen-pdf-viewer">
+  <div class="pdf-viewer-header">
+    <button class="pdf-viewer-close" onclick="fecharPdfViewer()">✕</button>
+    <div class="pdf-viewer-title" id="pdf-viewer-title">Relatório</div>
+    <button class="pdf-viewer-btn" onclick="compartilharPdfAtual()">Enviar</button>
+  </div>
+  <div class="pdf-viewer-body" id="pdf-viewer-body"></div>
 </div>
 
 <div id="app">
@@ -2038,20 +2058,12 @@ let planoSelecionado = 'mensal';
 
 function abrirPaywall() {
   const pw = document.getElementById('screen-paywall');
-  if (pw) {
-    pw.style.display = 'flex';
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => pw.classList.add('open'));
-    });
-  }
+  if (pw) pw.classList.add('open');
 }
 
 function fecharPaywall() {
   const pw = document.getElementById('screen-paywall');
-  if (pw) {
-    pw.classList.remove('open');
-    setTimeout(() => { if (!pw.classList.contains('open')) pw.style.display = 'none'; }, 150);
-  }
+  if (pw) pw.classList.remove('open');
 }
 
 function selecionarPlano(plano) {
@@ -2064,6 +2076,50 @@ function selecionarPlano(plano) {
   } else {
     anual.classList.add('selected');
     mensal.classList.remove('selected');
+  }
+}
+
+// ── PDF VIEWER ────────────────────────────────────────
+let pdfAtualDataUri = null;
+let pdfAtualNome = null;
+
+function abrirPdfViewer(dataUri, nome) {
+  pdfAtualDataUri = dataUri;
+  pdfAtualNome = nome;
+  const viewer = document.getElementById('screen-pdf-viewer');
+  const title = document.getElementById('pdf-viewer-title');
+  const body = document.getElementById('pdf-viewer-body');
+  if (title) title.textContent = nome || 'Relatório';
+  if (body) body.innerHTML = '<iframe src="' + dataUri + '#toolbar=1&navpanes=0"></iframe>';
+  if (viewer) viewer.classList.add('open');
+}
+
+function fecharPdfViewer() {
+  const viewer = document.getElementById('screen-pdf-viewer');
+  if (viewer) viewer.classList.remove('open');
+  const body = document.getElementById('pdf-viewer-body');
+  if (body) body.innerHTML = '';
+  pdfAtualDataUri = null;
+  pdfAtualNome = null;
+}
+
+async function compartilharPdfAtual() {
+  if (!pdfAtualDataUri) return;
+  const isCapacitor = (typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if (isCapacitor) {
+    try {
+      const Plugins = window.Capacitor.Plugins;
+      if (Plugins && Plugins.Filesystem && Plugins.Share) {
+        const pdfBase64 = pdfAtualDataUri.split(',')[1];
+        const fileName = (pdfAtualNome || 'relatorio') + '_' + Date.now() + '.pdf';
+        await Plugins.Filesystem.writeFile({ path: fileName, data: pdfBase64, directory: 'CACHE' });
+        const fileResult = await Plugins.Filesystem.getUri({ path: fileName, directory: 'CACHE' });
+        await Plugins.Share.share({ title: pdfAtualNome, url: fileResult.uri, dialogTitle: 'Enviar PDF' });
+      }
+    } catch (e) { console.error('[PDF Share]', e); }
+  } else {
+    // Web: abre em nova aba
+    window.open(pdfAtualDataUri, '_blank');
   }
 }
 
@@ -4280,49 +4336,18 @@ function exportarPDFDetalhe() {
 
 // Helper para salvar PDF (funciona em iOS/Capacitor e Web)
 async function salvarOuAbrirPDF(doc, nomeArquivo) {
+  const pdfDataUri = doc.output('datauristring');
+  const nome = nomeArquivo.replace(/\.pdf$/i, '');
+
   const isCapacitor = (typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
     window.location.protocol === 'capacitor:' ||
     window.location.protocol === 'ionic:';
 
   if (isCapacitor) {
-    try {
-      const Plugins = window.Capacitor.Plugins;
-      if (Plugins && Plugins.Filesystem && Plugins.Share) {
-        // Gera PDF em base64 (sem o prefixo data:)
-        const pdfBase64 = doc.output('datauristring').split(',')[1];
-        const fileName = nomeArquivo.replace(/\.pdf$/i, '') + '_' + Date.now() + '.pdf';
-
-        // Salva arquivo no cache
-        await Plugins.Filesystem.writeFile({
-          path: fileName,
-          data: pdfBase64,
-          directory: 'CACHE'
-        });
-
-        // Obtém URI do arquivo
-        const fileResult = await Plugins.Filesystem.getUri({
-          path: fileName,
-          directory: 'CACHE'
-        });
-
-        // Abre no visualizador nativo via Share com URL do arquivo local
-        // No iOS, passar URL de arquivo local abre Quick Look antes do share sheet
-        await Plugins.Share.share({
-          title: nomeArquivo.replace(/\.pdf$/i, ''),
-          url: fileResult.uri,
-          dialogTitle: 'PDF — Minha Rota RP'
-        });
-      } else {
-        // Fallback: abre em nova aba
-        window.open(doc.output('datauristring'), '_blank');
-      }
-    } catch (e) {
-      console.error('[PDF] Erro ao abrir:', e);
-      // Fallback: tenta abrir base64 direto
-      try { window.open(doc.output('datauristring'), '_blank'); } catch(e2) {}
-    }
+    // No iOS: abre no viewer in-app com botão de compartilhar
+    abrirPdfViewer(pdfDataUri, nome);
   } else {
-    // Na web, faz download normal
+    // Na web: faz download normal
     doc.save(nomeArquivo);
   }
 }
