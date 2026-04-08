@@ -4507,8 +4507,8 @@ async function salvarEdicaoCliente() {
         cep,
         segmento,
         representadas_ids: representadasIds,
-        lat:          coordsCapturadas ? coordsCapturadas.lat : c.lat,
-        lng:          coordsCapturadas ? coordsCapturadas.lng : c.lng,
+        lat:          coordsCapturadas ? coordsCapturadas.lat : (enderecoMudou ? null : c.lat),
+        lng:          coordsCapturadas ? coordsCapturadas.lng : (enderecoMudou ? null : c.lng),
       })
       .eq('id', String(editandoClienteId))
       .eq('rep_id', repId);
@@ -4535,16 +4535,25 @@ async function salvarEdicaoCliente() {
   c.segmento    = segmento;
   c.representadasIds = representadasIds;
   c.cep         = cep;
-  if (coordsCapturadas) { c.lat = coordsCapturadas.lat; c.lng = coordsCapturadas.lng; }
+  if (coordsCapturadas) {
+    c.lat = coordsCapturadas.lat;
+    c.lng = coordsCapturadas.lng;
+  } else if (enderecoMudou) {
+    // Limpa coordenadas antigas — serão atualizadas pelo geocoding
+    c.lat = null;
+    c.lng = null;
+  }
 
   renderList();
-  if (gmap) renderMapMarkers();
-  if (fbEl2) { fbEl2.textContent = '✓ Dados atualizados'; fbEl2.style.display = 'block'; }
 
   // Se endereço mudou e não capturou GPS, faz geocoding para atualizar coordenadas
   if (enderecoMudou && !coordsCapturadas && endereco && cidade) {
-    geocodeCliente(c);
+    if (fbEl2) { fbEl2.textContent = '📍 Atualizando localização...'; fbEl2.style.display = 'block'; }
+    await geocodeCliente(c);
   }
+
+  if (gmap) renderMapMarkers();
+  if (fbEl2) { fbEl2.textContent = '✓ Dados atualizados'; fbEl2.style.display = 'block'; }
 
   setTimeout(() => { closeCadastro(); if (btnSalvar2) btnSalvar2.disabled = false; }, 1200);
 }
