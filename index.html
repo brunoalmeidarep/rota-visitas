@@ -1003,6 +1003,40 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 .vcidade-aplicar-wrap { padding:12px 16px 28px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface); }
 .vcidade-aplicar { width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:13px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer; }
 
+/* ── PAYWALL ─────────────────────────────────────────── */
+#screen-paywall { display:none; position:fixed; inset:0; z-index:1100; background:linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); flex-direction:column; align-items:center; overflow-y:auto; }
+#screen-paywall.open { display:flex; }
+.paywall-inner { width:100%; max-width:400px; padding:40px 24px 60px; display:flex; flex-direction:column; align-items:center; }
+.paywall-logo { font-size:56px; margin-bottom:8px; }
+.paywall-app-name { font-size:22px; font-weight:800; color:#fff; margin-bottom:32px; letter-spacing:-0.5px; }
+.paywall-titulo { font-size:26px; font-weight:800; color:#fff; margin-bottom:8px; text-align:center; }
+.paywall-subtitulo { font-size:14px; color:rgba(255,255,255,0.6); margin-bottom:28px; text-align:center; }
+.paywall-plans { width:100%; display:flex; flex-direction:column; gap:12px; margin-bottom:24px; }
+.paywall-plan { background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.15); border-radius:16px; padding:20px; cursor:pointer; position:relative; transition:all 0.2s ease; }
+.paywall-plan:hover { background:rgba(255,255,255,0.12); }
+.paywall-plan.selected { border-color:#fbbf24; background:rgba(251,191,36,0.1); }
+.paywall-plan-badge { position:absolute; top:-10px; right:16px; background:linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color:#000; font-size:10px; font-weight:800; padding:4px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; }
+.paywall-plan-header { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+.paywall-plan-radio { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.4); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.paywall-plan.selected .paywall-plan-radio { border-color:#fbbf24; background:#fbbf24; }
+.paywall-plan.selected .paywall-plan-radio::after { content:'✓'; color:#000; font-size:12px; font-weight:700; }
+.paywall-plan-name { font-size:16px; font-weight:700; color:#fff; text-transform:uppercase; letter-spacing:0.5px; }
+.paywall-plan-price { font-size:28px; font-weight:800; color:#fff; margin-bottom:4px; }
+.paywall-plan-price span { font-size:14px; font-weight:500; color:rgba(255,255,255,0.6); }
+.paywall-plan-desc { font-size:13px; color:rgba(255,255,255,0.5); }
+.paywall-plan-equiv { font-size:12px; color:#4ade80; font-weight:600; margin-top:6px; }
+.paywall-btn { width:100%; background:linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color:#000; border:none; border-radius:14px; padding:16px; font-family:inherit; font-size:17px; font-weight:800; cursor:pointer; margin-bottom:16px; box-shadow:0 4px 20px rgba(251,191,36,0.4); transition:transform 0.1s ease; }
+.paywall-btn:active { transform:scale(0.98); }
+.paywall-links { display:flex; flex-direction:column; align-items:center; gap:12px; }
+.paywall-link { font-size:13px; color:rgba(255,255,255,0.5); cursor:pointer; text-decoration:underline; background:none; border:none; font-family:inherit; }
+.paywall-link:hover { color:rgba(255,255,255,0.7); }
+.paywall-close { position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:36px; height:36px; font-size:20px; color:rgba(255,255,255,0.6); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.paywall-close:hover { background:rgba(255,255,255,0.2); }
+.paywall-features { width:100%; margin-bottom:24px; }
+.paywall-feature { display:flex; align-items:center; gap:10px; padding:8px 0; }
+.paywall-feature-icon { font-size:16px; }
+.paywall-feature-text { font-size:13px; color:rgba(255,255,255,0.7); }
+
 </style>
 </head>
 <body>
@@ -1068,6 +1102,7 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
       <button class="login-btn login-btn-secundario" onclick="abrirCadastro()">Criar conta</button>
       <div class="login-esqueci" onclick="esqueceuSenha()">Esqueci minha senha</div>
     </div>
+    <button onclick="abrirPaywall()" style="background:linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);color:#000;border:none;border-radius:10px;padding:10px 20px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;margin-top:16px;">💎 Ver planos Premium</button>
     <div class="login-versao">Minha Rota RP v1.0</div>
   </div>
 </div>
@@ -1119,6 +1154,54 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
       <input class="login-input" id="nova-senha-confirmar" type="password" placeholder="Confirmar nova senha" autocomplete="new-password" autocorrect="off" autocapitalize="none" spellcheck="false">
       <div class="login-erro" id="nova-senha-erro"></div>
       <button class="login-btn" id="btn-salvar-senha" onclick="salvarNovaSenha()">Salvar nova senha</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TELA PAYWALL ────────────────────────────────────── -->
+<div id="screen-paywall">
+  <button class="paywall-close" onclick="fecharPaywall()">✕</button>
+  <div class="paywall-inner">
+    <div class="paywall-logo">💼</div>
+    <div class="paywall-app-name">Minha Rota RP</div>
+
+    <div class="paywall-titulo">Escolha seu plano</div>
+    <div class="paywall-subtitulo">Gerencie sua carteira de clientes e aumente suas vendas</div>
+
+    <div class="paywall-features">
+      <div class="paywall-feature"><span class="paywall-feature-icon">✓</span><span class="paywall-feature-text">Carteira ilimitada de clientes</span></div>
+      <div class="paywall-feature"><span class="paywall-feature-icon">✓</span><span class="paywall-feature-text">Rotas otimizadas com Google Maps</span></div>
+      <div class="paywall-feature"><span class="paywall-feature-icon">✓</span><span class="paywall-feature-text">Relatórios e PDFs profissionais</span></div>
+      <div class="paywall-feature"><span class="paywall-feature-icon">✓</span><span class="paywall-feature-text">Controle financeiro completo</span></div>
+    </div>
+
+    <div class="paywall-plans">
+      <div class="paywall-plan" id="plan-anual" onclick="selecionarPlano('anual')">
+        <div class="paywall-plan-badge">ECONOMIZE 23%</div>
+        <div class="paywall-plan-header">
+          <div class="paywall-plan-radio"></div>
+          <div class="paywall-plan-name">Plano Anual</div>
+        </div>
+        <div class="paywall-plan-price">R$ 549,90<span>/ano</span></div>
+        <div class="paywall-plan-equiv">Equivale a R$ 45,83/mês</div>
+        <div class="paywall-plan-desc">Melhor custo-benefício</div>
+      </div>
+
+      <div class="paywall-plan selected" id="plan-mensal" onclick="selecionarPlano('mensal')">
+        <div class="paywall-plan-header">
+          <div class="paywall-plan-radio"></div>
+          <div class="paywall-plan-name">Plano Mensal</div>
+        </div>
+        <div class="paywall-plan-price">R$ 59,90<span>/mês</span></div>
+        <div class="paywall-plan-desc">Cancele quando quiser</div>
+      </div>
+    </div>
+
+    <button class="paywall-btn" onclick="assinarPlano()">Assinar agora</button>
+
+    <div class="paywall-links">
+      <button class="paywall-link" onclick="restaurarCompra()">Restaurar compra</button>
+      <button class="paywall-link" onclick="window.open('termos.html','_blank')">Termos de uso e Privacidade</button>
     </div>
   </div>
 </div>
@@ -1922,6 +2005,42 @@ function aceitarTermos() {
   if (t) t.style.display = 'none';
   const el = document.getElementById('screen-login');
   if (el) el.style.display = 'flex';
+}
+
+// ── PAYWALL ───────────────────────────────────────────
+let planoSelecionado = 'mensal';
+
+function abrirPaywall() {
+  const pw = document.getElementById('screen-paywall');
+  if (pw) pw.classList.add('open');
+}
+
+function fecharPaywall() {
+  const pw = document.getElementById('screen-paywall');
+  if (pw) pw.classList.remove('open');
+}
+
+function selecionarPlano(plano) {
+  planoSelecionado = plano;
+  const mensal = document.getElementById('plan-mensal');
+  const anual = document.getElementById('plan-anual');
+  if (plano === 'mensal') {
+    mensal.classList.add('selected');
+    anual.classList.remove('selected');
+  } else {
+    anual.classList.add('selected');
+    mensal.classList.remove('selected');
+  }
+}
+
+async function assinarPlano() {
+  // Placeholder para integração futura com RevenueCat
+  showToast('Em breve: assinatura via App Store');
+}
+
+async function restaurarCompra() {
+  // Placeholder para integração futura com RevenueCat
+  showToast('Em breve: restaurar compra via App Store');
 }
 
 // ── ONBOARDING ────────────────────────────────────────
