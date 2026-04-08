@@ -1014,8 +1014,8 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 .vcidade-aplicar { width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:13px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer; }
 
 /* ── PAYWALL ─────────────────────────────────────────── */
-#screen-paywall { position:fixed; inset:0; z-index:1100; background:#1a1a2e; display:none; flex-direction:column; align-items:center; overflow-y:auto; }
-#screen-paywall.open { display:flex; }
+#screen-paywall { position:fixed; inset:0; z-index:1100; background:#1a1a2e; display:flex; flex-direction:column; align-items:center; overflow-y:auto; visibility:hidden; pointer-events:none; }
+#screen-paywall.open { visibility:visible; pointer-events:auto; }
 .paywall-inner { width:100%; max-width:400px; padding:40px 24px 60px; display:flex; flex-direction:column; align-items:center; }
 .paywall-logo { font-size:56px; margin-bottom:8px; }
 .paywall-app-name { font-size:22px; font-weight:800; color:#fff; margin-bottom:32px; letter-spacing:-0.5px; }
@@ -4296,25 +4296,16 @@ async function salvarOuAbrirPDF(doc, nomeArquivo) {
         directory: 'CACHE'
       });
 
-      // Tenta abrir com Browser primeiro (mostra PDF inline)
-      if (Plugins.Browser) {
-        await Plugins.Browser.open({ url: fileResult.uri });
-      } else if (Plugins.Share) {
-        // Fallback: usa Share
-        await Plugins.Share.share({
-          title: nomeArquivo.replace(/\.pdf$/i, ''),
-          url: fileResult.uri,
-          dialogTitle: 'PDF — Minha Rota RP'
-        });
-      }
+      // Abre via Share com arquivo local
+      await Plugins.Share.share({
+        title: nomeArquivo.replace(/\.pdf$/i, ''),
+        url: fileResult.uri,
+        dialogTitle: 'PDF — Minha Rota RP'
+      });
     } catch (e) {
       console.error('[PDF] Erro:', e);
-      // Fallback: tenta abrir data URI
-      const dataUri = doc.output('datauristring');
-      window.open(dataUri, '_blank');
     }
   } else {
-    // Na web: faz download normal
     doc.save(nomeArquivo);
   }
 }
