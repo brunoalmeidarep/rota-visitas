@@ -1040,7 +1040,7 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 .paywall-links { display:flex; flex-direction:column; align-items:center; gap:12px; }
 .paywall-link { font-size:13px; color:rgba(255,255,255,0.5); cursor:pointer; text-decoration:underline; background:none; border:none; font-family:inherit; }
 .paywall-link:hover { color:rgba(255,255,255,0.7); }
-.paywall-close { position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:36px; height:36px; font-size:20px; color:rgba(255,255,255,0.6); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.paywall-close { position:absolute; top:max(calc(env(safe-area-inset-top) + 12px), 52px); right:16px; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:36px; height:36px; font-size:20px; color:rgba(255,255,255,0.6); cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10; }
 .paywall-close:hover { background:rgba(255,255,255,0.2); }
 .paywall-features { width:100%; margin-bottom:24px; }
 .paywall-feature { display:flex; align-items:center; gap:10px; padding:8px 0; }
@@ -4282,7 +4282,7 @@ async function salvarOuAbrirPDF(doc, nomeArquivo) {
       if (Plugins && Plugins.Filesystem && Plugins.Share) {
         // Gera PDF em base64 (sem o prefixo data:)
         const pdfBase64 = doc.output('datauristring').split(',')[1];
-        const fileName = 'relatorio_' + Date.now() + '.pdf';
+        const fileName = nomeArquivo.replace(/\.pdf$/i, '') + '_' + Date.now() + '.pdf';
 
         // Salva arquivo no cache
         await Plugins.Filesystem.writeFile({
@@ -4297,11 +4297,10 @@ async function salvarOuAbrirPDF(doc, nomeArquivo) {
           directory: 'CACHE'
         });
 
-        // Abre no visualizador nativo via share sheet
+        // Abre no visualizador nativo usando files (mostra preview primeiro)
         await Plugins.Share.share({
-          title: 'Relatório Minha Rota RP',
-          url: fileResult.uri,
-          dialogTitle: 'Abrir PDF'
+          files: [fileResult.uri],
+          dialogTitle: 'PDF — Minha Rota RP'
         });
       } else {
         // Fallback: abre em nova aba
