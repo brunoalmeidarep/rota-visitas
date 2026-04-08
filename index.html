@@ -819,9 +819,19 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
 .gestao-form-footer .btn-cancelar { flex:1; padding:12px; background:var(--bg); color:var(--text2); border:1.5px solid var(--border); border-radius:12px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; }
 
 /* ── RELATÓRIO TABELA ────────────────────────────────── */
-.rep-filtro-tabs { display:flex; gap:6px; padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5; }
-.rep-filtro-tab { flex:1; padding:7px 4px; border:none; border-radius:8px; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; background:var(--bg); color:var(--text2); }
+.rep-filtro-tabs { display:flex; gap:6px; padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5; flex-wrap:wrap; }
+.rep-filtro-tab { flex:1; padding:7px 4px; border:none; border-radius:8px; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; background:var(--bg); color:var(--text2); min-width:60px; }
 .rep-filtro-tab.active { background:var(--blue); color:#fff; }
+.rep-periodo-nav { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:var(--surface); border-bottom:1px solid var(--border); }
+.rep-periodo-nav button { background:none; border:none; font-size:22px; cursor:pointer; color:var(--text); padding:4px 8px; }
+.rep-periodo-nav button:disabled { opacity:.3; cursor:default; }
+.rep-periodo-label { font-size:14px; font-weight:700; color:var(--text); }
+.rep-custom-dates { display:none; padding:12px 14px; background:var(--surface); border-bottom:1px solid var(--border); gap:10px; align-items:flex-end; }
+.rep-custom-dates.open { display:flex; flex-wrap:wrap; }
+.rep-date-field { flex:1; min-width:120px; }
+.rep-date-field label { display:block; font-size:11px; font-weight:600; color:var(--text3); margin-bottom:4px; }
+.rep-date-field input { width:100%; padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font-family:inherit; font-size:14px; background:var(--bg); color:var(--text); }
+.rep-date-apply { padding:8px 16px; background:var(--blue); color:#fff; border:none; border-radius:8px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
 .rep-tabela-card { background:var(--card); border-radius:16px; overflow:hidden; margin-bottom:10px; box-shadow:var(--shadow); }
 .rep-tabela-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .rep-tabela { width:100%; border-collapse:collapse; min-width:580px; }
@@ -1280,7 +1290,23 @@ html,body { height:100%; height:-webkit-fill-available; overflow:hidden; overscr
         <button class="rep-filtro-tab" id="rep-tab-hoje" onclick="setRepFiltro('hoje',this)">📌 Hoje</button>
         <button class="rep-filtro-tab" id="rep-tab-semana" onclick="setRepFiltro('semana',this)">📆 Semana</button>
         <button class="rep-filtro-tab active" id="rep-tab-mes" onclick="setRepFiltro('mes',this)">📅 Mês</button>
-        <button class="rep-filtro-tab" id="rep-tab-ano" onclick="setRepFiltro('ano',this)">📆 Ano</button>
+        <button class="rep-filtro-tab" id="rep-tab-custom" onclick="setRepFiltro('custom',this)">🔧 Período</button>
+      </div>
+      <div class="rep-periodo-nav" id="rep-periodo-nav" style="display:none;">
+        <button onclick="navegarPeriodo(-1)" id="rep-nav-prev">‹</button>
+        <div class="rep-periodo-label" id="rep-periodo-label"></div>
+        <button onclick="navegarPeriodo(1)" id="rep-nav-next">›</button>
+      </div>
+      <div class="rep-custom-dates" id="rep-custom-dates">
+        <div class="rep-date-field">
+          <label>De:</label>
+          <input type="date" id="rep-date-de">
+        </div>
+        <div class="rep-date-field">
+          <label>Até:</label>
+          <input type="date" id="rep-date-ate">
+        </div>
+        <button class="rep-date-apply" onclick="aplicarFiltroCustom()">Aplicar</button>
       </div>
       <div class="rep-body" id="rep-body">
         <!-- preenchido por renderReport() -->
@@ -2671,11 +2697,12 @@ function getRowsFiltradas() {
         rows.push({ id_cliente: String(c.id), nome_cliente: c.nome, cidade: c.cidade, data: hojStr, hora: c.horaHoje, obs: c.ultimaObs, tipo: 'visita', valor_pedido: null, representada_id: null });
     });
   } else if (repFiltroAtual === 'semana') {
-    const dSem = hoje.getDay();
-    const iniSem = new Date(hoje); iniSem.setDate(hoje.getDate() - dSem); iniSem.setHours(0,0,0,0);
-    rows = visatasDoRelatorio.filter(v => v.data >= iniSem.toISOString().slice(0,10) && v.data <= hojStr);
-  } else if (repFiltroAtual === 'ano') {
-    rows = [...visatasAnoCache];
+    const { inicio, fim } = getSemanaDatas(relSemanaRef);
+    const iniStr = inicio.toISOString().slice(0,10);
+    const fimStr = fim.toISOString().slice(0,10);
+    rows = visatasDoRelatorio.filter(v => v.data >= iniStr && v.data <= fimStr);
+  } else if (repFiltroAtual === 'custom') {
+    rows = visatasDoRelatorio.filter(v => v.data >= repCustomDe && v.data <= repCustomAte);
   } else {
     rows = [...visatasDoRelatorio];
   }
@@ -2722,7 +2749,6 @@ function renderReport() {
   const hoje = new Date();
   const mesRef  = relMes;
   const anoRef  = relAno;
-  const ehMesAtual = mesRef === hoje.getMonth() && anoRef === hoje.getFullYear();
   const _nm = new Date(anoRef, mesRef, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
   const nomeMesCap = _nm.charAt(0).toUpperCase() + _nm.slice(1);
 
@@ -2748,16 +2774,17 @@ function renderReport() {
   const topRep = Object.entries(byRep).sort((a,b) => b[1].total-a[1].total)[0];
   const topRepNome = topRep ? (representadasCache.find(r => String(r.id)===topRep[0])?.nome || 'Sem empresa') : null;
 
-  const filtroLabel = repFiltroAtual==='hoje'?'Hoje':repFiltroAtual==='semana'?'Semana':repFiltroAtual==='ano'?String(anoRef):nomeMesCap;
+  // Label do filtro para exibição
+  let filtroLabel;
+  if (repFiltroAtual === 'hoje') filtroLabel = 'Hoje';
+  else if (repFiltroAtual === 'semana') {
+    const { inicio, fim } = getSemanaDatas(relSemanaRef);
+    filtroLabel = inicio.toLocaleDateString('pt-BR', {day:'2-digit',month:'short'}) + ' - ' + fim.toLocaleDateString('pt-BR', {day:'2-digit',month:'short'});
+  } else if (repFiltroAtual === 'custom') {
+    filtroLabel = new Date(repCustomDe+'T12:00:00').toLocaleDateString('pt-BR') + ' - ' + new Date(repCustomAte+'T12:00:00').toLocaleDateString('pt-BR');
+  } else filtroLabel = nomeMesCap;
 
-  const navegador = repFiltroAtual==='mes' ?
-    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border)">' +
-      '<button onclick="navegarMes(-1)" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:4px 8px">‹</button>' +
-      '<div style="font-size:14px;font-weight:700;color:var(--text)">'+nomeMesCap+(ehMesAtual?' <span style="font-size:11px;color:var(--green)">● atual</span>':'')+'</div>' +
-      '<button onclick="navegarMes(1)" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:4px 8px'+(ehMesAtual?';opacity:.3':'')+'"'+(ehMesAtual?' disabled':'')+'>›</button>' +
-    '</div>' : '';
-
-  document.getElementById('rep-body').innerHTML = navegador + renderRepFilterHTML() +
+  document.getElementById('rep-body').innerHTML = renderRepFilterHTML() +
     '<div style="padding:14px">' +
       '<div class="rep-cards-grid">' +
         '<button class="rep-card" onclick="abrirRepDetalhe(\'visitas\')">' +
@@ -3998,30 +4025,84 @@ function exportarPDFDetalhe() {
   if (tipo === 'visitas') {
     const pres = rows.filter(v => v.tipo !== 'whatsapp').length;
     const wpp  = rows.filter(v => v.tipo === 'whatsapp').length;
+    const totalVendasPDF = rows.reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
+    const cidadesUnicas = new Set(rows.map(v => _cid(v.cidade)).filter(Boolean)).size;
     addSummaryCards([
       { label: 'Total de Visitas', value: String(rows.length), color: C_BLUE },
-      { label: 'Presenciais',      value: String(pres),        color: C_GREEN },
-      { label: 'WhatsApp',         value: String(wpp),         color: [37, 155, 80] },
+      { label: 'Total Vendas', value: 'R$ ' + totalVendasPDF.toLocaleString('pt-BR',{minimumFractionDigits:2}), color: C_GREEN },
+      { label: 'Cidades', value: String(cidadesUnicas), color: C_ORANGE },
     ]);
-    const byCid = {};
-    rows.forEach(v => { const c = _cid(v.cidade) || 'Sem cidade'; if (!byCid[c]) byCid[c] = []; byCid[c].push(v); });
-    Object.entries(byCid).sort(([a],[b]) => a.localeCompare(b, 'pt-BR')).forEach(([cidade, cr]) => {
-      addSectionHeader(cidade + ' (' + cr.length + ' visita' + (cr.length !== 1 ? 's' : '') + ')', C_HDR);
-      cr.forEach(v => {
-        const canalLabel = v.tipo === 'whatsapp' ? 'WhatsApp' : 'Presencial';
-        const _ptPdf = v.pedido_tipo && v.pedido_tipo !== 'nenhum' ? v.pedido_tipo : null;
-        const resultLabel = _ptPdf === 'pedido' || _ptPdf === 'remoto' ? 'Pedido' : _ptPdf === 'orcamento' ? 'Orçamento' : null;
-        const tipoLabel = resultLabel ? canalLabel + ' + ' + resultLabel : canalLabel;
-        const badgeColor = v.tipo === 'whatsapp' ? [128,90,213] : _ptPdf === 'pedido' || _ptPdf === 'remoto' ? C_GREEN : _ptPdf === 'orcamento' ? C_ORANGE : C_BLUE;
-        const repVal = [v.representada_nome || v.pedido_representada, parseFloat(v.valor_pedido||0) > 0 ? _val(v.valor_pedido) : ''].filter(Boolean).join(' · ');
-        addItemCard({
-          title: _nc(v.nome_cliente),
-          subtitle: _dt(v.data) + (v.hora && v.hora !== '00:00' ? ' · ' + v.hora : '') + (repVal ? ' · ' + repVal : ''),
-          badge: tipoLabel, badgeColor,
-          obs: _cut(v.obs || '', 90),
+
+    // Se filtro for Hoje, agrupa por cidade; senão, agrupa por dia
+    if (repFiltroAtual === 'hoje') {
+      const byCid = {};
+      rows.forEach(v => { const c = _cid(v.cidade) || 'Sem cidade'; if (!byCid[c]) byCid[c] = []; byCid[c].push(v); });
+      Object.entries(byCid).sort(([a],[b]) => a.localeCompare(b, 'pt-BR')).forEach(([cidade, cr]) => {
+        addSectionHeader(cidade + ' (' + cr.length + ' visita' + (cr.length !== 1 ? 's' : '') + ')', C_HDR);
+        cr.forEach(v => {
+          const canalLabel = v.tipo === 'whatsapp' ? 'WhatsApp' : 'Presencial';
+          const _ptPdf = v.pedido_tipo && v.pedido_tipo !== 'nenhum' ? v.pedido_tipo : null;
+          const resultLabel = _ptPdf === 'pedido' || _ptPdf === 'remoto' ? 'Pedido' : _ptPdf === 'orcamento' ? 'Orçamento' : null;
+          const tipoLabel = resultLabel ? canalLabel + ' + ' + resultLabel : canalLabel;
+          const badgeColor = v.tipo === 'whatsapp' ? [128,90,213] : _ptPdf === 'pedido' || _ptPdf === 'remoto' ? C_GREEN : _ptPdf === 'orcamento' ? C_ORANGE : C_BLUE;
+          const repVal = [v.representada_nome || v.pedido_representada, parseFloat(v.valor_pedido||0) > 0 ? _val(v.valor_pedido) : ''].filter(Boolean).join(' · ');
+          addItemCard({
+            title: _nc(v.nome_cliente),
+            subtitle: (v.hora && v.hora !== '00:00' ? v.hora + ' · ' : '') + (repVal || '--'),
+            badge: tipoLabel, badgeColor,
+            obs: _cut(v.obs || '', 90),
+          });
         });
       });
-    });
+    } else {
+      // Agrupa por dia
+      const byDia = {};
+      rows.forEach(v => {
+        const d = v.data || 'Sem data';
+        if (!byDia[d]) byDia[d] = [];
+        byDia[d].push(v);
+      });
+      const diasNome = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+      Object.keys(byDia).sort((a,b) => b.localeCompare(a)).forEach(dataStr => {
+        const vDia = byDia[dataStr];
+        const dObj = new Date(dataStr + 'T12:00:00');
+        const diaNome = diasNome[dObj.getDay()];
+        const dataFmt = dObj.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+        const totalDia = vDia.reduce((s,v) => s + (parseFloat(v.valor_pedido)||0), 0);
+        const totalDiaStr = totalDia > 0 ? ' · R$ ' + totalDia.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+        // Cabeçalho do dia como bloco destacado
+        checkPage(16);
+        doc.setFillColor(240, 245, 255);
+        doc.roundedRect(ML, y, CW, 12, 2, 2, 'F');
+        doc.setFillColor(...C_BLUE);
+        doc.rect(ML, y, 3, 12, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(...C_HDR);
+        doc.text(diaNome + ', ' + dataFmt, ML + 8, y + 7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...C_GRAY);
+        doc.text(vDia.length + ' visita' + (vDia.length !== 1 ? 's' : '') + totalDiaStr, ML + CW - 4, y + 7.5, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
+        y += 14;
+        // Visitas do dia
+        vDia.forEach(v => {
+          const canalLabel = v.tipo === 'whatsapp' ? 'WhatsApp' : 'Presencial';
+          const _ptPdf = v.pedido_tipo && v.pedido_tipo !== 'nenhum' ? v.pedido_tipo : null;
+          const resultLabel = _ptPdf === 'pedido' || _ptPdf === 'remoto' ? 'Pedido' : _ptPdf === 'orcamento' ? 'Orçamento' : null;
+          const tipoLabel = resultLabel ? canalLabel + ' + ' + resultLabel : canalLabel;
+          const badgeColor = v.tipo === 'whatsapp' ? [128,90,213] : _ptPdf === 'pedido' || _ptPdf === 'remoto' ? C_GREEN : _ptPdf === 'orcamento' ? C_ORANGE : C_BLUE;
+          const repVal = [v.representada_nome || v.pedido_representada, parseFloat(v.valor_pedido||0) > 0 ? _val(v.valor_pedido) : ''].filter(Boolean).join(' · ');
+          addItemCard({
+            title: _nc(v.nome_cliente) + ' · ' + _cid(v.cidade),
+            subtitle: (v.hora && v.hora !== '00:00' ? v.hora + ' · ' : '') + tipoLabel + (repVal ? ' · ' + repVal : ''),
+            badge: null, badgeColor,
+            obs: _cut(v.obs || '', 90),
+          });
+        });
+      });
+    }
     if (!rows.length) { doc.setFontSize(9); doc.setTextColor(150,150,150); doc.text('Nenhuma visita no periodo.', ML, y); }
 
   // ── VENDAS ──────────────────────────────────────────────
@@ -4190,27 +4271,34 @@ function exportarPDFDetalhe() {
 }
 
 // Helper para salvar PDF (funciona em iOS/Capacitor e Web)
-function salvarOuAbrirPDF(doc, nomeArquivo) {
+async function salvarOuAbrirPDF(doc, nomeArquivo) {
   const isCapacitor = (typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
     window.location.protocol === 'capacitor:' ||
     window.location.protocol === 'ionic:';
 
   if (isCapacitor) {
-    // No iOS/Capacitor, abre o PDF em nova aba via base64
     try {
       const pdfBase64 = doc.output('datauristring');
-      const newWindow = window.open(pdfBase64, '_blank');
-      if (!newWindow) {
-        // Fallback: tenta usar o blob URL
-        const blob = doc.output('blob');
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
+      // Usar Share nativo do Capacitor
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share) {
+        await window.Capacitor.Plugins.Share.share({
+          title: 'Relatório Minha Rota RP',
+          url: pdfBase64,
+          dialogTitle: 'Compartilhar PDF'
+        });
+      } else {
+        // Fallback: abre em nova aba
+        const newWindow = window.open(pdfBase64, '_blank');
+        if (!newWindow) {
+          const blob = doc.output('blob');
+          const blobUrl = URL.createObjectURL(blob);
+          window.open(blobUrl, '_blank');
+        }
       }
-      showToast('📄 PDF gerado!');
     } catch (e) {
-      console.error('[PDF] Erro ao abrir:', e);
-      // Último fallback: tenta download normal
-      doc.save(nomeArquivo);
+      console.error('[PDF] Erro ao compartilhar:', e);
+      // Fallback: tenta download normal
+      try { doc.save(nomeArquivo); } catch(e2) {}
     }
   } else {
     // Na web, faz download normal
@@ -7476,8 +7564,11 @@ async function carregarLembretesSupabase() {
 // Variável de período do relatório
 let relMes = new Date().getMonth();
 let relAno = new Date().getFullYear();
+let relSemanaRef = new Date(); // referência para navegação de semana
 let visatasDoRelatorio = [];
-let repFiltroAtual = 'mes'; // 'mes' | 'semana' | 'hoje' | 'ano'
+let repFiltroAtual = 'mes'; // 'mes' | 'semana' | 'hoje' | 'custom'
+let repCustomDe = null; // data início personalizada
+let repCustomAte = null; // data fim personalizada
 let vendasOrdemAtual = 'data'; // 'data' | 'valor'
 let vendasOrdemDir = 'desc'; // 'desc' | 'asc'
 let repRepresentadasFiltro = []; // [] = todas
@@ -7492,11 +7583,98 @@ function setRepFiltro(filtro, btn) {
   repFiltroAtual = filtro;
   document.querySelectorAll('.rep-filtro-tab').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  if (filtro === 'ano' && !visatasAnoLoaded) {
-    document.getElementById('rep-body').innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner" style="margin:0 auto"></div></div>';
-    carregarVisitasAno().then(() => renderReport());
+
+  const nav = document.getElementById('rep-periodo-nav');
+  const customDates = document.getElementById('rep-custom-dates');
+
+  // Controla visibilidade da navegação e datas personalizadas
+  if (filtro === 'custom') {
+    nav.style.display = 'none';
+    customDates.classList.add('open');
+    // Define datas padrão se não existirem
+    const hoje = new Date();
+    if (!repCustomDe) {
+      const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      repCustomDe = inicioMes.toISOString().slice(0,10);
+    }
+    if (!repCustomAte) repCustomAte = hoje.toISOString().slice(0,10);
+    document.getElementById('rep-date-de').value = repCustomDe;
+    document.getElementById('rep-date-ate').value = repCustomAte;
+    return; // não renderiza até clicar em Aplicar
+  } else {
+    customDates.classList.remove('open');
+  }
+
+  if (filtro === 'semana' || filtro === 'mes') {
+    nav.style.display = 'flex';
+    atualizarPeriodoNav();
+  } else {
+    nav.style.display = 'none';
+  }
+
+  renderReport();
+}
+
+function atualizarPeriodoNav() {
+  const label = document.getElementById('rep-periodo-label');
+  const prevBtn = document.getElementById('rep-nav-prev');
+  const nextBtn = document.getElementById('rep-nav-next');
+  const hoje = new Date();
+
+  if (repFiltroAtual === 'semana') {
+    const { inicio, fim } = getSemanaDatas(relSemanaRef);
+    const inicioStr = inicio.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+    const fimStr = fim.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+    label.textContent = inicioStr + ' - ' + fimStr;
+    // Desabilita "próximo" se for semana atual
+    const semAtual = getSemanaDatas(hoje);
+    nextBtn.disabled = inicio.getTime() >= semAtual.inicio.getTime();
+  } else if (repFiltroAtual === 'mes') {
+    const _nm = new Date(relAno, relMes, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+    label.innerHTML = _nm.charAt(0).toUpperCase() + _nm.slice(1) +
+      (relMes === hoje.getMonth() && relAno === hoje.getFullYear() ? ' <span style="font-size:11px;color:var(--green)">● atual</span>' : '');
+    nextBtn.disabled = relMes === hoje.getMonth() && relAno === hoje.getFullYear();
+  }
+}
+
+function getSemanaDatas(ref) {
+  const d = new Date(ref);
+  const dia = d.getDay();
+  const diff = dia === 0 ? -6 : 1 - dia; // Segunda como início
+  const inicio = new Date(d);
+  inicio.setDate(d.getDate() + diff);
+  inicio.setHours(0,0,0,0);
+  const fim = new Date(inicio);
+  fim.setDate(inicio.getDate() + 6);
+  fim.setHours(23,59,59,999);
+  return { inicio, fim };
+}
+
+function navegarPeriodo(delta) {
+  if (repFiltroAtual === 'semana') {
+    relSemanaRef.setDate(relSemanaRef.getDate() + (delta * 7));
+  } else if (repFiltroAtual === 'mes') {
+    relMes += delta;
+    if (relMes > 11) { relMes = 0; relAno++; }
+    if (relMes < 0)  { relMes = 11; relAno--; }
+  }
+  atualizarPeriodoNav();
+  carregarPeriodoRelatorio();
+}
+
+function aplicarFiltroCustom() {
+  repCustomDe = document.getElementById('rep-date-de').value;
+  repCustomAte = document.getElementById('rep-date-ate').value;
+  if (!repCustomDe || !repCustomAte) {
+    showToast('Selecione as datas', true);
     return;
   }
+  if (repCustomDe > repCustomAte) {
+    showToast('Data inicial maior que final', true);
+    return;
+  }
+  document.getElementById('rep-custom-dates').classList.remove('open');
+  document.getElementById('rep-periodo-nav').style.display = 'none';
   renderReport();
 }
 
@@ -7540,6 +7718,7 @@ function navegarMes(delta) {
   relMes += delta;
   if (relMes > 11) { relMes = 0; relAno++; }
   if (relMes < 0)  { relMes = 11; relAno--; }
+  atualizarPeriodoNav();
   carregarPeriodoRelatorio();
 }
 

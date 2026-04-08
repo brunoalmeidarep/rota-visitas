@@ -15,7 +15,7 @@ workflows:
         APP_ID: com.minharotarp.app
         BUNDLE_ID: com.minharotarp.app
         APP_VERSION: "1.0.0"
-        BUILD_NUMBER: "53"
+        BUILD_NUMBER: "54"
         TEAM_ID: UH2FLNQHY8
       node: 18
       xcode: latest
