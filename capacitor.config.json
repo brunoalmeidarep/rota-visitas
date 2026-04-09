@@ -10,6 +10,9 @@
     "minVersion": "13.0",
     "backgroundColor": "#1c1c1e"
   },
+  "android": {
+    "backgroundColor": "#1c1c1e"
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 0
