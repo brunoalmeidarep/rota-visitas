@@ -15,7 +15,7 @@ workflows:
         APP_ID: com.minharotarp.app
         BUNDLE_ID: com.minharotarp.app
         APP_VERSION: "1.0.0"
-        BUILD_NUMBER: "66"
+        BUILD_NUMBER: "67"
         TEAM_ID: UH2FLNQHY8
       node: 18
       xcode: latest
@@ -34,6 +34,12 @@ workflows:
           cp sw.js www/ 2>/dev/null || true
           cp -r icons www/ 2>/dev/null || true
           cp *.png www/ 2>/dev/null || true
+
+      - name: Clean CocoaPods cache
+        script: |
+          cd ios/App
+          rm -rf Pods Podfile.lock
+          pod cache clean --all
 
       - name: Sync Capacitor
         script: |
