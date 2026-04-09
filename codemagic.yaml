@@ -15,7 +15,7 @@ workflows:
         APP_ID: com.minharotarp.app
         BUNDLE_ID: com.minharotarp.app
         APP_VERSION: "1.0.0"
-        BUILD_NUMBER: "67"
+        BUILD_NUMBER: "68"
         TEAM_ID: UH2FLNQHY8
       node: 18
       xcode: latest
@@ -35,20 +35,19 @@ workflows:
           cp -r icons www/ 2>/dev/null || true
           cp *.png www/ 2>/dev/null || true
 
-      - name: Clean CocoaPods cache
+      - name: Sync Capacitor (copy only)
         script: |
-          cd ios/App
-          rm -rf Pods Podfile.lock
-          pod cache clean --all
+          npx cap copy ios
 
-      - name: Sync Capacitor
+      - name: Update Capacitor iOS
         script: |
-          npx cap sync ios
+          npx cap update ios --deployment
 
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App
-          pod install --repo-update
+          pod repo update
+          pod install
 
       - name: Set up code signing
         script: |
