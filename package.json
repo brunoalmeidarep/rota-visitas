@@ -9,15 +9,15 @@
     "cap:android": "npm run build:mobile && npx cap open android"
   },
   "dependencies": {
-    "@capacitor/android": "^5.7.0",
-    "@capacitor/browser": "^5.2.1",
-    "@capacitor/core": "^5.7.0",
-    "@capacitor/filesystem": "^5.2.2",
-    "@capacitor/ios": "^5.7.0",
-    "@capacitor/share": "^5.0.8"
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/browser": "^6.0.6",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/filesystem": "^6.0.4",
+    "@capacitor/ios": "^6.2.1",
+    "@capacitor/share": "^6.0.4"
   },
   "devDependencies": {
-    "@capacitor/cli": "^5.7.0",
+    "@capacitor/cli": "^6.2.1",
     "sharp": "^0.34.5"
   }
 }
