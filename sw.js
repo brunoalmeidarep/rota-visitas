@@ -1,5 +1,5 @@
 // Service Worker — network-first, fallback cache
-const CACHE_VERSION = '20260411T004637Z';
+const CACHE_VERSION = '20260411T012157Z';
 
 self.addEventListener('install', () => self.skipWaiting());
 
