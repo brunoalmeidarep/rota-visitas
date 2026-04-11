@@ -1,4 +1,67 @@
 workflows:
+  android-release:
+    name: Android Release
+    max_build_duration: 60
+    instance_type: linux_x2
+
+    environment:
+      android_signing:
+        - minharotarp_keystore
+      vars:
+        APP_VERSION: "1.0.0"
+        BUILD_NUMBER: "71"
+        PACKAGE_NAME: "com.minharotarp.app"
+      node: 18
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install --legacy-peer-deps
+
+      - name: Copy web assets to www
+        script: |
+          mkdir -p www
+          cp index.html www/
+          cp manifest.json www/ 2>/dev/null || true
+          cp sw.js www/ 2>/dev/null || true
+          cp -r icons www/ 2>/dev/null || true
+          cp *.png www/ 2>/dev/null || true
+
+      - name: Sync Capacitor Android
+        script: |
+          npx cap copy android
+
+      - name: Set version code and name
+        script: |
+          cd android
+          sed -i "s/versionCode [0-9]*/versionCode $BUILD_NUMBER/" app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"$APP_VERSION\"/" app/build.gradle
+
+      - name: Build Android AAB (release)
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=$CM_KEYSTORE_PATH \
+            -Pandroid.injected.signing.store.password=$CM_KEYSTORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$CM_KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$CM_KEY_PASSWORD
+
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+
+    publishing:
+      # google_play:
+      #   credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+      #   track: internal
+      #   submit_as_draft: true
+      email:
+        recipients:
+          - brunoc.almeida.sc@gmail.com
+        notify:
+          success: true
+          failure: true
+
   ios-release:
     name: iOS Release
     max_build_duration: 60
