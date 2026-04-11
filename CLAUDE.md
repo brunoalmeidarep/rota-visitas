@@ -136,6 +136,20 @@ Usar a função getRepId() que faz cache desse valor.
 ## Pendências em andamento
 1. Foreign key empresas — corrigir com getRepId() para qualquer usuário (mobile, fora do escopo desktop)
 
+## iOS/Codemagic — Atualizado (2026-04-10)
+- Corrigido BUILD_NUMBER no codemagic.yaml (estava fixo em 70, causando erro de duplicidade)
+- BUILD_NUMBER atual: 103
+- PrivacyInfo.xcprivacy simplificado (sem APIs declaradas)
+- Migração para Capacitor 6 concluída:
+  - @capacitor/core: 6.2.1
+  - @capacitor/cli: 6.2.1
+  - @capacitor/ios: 6.2.1
+  - @capacitor/android: 6.2.1
+  - @capacitor/browser: 6.0.6
+  - @capacitor/filesystem: 6.0.4
+  - @capacitor/share: 6.0.4
+- androidScheme mantido como "https" (já estava assim)
+
 ## Desktop — Implementado (2026-04-03)
 - Bloco 1: Pedido sem visita (WA/Tel), check-in com múltiplos pedidos, histórico clicável/editável, geocoding ao salvar cliente
 - Bloco 2: PDFs (visitas, vendas, gastos, finanças, top compradores, clientes sumindo)
