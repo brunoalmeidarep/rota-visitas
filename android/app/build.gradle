@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.mundodorep.app"
+    namespace "com.minharotarp.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.minharotarp.app"

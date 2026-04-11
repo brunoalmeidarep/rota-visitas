@@ -1,4 +1,4 @@
-package com.mundodorep.app;
+package com.minharotarp.app;
 
 import com.getcapacitor.BridgeActivity;
 
