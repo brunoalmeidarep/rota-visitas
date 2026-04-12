@@ -7,6 +7,10 @@ import CarteiraClientes from './components/clientes/CarteiraClientes'
 import CadastroCliente from './components/clientes/CadastroCliente'
 import PerfilCliente from './components/clientes/PerfilCliente'
 import DadosCliente from './components/clientes/DadosCliente'
+import Bonificacao from './components/clientes/Bonificacao'
+import GastosCliente from './components/clientes/GastosCliente'
+import DetalheVisita from './components/clientes/DetalheVisita'
+import PedidoSimples from './components/pedidos/PedidoSimples'
 import Planner from './components/planner/Planner'
 import Mais from './components/mais/Mais'
 import MeuPerfil from './components/mais/MeuPerfil'
@@ -62,25 +66,6 @@ const Mapa = () => (
   </div>
 )
 
-const Bonificacao = () => (
-  <div className="screen">
-    <header className="screen-header">
-      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
-      <h1>Bonificação</h1>
-    </header>
-    <div className="screen-content"><p>Em desenvolvimento...</p></div>
-  </div>
-)
-
-const GastosCliente = () => (
-  <div className="screen">
-    <header className="screen-header">
-      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
-      <h1>Gastos</h1>
-    </header>
-    <div className="screen-content"><p>Em desenvolvimento...</p></div>
-  </div>
-)
 
 const EditarCliente = () => (
   <div className="screen">
@@ -129,6 +114,8 @@ function App() {
         <Route path="/clientes/:id/editar" element={<EditarCliente />} />
         <Route path="/clientes/:id/bonificacao" element={<Bonificacao />} />
         <Route path="/clientes/:id/gastos" element={<GastosCliente />} />
+        <Route path="/clientes/:id/visitas/:visitaId" element={<DetalheVisita />} />
+        <Route path="/pedidos/novo/simples" element={<PedidoSimples />} />
         <Route path="/produtos" element={<ListaProdutos />} />
         <Route path="/planner" element={<Planner />} />
         <Route path="/mais" element={<Mais />} />

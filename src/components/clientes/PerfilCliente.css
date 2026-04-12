@@ -294,6 +294,15 @@
   border-bottom: none;
 }
 
+.perfil-historico-item.clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.perfil-historico-item.clickable:active {
+  background: var(--perfil-bg);
+}
+
 .perfil-historico-item-left {
   display: flex;
   align-items: center;

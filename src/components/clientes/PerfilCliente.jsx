@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import CheckIn from './CheckIn'
 import './PerfilCliente.css'
 
 // Formata valor monetário de forma abreviada
@@ -50,6 +51,9 @@ function PerfilCliente() {
   const [pedidos, setPedidos] = useState([])
   const [orcamentos, setOrcamentos] = useState([])
   const [total12Meses, setTotal12Meses] = useState(0)
+
+  // Check-in modal
+  const [mostrarCheckIn, setMostrarCheckIn] = useState(false)
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -247,7 +251,7 @@ function PerfilCliente() {
 
       {/* Ações rápidas */}
       <div className="perfil-acoes">
-        <button className="perfil-acao" onClick={() => alert('Check-in em desenvolvimento')}>
+        <button className="perfil-acao" onClick={() => setMostrarCheckIn(true)}>
           <span className="perfil-acao-icon">✅</span>
           <span className="perfil-acao-texto">Check-in</span>
         </button>
@@ -310,7 +314,11 @@ function PerfilCliente() {
                 <div className="perfil-historico-vazio">Nenhuma visita registrada</div>
               ) : (
                 visitas.map((v) => (
-                  <div key={v.id} className="perfil-historico-item">
+                  <div
+                    key={v.id}
+                    className="perfil-historico-item clickable"
+                    onClick={() => navigate(`/clientes/${id}/visitas/${v.id}`)}
+                  >
                     <div className="perfil-historico-item-left">
                       <span className="perfil-historico-check">✓</span>
                       <div className="perfil-historico-info">
@@ -391,6 +399,35 @@ function PerfilCliente() {
           )}
         </div>
       </div>
+
+      {/* Check-in Modal */}
+      {mostrarCheckIn && (
+        <CheckIn
+          cliente={cliente}
+          onClose={() => setMostrarCheckIn(false)}
+          onConfirm={async () => {
+            // Recarregar última visita
+            const { data: updatedCliente } = await supabase
+              .from('clientes')
+              .select('*')
+              .eq('id', id)
+              .single()
+
+            if (updatedCliente) setCliente(updatedCliente)
+
+            // Recarregar visitas
+            const { data: visitasData } = await supabase
+              .from('visitas')
+              .select('id, data, hora, tipo, obs')
+              .eq('cliente_id', id)
+              .eq('rep_id', repId)
+              .order('data', { ascending: false })
+              .limit(5)
+
+            if (visitasData) setVisitas(visitasData)
+          }}
+        />
+      )}
     </div>
   )
 }

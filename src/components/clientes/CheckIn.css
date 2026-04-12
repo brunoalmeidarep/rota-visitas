@@ -1,0 +1,334 @@
+/* CheckIn.css */
+
+.checkin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Tema claro */
+.checkin-overlay.light {
+  --checkin-bg: #ffffff;
+  --checkin-surface: #f2f2f7;
+  --checkin-border: #e0e0e0;
+  --checkin-text: #000000;
+  --checkin-text-secondary: #6c6c70;
+}
+
+/* Tema escuro */
+.checkin-overlay.dark {
+  --checkin-bg: #2c2c2e;
+  --checkin-surface: #1c1c1e;
+  --checkin-border: #3a3a3c;
+  --checkin-text: #ffffff;
+  --checkin-text-secondary: #8e8e93;
+}
+
+.checkin-sheet {
+  width: 100%;
+  max-height: 90vh;
+  background: var(--checkin-bg);
+  border-radius: 20px 20px 0 0;
+  padding: 12px 20px 32px;
+  animation: slideUp 0.3s ease;
+  overflow-y: auto;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.checkin-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--checkin-border);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.checkin-titulo {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--checkin-text);
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+/* Opções */
+.checkin-opcoes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.checkin-opcao {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--checkin-surface);
+  border: 2px solid transparent;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.checkin-opcao.active {
+  border-color: var(--primary, #007aff);
+  background: rgba(0, 122, 255, 0.1);
+}
+
+.checkin-opcao-icon {
+  font-size: 24px;
+}
+
+.checkin-opcao-texto {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--checkin-text);
+}
+
+/* Gasto toggle */
+.checkin-gasto-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--checkin-surface);
+  border: 1px solid var(--checkin-border);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--checkin-text-secondary);
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.checkin-gasto-add {
+  color: var(--primary, #007aff);
+  font-weight: 500;
+}
+
+/* Gasto form */
+.checkin-gasto-form {
+  background: var(--checkin-surface);
+  border: 1px solid var(--checkin-border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.checkin-gasto-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--checkin-text);
+}
+
+.checkin-gasto-remover {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 59, 48, 0.15);
+  border: none;
+  color: #ff3b30;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkin-gasto-campo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--checkin-bg);
+  border: 1px solid var(--checkin-border);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  font-size: 15px;
+  color: var(--checkin-text);
+}
+
+.checkin-gasto-categoria {
+  cursor: pointer;
+  justify-content: flex-start;
+}
+
+.checkin-placeholder {
+  color: var(--checkin-text-secondary);
+}
+
+.checkin-seta {
+  margin-left: auto;
+  color: var(--checkin-text-secondary);
+  font-size: 18px;
+}
+
+.checkin-prefix {
+  color: var(--checkin-text-secondary);
+  font-weight: 500;
+}
+
+.checkin-gasto-campo input {
+  flex: 1;
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: var(--checkin-text);
+  outline: none;
+}
+
+.checkin-gasto-obs {
+  padding: 12px 14px;
+}
+
+.checkin-gasto-obs::placeholder {
+  color: var(--checkin-text-secondary);
+}
+
+/* Observação */
+.checkin-obs {
+  margin-bottom: 20px;
+}
+
+.checkin-obs label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--checkin-text-secondary);
+  margin-bottom: 8px;
+}
+
+.checkin-obs textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--checkin-surface);
+  border: 1px solid var(--checkin-border);
+  border-radius: 12px;
+  font-size: 15px;
+  color: var(--checkin-text);
+  resize: none;
+  outline: none;
+  font-family: inherit;
+}
+
+.checkin-obs textarea:focus {
+  border-color: var(--primary, #007aff);
+}
+
+/* Ações */
+.checkin-acoes {
+  display: flex;
+  gap: 12px;
+}
+
+.checkin-btn-cancelar {
+  flex: 1;
+  padding: 16px;
+  background: var(--checkin-surface);
+  border: 1px solid var(--checkin-border);
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--checkin-text);
+  cursor: pointer;
+}
+
+.checkin-btn-confirmar {
+  flex: 2;
+  padding: 16px;
+  background: var(--primary, #007aff);
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.checkin-btn-confirmar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Sheet de categorias */
+.checkin-categorias-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1001;
+  display: flex;
+  align-items: flex-end;
+}
+
+.checkin-categorias-sheet {
+  width: 100%;
+  background: var(--checkin-bg);
+  border-radius: 20px 20px 0 0;
+  padding: 12px 20px 32px;
+}
+
+.checkin-categorias-sheet h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--checkin-text);
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.checkin-categorias-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkin-categoria-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--checkin-surface);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.checkin-categoria-item.active {
+  background: rgba(0, 122, 255, 0.15);
+}
+
+.checkin-categoria-icon {
+  font-size: 22px;
+}
+
+.checkin-categoria-nome {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--checkin-text);
+  text-align: left;
+}
+
+.checkin-categoria-check {
+  color: var(--primary, #007aff);
+  font-size: 18px;
+  font-weight: 600;
+}
