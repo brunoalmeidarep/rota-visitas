@@ -346,7 +346,7 @@ function NovoPedido() {
           details: erroPedido.details,
           hint: erroPedido.hint
         })
-        alert(`Erro ao criar pedido:\n${erroPedido.message}\n\nCodigo: ${erroPedido.code || '-'}\nDetalhes: ${erroPedido.details || '-'}\nHint: ${erroPedido.hint || '-'}`)
+        alert(`Erro ao criar pedido:\n${erroPedido.message}\n\nCódigo: ${erroPedido.code || '-'}\nDetalhes: ${erroPedido.details || '-'}\nHint: ${erroPedido.hint || '-'}`)
         setSalvando(false)
         return
       }
@@ -480,7 +480,7 @@ function NovoPedido() {
                 <input
                   type="text"
                   className="np-gasto-descricao"
-                  placeholder="Descricao do gasto (ex: Almoco no Famiglia)"
+                  placeholder="Descrição do gasto (ex: Almoço no Famiglia)"
                   value={gastoObs}
                   onChange={(e) => setGastoObs(e.target.value)}
                 />

@@ -350,11 +350,11 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
         {/* Linha de detalhes */}
         <View style={styles.detalhesRow}>
           <View style={styles.detalheItem}>
-            <Text style={styles.detalheLabel}>Condicao de pagamento</Text>
+            <Text style={styles.detalheLabel}>Condição de pagamento</Text>
             <Text style={styles.detalheValor}>{pedido.condicao_pagamento || '-'}</Text>
           </View>
           <View style={styles.detalheItem}>
-            <Text style={styles.detalheLabel}>Regime tributario</Text>
+            <Text style={styles.detalheLabel}>Regime tributário</Text>
             <Text style={styles.detalheValor}>{cliente?.regime_tributario || '-'}</Text>
           </View>
           <View style={styles.detalheItem}>

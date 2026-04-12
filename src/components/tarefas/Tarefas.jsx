@@ -250,7 +250,7 @@ function Tarefas() {
             {proximas.length > 0 && (
               <section className="tarefas-grupo">
                 <h2 className="tarefas-grupo-titulo">
-                  Proximas ({proximas.length})
+                  Próximas ({proximas.length})
                 </h2>
                 <div className="tarefas-lista">
                   {proximas.map(tarefa => (
@@ -280,7 +280,7 @@ function Tarefas() {
             {concluidas.length > 0 && (
               <section className="tarefas-grupo">
                 <h2 className="tarefas-grupo-titulo concluidas">
-                  Concluidas ({concluidas.length})
+                  Concluídas ({concluidas.length})
                 </h2>
                 <div className="tarefas-lista">
                   {concluidas.map(tarefa => (

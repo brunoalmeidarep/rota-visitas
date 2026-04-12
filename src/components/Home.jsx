@@ -189,7 +189,7 @@ function Home() {
       <header className="home-header">
         <div className="home-header-top">
           <div className="home-header-left">
-            <span className="home-saudacao">Ola, {nomeRep || 'Representante'}</span>
+            <span className="home-saudacao">Olá, {nomeRep || 'Representante'}</span>
             <h1 className="home-titulo">Minha Rota RP</h1>
           </div>
           <button className="home-config-btn" onClick={() => navigate('/opcoes')}>

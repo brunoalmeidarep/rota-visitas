@@ -142,7 +142,7 @@ function Representadas() {
 
   async function salvar() {
     if (!nome.trim()) {
-      alert('Nome e obrigatorio')
+      alert('Nome é obrigatório')
       return
     }
 

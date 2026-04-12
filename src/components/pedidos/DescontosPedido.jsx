@@ -194,7 +194,7 @@ function DescontosPedido() {
           details: error.details,
           hint: error.hint
         })
-        alert(`Erro ao salvar descontos:\n${error.message}\n\nCodigo: ${error.code || '-'}\nDetalhes: ${error.details || '-'}`)
+        alert(`Erro ao salvar descontos:\n${error.message}\n\nCódigo: ${error.code || '-'}\nDetalhes: ${error.details || '-'}`)
         setSalvando(false)
         return
       }

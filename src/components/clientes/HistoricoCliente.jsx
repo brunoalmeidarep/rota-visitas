@@ -154,7 +154,7 @@ function HistoricoCliente() {
 
   // Titulo da aba
   const tituloAba = abaAtiva === 'visitas' ? 'Visitas' :
-                    abaAtiva === 'pedidos' ? 'Pedidos' : 'Orcamentos'
+                    abaAtiva === 'pedidos' ? 'Pedidos' : 'Orçamentos'
 
   // Nome curto para header
   function getNomeCurto(nome) {
@@ -215,7 +215,7 @@ function HistoricoCliente() {
           className={`hc-tab ${abaAtiva === 'orcamentos' ? 'active' : ''}`}
           onClick={() => trocarAba('orcamentos')}
         >
-          Orcamentos ({orcamentos.length})
+          Orçamentos ({orcamentos.length})
         </button>
       </div>
 
@@ -301,7 +301,7 @@ function HistoricoCliente() {
         {abaAtiva === 'orcamentos' && (
           <>
             {orcamentos.length === 0 ? (
-              <div className="hc-vazio">Nenhum orcamento registrado</div>
+              <div className="hc-vazio">Nenhum orçamento registrado</div>
             ) : (
               <div className="hc-lista">
                 {orcamentos.map((o) => (

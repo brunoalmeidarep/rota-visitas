@@ -26,13 +26,13 @@ function Mais() {
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <h1>Opcoes</h1>
+        <h1>Opções</h1>
       </header>
 
       <div className="mais-content">
         {/* Configurações */}
         <section className="mais-secao">
-          <h2 className="mais-secao-titulo">Configuracoes</h2>
+          <h2 className="mais-secao-titulo">Configurações</h2>
           <div className="mais-lista">
             <button className="mais-lista-item" onClick={() => navigate('/mais/perfil')}>
               <span className="mais-lista-icon">👤</span>

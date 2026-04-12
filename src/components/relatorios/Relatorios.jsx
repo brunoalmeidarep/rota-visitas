@@ -17,7 +17,7 @@ function Relatorios() {
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <h1>Relatorios</h1>
+        <h1>Relatórios</h1>
       </header>
 
       <div className="relatorios-content">
@@ -29,7 +29,7 @@ function Relatorios() {
               <span className="relatorios-card-icon">📊</span>
               <div className="relatorios-card-info">
                 <span className="relatorios-card-titulo">Resumo de vendas</span>
-                <span className="relatorios-card-subtitulo">Total por periodo</span>
+                <span className="relatorios-card-subtitulo">Total por período</span>
               </div>
               <span className="relatorios-card-seta">›</span>
             </button>
@@ -60,7 +60,7 @@ function Relatorios() {
               <span className="relatorios-card-icon">✅</span>
               <div className="relatorios-card-info">
                 <span className="relatorios-card-titulo">Visitas realizadas</span>
-                <span className="relatorios-card-subtitulo">Historico de visitas</span>
+                <span className="relatorios-card-subtitulo">Histórico de visitas</span>
               </div>
               <span className="relatorios-card-seta">›</span>
             </button>
@@ -68,7 +68,7 @@ function Relatorios() {
               <span className="relatorios-card-icon">⚠️</span>
               <div className="relatorios-card-info">
                 <span className="relatorios-card-titulo">Clientes inativos</span>
-                <span className="relatorios-card-subtitulo">Sem visita ha 90+ dias</span>
+                <span className="relatorios-card-subtitulo">Sem visita há 90+ dias</span>
               </div>
               <span className="relatorios-card-seta">›</span>
             </button>
@@ -87,11 +87,11 @@ function Relatorios() {
               </div>
               <span className="relatorios-card-seta">›</span>
             </button>
-            <button className="relatorios-card" onClick={() => placeholder('Comissoes')}>
+            <button className="relatorios-card" onClick={() => placeholder('Comissões')}>
               <span className="relatorios-card-icon">💵</span>
               <div className="relatorios-card-info">
-                <span className="relatorios-card-titulo">Comissoes</span>
-                <span className="relatorios-card-subtitulo">Calculo de comissao</span>
+                <span className="relatorios-card-titulo">Comissões</span>
+                <span className="relatorios-card-subtitulo">Cálculo de comissão</span>
               </div>
               <span className="relatorios-card-seta">›</span>
             </button>

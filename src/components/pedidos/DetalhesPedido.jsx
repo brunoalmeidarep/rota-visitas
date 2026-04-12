@@ -376,7 +376,7 @@ function DetalhesPedido() {
           </svg>
         </button>
         <span className={`dp-badge ${pedido?.status}`}>
-          {pedido?.status === 'orcamento' ? 'Em orcamento' :
+          {pedido?.status === 'orcamento' ? 'Em orçamento' :
            pedido?.status === 'transmitido' ? 'Transmitido' :
            `Pedido #${String(pedido?.numero || 0).padStart(3, '0')}`}
         </span>
@@ -642,9 +642,9 @@ function DetalhesPedido() {
         {!isReadonly && isEnterprise && pedido?.status === 'pedido' && (
           <button
             className="dp-btn-transmitir"
-            onClick={() => alert('Transmissao em desenvolvimento')}
+            onClick={() => alert('Transmissão em desenvolvimento')}
           >
-            Transmitir para industria
+            Transmitir para indústria
           </button>
         )}
       </div>
@@ -658,7 +658,7 @@ function DetalhesPedido() {
               <button onClick={() => setShowEmailSheet(false)}>X</button>
             </div>
             <div className="dp-sheet-content">
-              <p className="dp-sheet-desc">Selecione os destinatarios:</p>
+              <p className="dp-sheet-desc">Selecione os destinatários:</p>
               <label className="dp-check-item">
                 <input type="checkbox" defaultChecked />
                 <span>Meu e-mail ({representante?.email || '-'})</span>
