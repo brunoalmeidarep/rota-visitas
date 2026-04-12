@@ -233,6 +233,12 @@ function NovoPedido() {
   const orcamentosVisiveis = orcamentosAbertos.slice(0, 2)
   const orcamentosRestantes = orcamentosAbertos.length - 2
 
+  // Voltar para lista de pedidos e limpar dados temporários
+  function handleVoltar() {
+    sessionStorage.removeItem('novoPedido')
+    navigate('/pedidos')
+  }
+
   async function continuar() {
     if (!clienteId) {
       alert('Selecione um cliente')
@@ -365,7 +371,7 @@ function NovoPedido() {
     <div className={`novo-pedido ${isDark ? 'dark' : 'light'}`}>
       {/* Header */}
       <header className="np-header">
-        <button className="np-voltar" onClick={() => navigate(-1)}>
+        <button className="np-voltar" onClick={handleVoltar}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
@@ -422,58 +428,6 @@ function NovoPedido() {
             <span className="np-seta">›</span>
           </button>
         </div>
-
-        {/* Aviso de orçamentos em aberto */}
-        {orcamentosAbertos.length > 0 && !avisoOrcamentoFechado && (
-          <div className="np-orcamentos-abertos">
-            <div className="np-oa-header">
-              <span className="np-oa-icon">⚠️</span>
-              <span className="np-oa-titulo">
-                {orcamentosAbertos.length === 1
-                  ? '1 orçamento em aberto'
-                  : `${orcamentosAbertos.length} orçamentos em aberto`}
-              </span>
-            </div>
-
-            <div className="np-oa-lista">
-              {orcamentosVisiveis.map(orc => (
-                <button
-                  key={orc.id}
-                  className="np-oa-item"
-                  onClick={() => navegarOrcamento(orc)}
-                >
-                  <div className="np-oa-item-info">
-                    <div className="np-oa-item-top">
-                      <span className="np-oa-badge">ORC-{String(orc.id).slice(-3)}</span>
-                      {isRepresentadaAtual(orc) && (
-                        <span className="np-oa-atual">✓ atual</span>
-                      )}
-                    </div>
-                    <span className="np-oa-rep">{orc.representada_nome}</span>
-                    <div className="np-oa-item-meta">
-                      <span className="np-oa-valor">{formatarValor(orc.valor_total)}</span>
-                      <span className="np-oa-sep">·</span>
-                      <span className="np-oa-data">{formatarData(orc.created_at)}</span>
-                    </div>
-                  </div>
-                  <span className="np-oa-acao">
-                    {isRepresentadaAtual(orc) ? 'Continuar ›' : 'Ver ›'}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {orcamentosRestantes > 0 && (
-              <button className="np-oa-ver-todos" onClick={verTodosOrcamentos}>
-                + {orcamentosRestantes} orçamento{orcamentosRestantes > 1 ? 's' : ''} em aberto · Ver todos ›
-              </button>
-            )}
-
-            <button className="np-oa-criar-novo" onClick={criarNovoOrcamento}>
-              Criar novo orçamento
-            </button>
-          </div>
-        )}
 
         {/* Gasto colapsado (só se presencial) */}
         {canal === 'presencial' && (
@@ -563,6 +517,58 @@ function NovoPedido() {
             </div>
             <span className="np-up-seta">›</span>
           </button>
+        )}
+
+        {/* Aviso de orçamentos em aberto */}
+        {orcamentosAbertos.length > 0 && !avisoOrcamentoFechado && (
+          <div className="np-orcamentos-abertos">
+            <div className="np-oa-header">
+              <span className="np-oa-icon">⚠️</span>
+              <span className="np-oa-titulo">
+                {orcamentosAbertos.length === 1
+                  ? '1 orçamento em aberto'
+                  : `${orcamentosAbertos.length} orçamentos em aberto`}
+              </span>
+            </div>
+
+            <div className="np-oa-lista">
+              {orcamentosVisiveis.map(orc => (
+                <button
+                  key={orc.id}
+                  className="np-oa-item"
+                  onClick={() => navegarOrcamento(orc)}
+                >
+                  <div className="np-oa-item-info">
+                    <div className="np-oa-item-top">
+                      <span className="np-oa-badge">ORC-{String(orc.id).slice(-3)}</span>
+                      {isRepresentadaAtual(orc) && (
+                        <span className="np-oa-atual">✓ atual</span>
+                      )}
+                    </div>
+                    <span className="np-oa-rep">{orc.representada_nome}</span>
+                    <div className="np-oa-item-meta">
+                      <span className="np-oa-valor">{formatarValor(orc.valor_total)}</span>
+                      <span className="np-oa-sep">·</span>
+                      <span className="np-oa-data">{formatarData(orc.created_at)}</span>
+                    </div>
+                  </div>
+                  <span className="np-oa-acao">
+                    {isRepresentadaAtual(orc) ? 'Continuar ›' : 'Ver ›'}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {orcamentosRestantes > 0 && (
+              <button className="np-oa-ver-todos" onClick={verTodosOrcamentos}>
+                + {orcamentosRestantes} orçamento{orcamentosRestantes > 1 ? 's' : ''} em aberto · Ver todos ›
+              </button>
+            )}
+
+            <button className="np-oa-criar-novo" onClick={criarNovoOrcamento}>
+              Criar novo orçamento
+            </button>
+          </div>
         )}
       </div>
 
