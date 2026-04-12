@@ -24,17 +24,10 @@ import Mais from './components/mais/Mais'
 import MeuPerfil from './components/mais/MeuPerfil'
 import Representadas from './components/mais/Representadas'
 import Segmentos from './components/mais/Segmentos'
+import ListaProdutos from './components/produtos/ListaProdutos'
+import CadastroProduto from './components/produtos/CadastroProduto'
 
 // Placeholder components (serão substituídos pelos reais)
-const ListaProdutos = () => (
-  <div className="screen">
-    <header className="screen-header">
-      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
-      <h1>Produtos</h1>
-    </header>
-    <div className="screen-content"><p>Em desenvolvimento...</p></div>
-  </div>
-)
 
 const Relatorios = () => (
   <div className="screen">
@@ -126,6 +119,8 @@ function App() {
         <Route path="/clientes/:id/visitas/:visitaId" element={<DetalheVisita />} />
         <Route path="/pedidos/novo/simples" element={<PedidoSimples />} />
         <Route path="/produtos" element={<ListaProdutos />} />
+        <Route path="/produtos/novo" element={<CadastroProduto />} />
+        <Route path="/produtos/:id" element={<CadastroProduto />} />
         <Route path="/planner" element={<Planner />} />
         <Route path="/mais" element={<Mais />} />
         <Route path="/mais/perfil" element={<MeuPerfil />} />

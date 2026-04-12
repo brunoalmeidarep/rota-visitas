@@ -1,0 +1,379 @@
+/* CadastroProduto.css */
+
+.cadastro-produto {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tema claro */
+.cadastro-produto.light {
+  --cp-bg: #f2f2f7;
+  --cp-surface: #ffffff;
+  --cp-border: #e0e0e0;
+  --cp-text: #000000;
+  --cp-text-secondary: #6c6c70;
+  --cp-text-muted: #8e8e93;
+  --cp-header-bg: #1c1c1e;
+}
+
+/* Tema escuro */
+.cadastro-produto.dark {
+  --cp-bg: #000000;
+  --cp-surface: #1c1c1e;
+  --cp-border: #3a3a3c;
+  --cp-text: #ffffff;
+  --cp-text-secondary: #8e8e93;
+  --cp-text-muted: #636366;
+  --cp-header-bg: #1c1c1e;
+}
+
+.cadastro-produto {
+  background: var(--cp-bg);
+}
+
+/* Header */
+.cp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--cp-header-bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.cp-voltar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cp-voltar svg {
+  stroke: #ffffff;
+}
+
+.cp-header-titulo {
+  font-size: 17px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.cp-salvar {
+  padding: 8px 16px;
+  background: #007aff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.cp-salvar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Content */
+.cp-content {
+  flex: 1;
+  padding: 16px;
+  padding-bottom: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Seção */
+.cp-secao {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cp-secao-titulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cp-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cp-secao-hint {
+  font-size: 12px;
+  color: var(--cp-text-muted);
+  margin-top: -8px;
+}
+
+/* Fotos */
+.cp-fotos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.cp-foto-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+}
+
+.cp-foto-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-foto-remover {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: #ffffff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-foto-principal {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  padding: 2px 6px;
+  background: rgba(0, 122, 255, 0.9);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.cp-foto-add {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: var(--cp-surface);
+  border: 2px dashed var(--cp-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--cp-text-secondary);
+}
+
+.cp-foto-add span:first-child {
+  font-size: 24px;
+  color: #007aff;
+}
+
+.cp-foto-add-text {
+  font-size: 11px;
+}
+
+/* Campo */
+.cp-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-campo label {
+  font-size: 13px;
+  color: var(--cp-text-secondary);
+}
+
+.cp-obrigatorio {
+  color: #ff3b30;
+  margin-left: 2px;
+}
+
+.cp-campo input,
+.cp-campo select {
+  padding: 14px 16px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  font-size: 16px;
+  color: var(--cp-text);
+  outline: none;
+}
+
+.cp-campo input:focus,
+.cp-campo select:focus {
+  border-color: #007aff;
+}
+
+.cp-campo input.erro {
+  border-color: #ff3b30;
+}
+
+.cp-campo input::placeholder {
+  color: var(--cp-text-muted);
+}
+
+.cp-erro-msg {
+  font-size: 12px;
+  color: #ff3b30;
+}
+
+/* Row */
+.cp-row {
+  display: flex;
+  gap: 12px;
+}
+
+.cp-row .cp-campo {
+  flex: 1;
+}
+
+.cp-row .cp-campo.flex-2 {
+  flex: 2;
+}
+
+.cp-row .cp-campo.flex-1 {
+  flex: 1;
+}
+
+/* Input com prefixo */
+.cp-input-prefix {
+  display: flex;
+  align-items: center;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cp-input-prefix span {
+  padding: 14px 12px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--cp-text-secondary);
+  background: var(--cp-bg);
+  border-right: 1px solid var(--cp-border);
+}
+
+.cp-input-prefix input {
+  flex: 1;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.cp-input-prefix input:focus {
+  border: none;
+}
+
+/* Textarea */
+.cp-secao textarea {
+  padding: 14px 16px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  font-size: 16px;
+  color: var(--cp-text);
+  outline: none;
+  resize: none;
+  font-family: inherit;
+}
+
+.cp-secao textarea:focus {
+  border-color: #007aff;
+}
+
+.cp-secao textarea::placeholder {
+  color: var(--cp-text-muted);
+}
+
+/* Toggle status */
+.cp-toggle-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.cp-toggle-indicator {
+  width: 50px;
+  height: 30px;
+  border-radius: 15px;
+  background: #e0e0e0;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.cp-toggle-indicator::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
+}
+
+.cp-toggle-status.ativo .cp-toggle-indicator {
+  background: #34c759;
+}
+
+.cp-toggle-status.ativo .cp-toggle-indicator::after {
+  transform: translateX(20px);
+}
+
+.cp-toggle-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--cp-text);
+}
+
+/* Botão excluir */
+.cp-btn-excluir {
+  width: 100%;
+  padding: 16px;
+  background: transparent;
+  border: 1px solid #ff3b30;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ff3b30;
+  cursor: pointer;
+  margin-top: 16px;
+}
+
+.cp-btn-excluir:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Loading */
+.cp-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cp-text-secondary);
+}

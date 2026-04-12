@@ -1,0 +1,392 @@
+/* ListaProdutos.css */
+
+.lista-produtos {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tema claro */
+.lista-produtos.light {
+  --lp-bg: #f2f2f7;
+  --lp-surface: #ffffff;
+  --lp-border: #e0e0e0;
+  --lp-text: #000000;
+  --lp-text-secondary: #6c6c70;
+  --lp-text-muted: #8e8e93;
+  --lp-header-bg: #1c1c1e;
+}
+
+/* Tema escuro */
+.lista-produtos.dark {
+  --lp-bg: #000000;
+  --lp-surface: #1c1c1e;
+  --lp-border: #3a3a3c;
+  --lp-text: #ffffff;
+  --lp-text-secondary: #8e8e93;
+  --lp-text-muted: #636366;
+  --lp-header-bg: #1c1c1e;
+}
+
+.lista-produtos {
+  background: var(--lp-bg);
+}
+
+/* Header */
+.lp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--lp-header-bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.lp-voltar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lp-voltar svg {
+  stroke: #ffffff;
+}
+
+.lp-header-titulo {
+  font-size: 17px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.lp-btn-novo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(52, 199, 89, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lp-btn-novo svg {
+  stroke: #34c759;
+}
+
+/* Representada */
+.lp-representada {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--lp-surface);
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.lp-rep-label {
+  font-size: 13px;
+  color: var(--lp-text-secondary);
+}
+
+.lp-rep-nome {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lp-text);
+}
+
+.lp-sem-representada {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+}
+
+.lp-sem-representada p {
+  font-size: 15px;
+  color: var(--lp-text-secondary);
+  text-align: center;
+}
+
+/* Busca */
+.lp-busca-container {
+  position: relative;
+  padding: 12px 16px;
+  background: var(--lp-surface);
+}
+
+.lp-busca-icon {
+  position: absolute;
+  left: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--lp-text-secondary);
+  pointer-events: none;
+}
+
+.lp-busca-input {
+  width: 100%;
+  padding: 12px 40px;
+  border: 1px solid var(--lp-border);
+  border-radius: 12px;
+  font-size: 15px;
+  background: var(--lp-bg);
+  color: var(--lp-text);
+  outline: none;
+}
+
+.lp-busca-input:focus {
+  border-color: var(--primary, #007aff);
+}
+
+.lp-busca-input::placeholder {
+  color: var(--lp-text-secondary);
+}
+
+.lp-busca-clear {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--lp-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* Stats Bar */
+.lp-stats-bar {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--lp-surface);
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.lp-stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.lp-stat-item:active {
+  background: var(--lp-bg);
+}
+
+.lp-stat-item.active {
+  background: rgba(0, 122, 255, 0.1);
+}
+
+.lp-stat-count {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--lp-text);
+}
+
+.lp-stat-count.verde {
+  color: #34c759;
+}
+
+.lp-stat-count.vermelho {
+  color: #ff3b30;
+}
+
+.lp-stat-label {
+  font-size: 11px;
+  color: var(--lp-text-secondary);
+}
+
+/* Lista */
+.lp-lista {
+  flex: 1;
+  padding: 12px 16px;
+  padding-bottom: 100px;
+}
+
+/* Card de Produto */
+.lp-produto-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  background: var(--lp-surface);
+  border: none;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.15s;
+}
+
+.lp-produto-card:active {
+  transform: scale(0.98);
+}
+
+.lp-produto-card.inativo {
+  opacity: 0.6;
+}
+
+.lp-produto-foto {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  background: var(--lp-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.lp-produto-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lp-produto-foto-placeholder {
+  font-size: 24px;
+}
+
+.lp-produto-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lp-produto-nome {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--lp-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-produto-codigo {
+  font-size: 12px;
+  color: var(--lp-text-muted);
+}
+
+.lp-produto-preco-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.lp-produto-preco {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lp-text);
+}
+
+.lp-badge-ipi {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(175, 82, 222, 0.15);
+  color: #af52de;
+}
+
+.lp-badge-inativo {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+}
+
+.lp-produto-seta {
+  font-size: 18px;
+  color: var(--lp-text-muted);
+  flex-shrink: 0;
+}
+
+/* Estado vazio */
+.lp-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--lp-text-secondary);
+}
+
+.lp-vazio-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.lp-vazio h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--lp-text);
+  margin: 0 0 8px 0;
+}
+
+.lp-vazio p {
+  font-size: 14px;
+  color: var(--lp-text-secondary);
+  margin: 0 0 20px 0;
+}
+
+.lp-btn-primeiro {
+  padding: 14px 24px;
+  background: #34c759;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lp-btn-primeiro:active {
+  opacity: 0.9;
+}
+
+.lp-btn-limpar {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: rgba(0, 122, 255, 0.1);
+  color: #007aff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Loading */
+.lp-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lp-text-secondary);
+}
