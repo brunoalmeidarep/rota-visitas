@@ -849,3 +849,55 @@
   color: #ffffff;
   cursor: pointer;
 }
+
+/* Banner somente leitura */
+.dp-banner-readonly {
+  padding: 12px 16px;
+  background: rgba(142, 142, 147, 0.15);
+  text-align: center;
+}
+
+.dp-banner-readonly span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #8e8e93;
+}
+
+/* Modo readonly - campos em cinza */
+.detalhes-pedido.readonly .dp-card {
+  opacity: 0.85;
+}
+
+.detalhes-pedido.readonly .dp-condicao-linha {
+  cursor: default;
+}
+
+.detalhes-pedido.readonly .dp-condicao-linha .dp-condicao-valor,
+.detalhes-pedido.readonly .dp-condicao-linha span[style*="color"] {
+  color: #8e8e93 !important;
+}
+
+.detalhes-pedido.readonly .dp-textarea,
+.detalhes-pedido.readonly .dp-campo input {
+  background: var(--dp-bg);
+  color: #8e8e93;
+  cursor: default;
+}
+
+.detalhes-pedido.readonly .dp-btn-adicionar {
+  display: none;
+}
+
+/* Linha travada */
+.dp-condicao-linha.travado {
+  cursor: default;
+}
+
+.dp-condicao-linha.travado span {
+  color: #888 !important;
+}
+
+/* Linha com erro */
+.dp-condicao-linha.erro {
+  background: rgba(255, 59, 48, 0.05);
+}

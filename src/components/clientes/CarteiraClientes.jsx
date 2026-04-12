@@ -28,6 +28,12 @@ function CarteiraClientes() {
   const [busca, setBusca] = useState('')
   const [filtroAtivo, setFiltroAtivo] = useState('todos')
 
+  // Estado para filtro de cidades
+  const [cidadesSelecionadas, setCidadesSelecionadas] = useState([])
+  const [sheetCidades, setSheetCidades] = useState(false)
+  const [buscaCidade, setBuscaCidade] = useState('')
+  const [cidadesTemp, setCidadesTemp] = useState([])
+
   // Estado para geocodificação em massa
   const [geocodificando, setGeocodificando] = useState(false)
   const [geoProgresso, setGeoProgresso] = useState({ atual: 0, total: 0, sucesso: 0 })
@@ -141,6 +147,56 @@ function CarteiraClientes() {
     return clientes.filter(c => !c.lat || !c.lng)
   }, [clientes])
 
+  // Lista única de cidades (ordenada)
+  const cidadesDisponiveis = useMemo(() => {
+    const cidades = new Set()
+    clientes.forEach(c => {
+      if (c.cidade) {
+        cidades.add(toTitleCase(c.cidade))
+      }
+    })
+    return Array.from(cidades).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [clientes])
+
+  // Cidades filtradas pela busca no sheet
+  const cidadesFiltradas = useMemo(() => {
+    if (!buscaCidade) return cidadesDisponiveis
+    const termo = buscaCidade.toLowerCase()
+    return cidadesDisponiveis.filter(c => c.toLowerCase().includes(termo))
+  }, [cidadesDisponiveis, buscaCidade])
+
+  // Abre o sheet de cidades
+  function abrirSheetCidades() {
+    setCidadesTemp([...cidadesSelecionadas])
+    setBuscaCidade('')
+    setSheetCidades(true)
+  }
+
+  // Toggle cidade temporária
+  function toggleCidadeTemp(cidade) {
+    setCidadesTemp(prev =>
+      prev.includes(cidade)
+        ? prev.filter(c => c !== cidade)
+        : [...prev, cidade]
+    )
+  }
+
+  // Aplicar seleção de cidades
+  function aplicarCidades() {
+    setCidadesSelecionadas(cidadesTemp)
+    setSheetCidades(false)
+  }
+
+  // Limpar filtro de cidades
+  function limparCidades() {
+    setCidadesTemp([])
+  }
+
+  // Remove uma cidade específica do filtro
+  function removerCidade(cidade) {
+    setCidadesSelecionadas(prev => prev.filter(c => c !== cidade))
+  }
+
   // Geocodifica um endereço
   async function geocodificarEndereco(cliente) {
     const partes = []
@@ -221,19 +277,28 @@ function CarteiraClientes() {
     fetchClientes()
   }
 
-  // Contagem por status
+  // Filtra clientes por cidades selecionadas (base para contagem)
+  const clientesPorCidade = useMemo(() => {
+    if (cidadesSelecionadas.length === 0) return clientes
+    return clientes.filter(c => {
+      const cidadeCliente = toTitleCase(c.cidade || '')
+      return cidadesSelecionadas.includes(cidadeCliente)
+    })
+  }, [clientes, cidadesSelecionadas])
+
+  // Contagem por status (baseada nos clientes filtrados por cidade)
   const contagens = useMemo(() => {
     const counts = { todos: 0, ativo: 0, recente: 0, inativo: 0, prospect: 0 }
-    clientes.forEach(c => {
+    clientesPorCidade.forEach(c => {
       counts.todos++
       counts[getStatus(c)]++
     })
     return counts
-  }, [clientes])
+  }, [clientesPorCidade])
 
-  // Filtra clientes
+  // Filtra clientes (busca + status + cidades)
   const clientesFiltrados = useMemo(() => {
-    return clientes.filter(c => {
+    return clientesPorCidade.filter(c => {
       // Filtro de busca
       const termoBusca = busca.toLowerCase()
       const matchBusca = !busca ||
@@ -246,7 +311,7 @@ function CarteiraClientes() {
 
       return matchBusca && matchStatus
     })
-  }, [clientes, busca, filtroAtivo])
+  }, [clientesPorCidade, busca, filtroAtivo])
 
   // Estado de carregamento inicial
   if (loadingRep || (loading && !carregouUmaVez)) {
@@ -298,11 +363,11 @@ function CarteiraClientes() {
         </button>
         <h1>Clientes</h1>
         <div className="header-actions">
-          <button className="header-btn blue" onClick={() => navigate('/mapa')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
+          <button className="header-btn-cidades" onClick={abrirSheetCidades}>
+            <span>📍 Cidades</span>
+            {cidadesSelecionadas.length > 0 && (
+              <span className="cidades-badge">{cidadesSelecionadas.length}</span>
+            )}
           </button>
           <button className="header-btn green" onClick={() => navigate('/clientes/novo')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -312,6 +377,27 @@ function CarteiraClientes() {
           </button>
         </div>
       </header>
+
+      {/* Pills de cidades selecionadas */}
+      {cidadesSelecionadas.length > 0 && (
+        <div className="cidades-pills-container">
+          <div className="cidades-pills">
+            {cidadesSelecionadas.map(cidade => (
+              <button
+                key={cidade}
+                className="cidade-pill"
+                onClick={() => removerCidade(cidade)}
+              >
+                {cidade}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Busca */}
       <div className="busca-container">
@@ -448,6 +534,83 @@ function CarteiraClientes() {
           })
         )}
       </div>
+
+      {/* Sheet de seleção de cidades */}
+      {sheetCidades && (
+        <div className="sheet-overlay" onClick={() => setSheetCidades(false)}>
+          <div className="sheet-cidades" onClick={e => e.stopPropagation()}>
+            <div className="sheet-header">
+              <h2>Filtrar por cidades</h2>
+              <button className="sheet-close" onClick={() => setSheetCidades(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="sheet-busca">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                placeholder="Buscar cidade..."
+                value={buscaCidade}
+                onChange={e => setBuscaCidade(e.target.value)}
+              />
+              {buscaCidade && (
+                <button className="sheet-busca-clear" onClick={() => setBuscaCidade('')}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            <div className="sheet-info">
+              {cidadesTemp.length > 0 ? (
+                <span>{cidadesTemp.length} cidade(s) selecionada(s)</span>
+              ) : (
+                <span>{cidadesDisponiveis.length} cidades disponíveis</span>
+              )}
+              {cidadesTemp.length > 0 && (
+                <button className="btn-limpar-cidades" onClick={limparCidades}>
+                  Limpar
+                </button>
+              )}
+            </div>
+
+            <div className="sheet-lista-cidades">
+              {cidadesFiltradas.length === 0 ? (
+                <p className="sem-cidades">Nenhuma cidade encontrada</p>
+              ) : (
+                cidadesFiltradas.map(cidade => (
+                  <label key={cidade} className="cidade-item">
+                    <input
+                      type="checkbox"
+                      checked={cidadesTemp.includes(cidade)}
+                      onChange={() => toggleCidadeTemp(cidade)}
+                    />
+                    <span className="cidade-nome">{cidade}</span>
+                    <span className="cidade-count">
+                      {clientes.filter(c => toTitleCase(c.cidade) === cidade).length}
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+
+            <div className="sheet-footer">
+              <button className="btn-aplicar-cidades" onClick={aplicarCidades}>
+                Aplicar filtro
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

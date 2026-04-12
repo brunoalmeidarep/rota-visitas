@@ -17,6 +17,7 @@ function DetalhesPedido() {
   const fromCliente = location.state?.from === 'cliente' || location.state?.from === 'historico'
   const fromNovoPedido = location.state?.from === 'novo-pedido'
   const returnClienteId = location.state?.clienteId
+  const isReadonly = location.state?.readonly === true
 
   function handleVoltar() {
     if (fromCliente && returnClienteId) {
@@ -142,7 +143,7 @@ function DetalhesPedido() {
     })
   }
 
-  const isEditavel = pedido?.status === 'orcamento'
+  const isEditavel = pedido?.status === 'orcamento' && !isReadonly
   const totalItens = pedido?.itens?.length || 0
   const subtotal = (pedido?.itens || []).reduce((acc, item) =>
     acc + (item.subtotal || item.preco_unitario * item.quantidade || 0), 0
@@ -366,7 +367,7 @@ function DetalhesPedido() {
   }
 
   return (
-    <div className={`detalhes-pedido ${isDark ? 'dark' : 'light'}`}>
+    <div className={`detalhes-pedido ${isDark ? 'dark' : 'light'} ${isReadonly ? 'readonly' : ''}`}>
       {/* Header */}
       <header className="dp-header">
         <button className="dp-voltar" onClick={handleVoltar}>
@@ -379,7 +380,7 @@ function DetalhesPedido() {
            pedido?.status === 'transmitido' ? 'Transmitido' :
            `Pedido #${String(pedido?.numero || 0).padStart(3, '0')}`}
         </span>
-        {isEditavel && (
+        {isEditavel && !isReadonly && (
           <button
             className="dp-salvar"
             onClick={salvar}
@@ -388,11 +389,18 @@ function DetalhesPedido() {
             {salvando ? '...' : 'Salvar'}
           </button>
         )}
-        {!isEditavel && <div style={{ width: 60 }}></div>}
+        {(!isEditavel || isReadonly) && <div style={{ width: 60 }}></div>}
       </header>
 
+      {/* Banner somente leitura */}
+      {isReadonly && (
+        <div className="dp-banner-readonly">
+          <span>👁️ Visualização do pedido — somente leitura</span>
+        </div>
+      )}
+
       {/* Banner check-in */}
-      {pedido?.canal === 'presencial' && pedido?.visita_id && (
+      {!isReadonly && pedido?.canal === 'presencial' && pedido?.visita_id && (
         <div className="dp-banner">
           <span>✅ Check-in · {formatarData(pedido.created_at)}</span>
         </div>
@@ -604,32 +612,34 @@ function DetalhesPedido() {
           </div>
         </div>
 
-        {/* Ações */}
-        <div className="dp-acoes">
-          {isEditavel ? (
-            <button className="dp-btn-gerar" onClick={gerarPedido} disabled={salvando}>
-              Gerar pedido
-            </button>
-          ) : (
-            <>
-              <button className="dp-btn-acao" onClick={duplicarPedido} disabled={salvando}>
-                Duplicar
+        {/* Ações (escondidas no modo readonly) */}
+        {!isReadonly && (
+          <div className="dp-acoes">
+            {isEditavel ? (
+              <button className="dp-btn-gerar" onClick={gerarPedido} disabled={salvando}>
+                Gerar pedido
               </button>
-              <button className="dp-btn-acao" onClick={verPDF} disabled={salvando}>
-                Ver PDF
-              </button>
-              <button className="dp-btn-acao" onClick={() => setShowEmailSheet(true)} disabled={salvando}>
-                E-mail
-              </button>
-              <button className="dp-btn-acao" onClick={handleCompartilhar} disabled={salvando}>
-                Compartilhar
-              </button>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <button className="dp-btn-acao" onClick={duplicarPedido} disabled={salvando}>
+                  Duplicar
+                </button>
+                <button className="dp-btn-acao" onClick={verPDF} disabled={salvando}>
+                  Ver PDF
+                </button>
+                <button className="dp-btn-acao" onClick={() => setShowEmailSheet(true)} disabled={salvando}>
+                  E-mail
+                </button>
+                <button className="dp-btn-acao" onClick={handleCompartilhar} disabled={salvando}>
+                  Compartilhar
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Transmitir (Enterprise) */}
-        {isEnterprise && pedido?.status === 'pedido' && (
+        {!isReadonly && isEnterprise && pedido?.status === 'pedido' && (
           <button
             className="dp-btn-transmitir"
             onClick={() => alert('Transmissao em desenvolvimento')}

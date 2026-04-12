@@ -85,7 +85,7 @@ function NovoPedido() {
   }, [repId])
 
 
-  // Buscar último pedido do cliente selecionado
+  // Buscar último PEDIDO (não orçamento) do cliente selecionado - qualquer representada
   useEffect(() => {
     if (!clienteId || !repId) {
       setUltimoPedido(null)
@@ -98,6 +98,7 @@ function NovoPedido() {
         .select('id, valor_total, created_at, status, representada_nome')
         .eq('cliente_id', clienteId)
         .eq('rep_id', repId)
+        .eq('status', 'pedido')
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
@@ -358,36 +359,6 @@ function NovoPedido() {
             )}
             <span className="np-seta">›</span>
           </button>
-
-          {/* Card último pedido */}
-          {ultimoPedido && (
-            <button
-              className="np-ultimo-pedido"
-              onClick={() => navigate(`/pedidos/${ultimoPedido.id}`, { state: { from: 'novo-pedido' } })}
-            >
-              <span className="np-up-icon">📋</span>
-              <div className="np-up-info">
-                <span className="np-up-titulo">Último pedido</span>
-                <div className="np-up-detalhes">
-                  <span className="np-up-valor">{formatarValor(ultimoPedido.valor_total)}</span>
-                  <span className="np-up-sep">·</span>
-                  <span className="np-up-data">{formatarData(ultimoPedido.created_at)}</span>
-                  <span
-                    className="np-up-dias"
-                    style={{ color: getCorDias(diasDesde(ultimoPedido.created_at)) }}
-                  >
-                    {diasDesde(ultimoPedido.created_at) === 0
-                      ? 'hoje'
-                      : `${diasDesde(ultimoPedido.created_at)}d atrás`}
-                  </span>
-                </div>
-                {ultimoPedido.representada_nome && (
-                  <span className="np-up-rep">{ultimoPedido.representada_nome}</span>
-                )}
-              </div>
-              <span className="np-up-seta">›</span>
-            </button>
-          )}
         </div>
 
         {/* Gasto colapsado (só se presencial) */}
@@ -448,6 +419,36 @@ function NovoPedido() {
               </div>
             )}
           </>
+        )}
+
+        {/* Card último pedido */}
+        {ultimoPedido && (
+          <button
+            className="np-ultimo-pedido"
+            onClick={() => navigate(`/pedidos/${ultimoPedido.id}`, { state: { readonly: true, from: 'novo-pedido' } })}
+          >
+            <span className="np-up-icon">📋</span>
+            <div className="np-up-info">
+              <span className="np-up-titulo">Último pedido</span>
+              <div className="np-up-detalhes">
+                <span className="np-up-valor">{formatarValor(ultimoPedido.valor_total)}</span>
+                <span className="np-up-sep">·</span>
+                <span className="np-up-data">{formatarData(ultimoPedido.created_at)}</span>
+                <span
+                  className="np-up-dias"
+                  style={{ color: getCorDias(diasDesde(ultimoPedido.created_at)) }}
+                >
+                  {diasDesde(ultimoPedido.created_at) === 0
+                    ? 'hoje'
+                    : `${diasDesde(ultimoPedido.created_at)}d atrás`}
+                </span>
+              </div>
+              {ultimoPedido.representada_nome && (
+                <span className="np-up-rep">{ultimoPedido.representada_nome}</span>
+              )}
+            </div>
+            <span className="np-up-seta">›</span>
+          </button>
         )}
       </div>
 
