@@ -24,9 +24,13 @@ function MeuPerfil() {
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
 
-  // Refs para autocomplete
-  const enderecoInputRef = useRef(null)
-  const autocompleteRef = useRef(null)
+  // Autocomplete manual
+  const [sugestoes, setSugestoes] = useState([])
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
+  const [buscandoSugestoes, setBuscandoSugestoes] = useState(false)
+  const autocompleteServiceRef = useRef(null)
+  const debounceRef = useRef(null)
+  const containerRef = useRef(null)
 
   // Carregar dados do representante
   useEffect(() => {
@@ -35,7 +39,6 @@ function MeuPerfil() {
 
       setLoading(true)
       try {
-        // Buscar dados do representante
         const { data: repData, error: repError } = await supabase
           .from('representantes')
           .select('nome, email, endereco_base, lat_base, lng_base, media_carro, preco_gasolina')
@@ -44,7 +47,6 @@ function MeuPerfil() {
 
         if (repError) {
           console.error('[MeuPerfil] Erro ao buscar rep:', repError)
-          // Verificar se é erro de coluna não existente
           if (repError.message?.includes('lat_base') || repError.message?.includes('lng_base')) {
             setErro('Colunas lat_base/lng_base não existem. Execute no Supabase:\nALTER TABLE representantes ADD COLUMN lat_base DOUBLE PRECISION;\nALTER TABLE representantes ADD COLUMN lng_base DOUBLE PRECISION;')
           }
@@ -56,7 +58,6 @@ function MeuPerfil() {
           setPrecoGasolina(formatarPreco(repData.preco_gasolina || 6))
         }
 
-        // Buscar email do usuário autenticado
         const { data: { user } } = await supabase.auth.getUser()
         if (user?.email) {
           setEmail(user.email)
@@ -70,6 +71,74 @@ function MeuPerfil() {
 
     fetchRep()
   }, [repId])
+
+  // Carregar Google Maps API
+  const loadGoogleMaps = useCallback(() => {
+    return new Promise((resolve) => {
+      if (window.google?.maps?.places?.AutocompleteService) {
+        resolve(true)
+        return
+      }
+
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
+      if (existingScript) {
+        const checkReady = () => {
+          if (window.google?.maps?.places?.AutocompleteService) {
+            resolve(true)
+          } else {
+            setTimeout(checkReady, 100)
+          }
+        }
+        existingScript.addEventListener('load', checkReady)
+        setTimeout(checkReady, 500)
+        return
+      }
+
+      const script = document.createElement('script')
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places`
+      script.async = true
+      script.defer = true
+      script.onload = () => {
+        const checkReady = () => {
+          if (window.google?.maps?.places?.AutocompleteService) {
+            resolve(true)
+          } else {
+            setTimeout(checkReady, 100)
+          }
+        }
+        checkReady()
+      }
+      script.onerror = () => resolve(false)
+      document.head.appendChild(script)
+    })
+  }, [])
+
+  // Inicializar AutocompleteService
+  useEffect(() => {
+    async function init() {
+      const loaded = await loadGoogleMaps()
+      if (loaded && window.google?.maps?.places?.AutocompleteService) {
+        autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
+        console.log('[MeuPerfil] AutocompleteService inicializado')
+      }
+    }
+    init()
+  }, [loadGoogleMaps])
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setMostrarSugestoes(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [])
 
   // Formatar preço para exibição
   function formatarPreco(valor) {
@@ -85,135 +154,79 @@ function MeuPerfil() {
 
   // Máscara para preço da gasolina
   function handlePrecoChange(valor) {
-    // Remove tudo que não for número ou vírgula
     let limpo = valor.replace(/[^\d,]/g, '')
-    // Garante apenas uma vírgula
     const partes = limpo.split(',')
     if (partes.length > 2) {
       limpo = partes[0] + ',' + partes.slice(1).join('')
     }
-    // Limita casas decimais
     if (partes.length === 2 && partes[1].length > 2) {
       limpo = partes[0] + ',' + partes[1].slice(0, 2)
     }
     setPrecoGasolina(limpo)
   }
 
-  // Carregar Google Maps API
-  const loadGoogleMaps = useCallback(() => {
-    return new Promise((resolve) => {
-      if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-        resolve(true)
-        return
-      }
-
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
-      if (existingScript) {
-        const checkReady = () => {
-          if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-            resolve(true)
-          } else {
-            setTimeout(checkReady, 100)
-          }
-        }
-        existingScript.addEventListener('load', checkReady)
-        setTimeout(checkReady, 500)
-        return
-      }
-
-      const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places&v=weekly`
-      script.async = true
-      script.defer = true
-      script.onload = () => {
-        if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-          resolve(true)
-        } else {
-          setTimeout(() => resolve(true), 500)
-        }
-      }
-      script.onerror = () => resolve(false)
-      document.head.appendChild(script)
-    })
-  }, [])
-
-  // Inicializar autocomplete
-  const initAutocomplete = useCallback(async () => {
-    if (!enderecoInputRef.current) return
-
-    const loaded = await loadGoogleMaps()
-    if (!loaded || !enderecoInputRef.current) return
-
-    // Limpar elemento anterior
-    if (autocompleteRef.current) {
-      try {
-        autocompleteRef.current.remove()
-      } catch (e) { /* ignore */ }
-      autocompleteRef.current = null
+  // Buscar sugestões de endereço
+  function buscarSugestoes(texto) {
+    if (!texto || texto.length < 3) {
+      setSugestoes([])
+      setMostrarSugestoes(false)
+      return
     }
 
-    enderecoInputRef.current.innerHTML = ''
+    if (!autocompleteServiceRef.current) {
+      console.warn('[MeuPerfil] AutocompleteService não disponível')
+      return
+    }
 
-    // Criar PlaceAutocompleteElement
-    if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-      try {
-        const placeAutocomplete = new window.google.maps.places.PlaceAutocompleteElement({
+    // Debounce de 300ms
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+
+    debounceRef.current = setTimeout(() => {
+      setBuscandoSugestoes(true)
+
+      autocompleteServiceRef.current.getPlacePredictions(
+        {
+          input: texto,
           componentRestrictions: { country: 'br' },
-          types: ['establishment', 'geocode']
-        })
+          language: 'pt-BR'
+        },
+        (predictions, status) => {
+          setBuscandoSugestoes(false)
 
-        placeAutocomplete.style.cssText = `
-          width: 100%;
-          --gmpx-color-surface: var(--bg, #f5f5f5);
-          --gmpx-color-on-surface: var(--text, #333);
-          --gmpx-color-primary: var(--primary, #1a3a6b);
-          --gmpx-font-family-base: inherit;
-          --gmpx-font-size-base: 14px;
-        `
-
-        placeAutocomplete.addEventListener('gmp-placeselect', async (event) => {
-          try {
-            const place = event.placePrediction.toPlace()
-            await place.fetchFields({ fields: ['displayName', 'formattedAddress'] })
-            const displayName = place.displayName || ''
-            const formattedAddress = place.formattedAddress || ''
-            let valor = ''
-            if (displayName && formattedAddress && !formattedAddress.toLowerCase().includes(displayName.toLowerCase())) {
-              valor = `${displayName} — ${formattedAddress}`
-            } else {
-              valor = formattedAddress || displayName || ''
-            }
-            setEnderecoBase(valor)
-          } catch (err) {
-            console.error('[Autocomplete] Erro:', err)
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+            console.log('[MeuPerfil] Sugestões:', predictions.length)
+            setSugestoes(predictions.map(p => ({
+              id: p.place_id,
+              texto: p.description,
+              principal: p.structured_formatting?.main_text || '',
+              secundario: p.structured_formatting?.secondary_text || ''
+            })))
+            setMostrarSugestoes(true)
+          } else {
+            console.warn('[MeuPerfil] Sem sugestões:', status)
+            setSugestoes([])
+            setMostrarSugestoes(false)
           }
-        })
+        }
+      )
+    }, 300)
+  }
 
-        enderecoInputRef.current.appendChild(placeAutocomplete)
-        autocompleteRef.current = placeAutocomplete
-        return
-      } catch (err) {
-        console.error('[Autocomplete] Erro ao criar:', err)
-      }
-    }
+  // Selecionar sugestão
+  function selecionarSugestao(sugestao) {
+    setEnderecoBase(sugestao.texto)
+    setSugestoes([])
+    setMostrarSugestoes(false)
+  }
 
-    // Fallback: input simples
-    const input = document.createElement('input')
-    input.type = 'text'
-    input.className = 'perfil-input'
-    input.placeholder = 'Digite seu endereço...'
-    input.value = enderecoBase
-    input.addEventListener('input', (e) => setEnderecoBase(e.target.value))
-    enderecoInputRef.current.appendChild(input)
-  }, [loadGoogleMaps, enderecoBase])
-
-  // Inicializar autocomplete quando componente montar
-  useEffect(() => {
-    if (!loading && !loadingRep) {
-      const timer = setTimeout(initAutocomplete, 300)
-      return () => clearTimeout(timer)
-    }
-  }, [loading, loadingRep, initAutocomplete])
+  // Handler do input de endereço
+  function handleEnderecoChange(e) {
+    const valor = e.target.value
+    setEnderecoBase(valor)
+    buscarSugestoes(valor)
+  }
 
   // Geocodificar endereço
   async function geocodificarEndereco(endereco) {
@@ -280,7 +293,6 @@ function MeuPerfil() {
 
       if (error) {
         console.error('[MeuPerfil] Erro ao salvar:', error)
-        // Se erro de coluna, tenta sem lat/lng
         if (error.message?.includes('lat_base') || error.message?.includes('lng_base')) {
           const { error: err2 } = await supabase
             .from('representantes')
@@ -314,7 +326,6 @@ function MeuPerfil() {
 
     setSalvando(false)
 
-    // Limpar mensagem de sucesso após 3s
     if (!erro) {
       setTimeout(() => setSucesso(''), 3000)
     }
@@ -370,11 +381,42 @@ function MeuPerfil() {
           <span className="perfil-campo-hint">O email não pode ser alterado</span>
         </div>
 
-        {/* Endereço base */}
-        <div className="perfil-campo">
+        {/* Endereço base com autocomplete manual */}
+        <div className="perfil-campo" ref={containerRef}>
           <label>Endereço base (ponto de partida das rotas)</label>
-          <div ref={enderecoInputRef} className="perfil-autocomplete-container"></div>
-          {enderecoBase && (
+          <div className="perfil-autocomplete-wrapper">
+            <input
+              type="text"
+              className="perfil-input"
+              value={enderecoBase}
+              onChange={handleEnderecoChange}
+              onFocus={() => sugestoes.length > 0 && setMostrarSugestoes(true)}
+              placeholder="Digite seu endereço..."
+            />
+            {buscandoSugestoes && (
+              <div className="perfil-autocomplete-loading">...</div>
+            )}
+
+            {/* Dropdown de sugestões */}
+            {mostrarSugestoes && sugestoes.length > 0 && (
+              <div className="perfil-autocomplete-dropdown">
+                {sugestoes.map((s) => (
+                  <button
+                    key={s.id}
+                    className="perfil-autocomplete-item"
+                    onClick={() => selecionarSugestao(s)}
+                    type="button"
+                  >
+                    <span className="perfil-autocomplete-principal">{s.principal}</span>
+                    {s.secundario && (
+                      <span className="perfil-autocomplete-secundario">{s.secundario}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {enderecoBase && !mostrarSugestoes && (
             <div className="perfil-endereco-preview">
               📍 {enderecoBase}
             </div>
