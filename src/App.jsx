@@ -11,6 +11,7 @@ import DadosCliente from './components/clientes/DadosCliente'
 import Bonificacao from './components/clientes/Bonificacao'
 import GastosCliente from './components/clientes/GastosCliente'
 import DetalheVisita from './components/clientes/DetalheVisita'
+import HistoricoCliente from './components/clientes/HistoricoCliente'
 import PedidoSimples from './components/pedidos/PedidoSimples'
 import ListaPedidos from './components/pedidos/ListaPedidos'
 import NovoPedido from './components/pedidos/NovoPedido'
@@ -119,6 +120,9 @@ function App() {
         <Route path="/clientes/:id/editar" element={<EditarCliente />} />
         <Route path="/clientes/:id/bonificacao" element={<Bonificacao />} />
         <Route path="/clientes/:id/gastos" element={<GastosCliente />} />
+        <Route path="/clientes/:id/visitas" element={<HistoricoCliente />} />
+        <Route path="/clientes/:id/pedidos" element={<HistoricoCliente />} />
+        <Route path="/clientes/:id/orcamentos" element={<HistoricoCliente />} />
         <Route path="/clientes/:id/visitas/:visitaId" element={<DetalheVisita />} />
         <Route path="/pedidos/novo/simples" element={<PedidoSimples />} />
         <Route path="/produtos" element={<ListaProdutos />} />

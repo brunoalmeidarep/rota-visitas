@@ -317,7 +317,7 @@ function PerfilCliente() {
                   <div
                     key={v.id}
                     className="perfil-historico-item clickable"
-                    onClick={() => navigate(`/clientes/${id}/visitas/${v.id}`)}
+                    onClick={() => navigate(`/clientes/${id}/visitas/${v.id}`, { state: { from: 'cliente', clienteId: id } })}
                   >
                     <div className="perfil-historico-item-left">
                       <span className="perfil-historico-check">✓</span>
@@ -351,7 +351,11 @@ function PerfilCliente() {
                 <div className="perfil-historico-vazio">Nenhum pedido registrado</div>
               ) : (
                 pedidos.map((p) => (
-                  <div key={p.id} className="perfil-historico-item">
+                  <div
+                    key={p.id}
+                    className="perfil-historico-item clickable"
+                    onClick={() => navigate(`/pedidos/${p.id}`, { state: { from: 'cliente', clienteId: id } })}
+                  >
                     <div className="perfil-historico-item-left">
                       <span className="perfil-historico-badge verde">Pedido</span>
                       <div className="perfil-historico-info">
@@ -378,7 +382,11 @@ function PerfilCliente() {
                 <div className="perfil-historico-vazio">Nenhum orçamento registrado</div>
               ) : (
                 orcamentos.map((o) => (
-                  <div key={o.id} className="perfil-historico-item">
+                  <div
+                    key={o.id}
+                    className="perfil-historico-item clickable"
+                    onClick={() => navigate(`/pedidos/${o.id}`, { state: { from: 'cliente', clienteId: id } })}
+                  >
                     <div className="perfil-historico-item-left">
                       <span className="perfil-historico-badge laranja">Orçamento</span>
                       <div className="perfil-historico-info">

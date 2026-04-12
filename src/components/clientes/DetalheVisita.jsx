@@ -1,13 +1,26 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import './DetalheVisita.css'
 
 function DetalheVisita() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id: clienteId, visitaId } = useParams()
   const { repId } = useRepId()
+
+  // Navegacao contextual: se veio do perfil/historico do cliente, voltar para la
+  const fromCliente = location.state?.from === 'cliente' || location.state?.from === 'historico'
+  const returnClienteId = location.state?.clienteId || clienteId
+
+  function handleVoltar() {
+    if (fromCliente && returnClienteId) {
+      navigate(`/clientes/${returnClienteId}`)
+    } else {
+      navigate(-1)
+    }
+  }
 
   const [visita, setVisita] = useState(null)
   const [cliente, setCliente] = useState(null)
@@ -137,7 +150,7 @@ function DetalheVisita() {
     return (
       <div className={`detalhe-visita ${isDark ? 'dark' : 'light'}`}>
         <header className="dv-header">
-          <button className="dv-voltar" onClick={() => navigate(-1)}>
+          <button className="dv-voltar" onClick={handleVoltar}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
@@ -154,7 +167,7 @@ function DetalheVisita() {
     return (
       <div className={`detalhe-visita ${isDark ? 'dark' : 'light'}`}>
         <header className="dv-header">
-          <button className="dv-voltar" onClick={() => navigate(-1)}>
+          <button className="dv-voltar" onClick={handleVoltar}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
@@ -164,7 +177,7 @@ function DetalheVisita() {
         </header>
         <div className="dv-erro">
           <p>Visita não encontrada</p>
-          <button onClick={() => navigate(-1)}>Voltar</button>
+          <button onClick={handleVoltar}>Voltar</button>
         </div>
       </div>
     )
@@ -174,7 +187,7 @@ function DetalheVisita() {
     <div className={`detalhe-visita ${isDark ? 'dark' : 'light'}`}>
       {/* Header */}
       <header className="dv-header">
-        <button className="dv-voltar" onClick={() => navigate(-1)}>
+        <button className="dv-voltar" onClick={handleVoltar}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>

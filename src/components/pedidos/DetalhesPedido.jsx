@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
@@ -8,9 +8,22 @@ import './DetalhesPedido.css'
 
 function DetalhesPedido() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id: pedidoId } = useParams()
   const { repId } = useRepId()
   const { isEnterprise } = usePlano()
+
+  // Navegacao contextual: se veio do perfil/historico do cliente, voltar para la
+  const fromCliente = location.state?.from === 'cliente' || location.state?.from === 'historico'
+  const returnClienteId = location.state?.clienteId
+
+  function handleVoltar() {
+    if (fromCliente && returnClienteId) {
+      navigate(`/clientes/${returnClienteId}`)
+    } else {
+      navigate('/pedidos')
+    }
+  }
 
   const [pedido, setPedido] = useState(null)
   const [representada, setRepresentada] = useState(null)
@@ -306,7 +319,7 @@ function DetalhesPedido() {
     return (
       <div className={`detalhes-pedido ${isDark ? 'dark' : 'light'}`}>
         <header className="dp-header">
-          <button className="dp-voltar" onClick={() => navigate('/pedidos')}>
+          <button className="dp-voltar" onClick={handleVoltar}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
@@ -323,7 +336,7 @@ function DetalhesPedido() {
     <div className={`detalhes-pedido ${isDark ? 'dark' : 'light'}`}>
       {/* Header */}
       <header className="dp-header">
-        <button className="dp-voltar" onClick={() => navigate('/pedidos')}>
+        <button className="dp-voltar" onClick={handleVoltar}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
