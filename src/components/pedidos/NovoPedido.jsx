@@ -21,13 +21,20 @@ function NovoPedido() {
   const { isStarter } = usePlano()
   const { representadaSelecionada } = useRepresentada()
 
-  const [canal, setCanal] = useState('presencial')
-  const [clienteId, setClienteId] = useState('')
+  // Restaurar dados do sessionStorage
+  const dadosSalvos = sessionStorage.getItem('novoPedido')
+  const inicial = dadosSalvos ? JSON.parse(dadosSalvos) : {}
+
+  const [canal, setCanal] = useState(inicial.canal || 'presencial')
+  const [clienteId, setClienteId] = useState(inicial.clienteId || '')
   const [isDark, setIsDark] = useState(false)
 
   const [clientes, setClientes] = useState([])
   const [buscaCliente, setBuscaCliente] = useState('')
   const [mostrarClientes, setMostrarClientes] = useState(false)
+
+  // Último pedido do cliente
+  const [ultimoPedido, setUltimoPedido] = useState(null)
 
   // Gasto colapsado
   const [mostrarGasto, setMostrarGasto] = useState(false)
@@ -36,6 +43,13 @@ function NovoPedido() {
   const [gastoObs, setGastoObs] = useState('')
 
   const [salvando, setSalvando] = useState(false)
+
+  // Salvar dados no sessionStorage quando mudam
+  useEffect(() => {
+    if (clienteId || canal !== 'presencial') {
+      sessionStorage.setItem('novoPedido', JSON.stringify({ clienteId, canal }))
+    }
+  }, [clienteId, canal])
 
   // Redirecionar Starter para PedidoSimples
   useEffect(() => {
@@ -71,6 +85,33 @@ function NovoPedido() {
   }, [repId])
 
 
+  // Buscar último pedido do cliente selecionado
+  useEffect(() => {
+    if (!clienteId || !repId) {
+      setUltimoPedido(null)
+      return
+    }
+
+    async function fetchUltimoPedido() {
+      const { data } = await supabase
+        .from('pedidos')
+        .select('id, valor_total, created_at, status, representada_nome')
+        .eq('cliente_id', clienteId)
+        .eq('rep_id', repId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (data) {
+        setUltimoPedido(data)
+      } else {
+        setUltimoPedido(null)
+      }
+    }
+
+    fetchUltimoPedido()
+  }, [clienteId, repId])
+
   // Filtrar clientes
   const clientesFiltrados = clientes.filter(c =>
     c.nome.toLowerCase().includes(buscaCliente.toLowerCase()) ||
@@ -94,6 +135,39 @@ function NovoPedido() {
   function parsearValor(str) {
     if (!str) return 0
     return parseFloat(str.replace(',', '.')) || 0
+  }
+
+  function formatarValor(valor) {
+    if (!valor || valor === 0) return 'R$ 0'
+    if (valor >= 1000000) {
+      return `R$ ${(valor / 1000000).toFixed(1).replace('.', ',')}M`
+    }
+    if (valor >= 1000) {
+      return `R$ ${(valor / 1000).toFixed(1).replace('.', ',')}k`
+    }
+    return `R$ ${valor.toFixed(0)}`
+  }
+
+  function formatarData(dataStr) {
+    if (!dataStr) return '-'
+    return new Date(dataStr).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit'
+    })
+  }
+
+  function diasDesde(dataStr) {
+    if (!dataStr) return null
+    const diff = Date.now() - new Date(dataStr).getTime()
+    return Math.floor(diff / (1000 * 60 * 60 * 24))
+  }
+
+  function getCorDias(dias) {
+    if (dias === null) return '#888'
+    if (dias <= 30) return '#34c759' // verde
+    if (dias <= 89) return '#ff9500' // amarelo
+    return '#ff3b30' // vermelho
   }
 
   async function continuar() {
@@ -210,6 +284,9 @@ function NovoPedido() {
 
       console.log('[NovoPedido] Pedido criado:', novoPedido)
 
+      // Limpar sessionStorage
+      sessionStorage.removeItem('novoPedido')
+
       // Navegar para catálogo
       navigate(`/pedidos/${novoPedido.id}/catalogo`)
 
@@ -281,6 +358,36 @@ function NovoPedido() {
             )}
             <span className="np-seta">›</span>
           </button>
+
+          {/* Card último pedido */}
+          {ultimoPedido && (
+            <button
+              className="np-ultimo-pedido"
+              onClick={() => navigate(`/pedidos/${ultimoPedido.id}`, { state: { from: 'novo-pedido' } })}
+            >
+              <span className="np-up-icon">📋</span>
+              <div className="np-up-info">
+                <span className="np-up-titulo">Último pedido</span>
+                <div className="np-up-detalhes">
+                  <span className="np-up-valor">{formatarValor(ultimoPedido.valor_total)}</span>
+                  <span className="np-up-sep">·</span>
+                  <span className="np-up-data">{formatarData(ultimoPedido.created_at)}</span>
+                  <span
+                    className="np-up-dias"
+                    style={{ color: getCorDias(diasDesde(ultimoPedido.created_at)) }}
+                  >
+                    {diasDesde(ultimoPedido.created_at) === 0
+                      ? 'hoje'
+                      : `${diasDesde(ultimoPedido.created_at)}d atrás`}
+                  </span>
+                </div>
+                {ultimoPedido.representada_nome && (
+                  <span className="np-up-rep">{ultimoPedido.representada_nome}</span>
+                )}
+              </div>
+              <span className="np-up-seta">›</span>
+            </button>
+          )}
         </div>
 
         {/* Gasto colapsado (só se presencial) */}
@@ -288,7 +395,7 @@ function NovoPedido() {
           <>
             {!mostrarGasto ? (
               <button className="np-gasto-toggle" onClick={() => setMostrarGasto(true)}>
-                <span>Gastou algo com o cliente? Registrar</span>
+                <span>💰 Gastou algo com o cliente? Registrar</span>
                 <span className="np-gasto-add">+</span>
               </button>
             ) : (

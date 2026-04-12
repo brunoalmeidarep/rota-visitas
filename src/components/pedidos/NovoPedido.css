@@ -599,3 +599,81 @@
   font-weight: 500;
   color: var(--np-text);
 }
+
+/* Card último pedido */
+.np-ultimo-pedido {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: var(--np-surface);
+  border: 1px solid var(--np-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.np-ultimo-pedido:active {
+  transform: scale(0.98);
+}
+
+.np-up-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.np-up-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.np-up-titulo {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--np-text-secondary);
+}
+
+.np-up-detalhes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.np-up-valor {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--np-text);
+}
+
+.np-up-sep {
+  font-size: 12px;
+  color: var(--np-text-muted);
+}
+
+.np-up-data {
+  font-size: 13px;
+  color: var(--np-text-secondary);
+}
+
+.np-up-dias {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.np-up-rep {
+  font-size: 12px;
+  color: var(--np-text-muted);
+  margin-top: 2px;
+}
+
+.np-up-seta {
+  font-size: 18px;
+  color: var(--np-text-muted);
+  flex-shrink: 0;
+}

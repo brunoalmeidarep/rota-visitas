@@ -15,11 +15,14 @@ function DetalhesPedido() {
 
   // Navegacao contextual: se veio do perfil/historico do cliente, voltar para la
   const fromCliente = location.state?.from === 'cliente' || location.state?.from === 'historico'
+  const fromNovoPedido = location.state?.from === 'novo-pedido'
   const returnClienteId = location.state?.clienteId
 
   function handleVoltar() {
     if (fromCliente && returnClienteId) {
       navigate(`/clientes/${returnClienteId}`)
+    } else if (fromNovoPedido) {
+      navigate('/pedidos/novo')
     } else {
       navigate('/pedidos')
     }
