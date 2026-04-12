@@ -22,7 +22,6 @@ function NovoPedido() {
   const [canal, setCanal] = useState('presencial')
   const [clienteId, setClienteId] = useState('')
   const [representadaId, setRepresentadaId] = useState('')
-  const [tipo, setTipo] = useState('pedido')
   const [isDark, setIsDark] = useState(false)
 
   const [clientes, setClientes] = useState([])
@@ -200,31 +199,41 @@ function NovoPedido() {
         }
       }
 
-      // Criar pedido
+      // Criar pedido - sempre começa como orçamento
+      const dadosPedido = {
+        rep_id: repId,
+        cliente_id: clienteId,
+        cliente_nome: cliente?.nome,
+        visita_id: visitaId,
+        representada_id: representadaId,
+        representada_nome: representada?.nome,
+        status: 'orcamento',
+        canal: canal,
+        valor_total: 0,
+        itens: []
+      }
+
+      console.log('[NovoPedido] Inserindo pedido:', JSON.stringify(dadosPedido, null, 2))
+
       const { data: novoPedido, error: erroPedido } = await supabase
         .from('pedidos')
-        .insert({
-          rep_id: repId,
-          cliente_id: clienteId,
-          cliente_nome: cliente?.nome,
-          visita_id: visitaId,
-          representada_id: representadaId,
-          representada_nome: representada?.nome,
-          status: tipo === 'orcamento' ? 'orcamento' : 'pedido',
-          canal: canal,
-          valor_total: 0,
-          itens: [],
-          created_at: new Date().toISOString()
-        })
+        .insert(dadosPedido)
         .select()
         .single()
 
       if (erroPedido) {
-        console.error('[NovoPedido] Erro pedido:', erroPedido)
-        alert('Erro ao criar pedido')
+        console.error('[NovoPedido] Erro pedido:', {
+          message: erroPedido.message,
+          code: erroPedido.code,
+          details: erroPedido.details,
+          hint: erroPedido.hint
+        })
+        alert(`Erro ao criar pedido:\n${erroPedido.message}\n\nCodigo: ${erroPedido.code || '-'}\nDetalhes: ${erroPedido.details || '-'}\nHint: ${erroPedido.hint || '-'}`)
         setSalvando(false)
         return
       }
+
+      console.log('[NovoPedido] Pedido criado:', novoPedido)
 
       // Navegar para catálogo
       navigate(`/pedidos/${novoPedido.id}/catalogo`)
@@ -309,25 +318,6 @@ function NovoPedido() {
           </div>
         )}
 
-        {/* Tipo */}
-        <div className="np-secao">
-          <label className="np-secao-titulo">Tipo</label>
-          <div className="np-toggle">
-            <button
-              className={`np-toggle-btn ${tipo === 'pedido' ? 'active' : ''}`}
-              onClick={() => setTipo('pedido')}
-            >
-              Pedido
-            </button>
-            <button
-              className={`np-toggle-btn ${tipo === 'orcamento' ? 'active' : ''}`}
-              onClick={() => setTipo('orcamento')}
-            >
-              Orçamento
-            </button>
-          </div>
-        </div>
-
         {/* Gasto colapsado (só se presencial) */}
         {canal === 'presencial' && (
           <>
@@ -397,7 +387,7 @@ function NovoPedido() {
           onClick={continuar}
           disabled={salvando || !clienteId}
         >
-          {salvando ? 'Criando...' : 'Continuar para produtos →'}
+          {salvando ? 'Criando...' : 'Adicionar produtos'}
         </button>
       </div>
 
