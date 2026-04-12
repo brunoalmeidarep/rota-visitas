@@ -4,6 +4,19 @@ import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import './CarteiraClientes.css'
 
+const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
+
+// Normaliza texto para Title Case
+function toTitleCase(str) {
+  if (!str) return ''
+  return str
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ')
+}
+
 function CarteiraClientes() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -14,6 +27,10 @@ function CarteiraClientes() {
   const [erro, setErro] = useState(null)
   const [busca, setBusca] = useState('')
   const [filtroAtivo, setFiltroAtivo] = useState('todos')
+
+  // Estado para geocodificação em massa
+  const [geocodificando, setGeocodificando] = useState(false)
+  const [geoProgresso, setGeoProgresso] = useState({ atual: 0, total: 0, sucesso: 0 })
 
   // Função para buscar clientes (reutilizável)
   const fetchClientes = useCallback(async () => {
@@ -117,6 +134,91 @@ function CarteiraClientes() {
       style: 'currency',
       currency: 'BRL'
     })
+  }
+
+  // Conta clientes sem geocodificação
+  const clientesSemGeo = useMemo(() => {
+    return clientes.filter(c => !c.lat || !c.lng)
+  }, [clientes])
+
+  // Geocodifica um endereço
+  async function geocodificarEndereco(cliente) {
+    const partes = []
+    if (cliente.endereco) partes.push(cliente.endereco)
+    if (cliente.cidade) partes.push(cliente.cidade)
+    const enderecoCompleto = partes.join(', ')
+
+    if (!enderecoCompleto) return null
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(enderecoCompleto)}&key=${GEOCODING_API_KEY}`
+      const res = await fetch(url)
+      const data = await res.json()
+
+      if (data.status === 'OK' && data.results?.length > 0) {
+        const loc = data.results[0].geometry.location
+        return { lat: loc.lat, lng: loc.lng }
+      }
+      return null
+    } catch (err) {
+      console.error('[Geocoding] Erro:', err)
+      return null
+    }
+  }
+
+  // Geocodifica todos os clientes sem lat/lng
+  async function geocodificarTodos() {
+    if (geocodificando) return
+    if (clientesSemGeo.length === 0) {
+      alert('Todos os clientes já possuem coordenadas!')
+      return
+    }
+
+    const confirma = confirm(`Geocodificar ${clientesSemGeo.length} cliente(s) sem coordenadas?\n\nIsso pode levar alguns segundos.`)
+    if (!confirma) return
+
+    setGeocodificando(true)
+    setGeoProgresso({ atual: 0, total: clientesSemGeo.length, sucesso: 0 })
+
+    let sucesso = 0
+
+    for (let i = 0; i < clientesSemGeo.length; i++) {
+      const cliente = clientesSemGeo[i]
+      setGeoProgresso(prev => ({ ...prev, atual: i + 1 }))
+
+      console.log(`[Geocoding] ${i + 1}/${clientesSemGeo.length}: ${cliente.nome}`)
+
+      const coords = await geocodificarEndereco(cliente)
+
+      if (coords) {
+        const { error } = await supabase
+          .from('clientes')
+          .update({ lat: coords.lat, lng: coords.lng })
+          .eq('id', cliente.id)
+
+        if (!error) {
+          sucesso++
+          console.log(`[Geocoding] ✅ ${cliente.nome}: ${coords.lat}, ${coords.lng}`)
+        } else {
+          console.error(`[Geocoding] ❌ Erro ao atualizar ${cliente.nome}:`, error)
+        }
+      } else {
+        console.warn(`[Geocoding] ⚠️ Sem resultado para ${cliente.nome}`)
+      }
+
+      // Delay para não sobrecarregar a API (200ms entre requests)
+      if (i < clientesSemGeo.length - 1) {
+        await new Promise(r => setTimeout(r, 200))
+      }
+    }
+
+    setGeoProgresso(prev => ({ ...prev, sucesso }))
+    setGeocodificando(false)
+
+    alert(`Geocodificação concluída!\n\n✅ ${sucesso} de ${clientesSemGeo.length} endereços geocodificados.`)
+
+    // Recarregar lista de clientes
+    fetchClientes()
   }
 
   // Contagem por status
@@ -229,6 +331,20 @@ function CarteiraClientes() {
         )}
       </div>
 
+      {/* Botão geocodificação (só aparece se há clientes sem coordenadas) */}
+      {clientesSemGeo.length > 0 && (
+        <button
+          className="btn-geocodificar"
+          onClick={geocodificarTodos}
+          disabled={geocodificando}
+        >
+          {geocodificando
+            ? `📍 Geocodificando ${geoProgresso.atual}/${geoProgresso.total}...`
+            : `📍 Geocodificar ${clientesSemGeo.length} endereço(s)`
+          }
+        </button>
+      )}
+
       {/* Stats Bar */}
       <div className="stats-bar">
         <button
@@ -305,7 +421,7 @@ function CarteiraClientes() {
               >
                 <div className="cliente-info">
                   <h3 className="cliente-nome">{cliente.nome}</h3>
-                  <p className="cliente-cidade">{cliente.cidade || 'Cidade não informada'}</p>
+                  <p className="cliente-cidade">{toTitleCase(cliente.cidade) || 'Cidade não informada'}</p>
                   {cliente.ultimo_pedido_valor && (
                     <p className="cliente-pedido">
                       {formatarValor(cliente.ultimo_pedido_valor)}

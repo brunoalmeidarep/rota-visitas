@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import './Planner.css'
 
+const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
+
 const NOMES_DIA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const NOMES_DIA_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const NOMES_MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -39,6 +41,23 @@ function calcDistKm(lat1, lng1, lat2, lng2) {
   const dLng = (lng2 - lng1) * Math.PI / 180
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// Normaliza nome de cidade: Title Case + remove espaços extras
+function normalizarCidade(cidade) {
+  if (!cidade) return ''
+  return cidade
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ')
+}
+
+// Compara duas cidades (case-insensitive, remove espaços)
+function cidadesIguais(a, b) {
+  if (!a || !b) return false
+  return a.trim().toLowerCase().replace(/\s+/g, ' ') === b.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
 function Planner() {
@@ -247,7 +266,7 @@ function Planner() {
     try {
       const { data } = await supabase
         .from('representantes')
-        .select('endereco_base, media_carro, preco_gasolina')
+        .select('endereco_base, lat_base, lng_base, media_carro, preco_gasolina')
         .eq('id', repId)
         .single()
       setRepData(data)
@@ -399,21 +418,88 @@ function Planner() {
     setModalRotaAberto(true)
   }
 
-  // Salvar endereço base do representante
+  // Geocodifica um endereço
+  async function geocodificarEndereco(endereco) {
+    if (!endereco) return null
+    console.log('[Geocoding] Endereço base a geocodificar:', endereco)
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(endereco)}&key=${GEOCODING_API_KEY}`
+      const res = await fetch(url)
+      const data = await res.json()
+
+      console.log('[Geocoding] Resposta:', { status: data.status, results: data.results?.length || 0 })
+
+      if (data.status === 'OK' && data.results?.length > 0) {
+        const loc = data.results[0].geometry.location
+        console.log('[Geocoding] ✅ Coordenadas:', { lat: loc.lat, lng: loc.lng })
+        return { lat: loc.lat, lng: loc.lng }
+      }
+      console.warn('[Geocoding] ⚠️ Sem resultados')
+      return null
+    } catch (err) {
+      console.error('[Geocoding] ❌ Erro:', err)
+      return null
+    }
+  }
+
+  // Salvar endereço base do representante (com geocodificação)
   async function salvarEnderecoBase() {
     if (!enderecoBaseTmp.trim()) return
     setSalvandoEnderecoBase(true)
+
     try {
+      // Geocodificar o endereço
+      const coords = await geocodificarEndereco(enderecoBaseTmp.trim())
+
+      // Preparar dados para salvar
+      const dadosUpdate = {
+        endereco_base: enderecoBaseTmp.trim()
+      }
+
+      // Se geocodificou, salvar lat/lng também
+      if (coords) {
+        dadosUpdate.lat_base = coords.lat
+        dadosUpdate.lng_base = coords.lng
+      }
+
       const { error } = await supabase
         .from('representantes')
-        .update({ endereco_base: enderecoBaseTmp.trim() })
+        .update(dadosUpdate)
         .eq('id', repId)
 
       if (!error) {
-        setRepData(prev => ({ ...prev, endereco_base: enderecoBaseTmp.trim() }))
+        setRepData(prev => ({
+          ...prev,
+          endereco_base: enderecoBaseTmp.trim(),
+          lat_base: coords?.lat || null,
+          lng_base: coords?.lng || null
+        }))
         setEnderecoBaseTmp('')
+
+        if (!coords) {
+          alert('⚠️ Endereço salvo, mas não foi possível geocodificar.\nAs rotas podem não funcionar corretamente.')
+        }
       } else {
-        alert('Erro ao salvar endereço')
+        console.error('[Rep] Erro ao salvar:', error)
+        // Se erro for por colunas lat_base/lng_base não existirem, tenta sem elas
+        if (error.message?.includes('lat_base') || error.message?.includes('lng_base')) {
+          console.warn('[Rep] Colunas lat_base/lng_base não existem, salvando apenas endereco_base')
+          const { error: err2 } = await supabase
+            .from('representantes')
+            .update({ endereco_base: enderecoBaseTmp.trim() })
+            .eq('id', repId)
+
+          if (!err2) {
+            setRepData(prev => ({ ...prev, endereco_base: enderecoBaseTmp.trim() }))
+            setEnderecoBaseTmp('')
+            alert('⚠️ Endereço salvo!\n\nNota: Colunas lat_base e lng_base não existem na tabela representantes.\nExecute no Supabase:\nALTER TABLE representantes ADD COLUMN lat_base DOUBLE PRECISION;\nALTER TABLE representantes ADD COLUMN lng_base DOUBLE PRECISION;')
+          } else {
+            alert('Erro ao salvar endereço')
+          }
+        } else {
+          alert('Erro ao salvar endereço')
+        }
       }
     } catch (e) {
       console.error('[Rep] Erro ao salvar endereco_base:', e)
@@ -431,6 +517,14 @@ function Planner() {
     setStatus('loading')
     setCoords(null)
     setErro('')
+
+    // Detectar HTTP local (GPS requer HTTPS exceto localhost)
+    const isLocalHttp = window.location.protocol !== 'https:' && window.location.hostname !== 'localhost'
+    if (isLocalHttp) {
+      setStatus('warning')
+      setErro('GPS requer HTTPS. No app nativo funcionará automaticamente.')
+      return
+    }
 
     if (!navigator.geolocation) {
       setStatus('error')
@@ -674,15 +768,29 @@ function Planner() {
     setModalRotaAberto(false)
   }
 
-  // Lista de cidades únicas dos clientes
+  // Lista de cidades únicas dos clientes (normalizadas, sem duplicatas case-insensitive)
   function getCidadesUnicas() {
-    return [...new Set(clientesCache.map(c => c.cidade).filter(Boolean))].sort()
+    const vistas = new Set()
+    const resultado = []
+    clientesCache.forEach(c => {
+      if (!c.cidade) return
+      const norm = normalizarCidade(c.cidade)
+      const chave = norm.toLowerCase()
+      if (!vistas.has(chave)) {
+        vistas.add(chave)
+        resultado.push(norm)
+      }
+    })
+    return resultado.sort()
   }
 
-  // Clientes filtrados pelas cidades selecionadas
+  // Clientes filtrados pelas cidades selecionadas (compara case-insensitive)
   function getClientesFiltrados() {
     if (cidadesFiltro.length === 0) return clientesCache
-    return clientesCache.filter(c => cidadesFiltro.includes(c.cidade))
+    return clientesCache.filter(c => {
+      const cidadeNorm = normalizarCidade(c.cidade)
+      return cidadesFiltro.some(filtro => cidadesIguais(filtro, cidadeNorm))
+    })
   }
 
   function toggleCidadeFiltro(cidade) {
@@ -707,10 +815,10 @@ function Planner() {
   }
 
   function adicionarCidadeViagem(cidade) {
-    if (!cidade || rotaViagemCidades.includes(cidade)) return
+    if (!cidade || rotaViagemCidades.some(c => cidadesIguais(c, cidade))) return
     setRotaViagemCidades(prev => [...prev, cidade])
-    // Auto-selecionar clientes da cidade
-    const clientesDaCidade = clientesCache.filter(c => c.cidade === cidade)
+    // Auto-selecionar clientes da cidade (compara case-insensitive)
+    const clientesDaCidade = clientesCache.filter(c => cidadesIguais(c.cidade, cidade))
     setClientesSelecionados(prev => {
       const novos = clientesDaCidade.map(c => String(c.id)).filter(id => !prev.includes(id))
       return [...prev, ...novos]
@@ -739,30 +847,42 @@ function Planner() {
     return inputValue?.trim() || null
   }
 
-  // Otimização com Google Directions API
+  // Otimização com Google Directions API (timeout 8s)
   function otimizarRotaGoogle(clientesSel, origemCustom, destinoCustom) {
     return new Promise((resolve, reject) => {
-      if (!window.google?.maps?.DirectionsService) {
-        reject(new Error('Google Maps não disponível'))
-        return
+      // Timeout de 8 segundos
+      const timeout = setTimeout(() => {
+        reject(new Error('TIMEOUT'))
+      }, 8000)
+
+      try {
+        if (!window.google?.maps?.DirectionsService) {
+          clearTimeout(timeout)
+          reject(new Error('Google Maps não disponível'))
+          return
+        }
+        const ds = new window.google.maps.DirectionsService()
+        const origem = origemCustom || `${clientesSel[0].lat},${clientesSel[0].lng}`
+        const destino = destinoCustom || origemCustom || `${clientesSel[clientesSel.length - 1].lat},${clientesSel[clientesSel.length - 1].lng}`
+        const waypoints = clientesSel.map(c => ({
+          location: new window.google.maps.LatLng(parseFloat(c.lat), parseFloat(c.lng)),
+          stopover: true
+        }))
+        ds.route({
+          origin: origem,
+          destination: destino,
+          waypoints,
+          optimizeWaypoints: true,
+          travelMode: window.google.maps.TravelMode.DRIVING
+        }, (result, status) => {
+          clearTimeout(timeout)
+          if (status === 'OK') resolve(result)
+          else reject(new Error(status))
+        })
+      } catch (err) {
+        clearTimeout(timeout)
+        reject(err)
       }
-      const ds = new window.google.maps.DirectionsService()
-      const origem = origemCustom || `${clientesSel[0].lat},${clientesSel[0].lng}`
-      const destino = destinoCustom || origemCustom || `${clientesSel[clientesSel.length - 1].lat},${clientesSel[clientesSel.length - 1].lng}`
-      const waypoints = clientesSel.map(c => ({
-        location: new window.google.maps.LatLng(parseFloat(c.lat), parseFloat(c.lng)),
-        stopover: true
-      }))
-      ds.route({
-        origin: origem,
-        destination: destino,
-        waypoints,
-        optimizeWaypoints: true,
-        travelMode: window.google.maps.TravelMode.DRIVING
-      }, (result, status) => {
-        if (status === 'OK') resolve(result)
-        else reject(new Error(status))
-      })
     })
   }
 
@@ -788,62 +908,73 @@ function Planner() {
     let kmTotal = 0
     let tempoEstimado = 0
     let ordemOtimizada = clientesSel.map(c => String(c.id))
+    let usouFallback = false
 
-    try {
-      if (window.google?.maps?.DirectionsService) {
-        if (rotaModoViagem && rotaViagemCidades.length > 1) {
-          // Rota de viagem: otimiza por cidade em sequência
-          let ordemFinal = []
-          let kmAcum = 0
-          let tempoAcum = 0
-
-          for (let ci = 0; ci < rotaViagemCidades.length; ci++) {
-            const cidade = rotaViagemCidades[ci]
-            const clientesCidade = clientesSel.filter(c => c.cidade === cidade)
-            if (!clientesCidade.length) continue
-
-            const origemCidade = ci === 0 ? endPartida : null
-            const destinoCidade = ci === rotaViagemCidades.length - 1 ? endChegada : null
-
-            try {
-              const res = await otimizarRotaGoogle(clientesCidade, origemCidade, destinoCidade)
-              const route = res.routes[0]
-              route.waypoint_order.forEach(i => ordemFinal.push(String(clientesCidade[i].id)))
-              route.legs.forEach(leg => {
-                kmAcum += leg.distance.value / 1000
-                tempoAcum += leg.duration.value
-              })
-            } catch {
-              clientesCidade.forEach(c => ordemFinal.push(String(c.id)))
-            }
-          }
-          ordemOtimizada = ordemFinal
-          kmTotal = kmAcum
-          tempoEstimado = tempoAcum
-        } else {
-          const resultado = await otimizarRotaGoogle(clientesSel, endPartida, endChegada)
-          const route = resultado.routes[0]
-          ordemOtimizada = route.waypoint_order.map(i => String(clientesSel[i].id))
-          route.legs.forEach(leg => {
-            kmTotal += leg.distance.value / 1000
-            tempoEstimado += leg.duration.value
-          })
-        }
-      } else {
-        throw new Error('Maps não disponível')
-      }
-    } catch (e) {
-      console.warn('Fallback Haversine:', e)
-      // Fallback: Haversine * 1.3
+    // Função auxiliar para calcular com Haversine
+    const calcularHaversine = () => {
+      let km = 0
       for (let i = 0; i < clientesSel.length - 1; i++) {
         const a = clientesSel[i]
         const b = clientesSel[i + 1]
         if (a.lat && b.lat) {
-          kmTotal += calcDistKm(parseFloat(a.lat), parseFloat(a.lng), parseFloat(b.lat), parseFloat(b.lng))
+          km += calcDistKm(parseFloat(a.lat), parseFloat(a.lng), parseFloat(b.lat), parseFloat(b.lng))
         }
       }
-      kmTotal = Math.round(kmTotal * 1.3 * 10) / 10
+      kmTotal = Math.round(km * 1.3 * 10) / 10
       tempoEstimado = Math.round(kmTotal / 60 * 3600)
+      usouFallback = true
+    }
+
+    try {
+      if (!window.google?.maps?.DirectionsService) {
+        throw new Error('Maps não disponível')
+      }
+
+      if (rotaModoViagem && rotaViagemCidades.length > 1) {
+        // Rota de viagem: otimiza por cidade em sequência
+        let ordemFinal = []
+        let kmAcum = 0
+        let tempoAcum = 0
+        let algumFallback = false
+
+        for (let ci = 0; ci < rotaViagemCidades.length; ci++) {
+          const cidade = rotaViagemCidades[ci]
+          const clientesCidade = clientesSel.filter(c => cidadesIguais(c.cidade, cidade))
+          if (!clientesCidade.length) continue
+
+          const origemCidade = ci === 0 ? endPartida : null
+          const destinoCidade = ci === rotaViagemCidades.length - 1 ? endChegada : null
+
+          try {
+            const res = await otimizarRotaGoogle(clientesCidade, origemCidade, destinoCidade)
+            const route = res.routes[0]
+            route.waypoint_order.forEach(i => ordemFinal.push(String(clientesCidade[i].id)))
+            route.legs.forEach(leg => {
+              kmAcum += leg.distance.value / 1000
+              tempoAcum += leg.duration.value
+            })
+          } catch (err) {
+            console.warn('[Rota] Fallback cidade:', cidade, err?.message || err)
+            algumFallback = true
+            clientesCidade.forEach(c => ordemFinal.push(String(c.id)))
+          }
+        }
+        ordemOtimizada = ordemFinal
+        kmTotal = kmAcum
+        tempoEstimado = tempoAcum
+        usouFallback = algumFallback
+      } else {
+        const resultado = await otimizarRotaGoogle(clientesSel, endPartida, endChegada)
+        const route = resultado.routes[0]
+        ordemOtimizada = route.waypoint_order.map(i => String(clientesSel[i].id))
+        route.legs.forEach(leg => {
+          kmTotal += leg.distance.value / 1000
+          tempoEstimado += leg.duration.value
+        })
+      }
+    } catch (e) {
+      console.warn('[Rota] Fallback Haversine:', e?.message || e)
+      calcularHaversine()
     }
 
     const { error } = await supabase.from('rotas').insert({
@@ -870,6 +1001,26 @@ function Planner() {
 
     setModalRotaAberto(false)
     await carregarRotas()
+
+    // Toast diferenciado
+    if (usouFallback) {
+      mostrarToast('✓ Rota salva (otimização Google indisponível)', 'warning')
+    } else {
+      mostrarToast('✓ Rota salva com sucesso!', 'success')
+    }
+  }
+
+  // Toast simples
+  function mostrarToast(msg, tipo = 'success') {
+    const toast = document.createElement('div')
+    toast.className = `planner-toast ${tipo}`
+    toast.textContent = msg
+    document.body.appendChild(toast)
+    setTimeout(() => toast.classList.add('show'), 10)
+    setTimeout(() => {
+      toast.classList.remove('show')
+      setTimeout(() => toast.remove(), 300)
+    }, 3000)
   }
 
   async function excluirRota(id) {
@@ -1121,6 +1272,12 @@ function Planner() {
                       <span className="rota-gps-coords">{gpsPartidaCoords}</span>
                     </div>
                   )}
+                  {gpsPartidaStatus === 'warning' && (
+                    <div className="rota-gps-aviso">
+                      <span>⚠️ {gpsPartidaErro}</span>
+                      <span>Use "Outro" para digitar um endereço manualmente.</span>
+                    </div>
+                  )}
                   {gpsPartidaStatus === 'error' && (
                     <div className="rota-gps-erro">
                       <span>❌ {gpsPartidaErro}</span>
@@ -1251,7 +1408,7 @@ function Planner() {
                     </div>
                     <div>
                       <div className="rota-cliente-nome">{cliente.nome}</div>
-                      <div className="rota-cliente-cidade">{cliente.cidade || ''}</div>
+                      <div className="rota-cliente-cidade">{normalizarCidade(cliente.cidade)}</div>
                     </div>
                   </div>
                 ))}
@@ -1319,7 +1476,7 @@ function Planner() {
                       <div className="rota-trecho-num">{i + 1}</div>
                       <div className="rota-trecho-info">
                         <div className="rota-trecho-nome">{cliente.nome}</div>
-                        <div className="rota-trecho-meta">{cliente.cidade || ''} {cliente.endereco ? '• ' + cliente.endereco : ''}</div>
+                        <div className="rota-trecho-meta">{normalizarCidade(cliente.cidade)} {cliente.endereco ? '• ' + cliente.endereco : ''}</div>
                       </div>
                     </div>
                   )

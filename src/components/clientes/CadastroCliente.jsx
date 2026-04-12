@@ -5,6 +5,19 @@ import { useRepId } from '../../hooks/useRepId'
 import './CadastroCliente.css'
 
 const GOOGLE_MAPS_KEY = 'AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo'
+const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
+
+// Normaliza texto para Title Case (primeira letra maiúscula de cada palavra)
+function toTitleCase(str) {
+  if (!str) return ''
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map(palavra => palavra.charAt(0).toUpperCase() + palavra.slice(1))
+    .join(' ')
+}
 
 function CadastroCliente() {
   const navigate = useNavigate()
@@ -102,11 +115,11 @@ function CadastroCliente() {
         if (type === 'postal_code') cepVal = component.long_name
       }
 
-      setRua(ruaVal)
+      setRua(toTitleCase(ruaVal))
       setNumero(numeroVal)
-      setBairro(bairroVal)
-      if (cidadeVal) { setCidade(cidadeVal); setCidadeEstadoTravado(true) }
-      if (estadoVal) setEstado(estadoVal)
+      setBairro(toTitleCase(bairroVal))
+      if (cidadeVal) { setCidade(toTitleCase(cidadeVal)); setCidadeEstadoTravado(true) }
+      if (estadoVal) setEstado(estadoVal.toUpperCase())
       if (cepVal) setCep(formatarCep(cepVal))
     })
 
@@ -166,16 +179,16 @@ function CadastroCliente() {
       setRazaoSocial(data.razao_social || '')
       setNomeFantasia(data.nome_fantasia || '')
 
-      // Preenche endereço
+      // Preenche endereço (normaliza para Title Case)
       if (data.cep) setCep(formatarCep(data.cep))
-      if (data.logradouro) setRua(data.logradouro)
+      if (data.logradouro) setRua(toTitleCase(data.logradouro))
       if (data.numero) setNumero(data.numero)
-      if (data.bairro) setBairro(data.bairro)
+      if (data.bairro) setBairro(toTitleCase(data.bairro))
       if (data.municipio) {
-        setCidade(data.municipio)
+        setCidade(toTitleCase(data.municipio))
         setCidadeEstadoTravado(true)
       }
-      if (data.uf) setEstado(data.uf)
+      if (data.uf) setEstado(data.uf.toUpperCase())
 
       // Telefone se disponível
       if (data.ddd_telefone_1) {
@@ -218,13 +231,13 @@ function CadastroCliente() {
         return
       }
 
-      if (data.logradouro) setRua(data.logradouro)
-      if (data.bairro) setBairro(data.bairro)
+      if (data.logradouro) setRua(toTitleCase(data.logradouro))
+      if (data.bairro) setBairro(toTitleCase(data.bairro))
       if (data.localidade) {
-        setCidade(data.localidade)
+        setCidade(toTitleCase(data.localidade))
         setCidadeEstadoTravado(true)
       }
-      if (data.uf) setEstado(data.uf)
+      if (data.uf) setEstado(data.uf.toUpperCase())
 
     } catch (err) {
       console.error('[ViaCEP] Erro:', err)
@@ -243,6 +256,32 @@ function CadastroCliente() {
     }
   }
 
+  // ==================== GEOCODIFICAÇÃO ====================
+
+  async function geocodificarEndereco(enderecoCompleto) {
+    console.log('[Geocoding] Endereço a geocodificar:', enderecoCompleto)
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(enderecoCompleto)}&key=${GEOCODING_API_KEY}`
+      const res = await fetch(url)
+      const data = await res.json()
+
+      console.log('[Geocoding] Resposta API:', { status: data.status, results: data.results?.length || 0 })
+
+      if (data.status === 'OK' && data.results?.length > 0) {
+        const loc = data.results[0].geometry.location
+        console.log('[Geocoding] ✅ Coordenadas:', { lat: loc.lat, lng: loc.lng })
+        return { lat: loc.lat, lng: loc.lng }
+      } else {
+        console.warn('[Geocoding] ⚠️ Sem resultados:', data.status)
+        return null
+      }
+    } catch (err) {
+      console.error('[Geocoding] ❌ Erro:', err)
+      return null
+    }
+  }
+
   // ==================== SALVAR ====================
 
   function montarEndereco() {
@@ -250,6 +289,16 @@ function CadastroCliente() {
     if (rua) partes.push(rua)
     if (numero) partes.push(numero)
     if (bairro) partes.push(bairro)
+    return partes.join(', ')
+  }
+
+  function montarEnderecoCompleto() {
+    const partes = []
+    if (rua) partes.push(rua)
+    if (numero) partes.push(numero)
+    if (bairro) partes.push(bairro)
+    if (cidade) partes.push(cidade)
+    if (estado) partes.push(estado)
     return partes.join(', ')
   }
 
@@ -276,6 +325,18 @@ function CadastroCliente() {
     // Usa razão social como nome principal, nome fantasia como fallback
     const nomePrincipal = nomeFantasia.trim() || razaoSocial.trim()
 
+    // Geocodificar endereço
+    const enderecoCompleto = montarEnderecoCompleto()
+    let coords = null
+    let avisoGeo = false
+
+    if (enderecoCompleto) {
+      coords = await geocodificarEndereco(enderecoCompleto)
+      if (!coords) {
+        avisoGeo = true
+      }
+    }
+
     const novoCliente = {
       nome: nomePrincipal,
       cnpj: cnpj.trim() || null,
@@ -284,6 +345,8 @@ function CadastroCliente() {
       segmento: segmento || null,
       endereco: montarEndereco() || null,
       cidade: cidadeCompleta.trim(),
+      lat: coords?.lat || null,
+      lng: coords?.lng || null,
       rep_id: repId
     }
 
@@ -305,6 +368,11 @@ function CadastroCliente() {
         setErro(error.message || 'Erro ao salvar cliente')
       }
       return
+    }
+
+    // Mostrar aviso se geocodificação falhou
+    if (avisoGeo) {
+      alert('⚠️ Endereço não geocodificado — rota pode não funcionar corretamente.\n\nVocê pode geocodificar depois na Carteira de Clientes.')
     }
 
     navigate('/clientes')

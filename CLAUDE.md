@@ -5,6 +5,24 @@
 
 ---
 
+## ⚠️ ATENÇÃO — APLICATIVO NATIVO
+Todo o desenvolvimento do v2 deve considerar que será empacotado como aplicativo nativo via Capacitor para Apple Store e Google Play. Isso significa:
+- Todas as funcionalidades devem funcionar em ambiente nativo (iOS e Android)
+- GPS, câmera, permissões devem usar APIs compatíveis com Capacitor
+- Sem dependência de APIs que exijam HTTPS apenas em browser (ex: geolocalização funciona nativamente)
+- Layout mobile-first, sem hover states, touch-friendly
+- Testar sempre pensando em tela de celular, não desktop
+- Safe areas (notch, barra inferior) devem ser respeitadas
+
+### Ícones e Imagens
+- Ícones do app: PNG sem canal alpha (transparência) — usar fundo branco ou colorido
+- Formato aceito pela Apple Store: PNG, sem transparência no ícone principal
+- Imagens dentro do app: PNG ou JPEG, evitar SVG inline para ícones do app
+- App icon deve ser gerado com sharp ou ferramenta similar com flatten() para remover alpha
+- Screenshots para as stores: seguir dimensões exatas (iPhone 6.5pol: 1242x2688, iPad 13pol: 2048x2732)
+
+---
+
 ## O que é
 CRM e app de rota de visitas para representantes comerciais.
 - **URL:** https://brunoalmeidarep.github.io/rota-visitas

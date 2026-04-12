@@ -5,11 +5,11 @@ import Navbar from './components/shared/Navbar'
 import Login from './components/shared/Login'
 import CarteiraClientes from './components/clientes/CarteiraClientes'
 import CadastroCliente from './components/clientes/CadastroCliente'
+import PerfilCliente from './components/clientes/PerfilCliente'
 import Planner from './components/planner/Planner'
 
 // Placeholder components (serão substituídos pelos reais)
 const ListaPedidos = () => <div className="screen"><h1>Pedidos</h1></div>
-const PerfilCliente = () => <div className="screen"><h1>Perfil do Cliente</h1></div>
 const ListaProdutos = () => <div className="screen"><h1>Produtos</h1></div>
 const Mais = () => <div className="screen"><h1>Mais</h1></div>
 
