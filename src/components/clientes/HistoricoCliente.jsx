@@ -32,6 +32,18 @@ function HistoricoCliente() {
   const { id } = useParams()
   const { repId } = useRepId()
 
+  // Verificar se veio do NovoPedido
+  const fromNovoPedido = location.state?.from === 'novo-pedido'
+
+  // Função para voltar
+  function handleVoltar() {
+    if (fromNovoPedido) {
+      navigate('/pedidos/novo')
+    } else {
+      navigate(`/clientes/${id}`)
+    }
+  }
+
   // Determinar aba ativa pela URL
   const getAbaFromPath = () => {
     if (location.pathname.includes('/pedidos')) return 'pedidos'
@@ -156,7 +168,7 @@ function HistoricoCliente() {
     return (
       <div className={`historico-cliente ${isDark ? 'dark' : 'light'}`}>
         <header className="hc-header">
-          <button className="hc-voltar" onClick={() => navigate(`/clientes/${id}`)}>
+          <button className="hc-voltar" onClick={handleVoltar}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
@@ -173,7 +185,7 @@ function HistoricoCliente() {
     <div className={`historico-cliente ${isDark ? 'dark' : 'light'}`}>
       {/* Header */}
       <header className="hc-header">
-        <button className="hc-voltar" onClick={() => navigate(`/clientes/${id}`)}>
+        <button className="hc-voltar" onClick={handleVoltar}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
