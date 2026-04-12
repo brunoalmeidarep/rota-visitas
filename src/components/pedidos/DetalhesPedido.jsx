@@ -139,7 +139,7 @@ function DetalhesPedido() {
   const total = subtotal - descontoTotal + freteValor
 
   async function salvar() {
-    console.log('[DetalhesPedido] Iniciando salvar...')
+    console.log('[salvar] 1. Iniciando...')
     setSalvando(true)
 
     const dadosUpdate = {
@@ -151,8 +151,8 @@ function DetalhesPedido() {
       valor_total: total
     }
 
-    console.log('[DetalhesPedido] Dados a salvar:', JSON.stringify(dadosUpdate, null, 2))
-    console.log('[DetalhesPedido] pedidoId:', pedidoId)
+    console.log('[salvar] 2. Dados:', JSON.stringify(dadosUpdate, null, 2))
+    console.log('[salvar] 3. pedidoId:', pedidoId)
 
     try {
       const { data, error } = await supabase
@@ -161,10 +161,10 @@ function DetalhesPedido() {
         .eq('id', pedidoId)
         .select()
 
-      console.log('[DetalhesPedido] Resultado:', { data, error })
+      console.log('[salvar] 4. Supabase retornou:', { data, error })
 
       if (error) {
-        console.error('[DetalhesPedido] Erro ao salvar:', {
+        console.error('[salvar] ERRO Supabase:', {
           message: error.message,
           code: error.code,
           details: error.details,
@@ -175,14 +175,18 @@ function DetalhesPedido() {
         return
       }
 
-      // Mostrar toast e navegar
+      console.log('[salvar] 5. Sucesso! Mostrando toast...')
       setToast('Pedido salvo!')
+
+      console.log('[salvar] 6. Aguardando 800ms...')
       setTimeout(() => {
+        console.log('[salvar] 7. Chamando navigate(/pedidos)...')
         navigate('/pedidos')
+        console.log('[salvar] 8. navigate() chamado')
       }, 800)
 
     } catch (err) {
-      console.error('[DetalhesPedido] Excecao:', err)
+      console.error('[salvar] EXCECAO:', err)
       alert('Erro ao salvar: ' + err.message)
       setSalvando(false)
     }
@@ -316,7 +320,7 @@ function DetalhesPedido() {
     return (
       <div className={`detalhes-pedido ${isDark ? 'dark' : 'light'}`}>
         <header className="dp-header">
-          <button className="dp-voltar" onClick={() => navigate(-1)}>
+          <button className="dp-voltar" onClick={() => navigate('/pedidos')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
@@ -333,7 +337,7 @@ function DetalhesPedido() {
     <div className={`detalhes-pedido ${isDark ? 'dark' : 'light'}`}>
       {/* Header */}
       <header className="dp-header">
-        <button className="dp-voltar" onClick={() => navigate(-1)}>
+        <button className="dp-voltar" onClick={() => navigate('/pedidos')}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
