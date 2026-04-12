@@ -399,40 +399,40 @@ function DetalhesPedido() {
           <div className="dp-card-titulo">Condições comerciais</div>
 
           {/* Linha 1: Condição de pagamento */}
-          <button
-            className="dp-condicao-linha"
-            onClick={() => isEditavel && setShowPagamentoSheet(true)}
-            disabled={!isEditavel}
+          <div
+            className={`dp-condicao-linha ${!isEditavel ? 'travado' : ''}`}
+            onClick={isEditavel ? () => setShowPagamentoSheet(true) : undefined}
+            style={{ cursor: isEditavel ? 'pointer' : 'default' }}
           >
             <span className="dp-condicao-label">Condição pagamento</span>
             <div className="dp-condicao-right">
-              <span className="dp-condicao-valor">
-                {condicaoPagamento || 'Definir'}
+              <span style={{ color: isEditavel ? '#007aff' : '#888' }}>
+                {condicaoPagamento || (isEditavel ? 'Definir' : '-')}
               </span>
               {isEditavel && <span className="dp-condicao-seta">›</span>}
             </div>
-          </button>
+          </div>
 
           {/* Linha 2: Tipo de pedido */}
-          <button
-            className="dp-condicao-linha"
-            onClick={() => isEditavel && setShowTipoSheet(true)}
-            disabled={!isEditavel}
+          <div
+            className={`dp-condicao-linha ${!isEditavel ? 'travado' : ''}`}
+            onClick={isEditavel ? () => setShowTipoSheet(true) : undefined}
+            style={{ cursor: isEditavel ? 'pointer' : 'default' }}
           >
             <span className="dp-condicao-label">Tipo de pedido</span>
             <div className="dp-condicao-right">
-              <span className="dp-condicao-valor">
+              <span style={{ color: isEditavel ? '#007aff' : '#888' }}>
                 {tipoPedido || 'Venda'}
               </span>
               {isEditavel && <span className="dp-condicao-seta">›</span>}
             </div>
-          </button>
+          </div>
 
           {/* Linha 3: Descontos */}
-          <button
-            className="dp-condicao-linha"
-            onClick={() => isEditavel && navigate(`/pedidos/${pedidoId}/descontos`)}
-            disabled={!isEditavel}
+          <div
+            className={`dp-condicao-linha ${!isEditavel ? 'travado' : ''}`}
+            onClick={isEditavel ? () => navigate(`/pedidos/${pedidoId}/descontos`) : undefined}
+            style={{ cursor: isEditavel ? 'pointer' : 'default' }}
           >
             <span className="dp-condicao-label">Descontos</span>
             <div className="dp-condicao-right">
@@ -441,17 +441,21 @@ function DetalhesPedido() {
                   {pedido?.politica_nome && (
                     <span className="dp-condicao-badge">{pedido.politica_nome}</span>
                   )}
-                  <span className="dp-condicao-desconto">− {formatarValor(descontoTotal)}</span>
+                  <span style={{ color: isEditavel ? '#34c759' : '#888', fontWeight: 600 }}>
+                    − {formatarValor(descontoTotal)}
+                  </span>
                   {isEditavel && <span className="dp-condicao-seta">›</span>}
                 </>
               ) : (
                 <>
-                  <span className="dp-condicao-vazio">Nenhum desconto</span>
+                  <span style={{ color: '#888' }}>
+                    {isEditavel ? 'Nenhum desconto' : '-'}
+                  </span>
                   {isEditavel && <span className="dp-condicao-link">Definir ›</span>}
                 </>
               )}
             </div>
-          </button>
+          </div>
         </div>
 
         {/* Produtos */}
