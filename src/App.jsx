@@ -20,6 +20,8 @@ import DescontosPedido from './components/pedidos/DescontosPedido'
 import Planner from './components/planner/Planner'
 import Mais from './components/mais/Mais'
 import MeuPerfil from './components/mais/MeuPerfil'
+import Representadas from './components/mais/Representadas'
+import Segmentos from './components/mais/Segmentos'
 
 // Placeholder components (serão substituídos pelos reais)
 const ListaProdutos = () => (
@@ -121,6 +123,8 @@ function App() {
         <Route path="/planner" element={<Planner />} />
         <Route path="/mais" element={<Mais />} />
         <Route path="/mais/perfil" element={<MeuPerfil />} />
+        <Route path="/mais/representadas" element={<Representadas />} />
+        <Route path="/mais/segmentos" element={<Segmentos />} />
         <Route path="/mais/relatorios" element={<Relatorios />} />
         <Route path="/mais/financas" element={<Financas />} />
         <Route path="/mapa" element={<Mapa />} />

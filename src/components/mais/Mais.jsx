@@ -89,7 +89,7 @@ function Mais() {
               <span className="mais-lista-texto">Meu Perfil</span>
               <span className="mais-lista-seta">›</span>
             </button>
-            <button className="mais-lista-item" onClick={() => placeholder('Empresas representadas')}>
+            <button className="mais-lista-item" onClick={() => navigate('/mais/representadas')}>
               <span className="mais-lista-icon">🏢</span>
               <span className="mais-lista-texto">Empresas representadas</span>
               <span className="mais-lista-seta">›</span>

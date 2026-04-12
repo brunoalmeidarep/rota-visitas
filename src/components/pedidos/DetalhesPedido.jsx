@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
+import { abrirPreviewPDF, compartilharPDF } from './PDFOrcamento'
 import './DetalhesPedido.css'
 
 function DetalhesPedido() {
@@ -12,15 +13,20 @@ function DetalhesPedido() {
   const { isEnterprise } = usePlano()
 
   const [pedido, setPedido] = useState(null)
+  const [representada, setRepresentada] = useState(null)
+  const [representante, setRepresentante] = useState(null)
+  const [cliente, setCliente] = useState(null)
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [isDark, setIsDark] = useState(false)
+  const [showEmailSheet, setShowEmailSheet] = useState(false)
 
   // Campos editáveis
   const [condicaoPagamento, setCondicaoPagamento] = useState('')
   const [frete, setFrete] = useState('')
   const [transportadora, setTransportadora] = useState('')
   const [infoAdicionais, setInfoAdicionais] = useState('')
+  const [ocCliente, setOcCliente] = useState('')
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -31,12 +37,14 @@ function DetalhesPedido() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar pedido
+  // Carregar pedido e dados relacionados
   useEffect(() => {
-    if (!pedidoId) return
+    if (!pedidoId || !repId) return
 
     async function fetchPedido() {
       setLoading(true)
+
+      // Buscar pedido
       const { data, error } = await supabase
         .from('pedidos')
         .select('*')
@@ -51,12 +59,42 @@ function DetalhesPedido() {
         setFrete(data.frete?.toString().replace('.', ',') || '')
         setTransportadora(data.transportadora || '')
         setInfoAdicionais(data.info_adicionais || '')
+        setOcCliente(data.oc_cliente || '')
+
+        // Buscar representada
+        if (data.representada_id) {
+          const { data: repData } = await supabase
+            .from('representadas')
+            .select('*')
+            .eq('id', data.representada_id)
+            .single()
+          if (repData) setRepresentada(repData)
+        }
+
+        // Buscar cliente
+        if (data.cliente_id) {
+          const { data: cliData } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('id', data.cliente_id)
+            .single()
+          if (cliData) setCliente(cliData)
+        }
       }
+
+      // Buscar representante
+      const { data: reprData } = await supabase
+        .from('representantes')
+        .select('*')
+        .eq('id', repId)
+        .single()
+      if (reprData) setRepresentante(reprData)
+
       setLoading(false)
     }
 
     fetchPedido()
-  }, [pedidoId])
+  }, [pedidoId, repId])
 
   function formatarValor(valor) {
     if (!valor || valor === 0) return 'R$ 0,00'
@@ -109,6 +147,7 @@ function DetalhesPedido() {
           frete: freteValor || null,
           transportadora: transportadora.trim() || null,
           info_adicionais: infoAdicionais.trim() || null,
+          oc_cliente: ocCliente.trim() || null,
           valor_total: total
         })
         .eq('id', pedidoId)
@@ -153,6 +192,7 @@ function DetalhesPedido() {
           frete: freteValor || null,
           transportadora: transportadora.trim() || null,
           info_adicionais: infoAdicionais.trim() || null,
+          oc_cliente: ocCliente.trim() || null,
           valor_total: total,
           data_pedido: new Date().toISOString()
         })
@@ -226,6 +266,28 @@ function DetalhesPedido() {
     setSalvando(false)
   }
 
+  async function verPDF() {
+    setSalvando(true)
+    try {
+      await abrirPreviewPDF(pedido, representada, representante, cliente)
+    } catch (err) {
+      console.error('[DetalhesPedido] Erro PDF:', err)
+      alert('Erro ao gerar PDF')
+    }
+    setSalvando(false)
+  }
+
+  async function handleCompartilhar() {
+    setSalvando(true)
+    try {
+      await compartilharPDF(pedido, representada, representante, cliente)
+    } catch (err) {
+      console.error('[DetalhesPedido] Erro compartilhar:', err)
+      alert('Erro ao compartilhar')
+    }
+    setSalvando(false)
+  }
+
   if (loading) {
     return (
       <div className={`detalhes-pedido ${isDark ? 'dark' : 'light'}`}>
@@ -253,9 +315,9 @@ function DetalhesPedido() {
           </svg>
         </button>
         <span className={`dp-badge ${pedido?.status}`}>
-          {pedido?.status === 'orcamento' ? 'Orçamento' :
+          {pedido?.status === 'orcamento' ? 'Em orcamento' :
            pedido?.status === 'transmitido' ? 'Transmitido' :
-           `Pedido #${pedido?.numero || ''}`}
+           `Pedido #${String(pedido?.numero || 0).padStart(3, '0')}`}
         </span>
         {isEditavel && (
           <button
@@ -369,18 +431,42 @@ function DetalhesPedido() {
             </div>
           ) : (
             <div className="dp-produtos-lista">
-              {pedido.itens.map((item, index) => (
-                <div key={index} className="dp-produto-item">
-                  <div className="dp-produto-info">
-                    <span className="dp-produto-nome">{item.produto_nome}</span>
-                    <span className="dp-produto-codigo">{item.produto_codigo}</span>
+              {pedido.itens.map((item, index) => {
+                const temDescontoItem = item.desconto_percentual > 0 || item.desconto_valor > 0
+                const temDescontoPolitica = item.politica_desconto
+                const precoOriginal = item.preco_tabela || item.preco_unitario
+                return (
+                  <div key={index} className="dp-produto-item">
+                    <div className="dp-produto-info">
+                      <span className="dp-produto-nome">{item.produto_nome}</span>
+                      <span className="dp-produto-codigo">{item.produto_codigo}</span>
+                      <div className="dp-produto-precos">
+                        {temDescontoItem && (
+                          <>
+                            <span className="dp-preco-riscado">{formatarValor(precoOriginal)}/un</span>
+                            <span className="dp-preco-liquido">{formatarValor(item.preco_unitario)}/un</span>
+                          </>
+                        )}
+                        {!temDescontoItem && (
+                          <span className="dp-preco-normal">{formatarValor(item.preco_unitario)}/un</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="dp-produto-right">
+                      <span className="dp-produto-qty">{item.quantidade} un</span>
+                      <span className="dp-produto-valor">{formatarValor(item.subtotal)}</span>
+                      {temDescontoItem && (
+                        <span className="dp-badge-desconto-item">
+                          desc. {item.desconto_percentual || Math.round((1 - item.preco_unitario / precoOriginal) * 100)}%
+                        </span>
+                      )}
+                      {temDescontoPolitica && (
+                        <span className="dp-badge-desconto-politica">{item.politica_desconto}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="dp-produto-right">
-                    <span className="dp-produto-qty">{item.quantidade} un</span>
-                    <span className="dp-produto-valor">{formatarValor(item.subtotal)}</span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -435,6 +521,17 @@ function DetalhesPedido() {
             disabled={!isEditavel}
             rows={4}
           />
+
+          <div className="dp-campo" style={{ marginTop: 14 }}>
+            <label>OC do cliente</label>
+            <input
+              type="text"
+              placeholder="Ex: 29848773"
+              value={ocCliente}
+              onChange={(e) => setOcCliente(e.target.value)}
+              disabled={!isEditavel}
+            />
+          </div>
         </div>
 
         {/* Ações */}
@@ -446,13 +543,16 @@ function DetalhesPedido() {
           ) : (
             <>
               <button className="dp-btn-acao" onClick={duplicarPedido} disabled={salvando}>
-                📋 Duplicar
+                Duplicar
               </button>
-              <button className="dp-btn-acao" onClick={() => alert('PDF em desenvolvimento')}>
-                📄 Ver PDF
+              <button className="dp-btn-acao" onClick={verPDF} disabled={salvando}>
+                Ver PDF
               </button>
-              <button className="dp-btn-acao" onClick={() => alert('Compartilhar em desenvolvimento')}>
-                📤 Compartilhar
+              <button className="dp-btn-acao" onClick={() => setShowEmailSheet(true)} disabled={salvando}>
+                E-mail
+              </button>
+              <button className="dp-btn-acao" onClick={handleCompartilhar} disabled={salvando}>
+                Compartilhar
               </button>
             </>
           )}
@@ -462,12 +562,48 @@ function DetalhesPedido() {
         {isEnterprise && pedido?.status === 'pedido' && (
           <button
             className="dp-btn-transmitir"
-            onClick={() => alert('Transmissão em desenvolvimento')}
+            onClick={() => alert('Transmissao em desenvolvimento')}
           >
-            📡 Transmitir para indústria
+            Transmitir para industria
           </button>
         )}
       </div>
+
+      {/* Sheet de e-mail */}
+      {showEmailSheet && (
+        <div className="dp-sheet-overlay" onClick={() => setShowEmailSheet(false)}>
+          <div className="dp-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="dp-sheet-header">
+              <span>Enviar por e-mail</span>
+              <button onClick={() => setShowEmailSheet(false)}>X</button>
+            </div>
+            <div className="dp-sheet-content">
+              <p className="dp-sheet-desc">Selecione os destinatarios:</p>
+              <label className="dp-check-item">
+                <input type="checkbox" defaultChecked />
+                <span>Meu e-mail ({representante?.email || '-'})</span>
+              </label>
+              <label className="dp-check-item">
+                <input type="checkbox" defaultChecked />
+                <span>Representada ({representada?.email || '-'})</span>
+              </label>
+              <label className="dp-check-item">
+                <input type="checkbox" />
+                <span>Cliente ({cliente?.email || '-'})</span>
+              </label>
+              <button
+                className="dp-btn-enviar"
+                onClick={() => {
+                  alert('Envio de e-mail em desenvolvimento')
+                  setShowEmailSheet(false)
+                }}
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
