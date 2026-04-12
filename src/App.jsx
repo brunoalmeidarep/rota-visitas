@@ -26,28 +26,11 @@ import Representadas from './components/mais/Representadas'
 import Segmentos from './components/mais/Segmentos'
 import ListaProdutos from './components/produtos/ListaProdutos'
 import CadastroProduto from './components/produtos/CadastroProduto'
+import Relatorios from './components/relatorios/Relatorios'
+import Financas from './components/financas/Financas'
+import Tarefas from './components/tarefas/Tarefas'
 
 // Placeholder components (serão substituídos pelos reais)
-
-const Relatorios = () => (
-  <div className="screen">
-    <header className="screen-header">
-      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
-      <h1>Relatórios</h1>
-    </header>
-    <div className="screen-content"><p>Em desenvolvimento...</p></div>
-  </div>
-)
-
-const Financas = () => (
-  <div className="screen">
-    <header className="screen-header">
-      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
-      <h1>Finanças</h1>
-    </header>
-    <div className="screen-content"><p>Em desenvolvimento...</p></div>
-  </div>
-)
 
 const Mapa = () => (
   <div className="screen">
@@ -122,12 +105,14 @@ function App() {
         <Route path="/produtos/novo" element={<CadastroProduto />} />
         <Route path="/produtos/:id" element={<CadastroProduto />} />
         <Route path="/planner" element={<Planner />} />
+        <Route path="/opcoes" element={<Mais />} />
         <Route path="/mais" element={<Mais />} />
         <Route path="/mais/perfil" element={<MeuPerfil />} />
         <Route path="/mais/representadas" element={<Representadas />} />
         <Route path="/mais/segmentos" element={<Segmentos />} />
-        <Route path="/mais/relatorios" element={<Relatorios />} />
-        <Route path="/mais/financas" element={<Financas />} />
+        <Route path="/relatorios" element={<Relatorios />} />
+        <Route path="/financas" element={<Financas />} />
+        <Route path="/tarefas" element={<Tarefas />} />
         <Route path="/mapa" element={<Mapa />} />
         </Routes>
       </div>

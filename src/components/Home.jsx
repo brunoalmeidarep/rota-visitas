@@ -18,6 +18,7 @@ function Home() {
   const [badgePedidos, setBadgePedidos] = useState({ count: 0, isNew: false })
   const [badgeVisitas, setBadgeVisitas] = useState({ count: 0, isNew: false })
   const [badgePlanner, setBadgePlanner] = useState({ count: 0, isNew: false })
+  const [tarefasPendentes, setTarefasPendentes] = useState(0)
 
   // Detectar modo claro/escuro do sistema
   useEffect(() => {
@@ -88,6 +89,16 @@ function Home() {
         .eq('data', hoje)
         .eq('concluido', false)
 
+      // Tarefas pendentes do dia
+      const { count: tarefasCount } = await supabase
+        .from('tarefas')
+        .select('*', { count: 'exact', head: true })
+        .eq('rep_id', repId)
+        .eq('concluida', false)
+        .or(`data.is.null,data.eq.${hoje}`)
+
+      setTarefasPendentes(tarefasCount || 0)
+
       // Verificar localStorage para saber se já foram vistos
       const vistos = JSON.parse(localStorage.getItem('badges_vistos') || '{}')
 
@@ -120,7 +131,7 @@ function Home() {
     navigate(rota)
   }
 
-  // Módulos do grid
+  // Módulos do grid (2x3)
   const modulos = [
     {
       id: 'pedidos',
@@ -159,7 +170,7 @@ function Home() {
       icone: '📈',
       titulo: 'Relatórios',
       subtitulo: 'Análises',
-      rota: '/mais/relatorios',
+      rota: '/relatorios',
       badge: null
     },
     {
@@ -167,7 +178,7 @@ function Home() {
       icone: '💰',
       titulo: 'Finanças',
       subtitulo: 'Receitas e despesas',
-      rota: '/mais/financas',
+      rota: '/financas',
       badge: null
     }
   ]
@@ -181,7 +192,7 @@ function Home() {
             <span className="home-saudacao">Ola, {nomeRep || 'Representante'}</span>
             <h1 className="home-titulo">Minha Rota RP</h1>
           </div>
-          <button className="home-config-btn" onClick={() => navigate('/mais/perfil')}>
+          <button className="home-config-btn" onClick={() => navigate('/opcoes')}>
             <span>⚙️</span>
           </button>
         </div>
@@ -233,19 +244,31 @@ function Home() {
           ))}
         </div>
 
-        {/* Card Planejar Rota */}
-        <button className="home-rota-card" onClick={() => navigate('/planner')}>
-          <div className="home-rota-content">
+        {/* Linha 4: Planejar rota + Tarefas */}
+        <div className="home-grid-row">
+          {/* Card Planejar Rota */}
+          <button className="home-rota-card-small" onClick={() => navigate('/planner')}>
             <span className="home-rota-icon">🗺️</span>
             <div className="home-rota-text">
-              <span className="home-rota-titulo">Planejar rota do dia</span>
-              <span className="home-rota-subtitulo">
-                Selecione os clientes e veja a rota otimizada com km e custo estimado
+              <span className="home-rota-titulo">Planejar rota</span>
+              <span className="home-rota-subtitulo">Rota otimizada com km e custo</span>
+            </div>
+          </button>
+
+          {/* Card Tarefas */}
+          <button className="home-tarefas-card" onClick={() => navigate('/tarefas')}>
+            {tarefasPendentes > 0 && (
+              <span className="home-tarefas-badge">{tarefasPendentes}</span>
+            )}
+            <span className="home-tarefas-icon">☑️</span>
+            <div className="home-tarefas-text">
+              <span className="home-tarefas-titulo">Tarefas</span>
+              <span className="home-tarefas-subtitulo">
+                {tarefasPendentes > 0 ? `${tarefasPendentes} pendente${tarefasPendentes > 1 ? 's' : ''} hoje` : 'Nenhuma pendente'}
               </span>
             </div>
-          </div>
-          <span className="home-rota-btn">Abrir</span>
-        </button>
+          </button>
+        </div>
 
         {/* Card Mapa */}
         <button className="home-mapa-card" onClick={() => navigate('/mapa')}>

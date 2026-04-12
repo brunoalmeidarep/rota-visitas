@@ -1,0 +1,219 @@
+/* Financas.css */
+
+.financas {
+  min-height: 100vh;
+  background: var(--bg-primary, #1c1c1e);
+}
+
+.financas-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--bg-primary, #1c1c1e);
+  border-bottom: 1px solid var(--border-color, #3a3a3c);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.financas-voltar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-secondary, #2c2c2e);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary, #ffffff);
+}
+
+.financas-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  margin: 0;
+}
+
+.financas-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Resumo */
+.financas-resumo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.financas-resumo-card {
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.financas-resumo-card.receita {
+  background: rgba(52, 199, 89, 0.15);
+  border: 1px solid rgba(52, 199, 89, 0.3);
+}
+
+.financas-resumo-card.despesa {
+  background: rgba(255, 59, 48, 0.15);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.financas-resumo-label {
+  font-size: 12px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+.financas-resumo-card.receita .financas-resumo-valor {
+  font-size: 20px;
+  font-weight: 700;
+  color: #34c759;
+}
+
+.financas-resumo-card.despesa .financas-resumo-valor {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ff3b30;
+}
+
+/* Seções */
+.financas-secao {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.financas-secao-titulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #8e8e93);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+  padding: 0 4px;
+}
+
+.financas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.financas-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-secondary, #2c2c2e);
+  border: 1px solid var(--border-color, #3a3a3c);
+  border-radius: 12px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.financas-card:active {
+  transform: scale(0.98);
+  background: var(--bg-tertiary, #3a3a3c);
+}
+
+.financas-card-icon {
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.financas-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.financas-card-titulo {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+}
+
+.financas-card-subtitulo {
+  font-size: 13px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+.financas-card-seta {
+  font-size: 20px;
+  color: var(--text-muted, #636366);
+}
+
+/* Tema claro */
+@media (prefers-color-scheme: light) {
+  .financas {
+    background: #f2f2f7;
+  }
+
+  .financas-header {
+    background: #f2f2f7;
+    border-bottom-color: #e0e0e0;
+  }
+
+  .financas-voltar {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .financas-header h1 {
+    color: #000000;
+  }
+
+  .financas-secao-titulo {
+    color: #6c6c70;
+  }
+
+  .financas-card {
+    background: #ffffff;
+    border-color: #e0e0e0;
+  }
+
+  .financas-card:active {
+    background: #f0f0f0;
+  }
+
+  .financas-card-icon {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .financas-card-titulo {
+    color: #000000;
+  }
+
+  .financas-card-subtitulo {
+    color: #6c6c70;
+  }
+
+  .financas-card-seta {
+    color: #8e8e93;
+  }
+
+  .financas-resumo-label {
+    color: #6c6c70;
+  }
+}

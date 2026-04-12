@@ -26,63 +26,13 @@ function Mais() {
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <h1>Mais</h1>
+        <h1>Opcoes</h1>
       </header>
 
       <div className="mais-content">
-        {/* Relatórios */}
-        <section className="mais-secao">
-          <h2 className="mais-secao-titulo">Relatórios</h2>
-          <div className="mais-grid">
-            <button className="mais-item" onClick={() => placeholder('Vendas')}>
-              <span className="mais-item-icon">📊</span>
-              <span className="mais-item-texto">Vendas</span>
-            </button>
-            <button className="mais-item" onClick={() => placeholder('Orçamentos')}>
-              <span className="mais-item-icon">📝</span>
-              <span className="mais-item-texto">Orçamentos</span>
-            </button>
-            <button className="mais-item" onClick={() => placeholder('Visitas')}>
-              <span className="mais-item-icon">📍</span>
-              <span className="mais-item-texto">Visitas</span>
-            </button>
-            <button className="mais-item" onClick={() => placeholder('Bonificações')}>
-              <span className="mais-item-icon">🎁</span>
-              <span className="mais-item-texto">Bonificações</span>
-            </button>
-            <button className="mais-item" onClick={() => placeholder('Gastos com clientes')}>
-              <span className="mais-item-icon">💸</span>
-              <span className="mais-item-texto">Gastos</span>
-            </button>
-          </div>
-        </section>
-
-        {/* Finanças */}
-        <section className="mais-secao">
-          <h2 className="mais-secao-titulo">Finanças</h2>
-          <div className="mais-grid">
-            <button className="mais-item" onClick={() => placeholder('Receitas')}>
-              <span className="mais-item-icon">💰</span>
-              <span className="mais-item-texto">Receitas</span>
-            </button>
-            <button className="mais-item" onClick={() => placeholder('Despesas')}>
-              <span className="mais-item-icon">📉</span>
-              <span className="mais-item-texto">Despesas</span>
-            </button>
-            <button className="mais-item" onClick={() => placeholder('Impostos')}>
-              <span className="mais-item-icon">🧾</span>
-              <span className="mais-item-texto">Impostos</span>
-            </button>
-            <button className="mais-item" onClick={() => placeholder('Compromissos')}>
-              <span className="mais-item-icon">📅</span>
-              <span className="mais-item-texto">Compromissos</span>
-            </button>
-          </div>
-        </section>
-
         {/* Configurações */}
         <section className="mais-secao">
-          <h2 className="mais-secao-titulo">Configurações</h2>
+          <h2 className="mais-secao-titulo">Configuracoes</h2>
           <div className="mais-lista">
             <button className="mais-lista-item" onClick={() => navigate('/mais/perfil')}>
               <span className="mais-lista-icon">👤</span>

@@ -1,0 +1,172 @@
+/* Relatorios.css */
+
+.relatorios {
+  min-height: 100vh;
+  background: var(--bg-primary, #1c1c1e);
+}
+
+.relatorios-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--bg-primary, #1c1c1e);
+  border-bottom: 1px solid var(--border-color, #3a3a3c);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.relatorios-voltar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-secondary, #2c2c2e);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary, #ffffff);
+}
+
+.relatorios-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  margin: 0;
+}
+
+.relatorios-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.relatorios-secao {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.relatorios-secao-titulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #8e8e93);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+  padding: 0 4px;
+}
+
+.relatorios-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.relatorios-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-secondary, #2c2c2e);
+  border: 1px solid var(--border-color, #3a3a3c);
+  border-radius: 12px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.relatorios-card:active {
+  transform: scale(0.98);
+  background: var(--bg-tertiary, #3a3a3c);
+}
+
+.relatorios-card-icon {
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.relatorios-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.relatorios-card-titulo {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+}
+
+.relatorios-card-subtitulo {
+  font-size: 13px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+.relatorios-card-seta {
+  font-size: 20px;
+  color: var(--text-muted, #636366);
+}
+
+/* Tema claro */
+@media (prefers-color-scheme: light) {
+  .relatorios {
+    background: #f2f2f7;
+  }
+
+  .relatorios-header {
+    background: #f2f2f7;
+    border-bottom-color: #e0e0e0;
+  }
+
+  .relatorios-voltar {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .relatorios-header h1 {
+    color: #000000;
+  }
+
+  .relatorios-secao-titulo {
+    color: #6c6c70;
+  }
+
+  .relatorios-card {
+    background: #ffffff;
+    border-color: #e0e0e0;
+  }
+
+  .relatorios-card:active {
+    background: #f0f0f0;
+  }
+
+  .relatorios-card-icon {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .relatorios-card-titulo {
+    color: #000000;
+  }
+
+  .relatorios-card-subtitulo {
+    color: #6c6c70;
+  }
+
+  .relatorios-card-seta {
+    color: #8e8e93;
+  }
+}
