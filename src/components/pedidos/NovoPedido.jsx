@@ -276,6 +276,12 @@ function NovoPedido() {
               <span className="np-canal-desc">Sem visita</span>
             </button>
           </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', padding: '0 4px', marginTop: '6px' }}>
+            <span style={{ fontSize: '13px', color: '#888', flexShrink: 0, marginTop: '1px' }}>🔒</span>
+            <span style={{ fontSize: '10px', color: '#888', lineHeight: '1.4' }}>
+              Uso interno do representante. Esta informação não é compartilhada com clientes ou empresas.
+            </span>
+          </div>
         </div>
 
         {/* Cliente */}
