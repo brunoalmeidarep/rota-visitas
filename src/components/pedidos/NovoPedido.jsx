@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
+import { useRepresentada } from '../../contexts/RepresentadaContext'
 import './NovoPedido.css'
 
 const CATEGORIAS_GASTO = [
@@ -18,14 +19,13 @@ function NovoPedido() {
   const navigate = useNavigate()
   const { repId } = useRepId()
   const { isStarter } = usePlano()
+  const { representadaSelecionada } = useRepresentada()
 
   const [canal, setCanal] = useState('presencial')
   const [clienteId, setClienteId] = useState('')
-  const [representadaId, setRepresentadaId] = useState('')
   const [isDark, setIsDark] = useState(false)
 
   const [clientes, setClientes] = useState([])
-  const [representadas, setRepresentadas] = useState([])
   const [buscaCliente, setBuscaCliente] = useState('')
   const [mostrarClientes, setMostrarClientes] = useState(false)
 
@@ -70,25 +70,6 @@ function NovoPedido() {
     fetchClientes()
   }, [repId])
 
-  // Carregar representadas
-  useEffect(() => {
-    if (!repId) return
-
-    async function fetchRepresentadas() {
-      const { data } = await supabase
-        .from('representadas')
-        .select('id, nome')
-        .eq('rep_id', repId)
-        .order('nome')
-
-      if (data) {
-        setRepresentadas(data)
-        if (data.length > 0) setRepresentadaId(data[0].id)
-      }
-    }
-
-    fetchRepresentadas()
-  }, [repId])
 
   // Filtrar clientes
   const clientesFiltrados = clientes.filter(c =>
@@ -120,8 +101,8 @@ function NovoPedido() {
       alert('Selecione um cliente')
       return
     }
-    if (!representadaId) {
-      alert('Selecione uma representada')
+    if (!representadaSelecionada) {
+      alert('Selecione uma representada no menu principal')
       return
     }
 
@@ -131,7 +112,6 @@ function NovoPedido() {
       const hoje = new Date().toISOString().split('T')[0]
       const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       const cliente = clientes.find(c => c.id === clienteId)
-      const representada = representadas.find(r => r.id === representadaId)
 
       let visitaId = null
 
@@ -200,8 +180,8 @@ function NovoPedido() {
         cliente_id: clienteId,
         cliente_nome: cliente?.nome,
         visita_id: visitaId,
-        representada_id: representadaId,
-        representada_nome: representada?.nome,
+        representada_id: representadaSelecionada.id,
+        representada_nome: representadaSelecionada.nome,
         status: 'orcamento',
         canal: canal,
         valor_total: 0,
@@ -302,22 +282,6 @@ function NovoPedido() {
             <span className="np-seta">›</span>
           </button>
         </div>
-
-        {/* Representada */}
-        {representadas.length > 0 && (
-          <div className="np-secao">
-            <label className="np-secao-titulo">Representada</label>
-            <select
-              className="np-select"
-              value={representadaId}
-              onChange={(e) => setRepresentadaId(e.target.value)}
-            >
-              {representadas.map(r => (
-                <option key={r.id} value={r.id}>{r.nome}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Gasto colapsado (só se presencial) */}
         {canal === 'presencial' && (
