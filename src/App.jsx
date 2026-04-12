@@ -11,21 +11,17 @@ import Bonificacao from './components/clientes/Bonificacao'
 import GastosCliente from './components/clientes/GastosCliente'
 import DetalheVisita from './components/clientes/DetalheVisita'
 import PedidoSimples from './components/pedidos/PedidoSimples'
+import ListaPedidos from './components/pedidos/ListaPedidos'
+import NovoPedido from './components/pedidos/NovoPedido'
+import DetalhesPedido from './components/pedidos/DetalhesPedido'
+import Catalogo from './components/pedidos/Catalogo'
+import DetalheProdutoPedido from './components/pedidos/DetalheProdutoPedido'
+import DescontosPedido from './components/pedidos/DescontosPedido'
 import Planner from './components/planner/Planner'
 import Mais from './components/mais/Mais'
 import MeuPerfil from './components/mais/MeuPerfil'
 
 // Placeholder components (serão substituídos pelos reais)
-const ListaPedidos = () => (
-  <div className="screen">
-    <header className="screen-header">
-      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
-      <h1>Pedidos</h1>
-    </header>
-    <div className="screen-content"><p>Em desenvolvimento...</p></div>
-  </div>
-)
-
 const ListaProdutos = () => (
   <div className="screen">
     <header className="screen-header">
@@ -107,6 +103,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/pedidos" element={<ListaPedidos />} />
+        <Route path="/pedidos/novo" element={<NovoPedido />} />
+        <Route path="/pedidos/:id" element={<DetalhesPedido />} />
+        <Route path="/pedidos/:id/catalogo" element={<Catalogo />} />
+        <Route path="/pedidos/:id/produto/:produtoId" element={<DetalheProdutoPedido />} />
+        <Route path="/pedidos/:id/descontos" element={<DescontosPedido />} />
         <Route path="/clientes" element={<CarteiraClientes />} />
         <Route path="/clientes/novo" element={<CadastroCliente />} />
         <Route path="/clientes/:id" element={<PerfilCliente />} />
