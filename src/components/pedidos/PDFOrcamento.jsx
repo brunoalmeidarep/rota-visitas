@@ -482,17 +482,39 @@ export async function abrirPreviewPDF(pedido, representada, representante, clien
   return blob
 }
 
+// Funcao auxiliar para normalizar nome do arquivo
+// Remove acentos, converte para lowercase, substitui espacos por hifens
+function normalizarNomeArquivo(texto) {
+  if (!texto) return ''
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .toLowerCase()
+    .replace(/\s+/g, '-') // espacos para hifens
+    .replace(/[^a-z0-9-]/g, '') // remove caracteres especiais
+}
+
 // Funcao para compartilhar PDF
+// IMPORTANTE: O compartilhamento nativo (WhatsApp, e-mail, Telegram etc) só funciona 100%
+// quando o app estiver empacotado via Capacitor como app nativo.
+// No browser é limitado pelo iOS/Android - alguns navegadores não suportam files no Web Share API.
+// Quando migrar para Capacitor, usar @capacitor/share para compartilhamento nativo completo.
 export async function compartilharPDF(pedido, representada, representante, cliente) {
   const blob = await gerarPDF(pedido, representada, representante, cliente)
   const isOrcamento = pedido.status === 'orcamento'
-  const numero = isOrcamento ? `ORC-${String(pedido.id).slice(-3)}` : `Pedido-${pedido.numero}`
-  const fileName = `${numero}-${pedido.cliente_nome?.replace(/\s+/g, '-') || 'cliente'}.pdf`
+
+  // Formato: orcamento-orc001-casa-construcao.pdf ou pedido-001-casa-construcao.pdf
+  const numero = isOrcamento
+    ? `orc${String(pedido.id).slice(-3)}`
+    : String(pedido.numero).padStart(3, '0')
+  const nomeCliente = normalizarNomeArquivo(pedido.cliente_nome) || 'cliente'
+  const prefixo = isOrcamento ? 'orcamento' : 'pedido'
+  const fileName = `${prefixo}-${numero}-${nomeCliente}.pdf`
 
   // Criar arquivo
   const file = new File([blob], fileName, { type: 'application/pdf' })
 
-  // Tentar Web Share API
+  // Tentar Web Share API com arquivo
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({
@@ -502,12 +524,42 @@ export async function compartilharPDF(pedido, representada, representante, clien
       return true
     } catch (err) {
       if (err.name !== 'AbortError') {
-        console.error('[compartilharPDF] Erro:', err)
+        console.error('[compartilharPDF] Erro no share com arquivo:', err)
+      } else {
+        // Usuario cancelou, retorna true para não mostrar erro
+        return true
       }
     }
   }
 
-  // Fallback: download direto
+  // Fallback 1: Web Share sem arquivo (só link/texto) - limitado mas funciona em mais browsers
+  if (navigator.share) {
+    try {
+      // Gera URL temporária do blob
+      const blobUrl = URL.createObjectURL(blob)
+      await navigator.share({
+        title: `${isOrcamento ? 'Orcamento' : 'Pedido'} - ${pedido.cliente_nome}`,
+        text: `Segue ${isOrcamento ? 'orçamento' : 'pedido'} de ${pedido.cliente_nome}. Valor: R$ ${pedido.total?.toFixed(2) || '0,00'}`
+      })
+      URL.revokeObjectURL(blobUrl)
+      // Faz download do PDF automaticamente após compartilhar texto
+      downloadBlob(blob, fileName)
+      return true
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        return true
+      }
+      console.error('[compartilharPDF] Erro no share sem arquivo:', err)
+    }
+  }
+
+  // Fallback 2: download direto
+  downloadBlob(blob, fileName)
+  return true
+}
+
+// Funcao auxiliar para download
+function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -516,7 +568,6 @@ export async function compartilharPDF(pedido, representada, representante, clien
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
-  return true
 }
 
 export default DocumentoPDF

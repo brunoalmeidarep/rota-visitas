@@ -20,6 +20,8 @@ function DetalhesPedido() {
   const [salvando, setSalvando] = useState(false)
   const [isDark, setIsDark] = useState(false)
   const [showEmailSheet, setShowEmailSheet] = useState(false)
+  const [gerandoPDF, setGerandoPDF] = useState(false)
+  const [toast, setToast] = useState('')
 
   // Campos editáveis
   const [condicaoPagamento, setCondicaoPagamento] = useState('')
@@ -169,15 +171,21 @@ function DetalhesPedido() {
           hint: error.hint
         })
         alert(`Erro ao salvar:\n${error.message}`)
-      } else {
-        console.log('[DetalhesPedido] Salvo com sucesso!')
+        setSalvando(false)
+        return
       }
+
+      // Mostrar toast e navegar
+      setToast('Pedido salvo!')
+      setTimeout(() => {
+        navigate('/pedidos')
+      }, 800)
+
     } catch (err) {
       console.error('[DetalhesPedido] Excecao:', err)
       alert('Erro ao salvar: ' + err.message)
+      setSalvando(false)
     }
-
-    setSalvando(false)
   }
 
   async function gerarPedido() {
@@ -283,25 +291,25 @@ function DetalhesPedido() {
   }
 
   async function verPDF() {
-    setSalvando(true)
+    setGerandoPDF(true)
     try {
       await abrirPreviewPDF(pedido, representada, representante, cliente)
     } catch (err) {
       console.error('[DetalhesPedido] Erro PDF:', err)
       alert('Erro ao gerar PDF')
     }
-    setSalvando(false)
+    setGerandoPDF(false)
   }
 
   async function handleCompartilhar() {
-    setSalvando(true)
+    setGerandoPDF(true)
     try {
       await compartilharPDF(pedido, representada, representante, cliente)
     } catch (err) {
       console.error('[DetalhesPedido] Erro compartilhar:', err)
       alert('Erro ao compartilhar')
     }
-    setSalvando(false)
+    setGerandoPDF(false)
   }
 
   if (loading) {
@@ -619,6 +627,21 @@ function DetalhesPedido() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Loading de geracao de PDF */}
+      {gerandoPDF && (
+        <div className="dp-pdf-loading">
+          <div className="dp-pdf-loading-content">
+            <div className="dp-spinner"></div>
+            <span>Gerando seu PDF...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="dp-toast">{toast}</div>
       )}
     </div>
   )
