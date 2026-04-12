@@ -485,6 +485,15 @@ Situações críticas a implementar quando desenvolver o módulo Enterprise:
 ### Integração com calendário nativo
 Planner sincronizado com Apple Calendar (iOS) e Google Calendar (Android). Implementar quando app estiver como PWA. Requer CalDAV / Google Calendar API.
 
+### White label / Multi-produto
+- Plano: um repositório, duas configurações de build (Minha Rota RP + SalesRP ou nome a definir)
+- Starter/Pro: tema "Minha Rota RP" — foco em visitas e rotas
+- Enterprise: tema customizável — foco em pedidos, catálogo, força de vendas
+- Tecnicamente: variáveis de ambiente definem nome, ícone, cores e funcionalidades
+- Na App Store: dois apps separados com Bundle IDs diferentes
+- CodeMagic: dois workflows compilando o mesmo código com temas diferentes
+- Implementar quando houver primeiro cliente Enterprise interessado
+
 ---
 
 ## Deploy
