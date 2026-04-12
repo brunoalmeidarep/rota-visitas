@@ -33,11 +33,14 @@ function DetalhesPedido() {
   const [salvando, setSalvando] = useState(false)
   const [isDark, setIsDark] = useState(false)
   const [showEmailSheet, setShowEmailSheet] = useState(false)
+  const [showPagamentoSheet, setShowPagamentoSheet] = useState(false)
+  const [showTipoSheet, setShowTipoSheet] = useState(false)
   const [gerandoPDF, setGerandoPDF] = useState(false)
   const [toast, setToast] = useState('')
 
   // Campos editáveis
   const [condicaoPagamento, setCondicaoPagamento] = useState('')
+  const [tipoPedido, setTipoPedido] = useState('Venda')
   const [infoAdicionais, setInfoAdicionais] = useState('')
   const [ocCliente, setOcCliente] = useState('')
 
@@ -69,6 +72,7 @@ function DetalhesPedido() {
       } else if (data) {
         setPedido(data)
         setCondicaoPagamento(data.condicao_pagamento || '')
+        setTipoPedido(data.tipo || 'Venda')
         setInfoAdicionais(data.info_adicionais || '')
         setOcCliente(data.oc_cliente || '')
 
@@ -147,6 +151,7 @@ function DetalhesPedido() {
 
     const dadosUpdate = {
       condicao_pagamento: condicaoPagamento.trim() || null,
+      tipo: tipoPedido || 'Venda',
       info_adicionais: infoAdicionais.trim() || null,
       oc_cliente: ocCliente.trim() || null,
       valor_total: total
@@ -218,6 +223,7 @@ function DetalhesPedido() {
           status: 'pedido',
           numero: novoNumero,
           condicao_pagamento: condicaoPagamento.trim() || null,
+          tipo: tipoPedido || 'Venda',
           info_adicionais: infoAdicionais.trim() || null,
           oc_cliente: ocCliente.trim() || null,
           valor_total: total,
@@ -388,20 +394,64 @@ function DetalhesPedido() {
           </div>
         </div>
 
-        {/* Condições */}
-        <div className="dp-card">
-          <div className="dp-card-titulo">Condições</div>
+        {/* Condições comerciais */}
+        <div className="dp-card dp-condicoes">
+          <div className="dp-card-titulo">Condições comerciais</div>
 
-          <div className="dp-campo">
-            <label>Condição de pagamento</label>
-            <input
-              type="text"
-              placeholder="Ex: 30/60/90"
-              value={condicaoPagamento}
-              onChange={(e) => setCondicaoPagamento(e.target.value)}
-              disabled={!isEditavel}
-            />
-          </div>
+          {/* Linha 1: Condição de pagamento */}
+          <button
+            className="dp-condicao-linha"
+            onClick={() => isEditavel && setShowPagamentoSheet(true)}
+            disabled={!isEditavel}
+          >
+            <span className="dp-condicao-label">Condição pagamento</span>
+            <div className="dp-condicao-right">
+              <span className="dp-condicao-valor">
+                {condicaoPagamento || 'Definir'}
+              </span>
+              {isEditavel && <span className="dp-condicao-seta">›</span>}
+            </div>
+          </button>
+
+          {/* Linha 2: Tipo de pedido */}
+          <button
+            className="dp-condicao-linha"
+            onClick={() => isEditavel && setShowTipoSheet(true)}
+            disabled={!isEditavel}
+          >
+            <span className="dp-condicao-label">Tipo de pedido</span>
+            <div className="dp-condicao-right">
+              <span className="dp-condicao-valor">
+                {tipoPedido || 'Venda'}
+              </span>
+              {isEditavel && <span className="dp-condicao-seta">›</span>}
+            </div>
+          </button>
+
+          {/* Linha 3: Descontos */}
+          <button
+            className="dp-condicao-linha"
+            onClick={() => isEditavel && navigate(`/pedidos/${pedidoId}/descontos`)}
+            disabled={!isEditavel}
+          >
+            <span className="dp-condicao-label">Descontos</span>
+            <div className="dp-condicao-right">
+              {descontoTotal > 0 ? (
+                <>
+                  {pedido?.politica_nome && (
+                    <span className="dp-condicao-badge">{pedido.politica_nome}</span>
+                  )}
+                  <span className="dp-condicao-desconto">− {formatarValor(descontoTotal)}</span>
+                  {isEditavel && <span className="dp-condicao-seta">›</span>}
+                </>
+              ) : (
+                <>
+                  <span className="dp-condicao-vazio">Nenhum desconto</span>
+                  {isEditavel && <span className="dp-condicao-link">Definir ›</span>}
+                </>
+              )}
+            </div>
+          </button>
         </div>
 
         {/* Produtos */}
@@ -468,21 +518,6 @@ function DetalhesPedido() {
             </div>
           )}
         </div>
-
-        {/* Descontos */}
-        <button
-          className="dp-card dp-btn-descontos"
-          onClick={() => navigate(`/pedidos/${pedidoId}/descontos`)}
-          disabled={!isEditavel}
-        >
-          <span className="dp-card-titulo">Descontos</span>
-          <div className="dp-descontos-info">
-            <span className="dp-descontos-valor">
-              {descontoTotal > 0 ? `− ${formatarValor(descontoTotal)}` : 'Sem desconto'}
-            </span>
-            <span className="dp-seta">›</span>
-          </div>
-        </button>
 
         {/* Resumo */}
         <div className="dp-card dp-resumo">
@@ -592,6 +627,76 @@ function DetalhesPedido() {
               >
                 Enviar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sheet de condição de pagamento */}
+      {showPagamentoSheet && (
+        <div className="dp-sheet-overlay" onClick={() => setShowPagamentoSheet(false)}>
+          <div className="dp-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="dp-sheet-header">
+              <span>Condição de pagamento</span>
+              <button onClick={() => setShowPagamentoSheet(false)}>✕</button>
+            </div>
+            <div className="dp-sheet-content">
+              <div className="dp-sheet-opcoes">
+                {['À vista', '30 dias', '30/60', '30/60/90', '28/56/84', 'Boleto 21 dias'].map(opcao => (
+                  <button
+                    key={opcao}
+                    className={`dp-sheet-opcao ${condicaoPagamento === opcao ? 'active' : ''}`}
+                    onClick={() => {
+                      setCondicaoPagamento(opcao)
+                      setShowPagamentoSheet(false)
+                    }}
+                  >
+                    {opcao}
+                  </button>
+                ))}
+              </div>
+              <div className="dp-sheet-custom">
+                <input
+                  type="text"
+                  placeholder="Ou digite personalizado..."
+                  value={condicaoPagamento}
+                  onChange={(e) => setCondicaoPagamento(e.target.value)}
+                />
+                <button
+                  className="dp-sheet-confirmar"
+                  onClick={() => setShowPagamentoSheet(false)}
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sheet de tipo de pedido */}
+      {showTipoSheet && (
+        <div className="dp-sheet-overlay" onClick={() => setShowTipoSheet(false)}>
+          <div className="dp-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="dp-sheet-header">
+              <span>Tipo de pedido</span>
+              <button onClick={() => setShowTipoSheet(false)}>✕</button>
+            </div>
+            <div className="dp-sheet-content">
+              <div className="dp-sheet-opcoes">
+                {['Venda', 'Bonificação', 'Troca', 'Amostra', 'Consignação'].map(opcao => (
+                  <button
+                    key={opcao}
+                    className={`dp-sheet-opcao ${tipoPedido === opcao ? 'active' : ''}`}
+                    onClick={() => {
+                      setTipoPedido(opcao)
+                      setShowTipoSheet(false)
+                    }}
+                  >
+                    {opcao}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

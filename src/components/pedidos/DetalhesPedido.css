@@ -704,3 +704,140 @@
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* Condições comerciais */
+.dp-condicoes {
+  padding: 0;
+}
+
+.dp-condicoes .dp-card-titulo {
+  padding: 16px 16px 12px;
+}
+
+.dp-condicao-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--dp-border);
+  cursor: pointer;
+  text-align: left;
+}
+
+.dp-condicao-linha:disabled {
+  cursor: default;
+}
+
+.dp-condicao-label {
+  font-size: 14px;
+  color: var(--dp-text-secondary);
+}
+
+.dp-condicao-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dp-condicao-valor {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--primary, #007aff);
+}
+
+.dp-condicao-seta {
+  font-size: 16px;
+  color: var(--dp-text-muted);
+}
+
+.dp-condicao-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(0, 122, 255, 0.15);
+  color: var(--primary, #007aff);
+  font-weight: 600;
+}
+
+.dp-condicao-desconto {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--success, #34c759);
+}
+
+.dp-condicao-vazio {
+  font-size: 14px;
+  color: var(--dp-text-muted);
+}
+
+.dp-condicao-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary, #007aff);
+}
+
+/* Sheet de opções */
+.dp-sheet-opcoes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dp-sheet-opcao {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--dp-bg);
+  border: 1px solid var(--dp-border);
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--dp-text);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.dp-sheet-opcao.active {
+  background: rgba(0, 122, 255, 0.1);
+  border-color: var(--primary, #007aff);
+  color: var(--primary, #007aff);
+  font-weight: 500;
+}
+
+.dp-sheet-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--dp-border);
+}
+
+.dp-sheet-custom input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--dp-bg);
+  border: 1px solid var(--dp-border);
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--dp-text);
+  outline: none;
+}
+
+.dp-sheet-custom input::placeholder {
+  color: var(--dp-text-muted);
+}
+
+.dp-sheet-confirmar {
+  width: 100%;
+  padding: 14px;
+  background: var(--primary, #007aff);
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
