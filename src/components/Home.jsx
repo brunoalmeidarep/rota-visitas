@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useRepId } from '../hooks/useRepId'
+import { useRepresentada } from '../contexts/RepresentadaContext'
 import './Home.css'
 
 function Home() {
   const navigate = useNavigate()
   const { repId } = useRepId()
+  const { representadas, representadaSelecionada, trocarRepresentada, loading: loadingRep } = useRepresentada()
 
   const [nomeRep, setNomeRep] = useState('')
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [isDark, setIsDark] = useState(false)
+  const [mostrarSheet, setMostrarSheet] = useState(false)
 
   // Badges
   const [badgePedidos, setBadgePedidos] = useState({ count: 0, isNew: false })
@@ -33,18 +35,6 @@ function Home() {
     document.body.classList.toggle('light-mode', !isDark)
   }, [isDark])
 
-  // Detectar online/offline
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
 
   // Carregar nome do representante
   useEffect(() => {
@@ -130,14 +120,6 @@ function Home() {
     navigate(rota)
   }
 
-  // Formatar data de hoje
-  const hoje = new Date()
-  const dataFormatada = hoje.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
-
   // Módulos do grid
   const modulos = [
     {
@@ -194,19 +176,35 @@ function Home() {
     <div className={`home ${isDark ? 'dark' : 'light'}`}>
       {/* Header */}
       <header className="home-header">
-        <div className="home-header-left">
-          <span className="home-saudacao">Olá, {nomeRep || 'Representante'}</span>
-          <h1 className="home-titulo">Minha Rota RP</h1>
-        </div>
-        <div className="home-header-right">
-          <span className="home-data-pill">{dataFormatada}</span>
-          <span className={`home-status-pill ${isOnline ? 'online' : 'offline'}`}>
-            {isOnline ? 'Online' : 'Offline'}
-          </span>
+        <div className="home-header-top">
+          <div className="home-header-left">
+            <span className="home-saudacao">Ola, {nomeRep || 'Representante'}</span>
+            <h1 className="home-titulo">Minha Rota RP</h1>
+          </div>
           <button className="home-config-btn" onClick={() => navigate('/mais/perfil')}>
             <span>⚙️</span>
           </button>
         </div>
+
+        {/* Switcher de representada */}
+        {!loadingRep && representadas.length > 0 ? (
+          <button className="home-rep-switcher" onClick={() => setMostrarSheet(true)}>
+            <div className="home-rep-icon">
+              {representadaSelecionada?.logo ? (
+                <img src={representadaSelecionada.logo} alt="" />
+              ) : (
+                <span>🏭</span>
+              )}
+            </div>
+            <span className="home-rep-nome">{representadaSelecionada?.nome || 'Selecionar'}</span>
+            <span className="home-rep-trocar">trocar ›</span>
+          </button>
+        ) : !loadingRep && representadas.length === 0 ? (
+          <button className="home-rep-vazio" onClick={() => navigate('/mais/representadas')}>
+            <span>Nenhuma empresa cadastrada</span>
+            <span className="home-rep-link">Cadastrar agora →</span>
+          </button>
+        ) : null}
       </header>
 
       {/* Conteúdo */}
@@ -276,6 +274,56 @@ function Home() {
           <span className="home-mapa-arrow">›</span>
         </button>
       </main>
+
+      {/* Sheet de representadas */}
+      {mostrarSheet && (
+        <div className="home-sheet-overlay" onClick={() => setMostrarSheet(false)}>
+          <div className="home-sheet" onClick={e => e.stopPropagation()}>
+            <div className="home-sheet-handle"></div>
+            <h3>Selecionar empresa</h3>
+
+            <div className="home-sheet-lista">
+              {representadas.map(rep => (
+                <button
+                  key={rep.id}
+                  className={`home-sheet-item ${representadaSelecionada?.id === rep.id ? 'active' : ''}`}
+                  onClick={() => {
+                    trocarRepresentada(rep)
+                    setMostrarSheet(false)
+                  }}
+                >
+                  <div className="home-sheet-item-icon">
+                    {rep.logo ? (
+                      <img src={rep.logo} alt="" />
+                    ) : (
+                      <div className="home-sheet-item-placeholder" style={{ background: rep.cor_pdf || '#1a3a6b' }}>
+                        {rep.nome?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="home-sheet-item-info">
+                    <span className="home-sheet-item-nome">{rep.nome}</span>
+                    <span className="home-sheet-item-email">{rep.email || '-'}</span>
+                  </div>
+                  {representadaSelecionada?.id === rep.id && (
+                    <span className="home-sheet-check">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <button
+              className="home-sheet-cadastrar"
+              onClick={() => {
+                setMostrarSheet(false)
+                navigate('/mais/representadas')
+              }}
+            >
+              + Cadastrar nova empresa
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

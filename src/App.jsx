@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
+import { RepresentadaProvider } from './contexts/RepresentadaContext'
 import Login from './components/shared/Login'
 import Home from './components/Home'
 import CarteiraClientes from './components/clientes/CarteiraClientes'
@@ -101,8 +102,9 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <Routes>
+    <RepresentadaProvider>
+      <div className="app">
+        <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/pedidos" element={<ListaPedidos />} />
         <Route path="/pedidos/novo" element={<NovoPedido />} />
@@ -128,8 +130,9 @@ function App() {
         <Route path="/mais/relatorios" element={<Relatorios />} />
         <Route path="/mais/financas" element={<Financas />} />
         <Route path="/mapa" element={<Mapa />} />
-      </Routes>
-    </div>
+        </Routes>
+      </div>
+    </RepresentadaProvider>
   )
 }
 
