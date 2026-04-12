@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import InputEndereco from '../shared/InputEndereco'
 import './MeuPerfil.css'
-
-const GOOGLE_MAPS_KEY = 'AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo'
-const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
 
 function MeuPerfil() {
   const navigate = useNavigate()
@@ -18,19 +16,14 @@ function MeuPerfil() {
   const [mediaCarro, setMediaCarro] = useState('10')
   const [precoGasolina, setPrecoGasolina] = useState('6,00')
 
+  // Coordenadas do endereço (geocodificadas)
+  const coordsRef = useRef(null)
+
   // Estados de controle
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
-
-  // Autocomplete manual
-  const [sugestoes, setSugestoes] = useState([])
-  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
-  const [buscandoSugestoes, setBuscandoSugestoes] = useState(false)
-  const autocompleteServiceRef = useRef(null)
-  const debounceRef = useRef(null)
-  const containerRef = useRef(null)
 
   // Carregar dados do representante
   useEffect(() => {
@@ -56,6 +49,10 @@ function MeuPerfil() {
           setEnderecoBase(repData.endereco_base || '')
           setMediaCarro(repData.media_carro?.toString() || '10')
           setPrecoGasolina(formatarPreco(repData.preco_gasolina || 6))
+          // Guardar coordenadas existentes
+          if (repData.lat_base && repData.lng_base) {
+            coordsRef.current = { lat: repData.lat_base, lng: repData.lng_base }
+          }
         }
 
         const { data: { user } } = await supabase.auth.getUser()
@@ -71,81 +68,6 @@ function MeuPerfil() {
 
     fetchRep()
   }, [repId])
-
-  // Carregar Google Maps API
-  const loadGoogleMaps = useCallback(() => {
-    return new Promise((resolve) => {
-      if (window.google?.maps?.places?.AutocompleteService) {
-        resolve(true)
-        return
-      }
-
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
-      if (existingScript) {
-        const checkReady = () => {
-          if (window.google?.maps?.places?.AutocompleteService) {
-            resolve(true)
-          } else {
-            setTimeout(checkReady, 100)
-          }
-        }
-        existingScript.addEventListener('load', checkReady)
-        setTimeout(checkReady, 500)
-        return
-      }
-
-      const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places`
-      script.async = true
-      script.defer = true
-      script.onload = () => {
-        const checkReady = () => {
-          if (window.google?.maps?.places?.AutocompleteService) {
-            resolve(true)
-          } else {
-            setTimeout(checkReady, 100)
-          }
-        }
-        checkReady()
-      }
-      script.onerror = () => resolve(false)
-      document.head.appendChild(script)
-    })
-  }, [])
-
-  // Inicializar AutocompleteService
-  useEffect(() => {
-    async function init() {
-      const loaded = await loadGoogleMaps()
-      if (loaded && window.google?.maps?.places?.AutocompleteService) {
-        autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
-        console.log('[MeuPerfil] AutocompleteService inicializado')
-      }
-    }
-    init()
-  }, [loadGoogleMaps])
-
-  // Fechar dropdown ao clicar fora ou pressionar Escape
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setMostrarSugestoes(false)
-      }
-    }
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        setMostrarSugestoes(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('touchstart', handleClickOutside)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('touchstart', handleClickOutside)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [])
 
   // Formatar preço para exibição
   function formatarPreco(valor) {
@@ -172,91 +94,16 @@ function MeuPerfil() {
     setPrecoGasolina(limpo)
   }
 
-  // Buscar sugestões de endereço
-  function buscarSugestoes(texto) {
-    if (!texto || texto.length < 3) {
-      setSugestoes([])
-      setMostrarSugestoes(false)
-      return
-    }
-
-    if (!autocompleteServiceRef.current) {
-      console.warn('[MeuPerfil] AutocompleteService não disponível')
-      return
-    }
-
-    // Debounce de 400ms
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-    }
-
-    debounceRef.current = setTimeout(() => {
-      setBuscandoSugestoes(true)
-
-      autocompleteServiceRef.current.getPlacePredictions(
-        {
-          input: texto,
-          componentRestrictions: { country: 'br' },
-          language: 'pt-BR'
-        },
-        (predictions, status) => {
-          setBuscandoSugestoes(false)
-
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-            console.log('[MeuPerfil] Sugestões:', predictions.length)
-            setSugestoes(predictions.map(p => ({
-              id: p.place_id,
-              texto: p.description,
-              principal: p.structured_formatting?.main_text || '',
-              secundario: p.structured_formatting?.secondary_text || ''
-            })))
-            setMostrarSugestoes(true)
-          } else {
-            console.warn('[MeuPerfil] Sem sugestões:', status)
-            setSugestoes([])
-            setMostrarSugestoes(false)
-          }
-        }
-      )
-    }, 400)
+  // Callback quando endereço é selecionado
+  function handleEnderecoSelect(endereco, placeId) {
+    // Limpar coordenadas antigas quando novo endereço é selecionado
+    coordsRef.current = null
   }
 
-  // Selecionar sugestão
-  function selecionarSugestao(sugestao) {
-    setEnderecoBase(sugestao.texto)
-    setSugestoes([])
-    setMostrarSugestoes(false)
-  }
-
-  // Handler do input de endereço
-  function handleEnderecoChange(e) {
-    const valor = e.target.value
-    setEnderecoBase(valor)
-    buscarSugestoes(valor)
-  }
-
-  // Geocodificar endereço
-  async function geocodificarEndereco(endereco) {
-    if (!endereco) return null
-    console.log('[Geocoding] Endereço:', endereco)
-
-    try {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(endereco)}&key=${GEOCODING_API_KEY}`
-      const res = await fetch(url)
-      const data = await res.json()
-
-      console.log('[Geocoding] Resposta:', { status: data.status, results: data.results?.length || 0 })
-
-      if (data.status === 'OK' && data.results?.length > 0) {
-        const loc = data.results[0].geometry.location
-        console.log('[Geocoding] ✅ Coordenadas:', { lat: loc.lat, lng: loc.lng })
-        return { lat: loc.lat, lng: loc.lng }
-      }
-      return null
-    } catch (err) {
-      console.error('[Geocoding] Erro:', err)
-      return null
-    }
+  // Callback quando endereço é geocodificado
+  function handleEnderecoGeocode(lat, lng) {
+    coordsRef.current = { lat, lng }
+    console.log('[MeuPerfil] Coordenadas atualizadas:', { lat, lng })
   }
 
   // Salvar perfil
@@ -271,12 +118,6 @@ function MeuPerfil() {
     setSucesso('')
 
     try {
-      // Geocodificar endereço base
-      let coords = null
-      if (enderecoBase.trim()) {
-        coords = await geocodificarEndereco(enderecoBase.trim())
-      }
-
       // Preparar dados
       const dadosUpdate = {
         nome: nome.trim(),
@@ -285,10 +126,10 @@ function MeuPerfil() {
         preco_gasolina: parsearPreco(precoGasolina) || 6
       }
 
-      // Adicionar coordenadas se geocodificou
-      if (coords) {
-        dadosUpdate.lat_base = coords.lat
-        dadosUpdate.lng_base = coords.lng
+      // Adicionar coordenadas se disponíveis
+      if (coordsRef.current) {
+        dadosUpdate.lat_base = coordsRef.current.lat
+        dadosUpdate.lng_base = coordsRef.current.lng
       }
 
       console.log('[MeuPerfil] Salvando:', dadosUpdate)
@@ -320,7 +161,7 @@ function MeuPerfil() {
           setErro(error.message || 'Erro ao salvar')
         }
       } else {
-        if (enderecoBase.trim() && !coords) {
+        if (enderecoBase.trim() && !coordsRef.current) {
           setSucesso('Salvo! (Endereço não geocodificado)')
         } else {
           setSucesso('Salvo com sucesso!')
@@ -388,44 +229,19 @@ function MeuPerfil() {
           <span className="perfil-campo-hint">O email não pode ser alterado</span>
         </div>
 
-        {/* Endereço base com autocomplete manual */}
-        <div className="perfil-campo" ref={containerRef}>
-          <label>Endereço base (ponto de partida das rotas)</label>
-          <div className="perfil-autocomplete-wrapper">
-            <input
-              type="text"
-              className="perfil-input"
-              value={enderecoBase}
-              onChange={handleEnderecoChange}
-              onFocus={() => sugestoes.length > 0 && setMostrarSugestoes(true)}
-              placeholder="Digite seu endereço..."
-            />
-            {buscandoSugestoes && (
-              <div className="perfil-autocomplete-loading">...</div>
-            )}
-
-            {/* Dropdown de sugestões */}
-            {mostrarSugestoes && sugestoes.length > 0 && (
-              <div className="perfil-autocomplete-dropdown">
-                {sugestoes.map((s) => (
-                  <button
-                    key={s.id}
-                    className="perfil-autocomplete-item"
-                    onClick={() => selecionarSugestao(s)}
-                    type="button"
-                  >
-                    <span className="perfil-autocomplete-principal">{s.principal}</span>
-                    {s.secundario && (
-                      <span className="perfil-autocomplete-secundario">{s.secundario}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {enderecoBase && !mostrarSugestoes && (
+        {/* Endereço base com InputEndereco */}
+        <div className="perfil-campo">
+          <InputEndereco
+            label="Endereço base (ponto de partida das rotas)"
+            value={enderecoBase}
+            onChange={setEnderecoBase}
+            onSelect={handleEnderecoSelect}
+            onGeocode={handleEnderecoGeocode}
+            placeholder="Digite seu endereço..."
+          />
+          {enderecoBase && (
             <div className="perfil-endereco-preview">
-              📍 {enderecoBase}
+              {coordsRef.current ? '✅' : '📍'} {enderecoBase}
             </div>
           )}
         </div>

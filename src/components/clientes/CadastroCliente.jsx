@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import InputEndereco from '../shared/InputEndereco'
 import './CadastroCliente.css'
 
-const GOOGLE_MAPS_KEY = 'AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo'
 const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
 
 // Normaliza texto para Title Case (primeira letra maiúscula de cada palavra)
@@ -22,8 +22,7 @@ function toTitleCase(str) {
 function CadastroCliente() {
   const navigate = useNavigate()
   const { repId, loading: loadingRep } = useRepId()
-  const ruaInputRef = useRef(null)
-  const autocompleteRef = useRef(null)
+  const coordsRef = useRef(null)
 
   // Dados do cliente
   const [cnpj, setCnpj] = useState('')
@@ -69,61 +68,22 @@ function CadastroCliente() {
     fetchSegmentos()
   }, [repId])
 
-  // Carrega Google Places API
-  useEffect(() => {
-    if (window.google?.maps?.places) {
-      initAutocomplete()
-      return
+  // Callback quando InputEndereco retorna componentes do endereço
+  function handleAddressComponents(components) {
+    if (components.rua) setRua(toTitleCase(components.rua))
+    if (components.numero) setNumero(components.numero)
+    if (components.bairro) setBairro(toTitleCase(components.bairro))
+    if (components.cidade) {
+      setCidade(toTitleCase(components.cidade))
+      setCidadeEstadoTravado(true)
     }
+    if (components.estado) setEstado(components.estado.toUpperCase())
+    if (components.cep) setCep(formatarCep(components.cep))
+  }
 
-    const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`)
-    if (existingScript) {
-      existingScript.addEventListener('load', initAutocomplete)
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places`
-    script.async = true
-    script.onload = () => initAutocomplete()
-    document.head.appendChild(script)
-  }, [])
-
-  function initAutocomplete() {
-    if (!ruaInputRef.current || !window.google?.maps?.places) return
-    if (autocompleteRef.current) return
-
-    const autocomplete = new window.google.maps.places.Autocomplete(ruaInputRef.current, {
-      componentRestrictions: { country: 'br' },
-      types: ['address'],
-      fields: ['address_components', 'formatted_address']
-    })
-
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace()
-      if (!place.address_components) return
-
-      let ruaVal = '', numeroVal = '', bairroVal = '', cidadeVal = '', estadoVal = '', cepVal = ''
-
-      for (const component of place.address_components) {
-        const type = component.types[0]
-        if (type === 'route') ruaVal = component.long_name
-        if (type === 'street_number') numeroVal = component.long_name
-        if (type === 'sublocality_level_1' || type === 'sublocality') bairroVal = component.long_name
-        if (type === 'administrative_area_level_2') cidadeVal = component.long_name
-        if (type === 'administrative_area_level_1') estadoVal = component.short_name
-        if (type === 'postal_code') cepVal = component.long_name
-      }
-
-      setRua(toTitleCase(ruaVal))
-      setNumero(numeroVal)
-      setBairro(toTitleCase(bairroVal))
-      if (cidadeVal) { setCidade(toTitleCase(cidadeVal)); setCidadeEstadoTravado(true) }
-      if (estadoVal) setEstado(estadoVal.toUpperCase())
-      if (cepVal) setCep(formatarCep(cepVal))
-    })
-
-    autocompleteRef.current = autocomplete
+  // Callback quando InputEndereco geocodifica
+  function handleEnderecoGeocode(lat, lng) {
+    coordsRef.current = { lat, lng }
   }
 
   // ==================== FORMATADORES ====================
@@ -325,12 +285,12 @@ function CadastroCliente() {
     // Usa razão social como nome principal, nome fantasia como fallback
     const nomePrincipal = nomeFantasia.trim() || razaoSocial.trim()
 
-    // Geocodificar endereço
+    // Usar coordenadas já geocodificadas pelo InputEndereco, ou fazer fallback
     const enderecoCompleto = montarEnderecoCompleto()
-    let coords = null
+    let coords = coordsRef.current
     let avisoGeo = false
 
-    if (enderecoCompleto) {
+    if (!coords && enderecoCompleto) {
       coords = await geocodificarEndereco(enderecoCompleto)
       if (!coords) {
         avisoGeo = true
@@ -529,13 +489,12 @@ function CadastroCliente() {
         </div>
 
         <div className="campo">
-          <label htmlFor="rua">Rua</label>
-          <input
-            ref={ruaInputRef}
-            type="text"
-            id="rua"
+          <InputEndereco
+            label="Rua"
             value={rua}
-            onChange={(e) => setRua(e.target.value)}
+            onChange={setRua}
+            onGeocode={handleEnderecoGeocode}
+            onAddressComponents={handleAddressComponents}
             placeholder="Digite o endereço..."
           />
         </div>

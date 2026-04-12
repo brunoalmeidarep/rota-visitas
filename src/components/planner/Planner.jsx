@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import InputEndereco from '../shared/InputEndereco'
 import './Planner.css'
 
 const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
@@ -108,20 +109,8 @@ function Planner() {
   const [gpsChegadaCoords, setGpsChegadaCoords] = useState(null)
   const [gpsChegadaErro, setGpsChegadaErro] = useState('')
 
-  // Autocomplete manual com AutocompleteService
-  const autocompleteServiceRef = useRef(null)
-  const debouncePartidaRef = useRef(null)
-  const debounceChegadaRef = useRef(null)
-  const debounceEndBaseRef = useRef(null)
-  const [sugestoesPartida, setSugestoesPartida] = useState([])
-  const [sugestoesChegada, setSugestoesChegada] = useState([])
-  const [sugestoesEndBase, setSugestoesEndBase] = useState([])
-  const [mostrarSugestoesPartida, setMostrarSugestoesPartida] = useState(false)
-  const [mostrarSugestoesChegada, setMostrarSugestoesChegada] = useState(false)
-  const [mostrarSugestoesEndBase, setMostrarSugestoesEndBase] = useState(false)
-  const containerPartidaRef = useRef(null)
-  const containerChegadaRef = useRef(null)
-  const containerEndBaseRef = useRef(null)
+  // Coordenadas geocodificadas dos endereços
+  const enderecoBaseCoordsRef = useRef(null)
 
   // ==================== DEBUG PANEL ====================
   const [debugLogs, setDebugLogs] = useState([])
@@ -456,8 +445,11 @@ function Planner() {
     setSalvandoEnderecoBase(true)
 
     try {
-      // Geocodificar o endereço
-      const coords = await geocodificarEndereco(enderecoBaseTmp.trim())
+      // Usar coordenadas já geocodificadas pelo InputEndereco, ou fazer fallback
+      let coords = enderecoBaseCoordsRef.current
+      if (!coords) {
+        coords = await geocodificarEndereco(enderecoBaseTmp.trim())
+      }
 
       // Preparar dados para salvar
       const dadosUpdate = {
@@ -563,167 +555,11 @@ function Planner() {
     )
   }
 
-  // Carregar Google Maps API com AutocompleteService
-  const loadGoogleMaps = useCallback(() => {
-    return new Promise((resolve) => {
-      if (window.google?.maps?.places?.AutocompleteService) {
-        resolve(true)
-        return
-      }
-
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
-      if (existingScript) {
-        const checkReady = () => {
-          if (window.google?.maps?.places?.AutocompleteService) {
-            resolve(true)
-          } else {
-            setTimeout(checkReady, 100)
-          }
-        }
-        existingScript.addEventListener('load', checkReady)
-        setTimeout(checkReady, 500)
-        return
-      }
-
-      const script = document.createElement('script')
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&libraries=places'
-      script.async = true
-      script.defer = true
-      script.onload = () => {
-        const checkReady = () => {
-          if (window.google?.maps?.places?.AutocompleteService) {
-            resolve(true)
-          } else {
-            setTimeout(checkReady, 100)
-          }
-        }
-        checkReady()
-      }
-      script.onerror = () => resolve(false)
-      document.head.appendChild(script)
-    })
-  }, [])
-
-  // Inicializar AutocompleteService quando modal abre
-  useEffect(() => {
-    if (modalRotaAberto) {
-      loadGoogleMaps().then(loaded => {
-        if (loaded && window.google?.maps?.places?.AutocompleteService) {
-          autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
-          console.log('[Planner] AutocompleteService inicializado')
-        }
-      })
-    }
-  }, [modalRotaAberto, loadGoogleMaps])
-
-  // Fechar dropdowns ao clicar fora ou pressionar Escape
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (containerPartidaRef.current && !containerPartidaRef.current.contains(e.target)) {
-        setMostrarSugestoesPartida(false)
-      }
-      if (containerChegadaRef.current && !containerChegadaRef.current.contains(e.target)) {
-        setMostrarSugestoesChegada(false)
-      }
-      if (containerEndBaseRef.current && !containerEndBaseRef.current.contains(e.target)) {
-        setMostrarSugestoesEndBase(false)
-      }
-    }
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        setMostrarSugestoesPartida(false)
-        setMostrarSugestoesChegada(false)
-        setMostrarSugestoesEndBase(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('touchstart', handleClickOutside)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('touchstart', handleClickOutside)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [])
-
-  // Buscar sugestões de endereço
-  function buscarSugestoes(texto, setSugestoes, setMostrar, debounceRef) {
-    if (!texto || texto.length < 3) {
-      setSugestoes([])
-      setMostrar(false)
-      return
-    }
-
-    if (!autocompleteServiceRef.current) {
-      console.warn('[Planner] AutocompleteService não disponível')
-      return
-    }
-
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-    }
-
-    debounceRef.current = setTimeout(() => {
-      autocompleteServiceRef.current.getPlacePredictions(
-        {
-          input: texto,
-          componentRestrictions: { country: 'br' },
-          language: 'pt-BR'
-        },
-        (predictions, status) => {
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-            setSugestoes(predictions.map(p => ({
-              id: p.place_id,
-              description: p.description
-            })))
-            setMostrar(true)
-          } else {
-            setSugestoes([])
-            setMostrar(false)
-          }
-        }
-      )
-    }, 400)
+  // Callback quando endereço base é geocodificado
+  function handleEnderecoBaseGeocode(lat, lng) {
+    enderecoBaseCoordsRef.current = { lat, lng }
+    console.log('[Planner] Endereço base geocodificado:', { lat, lng })
   }
-
-  // Handlers de input
-  function handlePartidaInputChange(e) {
-    const valor = e.target.value
-    setRotaPartidaInput(valor)
-    buscarSugestoes(valor, setSugestoesPartida, setMostrarSugestoesPartida, debouncePartidaRef)
-  }
-
-  function handleChegadaInputChange(e) {
-    const valor = e.target.value
-    setRotaChegadaInput(valor)
-    buscarSugestoes(valor, setSugestoesChegada, setMostrarSugestoesChegada, debounceChegadaRef)
-  }
-
-  function handleEndBaseInputChange(e) {
-    const valor = e.target.value
-    setEnderecoBaseTmp(valor)
-    buscarSugestoes(valor, setSugestoesEndBase, setMostrarSugestoesEndBase, debounceEndBaseRef)
-  }
-
-  // Selecionar sugestão
-  function selecionarSugestaoPartida(sugestao) {
-    setRotaPartidaInput(sugestao.description)
-    setSugestoesPartida([])
-    setMostrarSugestoesPartida(false)
-  }
-
-  function selecionarSugestaoChegada(sugestao) {
-    setRotaChegadaInput(sugestao.description)
-    setSugestoesChegada([])
-    setMostrarSugestoesChegada(false)
-  }
-
-  function selecionarSugestaoEndBase(sugestao) {
-    setEnderecoBaseTmp(sugestao.description)
-    setSugestoesEndBase([])
-    setMostrarSugestoesEndBase(false)
-  }
-
 
   function fecharModalRota() {
     setModalRotaAberto(false)
@@ -1193,32 +1029,13 @@ function Planner() {
               {rotaPartidaTipo === 'casa' && !repData?.endereco_base && (
                 <div className="rota-casa-aviso">
                   <div className="rota-casa-aviso-texto">⚠️ Nenhum endereço base cadastrado</div>
-                  {/* Autocomplete manual para endereço base */}
-                  <div ref={containerEndBaseRef} className="rota-autocomplete-wrapper">
-                    <input
-                      type="text"
-                      className="rota-autocomplete-input"
-                      value={enderecoBaseTmp}
-                      onChange={handleEndBaseInputChange}
-                      onFocus={() => sugestoesEndBase.length > 0 && setMostrarSugestoesEndBase(true)}
-                      placeholder="Digite seu endereço..."
-                    />
-                    {mostrarSugestoesEndBase && sugestoesEndBase.length > 0 && (
-                      <div className="rota-autocomplete-dropdown">
-                        {sugestoesEndBase.map((s) => (
-                          <button
-                            key={s.id}
-                            className="rota-autocomplete-item"
-                            onClick={() => selecionarSugestaoEndBase(s)}
-                            type="button"
-                          >
-                            {s.description}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {enderecoBaseTmp && !mostrarSugestoesEndBase && (
+                  <InputEndereco
+                    value={enderecoBaseTmp}
+                    onChange={setEnderecoBaseTmp}
+                    onGeocode={handleEnderecoBaseGeocode}
+                    placeholder="Digite seu endereço..."
+                  />
+                  {enderecoBaseTmp && (
                     <div className="rota-endereco-selecionado">
                       📍 {enderecoBaseTmp}
                     </div>
@@ -1274,30 +1091,13 @@ function Planner() {
 
               {/* Outro endereço */}
               {rotaPartidaTipo === 'outro' && (
-                <div ref={containerPartidaRef} className="rota-autocomplete-wrapper">
-                  <input
-                    type="text"
-                    className="rota-autocomplete-input"
+                <div className="rota-autocomplete-wrapper">
+                  <InputEndereco
                     value={rotaPartidaInput}
-                    onChange={handlePartidaInputChange}
-                    onFocus={() => sugestoesPartida.length > 0 && setMostrarSugestoesPartida(true)}
+                    onChange={setRotaPartidaInput}
                     placeholder="Digite o endereço de partida..."
                   />
-                  {mostrarSugestoesPartida && sugestoesPartida.length > 0 && (
-                    <div className="rota-autocomplete-dropdown">
-                      {sugestoesPartida.map((s) => (
-                        <button
-                          key={s.id}
-                          className="rota-autocomplete-item"
-                          onClick={() => selecionarSugestaoPartida(s)}
-                          type="button"
-                        >
-                          {s.description}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {rotaPartidaInput && !mostrarSugestoesPartida && (
+                  {rotaPartidaInput && (
                     <div className="rota-endereco-selecionado">
                       📍 {rotaPartidaInput}
                     </div>
@@ -1339,30 +1139,13 @@ function Planner() {
 
               {/* Hotel ou Outro endereço */}
               {(rotaChegadaTipo === 'hotel' || rotaChegadaTipo === 'outro') && (
-                <div ref={containerChegadaRef} className="rota-autocomplete-wrapper">
-                  <input
-                    type="text"
-                    className="rota-autocomplete-input"
+                <div className="rota-autocomplete-wrapper">
+                  <InputEndereco
                     value={rotaChegadaInput}
-                    onChange={handleChegadaInputChange}
-                    onFocus={() => sugestoesChegada.length > 0 && setMostrarSugestoesChegada(true)}
+                    onChange={setRotaChegadaInput}
                     placeholder={rotaChegadaTipo === 'hotel' ? 'Digite o endereço do hotel...' : 'Digite o endereço de chegada...'}
                   />
-                  {mostrarSugestoesChegada && sugestoesChegada.length > 0 && (
-                    <div className="rota-autocomplete-dropdown">
-                      {sugestoesChegada.map((s) => (
-                        <button
-                          key={s.id}
-                          className="rota-autocomplete-item"
-                          onClick={() => selecionarSugestaoChegada(s)}
-                          type="button"
-                        >
-                          {s.description}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {rotaChegadaInput && !mostrarSugestoesChegada && (
+                  {rotaChegadaInput && (
                     <div className="rota-endereco-selecionado">
                       📍 {rotaChegadaInput}
                     </div>
