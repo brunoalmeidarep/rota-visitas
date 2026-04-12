@@ -37,12 +37,14 @@ function DetalhesPedido() {
   const [showTipoSheet, setShowTipoSheet] = useState(false)
   const [gerandoPDF, setGerandoPDF] = useState(false)
   const [toast, setToast] = useState('')
+  const [toastTipo, setToastTipo] = useState('sucesso') // 'sucesso' | 'erro'
 
   // Campos editáveis
   const [condicaoPagamento, setCondicaoPagamento] = useState('')
   const [tipoPedido, setTipoPedido] = useState('Venda')
   const [infoAdicionais, setInfoAdicionais] = useState('')
   const [ocCliente, setOcCliente] = useState('')
+  const [erroCondicao, setErroCondicao] = useState(false)
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -147,6 +149,17 @@ function DetalhesPedido() {
 
   async function salvar() {
     console.log('[salvar] 1. Iniciando...')
+
+    // Validar condição de pagamento
+    if (!condicaoPagamento.trim()) {
+      setErroCondicao(true)
+      setToastTipo('erro')
+      setToast('Defina a condição de pagamento')
+      setTimeout(() => setToast(''), 3000)
+      return
+    }
+    setErroCondicao(false)
+
     setSalvando(true)
 
     const dadosUpdate = {
@@ -182,6 +195,7 @@ function DetalhesPedido() {
       }
 
       console.log('[salvar] 5. Sucesso! Mostrando toast...')
+      setToastTipo('sucesso')
       setToast('Pedido salvo!')
 
       console.log('[salvar] 6. Aguardando 800ms...')
@@ -199,6 +213,16 @@ function DetalhesPedido() {
   }
 
   async function gerarPedido() {
+    // Validar condição de pagamento
+    if (!condicaoPagamento.trim()) {
+      setErroCondicao(true)
+      setToastTipo('erro')
+      setToast('Defina a condição de pagamento antes de gerar o pedido')
+      setTimeout(() => setToast(''), 3000)
+      return
+    }
+    setErroCondicao(false)
+
     if (!confirm('Confirma gerar o pedido? Após gerado, não será mais possível editar.')) {
       return
     }
@@ -398,20 +422,32 @@ function DetalhesPedido() {
         <div className="dp-card dp-condicoes">
           <div className="dp-card-titulo">Condições comerciais</div>
 
-          {/* Linha 1: Condição de pagamento */}
+          {/* Linha 1: Condição de pagamento (obrigatória) */}
           <div
-            className={`dp-condicao-linha ${!isEditavel ? 'travado' : ''}`}
-            onClick={isEditavel ? () => setShowPagamentoSheet(true) : undefined}
+            className={`dp-condicao-linha ${!isEditavel ? 'travado' : ''} ${erroCondicao ? 'erro' : ''}`}
+            onClick={isEditavel ? () => { setShowPagamentoSheet(true); setErroCondicao(false); } : undefined}
             style={{ cursor: isEditavel ? 'pointer' : 'default' }}
           >
-            <span className="dp-condicao-label">Condição pagamento</span>
+            <span className="dp-condicao-label">
+              Condição pagamento
+              {isEditavel && <span style={{ color: '#ff3b30', marginLeft: 2 }}>*</span>}
+            </span>
             <div className="dp-condicao-right">
-              <span style={{ color: isEditavel ? '#007aff' : '#888' }}>
-                {condicaoPagamento || (isEditavel ? 'Definir' : '-')}
+              <span style={{
+                color: !isEditavel ? '#888' :
+                       condicaoPagamento ? '#007aff' :
+                       erroCondicao ? '#ff3b30' : '#ff9500'
+              }}>
+                {condicaoPagamento || (isEditavel ? 'Selecionar' : '-')}
               </span>
-              {isEditavel && <span className="dp-condicao-seta">›</span>}
+              {isEditavel && <span className="dp-condicao-seta" style={{ color: erroCondicao ? '#ff3b30' : undefined }}>›</span>}
             </div>
           </div>
+          {erroCondicao && (
+            <div style={{ padding: '0 16px 8px', marginTop: -4 }}>
+              <span style={{ fontSize: 12, color: '#ff3b30' }}>Condição de pagamento é obrigatória</span>
+            </div>
+          )}
 
           {/* Linha 2: Tipo de pedido */}
           <div
@@ -718,7 +754,7 @@ function DetalhesPedido() {
 
       {/* Toast */}
       {toast && (
-        <div className="dp-toast">{toast}</div>
+        <div className={`dp-toast ${toastTipo}`}>{toast}</div>
       )}
     </div>
   )

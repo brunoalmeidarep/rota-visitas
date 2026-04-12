@@ -705,6 +705,14 @@
   }
 }
 
+.dp-toast.erro {
+  background: #ff3b30;
+}
+
+.dp-toast.sucesso {
+  background: #34c759;
+}
+
 /* Condições comerciais */
 .dp-condicoes {
   padding: 0;
