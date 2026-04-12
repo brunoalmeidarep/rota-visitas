@@ -25,8 +25,6 @@ function DetalhesPedido() {
 
   // Campos editáveis
   const [condicaoPagamento, setCondicaoPagamento] = useState('')
-  const [frete, setFrete] = useState('')
-  const [transportadora, setTransportadora] = useState('')
   const [infoAdicionais, setInfoAdicionais] = useState('')
   const [ocCliente, setOcCliente] = useState('')
 
@@ -58,8 +56,6 @@ function DetalhesPedido() {
       } else if (data) {
         setPedido(data)
         setCondicaoPagamento(data.condicao_pagamento || '')
-        setFrete(data.frete?.toString().replace('.', ',') || '')
-        setTransportadora(data.transportadora || '')
         setInfoAdicionais(data.info_adicionais || '')
         setOcCliente(data.oc_cliente || '')
 
@@ -124,19 +120,13 @@ function DetalhesPedido() {
     })
   }
 
-  function parsearValor(str) {
-    if (!str) return 0
-    return parseFloat(str.replace(',', '.')) || 0
-  }
-
   const isEditavel = pedido?.status === 'orcamento'
   const totalItens = pedido?.itens?.length || 0
   const subtotal = (pedido?.itens || []).reduce((acc, item) =>
     acc + (item.subtotal || item.preco_unitario * item.quantidade || 0), 0
   )
   const descontoTotal = pedido?.valor_desconto || 0
-  const freteValor = parsearValor(frete)
-  const total = subtotal - descontoTotal + freteValor
+  const total = subtotal - descontoTotal
 
   async function salvar() {
     console.log('[salvar] 1. Iniciando...')
@@ -144,8 +134,6 @@ function DetalhesPedido() {
 
     const dadosUpdate = {
       condicao_pagamento: condicaoPagamento.trim() || null,
-      frete: freteValor || null,
-      transportadora: transportadora.trim() || null,
       info_adicionais: infoAdicionais.trim() || null,
       oc_cliente: ocCliente.trim() || null,
       valor_total: total
@@ -217,8 +205,6 @@ function DetalhesPedido() {
           status: 'pedido',
           numero: novoNumero,
           condicao_pagamento: condicaoPagamento.trim() || null,
-          frete: freteValor || null,
-          transportadora: transportadora.trim() || null,
           info_adicionais: infoAdicionais.trim() || null,
           oc_cliente: ocCliente.trim() || null,
           valor_total: total,
@@ -403,35 +389,6 @@ function DetalhesPedido() {
               disabled={!isEditavel}
             />
           </div>
-
-          <div className="dp-campo">
-            <label>Frete</label>
-            <div className="dp-input-valor">
-              <span>R$</span>
-              <input
-                type="text"
-                placeholder="0,00"
-                value={frete}
-                onChange={(e) => {
-                  let limpo = e.target.value.replace(/[^\d,]/g, '')
-                  setFrete(limpo)
-                }}
-                inputMode="decimal"
-                disabled={!isEditavel}
-              />
-            </div>
-          </div>
-
-          <div className="dp-campo">
-            <label>Transportadora</label>
-            <input
-              type="text"
-              placeholder="Nome da transportadora"
-              value={transportadora}
-              onChange={(e) => setTransportadora(e.target.value)}
-              disabled={!isEditavel}
-            />
-          </div>
         </div>
 
         {/* Produtos */}
@@ -524,12 +481,6 @@ function DetalhesPedido() {
             <div className="dp-resumo-linha desconto">
               <span>Descontos</span>
               <span>− {formatarValor(descontoTotal)}</span>
-            </div>
-          )}
-          {freteValor > 0 && (
-            <div className="dp-resumo-linha">
-              <span>Frete</span>
-              <span>+ {formatarValor(freteValor)}</span>
             </div>
           )}
           <div className="dp-resumo-total">
