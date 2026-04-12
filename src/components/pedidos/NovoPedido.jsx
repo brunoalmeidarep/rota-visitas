@@ -34,7 +34,6 @@ function NovoPedido() {
   const [gastoCategoria, setGastoCategoria] = useState('')
   const [gastoValor, setGastoValor] = useState('')
   const [gastoObs, setGastoObs] = useState('')
-  const [mostrarCategorias, setMostrarCategorias] = useState(false)
 
   const [salvando, setSalvando] = useState(false)
 
@@ -114,10 +113,6 @@ function NovoPedido() {
   function parsearValor(str) {
     if (!str) return 0
     return parseFloat(str.replace(',', '.')) || 0
-  }
-
-  function getCategoriaInfo(id) {
-    return CATEGORIAS_GASTO.find(c => c.id === id)
   }
 
   async function continuar() {
@@ -323,13 +318,13 @@ function NovoPedido() {
           <>
             {!mostrarGasto ? (
               <button className="np-gasto-toggle" onClick={() => setMostrarGasto(true)}>
-                <span>💸 Registrar gasto?</span>
-                <span className="np-gasto-add">+ Adicionar</span>
+                <span>Gastou algo com o cliente? Registrar</span>
+                <span className="np-gasto-add">+</span>
               </button>
             ) : (
-              <div className="np-gasto-form">
+              <div className="np-gasto-form np-gasto-form-expandido">
                 <div className="np-gasto-header">
-                  <span>💸 Gasto</span>
+                  <span>Gasto com cliente</span>
                   <button className="np-gasto-remover" onClick={() => {
                     setMostrarGasto(false)
                     setGastoCategoria('')
@@ -338,39 +333,38 @@ function NovoPedido() {
                   }}>×</button>
                 </div>
 
-                {/* Categoria */}
-                <button
-                  className="np-gasto-campo np-gasto-categoria"
-                  onClick={() => setMostrarCategorias(true)}
-                >
-                  {gastoCategoria ? (
-                    <>
-                      <span>{getCategoriaInfo(gastoCategoria)?.icone}</span>
-                      <span>{getCategoriaInfo(gastoCategoria)?.nome}</span>
-                    </>
-                  ) : (
-                    <span className="np-placeholder">Selecione a categoria</span>
-                  )}
-                  <span className="np-seta">›</span>
-                </button>
+                {/* Categoria - scroll horizontal */}
+                <div className="np-gasto-categorias-scroll">
+                  {CATEGORIAS_GASTO.map(cat => (
+                    <button
+                      key={cat.id}
+                      className={`np-gasto-cat-btn ${gastoCategoria === cat.id ? 'active' : ''}`}
+                      onClick={() => setGastoCategoria(cat.id)}
+                    >
+                      <span className="np-gasto-cat-icon">{cat.icone}</span>
+                      <span className="np-gasto-cat-nome">{cat.nome}</span>
+                    </button>
+                  ))}
+                </div>
 
-                {/* Valor */}
-                <div className="np-gasto-campo">
-                  <span className="np-prefix">R$</span>
+                {/* Valor - grande e destacado */}
+                <div className="np-gasto-valor-grande">
+                  <span className="np-gasto-valor-prefix">R$</span>
                   <input
                     type="text"
                     placeholder="0,00"
                     value={gastoValor}
                     onChange={(e) => handleValorChange(e.target.value)}
                     inputMode="decimal"
+                    className="np-gasto-valor-input"
                   />
                 </div>
 
-                {/* Observação */}
+                {/* Descrição do gasto */}
                 <input
                   type="text"
-                  className="np-gasto-campo np-gasto-obs-input"
-                  placeholder="Observação (opcional)"
+                  className="np-gasto-descricao"
+                  placeholder="Descricao do gasto (ex: Almoco no Famiglia)"
                   value={gastoObs}
                   onChange={(e) => setGastoObs(e.target.value)}
                 />
@@ -438,31 +432,6 @@ function NovoPedido() {
         </div>
       )}
 
-      {/* Sheet de categorias de gasto */}
-      {mostrarCategorias && (
-        <div className={`np-overlay ${isDark ? 'dark' : 'light'}`} onClick={() => setMostrarCategorias(false)}>
-          <div className="np-sheet np-sheet-categorias" onClick={e => e.stopPropagation()}>
-            <div className="np-handle"></div>
-            <h3>Categoria do gasto</h3>
-            <div className="np-categorias-lista">
-              {CATEGORIAS_GASTO.map(cat => (
-                <button
-                  key={cat.id}
-                  className={`np-categoria-item ${gastoCategoria === cat.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setGastoCategoria(cat.id)
-                    setMostrarCategorias(false)
-                  }}
-                >
-                  <span className="np-categoria-icon">{cat.icone}</span>
-                  <span className="np-categoria-nome">{cat.nome}</span>
-                  {gastoCategoria === cat.id && <span className="np-check">✓</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

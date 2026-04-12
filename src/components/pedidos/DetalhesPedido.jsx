@@ -137,28 +137,44 @@ function DetalhesPedido() {
   const total = subtotal - descontoTotal + freteValor
 
   async function salvar() {
+    console.log('[DetalhesPedido] Iniciando salvar...')
     setSalvando(true)
 
+    const dadosUpdate = {
+      condicao_pagamento: condicaoPagamento.trim() || null,
+      frete: freteValor || null,
+      transportadora: transportadora.trim() || null,
+      info_adicionais: infoAdicionais.trim() || null,
+      oc_cliente: ocCliente.trim() || null,
+      valor_total: total
+    }
+
+    console.log('[DetalhesPedido] Dados a salvar:', JSON.stringify(dadosUpdate, null, 2))
+    console.log('[DetalhesPedido] pedidoId:', pedidoId)
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('pedidos')
-        .update({
-          condicao_pagamento: condicaoPagamento.trim() || null,
-          frete: freteValor || null,
-          transportadora: transportadora.trim() || null,
-          info_adicionais: infoAdicionais.trim() || null,
-          oc_cliente: ocCliente.trim() || null,
-          valor_total: total
-        })
+        .update(dadosUpdate)
         .eq('id', pedidoId)
+        .select()
+
+      console.log('[DetalhesPedido] Resultado:', { data, error })
 
       if (error) {
-        console.error('[DetalhesPedido] Erro:', error)
-        alert('Erro ao salvar')
+        console.error('[DetalhesPedido] Erro ao salvar:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        alert(`Erro ao salvar:\n${error.message}`)
+      } else {
+        console.log('[DetalhesPedido] Salvo com sucesso!')
       }
     } catch (err) {
-      console.error('[DetalhesPedido] Exceção:', err)
-      alert('Erro ao salvar')
+      console.error('[DetalhesPedido] Excecao:', err)
+      alert('Erro ao salvar: ' + err.message)
     }
 
     setSalvando(false)

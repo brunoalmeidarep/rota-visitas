@@ -56,7 +56,13 @@ function DescontosPedido() {
             .eq('ativo', true)
             .order('nome')
 
-          if (politicasData) setPoliticas(politicasData)
+          if (politicasData) {
+            // Remover duplicatas por ID
+            const politicasUnicas = politicasData.filter((pol, index, self) =>
+              index === self.findIndex(p => p.id === pol.id)
+            )
+            setPoliticas(politicasUnicas)
+          }
         }
       }
 
@@ -72,6 +78,16 @@ function DescontosPedido() {
       style: 'currency',
       currency: 'BRL'
     }).format(valor)
+  }
+
+  function formatarNomePolitica(condicaoPagamento) {
+    const nomes = {
+      'boleto_curto': 'Boleto curto',
+      'boleto_longo': 'Boleto longo',
+      'pix': 'PIX',
+      'cartao': 'Cartao'
+    }
+    return nomes[condicaoPagamento] || condicaoPagamento || 'Politica'
   }
 
   function togglePolitica(politicaId) {
@@ -156,20 +172,29 @@ function DescontosPedido() {
   async function aplicar() {
     setSalvando(true)
 
+    const dadosUpdate = {
+      politicas_ativas: politicasAtivas,
+      descontos_rep: descontosRep,
+      valor_desconto: totalDesconto,
+      valor_total: total
+    }
+
+    console.log('[DescontosPedido] Salvando:', JSON.stringify(dadosUpdate, null, 2))
+
     try {
       const { error } = await supabase
         .from('pedidos')
-        .update({
-          politicas_ativas: politicasAtivas,
-          descontos_rep: descontosRep,
-          valor_desconto: totalDesconto,
-          valor_total: total
-        })
+        .update(dadosUpdate)
         .eq('id', pedidoId)
 
       if (error) {
-        console.error('[DescontosPedido] Erro:', error)
-        alert('Erro ao salvar descontos')
+        console.error('[DescontosPedido] Erro ao salvar:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        alert(`Erro ao salvar descontos:\n${error.message}\n\nCodigo: ${error.code || '-'}\nDetalhes: ${error.details || '-'}`)
         setSalvando(false)
         return
       }
@@ -240,13 +265,11 @@ function DescontosPedido() {
                   className={`desc-politica ${!condicaoAtingida ? 'inativa' : ''}`}
                 >
                   <div className="desc-politica-info">
-                    <span className="desc-politica-nome">{pol.nome}</span>
+                    <span className="desc-politica-nome">
+                      {pol.nome || formatarNomePolitica(pol.condicao_pagamento)}
+                    </span>
                     <span className="desc-politica-detalhe">
-                      {pol.condicao === 'volume_minimo' && `Mínimo ${formatarValor(pol.condicao_valor)}`}
-                      {pol.condicao === 'forma_pagamento' && `Pagamento: ${pol.condicao_pagamento}`}
-                      {pol.condicao === 'sempre' && 'Sempre disponível'}
-                      {' · '}
-                      {pol.valor_tipo === 'percentual' ? `${pol.valor}%` : formatarValor(pol.valor)}
+                      {pol.tipo === 'desconto' ? 'Desconto' : 'Acrescimo'} de {pol.valor_tipo === 'percentual' ? `${pol.valor}%` : formatarValor(pol.valor)}
                     </span>
                     {!condicaoAtingida && (
                       <span className="desc-politica-falta">

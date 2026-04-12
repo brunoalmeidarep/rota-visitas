@@ -173,8 +173,8 @@ function Catalogo() {
   }
 
   function cancelar() {
-    // Voltar sem salvar
-    navigate(-1)
+    // Voltar para a tela do pedido
+    navigate(`/pedidos/${pedidoId}`)
   }
 
   return (

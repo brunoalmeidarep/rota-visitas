@@ -239,28 +239,128 @@
   padding: 14px;
 }
 
+.np-gasto-form-expandido {
+  padding: 20px;
+}
+
 .np-gasto-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  font-size: 14px;
-  font-weight: 500;
+  margin-bottom: 20px;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--np-text);
 }
 
 .np-gasto-remover {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: rgba(255, 59, 48, 0.15);
   border: none;
   color: #ff3b30;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Categorias scroll horizontal */
+.np-gasto-categorias-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.np-gasto-categorias-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.np-gasto-cat-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--np-bg);
+  border: 2px solid var(--np-border);
+  border-radius: 12px;
+  cursor: pointer;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.np-gasto-cat-btn.active {
+  border-color: var(--primary, #007aff);
+  background: rgba(0, 122, 255, 0.1);
+}
+
+.np-gasto-cat-icon {
+  font-size: 24px;
+}
+
+.np-gasto-cat-nome {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--np-text-secondary);
+  white-space: nowrap;
+}
+
+.np-gasto-cat-btn.active .np-gasto-cat-nome {
+  color: var(--primary, #007aff);
+}
+
+/* Valor grande */
+.np-gasto-valor-grande {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  background: var(--np-bg);
+  border: 2px solid var(--np-border);
+  border-radius: 14px;
+  margin-bottom: 16px;
+}
+
+.np-gasto-valor-prefix {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--np-text-secondary);
+}
+
+.np-gasto-valor-input {
+  flex: 1;
+  background: none;
+  border: none;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--np-text);
+  outline: none;
+}
+
+.np-gasto-valor-input::placeholder {
+  color: var(--np-text-muted);
+}
+
+/* Descricao do gasto */
+.np-gasto-descricao {
+  width: 100%;
+  padding: 16px;
+  background: var(--np-bg);
+  border: 1px solid var(--np-border);
+  border-radius: 12px;
+  font-size: 16px;
+  color: var(--np-text);
+  outline: none;
+}
+
+.np-gasto-descricao::placeholder {
+  color: var(--np-text-muted);
 }
 
 .np-gasto-campo {
