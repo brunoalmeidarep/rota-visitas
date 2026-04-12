@@ -1,8 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
-import Navbar from './components/shared/Navbar'
 import Login from './components/shared/Login'
+import Home from './components/Home'
 import CarteiraClientes from './components/clientes/CarteiraClientes'
 import CadastroCliente from './components/clientes/CadastroCliente'
 import PerfilCliente from './components/clientes/PerfilCliente'
@@ -11,13 +11,59 @@ import Mais from './components/mais/Mais'
 import MeuPerfil from './components/mais/MeuPerfil'
 
 // Placeholder components (serão substituídos pelos reais)
-const ListaPedidos = () => <div className="screen"><h1>Pedidos</h1></div>
-const ListaProdutos = () => <div className="screen"><h1>Produtos</h1></div>
+const ListaPedidos = () => (
+  <div className="screen">
+    <header className="screen-header">
+      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
+      <h1>Pedidos</h1>
+    </header>
+    <div className="screen-content"><p>Em desenvolvimento...</p></div>
+  </div>
+)
+
+const ListaProdutos = () => (
+  <div className="screen">
+    <header className="screen-header">
+      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
+      <h1>Produtos</h1>
+    </header>
+    <div className="screen-content"><p>Em desenvolvimento...</p></div>
+  </div>
+)
+
+const Relatorios = () => (
+  <div className="screen">
+    <header className="screen-header">
+      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
+      <h1>Relatórios</h1>
+    </header>
+    <div className="screen-content"><p>Em desenvolvimento...</p></div>
+  </div>
+)
+
+const Financas = () => (
+  <div className="screen">
+    <header className="screen-header">
+      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
+      <h1>Finanças</h1>
+    </header>
+    <div className="screen-content"><p>Em desenvolvimento...</p></div>
+  </div>
+)
+
+const Mapa = () => (
+  <div className="screen">
+    <header className="screen-header">
+      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
+      <h1>Mapa</h1>
+    </header>
+    <div className="screen-content"><p>Em desenvolvimento...</p></div>
+  </div>
+)
 
 function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [plano, setPlano] = useState('starter') // 'starter' | 'pro' | 'enterprise'
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -42,20 +88,20 @@ function App() {
 
   return (
     <div className="app">
-      <main className="main-content">
-        <Routes>
-          <Route path="/" element={<Navigate to="/clientes" replace />} />
-          <Route path="/pedidos" element={<ListaPedidos />} />
-          <Route path="/clientes" element={<CarteiraClientes />} />
-          <Route path="/clientes/novo" element={<CadastroCliente />} />
-          <Route path="/clientes/:id" element={<PerfilCliente />} />
-          <Route path="/produtos" element={<ListaProdutos />} />
-          <Route path="/planner" element={<Planner />} />
-          <Route path="/mais" element={<Mais />} />
-          <Route path="/mais/perfil" element={<MeuPerfil />} />
-        </Routes>
-      </main>
-      <Navbar plano={plano} />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/pedidos" element={<ListaPedidos />} />
+        <Route path="/clientes" element={<CarteiraClientes />} />
+        <Route path="/clientes/novo" element={<CadastroCliente />} />
+        <Route path="/clientes/:id" element={<PerfilCliente />} />
+        <Route path="/produtos" element={<ListaProdutos />} />
+        <Route path="/planner" element={<Planner />} />
+        <Route path="/mais" element={<Mais />} />
+        <Route path="/mais/perfil" element={<MeuPerfil />} />
+        <Route path="/mais/relatorios" element={<Relatorios />} />
+        <Route path="/mais/financas" element={<Financas />} />
+        <Route path="/mapa" element={<Mapa />} />
+      </Routes>
     </div>
   )
 }

@@ -4,17 +4,32 @@
   padding: 0;
 }
 
-:root {
-  --primary: #1a3a6b;
-  --primary-light: rgba(26, 58, 107, 0.1);
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --text: #1f2937;
-  --text-secondary: #6b7280;
-  --border: #e5e7eb;
-  --bg: #f9fafb;
+/* Tema claro (padrão) */
+:root, body.light-mode {
+  --primary: #007aff;
+  --primary-light: rgba(0, 122, 255, 0.1);
+  --success: #34c759;
+  --warning: #ff9500;
+  --danger: #ff3b30;
+  --text: #000000;
+  --text-secondary: #6c6c70;
+  --border: #e0e0e0;
+  --bg: #f2f2f7;
   --surface: #ffffff;
+}
+
+/* Tema escuro */
+body.dark-mode {
+  --primary: #0a84ff;
+  --primary-light: rgba(10, 132, 255, 0.15);
+  --success: #30d158;
+  --warning: #ff9f0a;
+  --danger: #ff453a;
+  --text: #ffffff;
+  --text-secondary: #8e8e93;
+  --border: #3a3a3c;
+  --bg: #1c1c1e;
+  --surface: #2c2c2e;
 }
 
 body {
@@ -32,20 +47,50 @@ body {
   flex-direction: column;
 }
 
-.main-content {
-  flex: 1;
-  padding-bottom: 72px;
-}
-
+/* Tela placeholder */
 .screen {
-  padding: 16px;
+  min-height: 100vh;
+  background: var(--bg);
 }
 
-.screen h1 {
-  font-size: 24px;
+.screen-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.screen-header h1 {
+  font-size: 20px;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 16px;
+  margin: 0;
+  flex: 1;
+}
+
+.voltar-btn {
+  padding: 8px 12px;
+  background: var(--bg);
+  border: none;
+  border-radius: 8px;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.voltar-btn:active {
+  opacity: 0.7;
+}
+
+.screen-content {
+  padding: 20px 16px;
+  color: var(--text-secondary);
 }
 
 .loading {

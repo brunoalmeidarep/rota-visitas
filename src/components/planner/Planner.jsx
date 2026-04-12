@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import InputEndereco from '../shared/InputEndereco'
@@ -62,6 +63,7 @@ function cidadesIguais(a, b) {
 }
 
 function Planner() {
+  const navigate = useNavigate()
   const { repId, loading: loadingRep } = useRepId()
 
   // Estados principais do Planner
@@ -904,6 +906,12 @@ function Planner() {
       <div className="planner">
         {/* Header Rotas */}
         <header className="planner-nav">
+          <button className="planner-home-btn" onClick={() => navigate('/')}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </button>
           <button className="planner-nav-btn" onClick={() => setPlannerView('semana')}>‹</button>
           <div className="planner-nav-centro">
             <div className="planner-titulo">Rotas salvas</div>
@@ -1322,6 +1330,12 @@ function Planner() {
     <div className="planner">
       {/* Navegação */}
       <header className="planner-nav">
+        <button className="planner-home-btn" onClick={() => navigate('/')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </button>
         <button className="planner-nav-btn" onClick={() => navegarPlanner(-1)}>‹</button>
         <div className="planner-nav-centro">
           <div className="planner-titulo">{tituloNav}</div>

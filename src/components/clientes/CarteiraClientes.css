@@ -9,7 +9,7 @@
 .carteira-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   padding: 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -18,11 +18,33 @@
   z-index: 10;
 }
 
+.header-voltar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.header-voltar svg {
+  stroke: var(--text);
+}
+
+.header-voltar:active {
+  opacity: 0.7;
+}
+
 .carteira-header h1 {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text);
   margin: 0;
+  flex: 1;
 }
 
 .header-actions {

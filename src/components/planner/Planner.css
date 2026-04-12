@@ -55,6 +55,28 @@
   background: var(--border);
 }
 
+.planner-home-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--bg);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.planner-home-btn svg {
+  stroke: var(--text);
+}
+
+.planner-home-btn:active {
+  background: var(--border);
+}
+
 .planner-nav-centro {
   flex: 1;
   text-align: center;
