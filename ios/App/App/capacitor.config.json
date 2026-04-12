@@ -1,0 +1,26 @@
+{
+	"appId": "com.minharotarp.app",
+	"appName": "Minha Rota RP",
+	"webDir": "www",
+	"server": {
+		"androidScheme": "https"
+	},
+	"ios": {
+		"contentInset": "always",
+		"minVersion": "13.0",
+		"backgroundColor": "#1c1c1e"
+	},
+	"android": {
+		"backgroundColor": "#1c1c1e"
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 0
+		}
+	},
+	"packageClassList": [
+		"CAPBrowserPlugin",
+		"FilesystemPlugin",
+		"SharePlugin"
+	]
+}

@@ -462,7 +462,28 @@ CREATE POLICY "gas_own" ON gastos_cliente FOR ALL USING (rep_id = (SELECT id FRO
 ---
 
 ## Funcionalidades futuras anotadas
-- Integração com calendário nativo: Planner sincronizado com Apple Calendar (iOS) e Google Calendar (Android) via APIs nativas. Implementar quando o app estiver como PWA instalado. Requer estudo de CalDAV / Google Calendar API.
+
+### Modelo Enterprise — Regras de clientes por representada
+Situações críticas a implementar quando desenvolver o módulo Enterprise:
+
+1. **Rep tenta criar pedido de cliente que pertence a outro rep na mesma empresa:**
+   - Bloquear o pedido
+   - Mostrar: "Este cliente é atendido por outro representante"
+
+2. **Rep tenta cadastrar cliente que já existe na base da indústria como cliente de outro rep:**
+   - Alertar: "Cliente já cadastrado na carteira de outro representante. Verifique com o time comercial"
+
+3. **Rep tem cliente na base pessoal, mas na representada aquele cliente é de outro rep:**
+   - No catálogo de clientes da representada, mostrar o cliente em cinza/bloqueado
+   - Não permitir criar pedido para esse cliente nessa representada
+
+**Arquitetura necessária:**
+- Dois tipos de cliente: "Cliente do rep" (carteira pessoal global) e "Cliente da representada" (pertence ao workspace da indústria com rep responsável definido)
+- Ao criar pedido no Enterprise, verificar se o rep logado é o responsável pelo cliente naquela representada
+- Rep solo (Starter/Pro) não é afetado — todos os clientes são dele
+
+### Integração com calendário nativo
+Planner sincronizado com Apple Calendar (iOS) e Google Calendar (Android). Implementar quando app estiver como PWA. Requer CalDAV / Google Calendar API.
 
 ---
 
