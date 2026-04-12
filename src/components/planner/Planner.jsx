@@ -108,13 +108,20 @@ function Planner() {
   const [gpsChegadaCoords, setGpsChegadaCoords] = useState(null)
   const [gpsChegadaErro, setGpsChegadaErro] = useState('')
 
-  // Refs para autocomplete
-  const partidaInputRef = useRef(null)
-  const chegadaInputRef = useRef(null)
-  const enderecoBaseInputRef = useRef(null)
-  const partidaAutocompleteRef = useRef(null)
-  const chegadaAutocompleteRef = useRef(null)
-  const enderecoBaseAutocompleteRef = useRef(null)
+  // Autocomplete manual com AutocompleteService
+  const autocompleteServiceRef = useRef(null)
+  const debouncePartidaRef = useRef(null)
+  const debounceChegadaRef = useRef(null)
+  const debounceEndBaseRef = useRef(null)
+  const [sugestoesPartida, setSugestoesPartida] = useState([])
+  const [sugestoesChegada, setSugestoesChegada] = useState([])
+  const [sugestoesEndBase, setSugestoesEndBase] = useState([])
+  const [mostrarSugestoesPartida, setMostrarSugestoesPartida] = useState(false)
+  const [mostrarSugestoesChegada, setMostrarSugestoesChegada] = useState(false)
+  const [mostrarSugestoesEndBase, setMostrarSugestoesEndBase] = useState(false)
+  const containerPartidaRef = useRef(null)
+  const containerChegadaRef = useRef(null)
+  const containerEndBaseRef = useRef(null)
 
   // ==================== DEBUG PANEL ====================
   const [debugLogs, setDebugLogs] = useState([])
@@ -556,25 +563,18 @@ function Planner() {
     )
   }
 
-  // Carregar Google Maps API dinamicamente (nova API Places com v=weekly)
-  // NOTA: ApiTargetBlockedMapError em desenvolvimento local (192.168.x.x) é esperado
-  // por restrição da key. Vai funcionar normalmente no deploy do Cloudflare Pages.
+  // Carregar Google Maps API com AutocompleteService
   const loadGoogleMaps = useCallback(() => {
     return new Promise((resolve) => {
-      // Se já está carregado, resolve imediatamente
-      if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-        console.log('[Google Maps] ✅ API já carregada (PlaceAutocompleteElement disponível)')
+      if (window.google?.maps?.places?.AutocompleteService) {
         resolve(true)
         return
       }
 
-      // Se já tem um script sendo carregado, aguarda
       const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
       if (existingScript) {
-        console.log('[Google Maps] ⏳ Script existente encontrado, aguardando...')
         const checkReady = () => {
-          if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-            console.log('[Google Maps] ✅ PlaceAutocompleteElement disponível')
+          if (window.google?.maps?.places?.AutocompleteService) {
             resolve(true)
           } else {
             setTimeout(checkReady, 100)
@@ -585,183 +585,144 @@ function Planner() {
         return
       }
 
-      // Carrega o script com v=weekly para nova API Places
-      console.log('[Google Maps] 🔄 Carregando script (v=weekly)...')
       const script = document.createElement('script')
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI&libraries=places&v=weekly'
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo&libraries=places'
       script.async = true
       script.defer = true
       script.onload = () => {
-        console.log('[Google Maps] ✅ Script carregou')
-        // Verificar nova API
-        if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-          console.log('[Google Maps] ✅ PlaceAutocompleteElement disponível')
-        } else {
-          console.warn('[Google Maps] ⚠️ PlaceAutocompleteElement não encontrado, tentando API legada')
+        const checkReady = () => {
+          if (window.google?.maps?.places?.AutocompleteService) {
+            resolve(true)
+          } else {
+            setTimeout(checkReady, 100)
+          }
         }
-        resolve(true)
+        checkReady()
       }
-      script.onerror = (err) => {
-        console.error('[Google Maps] ❌ FALHA ao carregar script:', err)
-        resolve(false)
-      }
+      script.onerror = () => resolve(false)
       document.head.appendChild(script)
     })
   }, [])
 
-  // Inicializar Google Places Autocomplete (nova API PlaceAutocompleteElement)
-  const initAutocomplete = useCallback(async (containerRef, autocompleteRef, setValueFn, inputName = 'input', placeholder = '') => {
-    console.log(`[Autocomplete:${inputName}] 🔄 Iniciando...`)
-
-    if (!containerRef.current) {
-      console.warn(`[Autocomplete:${inputName}] ❌ Container ref não existe`)
-      return
-    }
-
-    // Aguarda a API carregar
-    const loaded = await loadGoogleMaps()
-    if (!loaded) {
-      console.error(`[Autocomplete:${inputName}] ❌ loadGoogleMaps retornou false`)
-      return
-    }
-
-    // Verifica se container ainda existe
-    if (!containerRef.current) {
-      console.warn(`[Autocomplete:${inputName}] ❌ Container ref perdido após load`)
-      return
-    }
-
-    // Limpar elemento anterior se existir
-    if (autocompleteRef.current) {
-      console.log(`[Autocomplete:${inputName}] 🧹 Removendo elemento anterior`)
-      try {
-        autocompleteRef.current.remove()
-      } catch (e) { /* ignore */ }
-      autocompleteRef.current = null
-    }
-
-    // Limpar container
-    containerRef.current.innerHTML = ''
-
-    // Tentar nova API PlaceAutocompleteElement
-    if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-      try {
-        console.log(`[Autocomplete:${inputName}] 📍 Criando PlaceAutocompleteElement...`)
-
-        const placeAutocomplete = new window.google.maps.places.PlaceAutocompleteElement({
-          componentRestrictions: { country: 'br' },
-          types: ['establishment', 'geocode']
-        })
-
-        // Estilizar o elemento
-        placeAutocomplete.style.cssText = `
-          width: 100%;
-          --gmpx-color-surface: var(--bg, #f5f5f5);
-          --gmpx-color-on-surface: var(--text, #333);
-          --gmpx-color-primary: var(--primary, #1a3a6b);
-          --gmpx-font-family-base: inherit;
-          --gmpx-font-size-base: 14px;
-        `
-
-        // Evento de seleção
-        placeAutocomplete.addEventListener('gmp-placeselect', async (event) => {
-          console.log(`[Autocomplete:${inputName}] 📍 gmp-placeselect event`)
-          try {
-            const place = event.placePrediction.toPlace()
-            await place.fetchFields({ fields: ['displayName', 'formattedAddress'] })
-
-            const displayName = place.displayName || ''
-            const formattedAddress = place.formattedAddress || ''
-
-            console.log(`[Autocomplete:${inputName}] 📍 Place:`, { displayName, formattedAddress })
-
-            // Se tem nome diferente do endereço, mostrar "Nome — Endereço"
-            let valor = ''
-            if (displayName && formattedAddress && !formattedAddress.toLowerCase().includes(displayName.toLowerCase())) {
-              valor = `${displayName} — ${formattedAddress}`
-            } else {
-              valor = formattedAddress || displayName || ''
-            }
-            setValueFn(valor)
-          } catch (err) {
-            console.error(`[Autocomplete:${inputName}] ❌ Erro ao buscar place:`, err)
-          }
-        })
-
-        // Inserir no container
-        containerRef.current.appendChild(placeAutocomplete)
-        autocompleteRef.current = placeAutocomplete
-
-        console.log(`[Autocomplete:${inputName}] ✅ PlaceAutocompleteElement criado!`)
-        return
-      } catch (err) {
-        console.error(`[Autocomplete:${inputName}] ❌ Erro ao criar PlaceAutocompleteElement:`, err)
-      }
-    }
-
-    // Fallback: criar input simples sem autocomplete
-    console.warn(`[Autocomplete:${inputName}] ⚠️ Usando input simples (sem autocomplete)`)
-    const input = document.createElement('input')
-    input.type = 'text'
-    input.className = 'rota-endereco-input'
-    input.placeholder = placeholder || 'Digite o endereço...'
-    input.addEventListener('input', (e) => setValueFn(e.target.value))
-    containerRef.current.appendChild(input)
-  }, [loadGoogleMaps])
-
-  // Effect para inicializar autocomplete quando input de partida aparecer
-  useEffect(() => {
-    if (modalRotaAberto && rotaPartidaTipo === 'outro') {
-      const timer = setTimeout(() => {
-        if (partidaInputRef.current) {
-          initAutocomplete(partidaInputRef, partidaAutocompleteRef, setRotaPartidaInput, 'partida', 'Ex: Rua das Flores, 123, Joinville - SC')
-        }
-      }, 200)
-      return () => clearTimeout(timer)
-    }
-  }, [modalRotaAberto, rotaPartidaTipo, initAutocomplete])
-
-  // Effect para inicializar autocomplete quando input de chegada aparecer
-  useEffect(() => {
-    if (modalRotaAberto && (rotaChegadaTipo === 'outro' || rotaChegadaTipo === 'hotel')) {
-      const timer = setTimeout(() => {
-        if (chegadaInputRef.current) {
-          const placeholder = rotaChegadaTipo === 'hotel' ? 'Ex: Hotel Ibis, Joinville - SC' : 'Ex: Rua das Flores, 123, Joinville - SC'
-          initAutocomplete(chegadaInputRef, chegadaAutocompleteRef, setRotaChegadaInput, 'chegada', placeholder)
-        }
-      }, 200)
-      return () => clearTimeout(timer)
-    }
-  }, [modalRotaAberto, rotaChegadaTipo, initAutocomplete])
-
-  // Effect para inicializar autocomplete do endereço base
-  useEffect(() => {
-    if (modalRotaAberto && rotaPartidaTipo === 'casa' && !repData?.endereco_base) {
-      const timer = setTimeout(() => {
-        if (enderecoBaseInputRef.current) {
-          initAutocomplete(enderecoBaseInputRef, enderecoBaseAutocompleteRef, setEnderecoBaseTmp, 'enderecoBase', 'Ex: Rua das Flores, 123, Joinville - SC')
-        }
-      }, 200)
-      return () => clearTimeout(timer)
-    }
-  }, [modalRotaAberto, rotaPartidaTipo, repData?.endereco_base, initAutocomplete])
-
-  // Debug: testar Google Places API quando modal abre
+  // Inicializar AutocompleteService quando modal abre
   useEffect(() => {
     if (modalRotaAberto) {
-      console.log('='.repeat(50))
-      console.log('[DEBUG] Modal de Rotas aberto - testando Google Maps API...')
       loadGoogleMaps().then(loaded => {
-        if (loaded && window.google?.maps?.places) {
-          console.log('[DEBUG] ✅ Google Places API OK!')
-          console.log('[DEBUG] Autocomplete disponível:', typeof window.google.maps.places.Autocomplete)
-        } else {
-          console.error('[DEBUG] ❌ Google Places API FALHOU!')
-          console.log('[DEBUG] window.google:', window.google)
+        if (loaded && window.google?.maps?.places?.AutocompleteService) {
+          autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
+          console.log('[Planner] AutocompleteService inicializado')
         }
       })
     }
   }, [modalRotaAberto, loadGoogleMaps])
+
+  // Fechar dropdowns ao clicar fora ou pressionar Escape
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (containerPartidaRef.current && !containerPartidaRef.current.contains(e.target)) {
+        setMostrarSugestoesPartida(false)
+      }
+      if (containerChegadaRef.current && !containerChegadaRef.current.contains(e.target)) {
+        setMostrarSugestoesChegada(false)
+      }
+      if (containerEndBaseRef.current && !containerEndBaseRef.current.contains(e.target)) {
+        setMostrarSugestoesEndBase(false)
+      }
+    }
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        setMostrarSugestoesPartida(false)
+        setMostrarSugestoesChegada(false)
+        setMostrarSugestoesEndBase(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
+  // Buscar sugestões de endereço
+  function buscarSugestoes(texto, setSugestoes, setMostrar, debounceRef) {
+    if (!texto || texto.length < 3) {
+      setSugestoes([])
+      setMostrar(false)
+      return
+    }
+
+    if (!autocompleteServiceRef.current) {
+      console.warn('[Planner] AutocompleteService não disponível')
+      return
+    }
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+
+    debounceRef.current = setTimeout(() => {
+      autocompleteServiceRef.current.getPlacePredictions(
+        {
+          input: texto,
+          componentRestrictions: { country: 'br' },
+          language: 'pt-BR'
+        },
+        (predictions, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+            setSugestoes(predictions.map(p => ({
+              id: p.place_id,
+              description: p.description
+            })))
+            setMostrar(true)
+          } else {
+            setSugestoes([])
+            setMostrar(false)
+          }
+        }
+      )
+    }, 400)
+  }
+
+  // Handlers de input
+  function handlePartidaInputChange(e) {
+    const valor = e.target.value
+    setRotaPartidaInput(valor)
+    buscarSugestoes(valor, setSugestoesPartida, setMostrarSugestoesPartida, debouncePartidaRef)
+  }
+
+  function handleChegadaInputChange(e) {
+    const valor = e.target.value
+    setRotaChegadaInput(valor)
+    buscarSugestoes(valor, setSugestoesChegada, setMostrarSugestoesChegada, debounceChegadaRef)
+  }
+
+  function handleEndBaseInputChange(e) {
+    const valor = e.target.value
+    setEnderecoBaseTmp(valor)
+    buscarSugestoes(valor, setSugestoesEndBase, setMostrarSugestoesEndBase, debounceEndBaseRef)
+  }
+
+  // Selecionar sugestão
+  function selecionarSugestaoPartida(sugestao) {
+    setRotaPartidaInput(sugestao.description)
+    setSugestoesPartida([])
+    setMostrarSugestoesPartida(false)
+  }
+
+  function selecionarSugestaoChegada(sugestao) {
+    setRotaChegadaInput(sugestao.description)
+    setSugestoesChegada([])
+    setMostrarSugestoesChegada(false)
+  }
+
+  function selecionarSugestaoEndBase(sugestao) {
+    setEnderecoBaseTmp(sugestao.description)
+    setSugestoesEndBase([])
+    setMostrarSugestoesEndBase(false)
+  }
 
 
   function fecharModalRota() {
@@ -1232,10 +1193,32 @@ function Planner() {
               {rotaPartidaTipo === 'casa' && !repData?.endereco_base && (
                 <div className="rota-casa-aviso">
                   <div className="rota-casa-aviso-texto">⚠️ Nenhum endereço base cadastrado</div>
-                  {/* Container para PlaceAutocompleteElement */}
-                  <div ref={enderecoBaseInputRef} className="rota-autocomplete-container"></div>
-                  {/* Input de fallback mostrado apenas se valor já existe */}
-                  {enderecoBaseTmp && (
+                  {/* Autocomplete manual para endereço base */}
+                  <div ref={containerEndBaseRef} className="rota-autocomplete-wrapper">
+                    <input
+                      type="text"
+                      className="rota-autocomplete-input"
+                      value={enderecoBaseTmp}
+                      onChange={handleEndBaseInputChange}
+                      onFocus={() => sugestoesEndBase.length > 0 && setMostrarSugestoesEndBase(true)}
+                      placeholder="Digite seu endereço..."
+                    />
+                    {mostrarSugestoesEndBase && sugestoesEndBase.length > 0 && (
+                      <div className="rota-autocomplete-dropdown">
+                        {sugestoesEndBase.map((s) => (
+                          <button
+                            key={s.id}
+                            className="rota-autocomplete-item"
+                            onClick={() => selecionarSugestaoEndBase(s)}
+                            type="button"
+                          >
+                            {s.description}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {enderecoBaseTmp && !mostrarSugestoesEndBase && (
                     <div className="rota-endereco-selecionado">
                       📍 {enderecoBaseTmp}
                     </div>
@@ -1291,9 +1274,30 @@ function Planner() {
 
               {/* Outro endereço */}
               {rotaPartidaTipo === 'outro' && (
-                <div className="rota-autocomplete-wrapper">
-                  <div ref={partidaInputRef} className="rota-autocomplete-container"></div>
-                  {rotaPartidaInput && (
+                <div ref={containerPartidaRef} className="rota-autocomplete-wrapper">
+                  <input
+                    type="text"
+                    className="rota-autocomplete-input"
+                    value={rotaPartidaInput}
+                    onChange={handlePartidaInputChange}
+                    onFocus={() => sugestoesPartida.length > 0 && setMostrarSugestoesPartida(true)}
+                    placeholder="Digite o endereço de partida..."
+                  />
+                  {mostrarSugestoesPartida && sugestoesPartida.length > 0 && (
+                    <div className="rota-autocomplete-dropdown">
+                      {sugestoesPartida.map((s) => (
+                        <button
+                          key={s.id}
+                          className="rota-autocomplete-item"
+                          onClick={() => selecionarSugestaoPartida(s)}
+                          type="button"
+                        >
+                          {s.description}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {rotaPartidaInput && !mostrarSugestoesPartida && (
                     <div className="rota-endereco-selecionado">
                       📍 {rotaPartidaInput}
                     </div>
@@ -1335,9 +1339,30 @@ function Planner() {
 
               {/* Hotel ou Outro endereço */}
               {(rotaChegadaTipo === 'hotel' || rotaChegadaTipo === 'outro') && (
-                <div className="rota-autocomplete-wrapper">
-                  <div ref={chegadaInputRef} className="rota-autocomplete-container"></div>
-                  {rotaChegadaInput && (
+                <div ref={containerChegadaRef} className="rota-autocomplete-wrapper">
+                  <input
+                    type="text"
+                    className="rota-autocomplete-input"
+                    value={rotaChegadaInput}
+                    onChange={handleChegadaInputChange}
+                    onFocus={() => sugestoesChegada.length > 0 && setMostrarSugestoesChegada(true)}
+                    placeholder={rotaChegadaTipo === 'hotel' ? 'Digite o endereço do hotel...' : 'Digite o endereço de chegada...'}
+                  />
+                  {mostrarSugestoesChegada && sugestoesChegada.length > 0 && (
+                    <div className="rota-autocomplete-dropdown">
+                      {sugestoesChegada.map((s) => (
+                        <button
+                          key={s.id}
+                          className="rota-autocomplete-item"
+                          onClick={() => selecionarSugestaoChegada(s)}
+                          type="button"
+                        >
+                          {s.description}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {rotaChegadaInput && !mostrarSugestoesChegada && (
                     <div className="rota-endereco-selecionado">
                       📍 {rotaChegadaInput}
                     </div>

@@ -125,18 +125,25 @@ function MeuPerfil() {
     init()
   }, [loadGoogleMaps])
 
-  // Fechar dropdown ao clicar fora
+  // Fechar dropdown ao clicar fora ou pressionar Escape
   useEffect(() => {
     function handleClickOutside(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setMostrarSugestoes(false)
       }
     }
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        setMostrarSugestoes(false)
+      }
+    }
     document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('touchstart', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('touchstart', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
     }
   }, [])
 
@@ -178,7 +185,7 @@ function MeuPerfil() {
       return
     }
 
-    // Debounce de 300ms
+    // Debounce de 400ms
     if (debounceRef.current) {
       clearTimeout(debounceRef.current)
     }
@@ -211,7 +218,7 @@ function MeuPerfil() {
           }
         }
       )
-    }, 300)
+    }, 400)
   }
 
   // Selecionar sugestão

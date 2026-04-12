@@ -1629,42 +1629,72 @@
 }
 
 /* ===========================================
-   PLACE AUTOCOMPLETE ELEMENT (nova API)
+   AUTOCOMPLETE MANUAL (AutocompleteService)
 =========================================== */
 .rota-autocomplete-wrapper {
+  position: relative;
+  width: 100%;
   margin-bottom: 12px;
 }
 
-.rota-autocomplete-container {
+.rota-autocomplete-input {
   width: 100%;
-  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.2s;
 }
 
-/* Estilizar o PlaceAutocompleteElement */
-.rota-autocomplete-container gmp-place-autocomplete {
+.rota-autocomplete-input:focus {
+  border-color: var(--primary);
+}
+
+.rota-autocomplete-input::placeholder {
+  color: var(--text-secondary);
+}
+
+/* Dropdown de sugestões */
+.rota-autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-top: 4px;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 9999;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.rota-autocomplete-item {
+  display: block;
   width: 100%;
+  padding: 12px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  color: var(--text);
+  transition: background 0.15s;
 }
 
-/* Estilizar o input interno do PlaceAutocompleteElement */
-.rota-autocomplete-container input {
-  width: 100% !important;
-  padding: 12px 14px !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 12px !important;
-  font-size: 14px !important;
-  color: var(--text) !important;
-  background: var(--bg) !important;
-  outline: none !important;
-  box-sizing: border-box !important;
-  font-family: inherit !important;
+.rota-autocomplete-item:last-child {
+  border-bottom: none;
 }
 
-.rota-autocomplete-container input:focus {
-  border-color: var(--primary) !important;
-}
-
-.rota-autocomplete-container input::placeholder {
-  color: var(--text-secondary) !important;
+.rota-autocomplete-item:active {
+  background: var(--bg);
 }
 
 /* Endereço selecionado */
@@ -1676,23 +1706,6 @@
   font-size: 13px;
   margin-top: 8px;
   word-break: break-word;
-}
-
-/* Fallback input quando autocomplete não funciona */
-.rota-autocomplete-container .rota-endereco-input {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  font-size: 14px;
-  color: var(--text);
-  background: var(--bg);
-  outline: none;
-  box-sizing: border-box;
-}
-
-.rota-autocomplete-container .rota-endereco-input:focus {
-  border-color: var(--primary);
 }
 
 /* Toast notifications */
