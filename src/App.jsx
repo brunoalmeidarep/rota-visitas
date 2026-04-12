@@ -6,6 +6,7 @@ import Home from './components/Home'
 import CarteiraClientes from './components/clientes/CarteiraClientes'
 import CadastroCliente from './components/clientes/CadastroCliente'
 import PerfilCliente from './components/clientes/PerfilCliente'
+import DadosCliente from './components/clientes/DadosCliente'
 import Planner from './components/planner/Planner'
 import Mais from './components/mais/Mais'
 import MeuPerfil from './components/mais/MeuPerfil'
@@ -61,6 +62,36 @@ const Mapa = () => (
   </div>
 )
 
+const Bonificacao = () => (
+  <div className="screen">
+    <header className="screen-header">
+      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
+      <h1>Bonificação</h1>
+    </header>
+    <div className="screen-content"><p>Em desenvolvimento...</p></div>
+  </div>
+)
+
+const GastosCliente = () => (
+  <div className="screen">
+    <header className="screen-header">
+      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
+      <h1>Gastos</h1>
+    </header>
+    <div className="screen-content"><p>Em desenvolvimento...</p></div>
+  </div>
+)
+
+const EditarCliente = () => (
+  <div className="screen">
+    <header className="screen-header">
+      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
+      <h1>Editar Cliente</h1>
+    </header>
+    <div className="screen-content"><p>Em desenvolvimento...</p></div>
+  </div>
+)
+
 function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -94,6 +125,10 @@ function App() {
         <Route path="/clientes" element={<CarteiraClientes />} />
         <Route path="/clientes/novo" element={<CadastroCliente />} />
         <Route path="/clientes/:id" element={<PerfilCliente />} />
+        <Route path="/clientes/:id/dados" element={<DadosCliente />} />
+        <Route path="/clientes/:id/editar" element={<EditarCliente />} />
+        <Route path="/clientes/:id/bonificacao" element={<Bonificacao />} />
+        <Route path="/clientes/:id/gastos" element={<GastosCliente />} />
         <Route path="/produtos" element={<ListaProdutos />} />
         <Route path="/planner" element={<Planner />} />
         <Route path="/mais" element={<Mais />} />
