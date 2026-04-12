@@ -494,6 +494,15 @@ Planner sincronizado com Apple Calendar (iOS) e Google Calendar (Android). Imple
 - CodeMagic: dois workflows compilando o mesmo código com temas diferentes
 - Implementar quando houver primeiro cliente Enterprise interessado
 
+### Notificações locais — Tarefas
+- Usar @capacitor/local-notifications para lembretes de tarefas
+- Comportamento padrão: vibração + notificação na barra do sistema
+- Rep configura horários em Opções → Configurações → "Horário de lembrete de tarefas"
+- Múltiplos horários suportados (ex: 08:00 e 18:00)
+- Notificação mostra: "Você tem X tarefas pendentes" com ação de abrir o app direto na tela de tarefas
+- Implementar quando empacotar no Capacitor — não funciona no browser
+- No browser (desenvolvimento): simular com alert ou toast no horário configurado
+
 ---
 
 ## Deploy
