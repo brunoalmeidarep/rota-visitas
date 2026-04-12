@@ -7,11 +7,12 @@ import CarteiraClientes from './components/clientes/CarteiraClientes'
 import CadastroCliente from './components/clientes/CadastroCliente'
 import PerfilCliente from './components/clientes/PerfilCliente'
 import Planner from './components/planner/Planner'
+import Mais from './components/mais/Mais'
+import MeuPerfil from './components/mais/MeuPerfil'
 
 // Placeholder components (serão substituídos pelos reais)
 const ListaPedidos = () => <div className="screen"><h1>Pedidos</h1></div>
 const ListaProdutos = () => <div className="screen"><h1>Produtos</h1></div>
-const Mais = () => <div className="screen"><h1>Mais</h1></div>
 
 function App() {
   const [user, setUser] = useState(null)
@@ -51,6 +52,7 @@ function App() {
           <Route path="/produtos" element={<ListaProdutos />} />
           <Route path="/planner" element={<Planner />} />
           <Route path="/mais" element={<Mais />} />
+          <Route path="/mais/perfil" element={<MeuPerfil />} />
         </Routes>
       </main>
       <Navbar plano={plano} />

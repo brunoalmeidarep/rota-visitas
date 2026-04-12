@@ -1,0 +1,215 @@
+.meu-perfil {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 100px;
+}
+
+/* Header */
+.perfil-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.perfil-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.perfil-voltar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.perfil-voltar svg {
+  stroke: var(--primary);
+}
+
+.perfil-salvar {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.perfil-salvar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mensagens */
+.perfil-erro {
+  margin: 16px;
+  padding: 12px 16px;
+  background: #fee;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  color: var(--danger);
+  font-size: 14px;
+  white-space: pre-line;
+}
+
+.perfil-sucesso {
+  margin: 16px;
+  padding: 12px 16px;
+  background: #efe;
+  border: 1px solid var(--success);
+  border-radius: 8px;
+  color: var(--success);
+  font-size: 14px;
+}
+
+/* Formulário */
+.perfil-form {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Campo */
+.perfil-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.perfil-campo label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.perfil-input {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.perfil-input:focus {
+  border-color: var(--primary);
+}
+
+.perfil-input.readonly {
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.perfil-campo-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Input com prefixo */
+.perfil-input-prefix {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.perfil-input-prefix span {
+  padding: 12px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 15px;
+  border-right: 1px solid var(--border);
+}
+
+.perfil-input-prefix .perfil-input {
+  border: none;
+  border-radius: 0;
+  flex: 1;
+}
+
+/* Autocomplete container */
+.perfil-autocomplete-container {
+  min-height: 44px;
+}
+
+.perfil-autocomplete-container input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.perfil-autocomplete-container input:focus {
+  border-color: var(--primary);
+}
+
+.perfil-endereco-preview {
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* Seção */
+.perfil-secao {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.perfil-secao-titulo {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 16px 0;
+}
+
+.perfil-secao .perfil-campo {
+  margin-bottom: 16px;
+}
+
+.perfil-secao .perfil-campo:last-child {
+  margin-bottom: 0;
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-size: 16px;
+  color: var(--text-secondary);
+}

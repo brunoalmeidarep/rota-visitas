@@ -1,0 +1,140 @@
+.mais {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 100px;
+}
+
+/* Header */
+.mais-header {
+  padding: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.mais-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+/* Content */
+.mais-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Seção */
+.mais-secao {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.mais-secao-titulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+}
+
+/* Grid de itens */
+.mais-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 12px;
+}
+
+.mais-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mais-item:active {
+  transform: scale(0.97);
+  background: var(--surface);
+}
+
+.mais-item-icon {
+  font-size: 28px;
+}
+
+.mais-item-texto {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: center;
+}
+
+/* Lista de itens */
+.mais-lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.mais-lista-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.mais-lista-item:last-child {
+  border-bottom: none;
+}
+
+.mais-lista-item:active {
+  background: var(--bg);
+}
+
+.mais-lista-icon {
+  font-size: 20px;
+  width: 28px;
+  text-align: center;
+}
+
+.mais-lista-texto {
+  flex: 1;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.mais-lista-seta {
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+/* Logout */
+.mais-lista-item.logout .mais-lista-texto {
+  color: var(--danger);
+}
+
+/* Versão */
+.mais-versao {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 16px 0;
+}
