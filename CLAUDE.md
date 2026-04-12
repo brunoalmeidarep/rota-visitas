@@ -61,13 +61,29 @@ Usar a função getRepId() com cache.
 - ✅ Login (Supabase Auth)
 - ✅ CarteiraClientes (stats bar, filtros, cores de inatividade)
 - ✅ CadastroCliente (CNPJ via BrasilAPI, CEP via ViaCEP, geocodificação automática)
-- ✅ PerfilCliente (header, hero, stats, ações rápidas, dados do cliente)
+- ✅ PerfilCliente (header, hero, stats, ações rápidas, histórico com abas, CheckIn integrado)
+- ✅ DadosCliente (cards fiscal, contato, endereço, telefone clicável)
+- ✅ CheckIn (sheet com opções check-in/pedido/orçamento, gasto colapsável, anti-duplicata)
+- ✅ Bonificacao (lista agrupada por mês, resumo anual/mensal, sheet nova bonificação)
+- ✅ GastosCliente (lista com filtro por ano, categorias com ícones, total geral)
+- ✅ DetalheVisita (hero, tipo, obs, pedidos e gastos associados)
 - ✅ Planner (semana/mês, compromissos, integração visitas)
 - ✅ Rotas no Planner (otimização Google/Haversine, modal completo, detalhe, Google Maps)
-- ⚠️ Autocomplete Places nas Rotas — funciona em HTTPS/deploy, bloqueado em HTTP local
-- ❌ Check-in
-- ❌ Tela Mais
-- ❌ Pedidos, Produtos, Relatórios, Finanças
+- ✅ Home (grid de módulos, badges, dark/light mode, online/offline)
+- ✅ InputEndereco (componente reutilizável com AutocompleteService)
+- ✅ ListaPedidos (filtros, busca, agrupamento por data, badges de status)
+- ✅ NovoPedido (canal, cliente com busca, representada, tipo, gasto colapsável)
+- ✅ Catalogo (produtos com busca, filtros, +/- quantidade, badge IPI, footer total)
+- ✅ DetalheProdutoPedido (foto, info, quantidade, desconto %/R$, cálculos)
+- ✅ DescontosPedido (política comercial com toggles, descontos rep, cascata)
+- ✅ DetalhesPedido (condições, lista produtos, resumo, Gerar/Duplicar/PDF)
+- ✅ PedidoSimples (para Starter: canal, representada, tipo, valor total)
+- ✅ usePlano (hook com mock para starter/pro/enterprise)
+- ⚠️ Autocomplete Places — funciona em HTTPS/deploy, usa AutocompleteService em HTTP local
+- ❌ Produtos (catálogo, cadastro, edição)
+- ❌ Relatórios
+- ❌ Finanças
+- ❌ PDF de pedidos/orçamentos
 
 ---
 
