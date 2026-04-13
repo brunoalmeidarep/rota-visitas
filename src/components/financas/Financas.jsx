@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { formatarValor } from '../../utils/formatarMoeda'
 import NovoLancamento from './NovoLancamento'
 import './Financas.css'
 
@@ -162,14 +163,6 @@ function Financas() {
   }
 
   const lancamentosAgrupados = agruparPorDia(lancamentosFiltrados)
-
-  // Formatar valor
-  function formatarValor(valor) {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(valor || 0)
-  }
 
   // Formatar data
   function formatarData(dataStr) {
