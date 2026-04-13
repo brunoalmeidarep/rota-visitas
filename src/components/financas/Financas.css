@@ -2,136 +2,273 @@
 
 .financas {
   min-height: 100vh;
-  background: var(--bg-primary, #1c1c1e);
+  padding-bottom: 24px;
 }
 
-.financas-header {
+/* Tema escuro */
+.financas.dark {
+  --fin-bg: #1c1c1e;
+  --fin-card-bg: #2c2c2e;
+  --fin-border: #3a3a3c;
+  --fin-text: #ffffff;
+  --fin-text-secondary: #8e8e93;
+  --fin-input-bg: #1c1c1e;
+}
+
+/* Tema claro */
+.financas.light {
+  --fin-bg: #f2f2f7;
+  --fin-card-bg: #ffffff;
+  --fin-border: #e0e0e0;
+  --fin-text: #000000;
+  --fin-text-secondary: #6c6c70;
+  --fin-input-bg: #f2f2f7;
+}
+
+.financas {
+  background: var(--fin-bg);
+}
+
+/* Header */
+.fin-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
   padding: 16px 20px;
-  background: var(--bg-primary, #1c1c1e);
-  border-bottom: 1px solid var(--border-color, #3a3a3c);
+  background: var(--fin-bg);
+  border-bottom: 1px solid var(--fin-border);
   position: sticky;
   top: 0;
   z-index: 100;
 }
 
-.financas-voltar {
+.fin-voltar,
+.fin-novo {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--bg-secondary, #2c2c2e);
-  border: none;
+  background: var(--fin-card-bg);
+  border: 1px solid var(--fin-border);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-primary, #ffffff);
+  color: var(--fin-text);
 }
 
-.financas-header h1 {
+.fin-novo {
+  background: #007aff;
+  border: none;
+  color: #ffffff;
+}
+
+.fin-header h1 {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary, #ffffff);
+  color: var(--fin-text);
   margin: 0;
 }
 
-.financas-content {
-  padding: 20px;
+/* Navegação de período */
+.fin-periodo {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 16px 20px;
 }
 
-/* Resumo */
-.financas-resumo {
+.fin-periodo-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--fin-card-bg);
+  border: 1px solid var(--fin-border);
+  font-size: 18px;
+  color: var(--fin-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fin-periodo-texto {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--fin-text);
+  min-width: 140px;
+  text-align: center;
+}
+
+/* Banner mês futuro */
+.fin-banner-futuro {
+  background: rgba(255, 149, 0, 0.15);
+  border: 1px solid rgba(255, 149, 0, 0.3);
+  margin: 0 20px 16px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.fin-banner-futuro span {
+  font-size: 13px;
+  color: #ff9500;
+  font-weight: 500;
+}
+
+/* Cards de resumo */
+.fin-resumo {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 0 20px;
+  margin-bottom: 20px;
 }
 
-.financas-resumo-card {
-  padding: 16px;
+.fin-resumo-card {
+  padding: 14px 12px;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  text-align: center;
 }
 
-.financas-resumo-card.receita {
+.fin-resumo-card.receita {
   background: rgba(52, 199, 89, 0.15);
   border: 1px solid rgba(52, 199, 89, 0.3);
 }
 
-.financas-resumo-card.despesa {
+.fin-resumo-card.despesa {
   background: rgba(255, 59, 48, 0.15);
   border: 1px solid rgba(255, 59, 48, 0.3);
 }
 
-.financas-resumo-label {
-  font-size: 12px;
-  color: var(--text-secondary, #8e8e93);
+.fin-resumo-card.resultado.positivo {
+  background: rgba(0, 122, 255, 0.15);
+  border: 1px solid rgba(0, 122, 255, 0.3);
 }
 
-.financas-resumo-card.receita .financas-resumo-valor {
-  font-size: 20px;
+.fin-resumo-card.resultado.negativo {
+  background: rgba(255, 59, 48, 0.15);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.fin-resumo-label {
+  font-size: 11px;
+  color: var(--fin-text-secondary);
+  text-transform: uppercase;
+}
+
+.fin-resumo-card.receita .fin-resumo-valor {
+  font-size: 16px;
   font-weight: 700;
   color: #34c759;
 }
 
-.financas-resumo-card.despesa .financas-resumo-valor {
-  font-size: 20px;
+.fin-resumo-card.despesa .fin-resumo-valor {
+  font-size: 16px;
   font-weight: 700;
   color: #ff3b30;
 }
 
-/* Seções */
-.financas-secao {
+.fin-resumo-card.resultado.positivo .fin-resumo-valor {
+  font-size: 16px;
+  font-weight: 700;
+  color: #007aff;
+}
+
+.fin-resumo-card.resultado.negativo .fin-resumo-valor {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ff3b30;
+}
+
+/* Abas */
+.fin-abas {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--fin-border);
+}
+
+.fin-aba {
+  flex: 1;
+  padding: 12px 8px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fin-text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+}
+
+.fin-aba.ativa {
+  color: #007aff;
+  border-bottom-color: #007aff;
+}
+
+/* Conteúdo */
+.fin-content {
+  padding: 0 20px;
+}
+
+.fin-loading,
+.fin-vazio {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--fin-text-secondary);
+  font-size: 14px;
+}
+
+/* Lista de lançamentos */
+.fin-lista {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
-.financas-secao-titulo {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary, #8e8e93);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0;
-  padding: 0 4px;
-}
-
-.financas-lista {
+.fin-grupo {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.financas-card {
+.fin-grupo-header {
+  padding: 4px 0;
+}
+
+.fin-grupo-header span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fin-text-secondary);
+}
+
+.fin-grupo-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fin-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
-  background: var(--bg-secondary, #2c2c2e);
-  border: 1px solid var(--border-color, #3a3a3c);
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--fin-card-bg);
+  border: 1px solid var(--fin-border);
   border-radius: 12px;
   cursor: pointer;
-  width: 100%;
-  text-align: left;
-  transition: transform 0.15s, background 0.15s;
 }
 
-.financas-card:active {
-  transform: scale(0.98);
-  background: var(--bg-tertiary, #3a3a3c);
-}
-
-.financas-card-icon {
-  font-size: 28px;
-  width: 44px;
-  height: 44px;
+.fin-item-icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -140,80 +277,269 @@
   flex-shrink: 0;
 }
 
-.financas-card-info {
+.financas.light .fin-item-icon {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.fin-item-info {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
 }
 
-.financas-card-titulo {
-  font-size: 16px;
+.fin-item-desc {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fin-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fin-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fin-text-secondary);
+}
+
+.fin-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--text-primary, #ffffff);
 }
 
-.financas-card-subtitulo {
-  font-size: 13px;
-  color: var(--text-secondary, #8e8e93);
+.fin-badge.parcelado {
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
 }
 
-.financas-card-seta {
+.fin-badge.recorrente {
+  background: rgba(0, 122, 255, 0.15);
+  color: #007aff;
+}
+
+.fin-badge.projetado {
+  background: rgba(255, 149, 0, 0.15);
+  color: #ff9500;
+}
+
+.fin-item-valor {
+  font-size: 15px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.fin-item-valor.receita {
+  color: #34c759;
+}
+
+.fin-item-valor.despesa {
+  color: #ff3b30;
+}
+
+/* Aba Impostos */
+.fin-impostos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fin-alerta-impostos {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 204, 0, 0.15);
+  border: 1px solid rgba(255, 204, 0, 0.3);
+  border-radius: 12px;
+}
+
+.fin-alerta-icon {
   font-size: 20px;
-  color: var(--text-muted, #636366);
+  flex-shrink: 0;
 }
 
-/* Tema claro */
-@media (prefers-color-scheme: light) {
-  .financas {
-    background: #f2f2f7;
-  }
+.fin-alerta-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--fin-text);
+}
 
-  .financas-header {
-    background: #f2f2f7;
-    border-bottom-color: #e0e0e0;
-  }
+.fin-alerta-texto strong {
+  font-weight: 600;
+}
 
-  .financas-voltar {
-    background: #ffffff;
-    color: #000000;
-  }
+.fin-impostos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
-  .financas-header h1 {
-    color: #000000;
-  }
+.fin-imposto-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--fin-card-bg);
+  border: 1px solid var(--fin-border);
+  border-radius: 12px;
+}
 
-  .financas-secao-titulo {
-    color: #6c6c70;
-  }
+.fin-imposto-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
-  .financas-card {
-    background: #ffffff;
-    border-color: #e0e0e0;
-  }
+.fin-imposto-nome {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fin-text);
+}
 
-  .financas-card:active {
-    background: #f0f0f0;
-  }
+.fin-imposto-dia {
+  font-size: 12px;
+  color: var(--fin-text-secondary);
+}
 
-  .financas-card-icon {
-    background: rgba(0, 0, 0, 0.05);
-  }
+.fin-imposto-excluir {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 59, 48, 0.15);
+  border: none;
+  font-size: 16px;
+  color: #ff3b30;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  .financas-card-titulo {
-    color: #000000;
-  }
+/* Formulário novo imposto */
+.fin-novo-imposto {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  background: var(--fin-card-bg);
+  border: 1px dashed var(--fin-border);
+  border-radius: 12px;
+}
 
-  .financas-card-subtitulo {
-    color: #6c6c70;
-  }
+.fin-novo-imposto input[type="text"] {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--fin-input-bg);
+  border: 1px solid var(--fin-border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--fin-text);
+}
 
-  .financas-card-seta {
-    color: #8e8e93;
-  }
+.fin-novo-imposto input[type="number"] {
+  width: 60px;
+  padding: 10px 12px;
+  background: var(--fin-input-bg);
+  border: 1px solid var(--fin-border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--fin-text);
+  text-align: center;
+}
 
-  .financas-resumo-label {
-    color: #6c6c70;
-  }
+.fin-novo-imposto button {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #007aff;
+  border: none;
+  font-size: 20px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.fin-novo-imposto button:disabled {
+  background: #8e8e93;
+  cursor: not-allowed;
+}
+
+/* Sheet de opções */
+.fin-opcoes-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1500;
+  display: flex;
+  align-items: flex-end;
+  animation: finFadeIn 0.2s ease;
+}
+
+@keyframes finFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fin-opcoes-sheet {
+  width: 100%;
+  background: var(--fin-card-bg);
+  border-radius: 20px 20px 0 0;
+  padding: 12px 20px 32px;
+  animation: finSlideUp 0.3s ease;
+}
+
+@keyframes finSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.fin-opcoes-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--fin-border);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.fin-opcoes-sheet h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--fin-text);
+  text-align: center;
+  margin: 0 0 20px 0;
+}
+
+.fin-opcoes-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fin-opcoes-btns button {
+  width: 100%;
+  padding: 14px;
+  background: var(--fin-input-bg);
+  border: 1px solid var(--fin-border);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fin-text);
+  cursor: pointer;
+}
+
+.fin-opcoes-btns button.danger {
+  background: rgba(255, 59, 48, 0.15);
+  border-color: rgba(255, 59, 48, 0.3);
+  color: #ff3b30;
+}
+
+.fin-opcoes-btns button.cancel {
+  background: transparent;
+  border: none;
+  color: #007aff;
 }

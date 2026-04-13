@@ -61,7 +61,9 @@ function DespesaRapida({ onClose, onSuccess, isDark }) {
           categoria: categoriaNome,
           valor: parsearValor(valor),
           descricao: descricao.trim() || null,
-          data: hoje
+          data: hoje,
+          tipo_lancamento: 'unico',
+          projetado: false
         })
 
       if (error) {
