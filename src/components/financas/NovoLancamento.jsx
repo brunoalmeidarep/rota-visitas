@@ -4,6 +4,19 @@ import { useRepId } from '../../hooks/useRepId'
 import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
 import './NovoLancamento.css'
 
+// Fallback para crypto.randomUUID (não disponível em todos os ambientes)
+function gerarUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return gerarUUID()
+  }
+  // Fallback: gerar UUID v4 manualmente
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
 const CATEGORIAS_RECEITA = [
   { id: 'comissao', nome: 'Comissão', icone: '💼' },
   { id: 'bonificacao', nome: 'Bonificação', icone: '🎁' },
@@ -89,7 +102,7 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
 
     try {
       const categoriaNome = categorias.find(c => c.id === categoria)?.nome || categoria
-      const grupoId = crypto.randomUUID()
+      const grupoId = gerarUUID()
 
       // Mapear tipo: 'despesa' -> 'gasto', 'receita' -> 'receita'
       const tipoDb = tipoLancamento === 'despesa' ? 'gasto' : 'receita'
