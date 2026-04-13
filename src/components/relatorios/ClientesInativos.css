@@ -1,0 +1,255 @@
+/* ClientesInativos.css */
+
+.clientes-inativos {
+  min-height: 100vh;
+  background: var(--bg-primary, #1c1c1e);
+}
+
+.ci-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--bg-primary, #1c1c1e);
+  border-bottom: 1px solid var(--border-color, #3a3a3c);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.ci-voltar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-secondary, #2c2c2e);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary, #ffffff);
+}
+
+.ci-header h1 {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  margin: 0;
+}
+
+.ci-export {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-secondary, #2c2c2e);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary, #ffffff);
+}
+
+/* Content */
+.ci-content {
+  padding: 20px;
+}
+
+.ci-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+.ci-vazio {
+  text-align: center;
+  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ci-vazio-icon {
+  font-size: 48px;
+}
+
+.ci-vazio p {
+  color: var(--text-primary, #ffffff);
+  font-weight: 600;
+  font-size: 18px;
+  margin: 0;
+}
+
+.ci-vazio-sub {
+  color: var(--text-secondary, #8e8e93);
+  font-size: 14px;
+}
+
+/* Stats */
+.ci-stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.ci-stat {
+  flex: 1;
+  padding: 14px;
+  background: var(--bg-secondary, #2c2c2e);
+  border: 1px solid var(--border-color, #3a3a3c);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ci-stat.alerta { border-left: 3px solid #ff9500; }
+.ci-stat.perigo { border-left: 3px solid #ff6b00; }
+.ci-stat.critico { border-left: 3px solid #ff3b30; }
+
+.ci-stat-icon {
+  font-size: 24px;
+}
+
+.ci-stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.ci-stat-valor {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.ci-stat-label {
+  font-size: 11px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+/* Lista */
+.ci-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ci-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-secondary, #2c2c2e);
+  border: 1px solid var(--border-color, #3a3a3c);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.ci-item:active {
+  transform: scale(0.98);
+}
+
+.ci-item.alerta { border-left: 3px solid #ff9500; }
+.ci-item.perigo { border-left: 3px solid #ff6b00; }
+.ci-item.critico { border-left: 3px solid #ff3b30; }
+
+.ci-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ci-item-nome {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ci-item-cidade {
+  font-size: 13px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+.ci-item-ultimo {
+  font-size: 12px;
+  color: var(--text-muted, #636366);
+  margin-top: 2px;
+}
+
+.ci-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.ci-item-dias {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.ci-item-dias.alerta {
+  background: rgba(255, 149, 0, 0.15);
+  color: #ff9500;
+}
+
+.ci-item-dias.perigo {
+  background: rgba(255, 107, 0, 0.15);
+  color: #ff6b00;
+}
+
+.ci-item-dias.critico {
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+}
+
+.ci-item-data {
+  font-size: 12px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+/* Tema claro */
+@media (prefers-color-scheme: light) {
+  .clientes-inativos {
+    background: #f2f2f7;
+  }
+
+  .ci-header {
+    background: #f2f2f7;
+    border-bottom-color: #e0e0e0;
+  }
+
+  .ci-voltar,
+  .ci-export {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .ci-header h1 {
+    color: #000000;
+  }
+
+  .ci-vazio p {
+    color: #000000;
+  }
+
+  .ci-stat,
+  .ci-item {
+    background: #ffffff;
+    border-color: #e0e0e0;
+  }
+
+  .ci-stat-valor,
+  .ci-item-nome {
+    color: #000000;
+  }
+}

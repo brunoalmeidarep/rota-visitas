@@ -1,0 +1,363 @@
+/* VisitasRelatorio.css */
+
+.visitas-relatorio {
+  min-height: 100vh;
+  background: var(--bg-primary, #1c1c1e);
+}
+
+.vr-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--bg-primary, #1c1c1e);
+  border-bottom: 1px solid var(--border-color, #3a3a3c);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.vr-voltar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-secondary, #2c2c2e);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary, #ffffff);
+}
+
+.vr-header h1 {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  margin: 0;
+}
+
+.vr-export {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-secondary, #2c2c2e);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary, #ffffff);
+}
+
+/* Filtros */
+.vr-filtros {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+}
+
+.vr-filtro {
+  flex: 1;
+  padding: 10px 12px;
+  background: var(--bg-secondary, #2c2c2e);
+  border: 1px solid var(--border-color, #3a3a3c);
+  border-radius: 10px;
+  color: var(--text-secondary, #8e8e93);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.vr-filtro.active {
+  background: #007aff;
+  border-color: #007aff;
+  color: #ffffff;
+}
+
+/* Content */
+.vr-content {
+  padding: 0 20px 20px;
+}
+
+.vr-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+.vr-vazio {
+  text-align: center;
+  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.vr-vazio-icon {
+  font-size: 48px;
+}
+
+.vr-vazio p {
+  color: var(--text-secondary, #8e8e93);
+  margin: 0;
+}
+
+/* Stats */
+.vr-stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.vr-stat {
+  flex: 1;
+  padding: 16px;
+  background: var(--bg-secondary, #2c2c2e);
+  border: 1px solid var(--border-color, #3a3a3c);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.vr-stat-valor {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+  display: block;
+}
+
+.vr-stat-label {
+  font-size: 12px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+/* Lista */
+.vr-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vr-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vr-grupo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.vr-grupo-data {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary, #8e8e93);
+  text-transform: capitalize;
+}
+
+.vr-grupo-count {
+  font-size: 12px;
+  color: var(--text-muted, #636366);
+  background: var(--bg-tertiary, #3a3a3c);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.vr-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-secondary, #2c2c2e);
+  border: 1px solid var(--border-color, #3a3a3c);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.vr-item:active {
+  transform: scale(0.98);
+}
+
+.vr-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.vr-item-nome {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vr-item-meta {
+  font-size: 13px;
+  color: var(--text-secondary, #8e8e93);
+}
+
+.vr-item-obs {
+  font-size: 12px;
+  color: var(--text-muted, #636366);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.vr-item-right {
+  display: flex;
+  align-items: center;
+}
+
+.vr-item-canal {
+  font-size: 20px;
+}
+
+/* Modal */
+.vr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.vr-modal {
+  width: 100%;
+  max-width: 340px;
+  background: var(--bg-secondary, #2c2c2e);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.vr-modal h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.vr-modal-campo {
+  margin-bottom: 16px;
+}
+
+.vr-modal-campo label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #8e8e93);
+  margin-bottom: 8px;
+}
+
+.vr-modal-campo input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-primary, #1c1c1e);
+  border: 1px solid var(--border-color, #3a3a3c);
+  border-radius: 10px;
+  color: var(--text-primary, #ffffff);
+  font-size: 16px;
+}
+
+.vr-modal-acoes {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.vr-modal-cancelar,
+.vr-modal-aplicar {
+  flex: 1;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vr-modal-cancelar {
+  background: transparent;
+  border: 1px solid var(--border-color, #3a3a3c);
+  color: var(--text-secondary, #8e8e93);
+}
+
+.vr-modal-aplicar {
+  background: #007aff;
+  border: none;
+  color: #ffffff;
+}
+
+/* Tema claro */
+@media (prefers-color-scheme: light) {
+  .visitas-relatorio {
+    background: #f2f2f7;
+  }
+
+  .vr-header {
+    background: #f2f2f7;
+    border-bottom-color: #e0e0e0;
+  }
+
+  .vr-voltar,
+  .vr-export {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .vr-header h1 {
+    color: #000000;
+  }
+
+  .vr-filtro {
+    background: #ffffff;
+    border-color: #e0e0e0;
+    color: #6c6c70;
+  }
+
+  .vr-filtro.active {
+    background: #007aff;
+    border-color: #007aff;
+    color: #ffffff;
+  }
+
+  .vr-stat,
+  .vr-item {
+    background: #ffffff;
+    border-color: #e0e0e0;
+  }
+
+  .vr-stat-valor,
+  .vr-item-nome {
+    color: #000000;
+  }
+
+  .vr-grupo-count {
+    background: #e0e0e0;
+  }
+
+  .vr-modal {
+    background: #ffffff;
+  }
+
+  .vr-modal h3 {
+    color: #000000;
+  }
+
+  .vr-modal-campo input {
+    background: #f2f2f7;
+    border-color: #e0e0e0;
+    color: #000000;
+  }
+}

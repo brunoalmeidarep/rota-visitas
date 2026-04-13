@@ -27,6 +27,12 @@ import Segmentos from './components/mais/Segmentos'
 import ListaProdutos from './components/produtos/ListaProdutos'
 import CadastroProduto from './components/produtos/CadastroProduto'
 import Relatorios from './components/relatorios/Relatorios'
+import MetaVendas from './components/relatorios/MetaVendas'
+import RankingClientes from './components/relatorios/RankingClientes'
+import VendasProduto from './components/relatorios/VendasProduto'
+import ClientesInativos from './components/relatorios/ClientesInativos'
+import ResumoVendas from './components/relatorios/ResumoVendas'
+import VisitasRelatorio from './components/relatorios/VisitasRelatorio'
 import Financas from './components/financas/Financas'
 import Tarefas from './components/tarefas/Tarefas'
 
@@ -111,6 +117,12 @@ function App() {
         <Route path="/mais/representadas" element={<Representadas />} />
         <Route path="/mais/segmentos" element={<Segmentos />} />
         <Route path="/relatorios" element={<Relatorios />} />
+        <Route path="/relatorios/meta" element={<MetaVendas />} />
+        <Route path="/relatorios/ranking" element={<RankingClientes />} />
+        <Route path="/relatorios/produtos" element={<VendasProduto />} />
+        <Route path="/relatorios/inativos" element={<ClientesInativos />} />
+        <Route path="/relatorios/resumo" element={<ResumoVendas />} />
+        <Route path="/relatorios/visitas" element={<VisitasRelatorio />} />
         <Route path="/financas" element={<Financas />} />
         <Route path="/tarefas" element={<Tarefas />} />
         <Route path="/mapa" element={<Mapa />} />

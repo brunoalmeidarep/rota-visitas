@@ -1,102 +1,103 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Relatorios.css'
 
 function Relatorios() {
   const navigate = useNavigate()
+  const [isDark, setIsDark] = useState(false)
 
-  function placeholder(nome) {
-    alert(`${nome} — em desenvolvimento`)
-  }
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    setIsDark(mediaQuery.matches)
+    const handler = (e) => setIsDark(e.matches)
+    mediaQuery.addEventListener('change', handler)
+    return () => mediaQuery.removeEventListener('change', handler)
+  }, [])
+
+  const relatorios = [
+    {
+      id: 'meta',
+      icone: '📈',
+      titulo: 'Meta de Vendas',
+      subtitulo: 'Acompanhe suas metas mensais',
+      rota: '/relatorios/meta',
+      cor: '#34c759'
+    },
+    {
+      id: 'resumo',
+      icone: '📊',
+      titulo: 'Resumo de Vendas',
+      subtitulo: 'Total vendido por periodo',
+      rota: '/relatorios/resumo',
+      cor: '#007aff'
+    },
+    {
+      id: 'ranking',
+      icone: '🏆',
+      titulo: 'Ranking de Clientes',
+      subtitulo: 'Curva ABC dos clientes',
+      rota: '/relatorios/ranking',
+      cor: '#ffcc00'
+    },
+    {
+      id: 'produtos',
+      icone: '📦',
+      titulo: 'Vendas por Produto',
+      subtitulo: 'Produtos mais vendidos',
+      rota: '/relatorios/produtos',
+      cor: '#af52de'
+    },
+    {
+      id: 'inativos',
+      icone: '⚠️',
+      titulo: 'Clientes Inativos',
+      subtitulo: 'Sem compra ha 90+ dias',
+      rota: '/relatorios/inativos',
+      cor: '#ff9500'
+    },
+    {
+      id: 'visitas',
+      icone: '✅',
+      titulo: 'Relatorio de Visitas',
+      subtitulo: 'Historico de visitas',
+      rota: '/relatorios/visitas',
+      cor: '#30d158'
+    }
+  ]
 
   return (
-    <div className="relatorios">
-      {/* Header */}
+    <div className={`relatorios ${isDark ? 'dark' : 'light'}`}>
       <header className="relatorios-header">
-        <button className="relatorios-voltar" onClick={() => navigate('/')}>
+        <button className="relatorios-voltar" onClick={() => navigate(-1)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <h1>Relatórios</h1>
+        <h1>Relatorios</h1>
       </header>
 
       <div className="relatorios-content">
-        {/* Vendas */}
-        <section className="relatorios-secao">
-          <h2 className="relatorios-secao-titulo">Vendas</h2>
-          <div className="relatorios-lista">
-            <button className="relatorios-card" onClick={() => placeholder('Resumo de vendas')}>
-              <span className="relatorios-card-icon">📊</span>
+        <div className="relatorios-lista">
+          {relatorios.map(rel => (
+            <button
+              key={rel.id}
+              className="relatorios-card"
+              onClick={() => navigate(rel.rota)}
+            >
+              <span
+                className="relatorios-card-icon"
+                style={{ background: `${rel.cor}20` }}
+              >
+                {rel.icone}
+              </span>
               <div className="relatorios-card-info">
-                <span className="relatorios-card-titulo">Resumo de vendas</span>
-                <span className="relatorios-card-subtitulo">Total por período</span>
+                <span className="relatorios-card-titulo">{rel.titulo}</span>
+                <span className="relatorios-card-subtitulo">{rel.subtitulo}</span>
               </div>
               <span className="relatorios-card-seta">›</span>
             </button>
-            <button className="relatorios-card" onClick={() => placeholder('Vendas por cliente')}>
-              <span className="relatorios-card-icon">👥</span>
-              <div className="relatorios-card-info">
-                <span className="relatorios-card-titulo">Vendas por cliente</span>
-                <span className="relatorios-card-subtitulo">Ranking de clientes</span>
-              </div>
-              <span className="relatorios-card-seta">›</span>
-            </button>
-            <button className="relatorios-card" onClick={() => placeholder('Vendas por produto')}>
-              <span className="relatorios-card-icon">📦</span>
-              <div className="relatorios-card-info">
-                <span className="relatorios-card-titulo">Vendas por produto</span>
-                <span className="relatorios-card-subtitulo">Produtos mais vendidos</span>
-              </div>
-              <span className="relatorios-card-seta">›</span>
-            </button>
-          </div>
-        </section>
-
-        {/* Visitas */}
-        <section className="relatorios-secao">
-          <h2 className="relatorios-secao-titulo">Visitas</h2>
-          <div className="relatorios-lista">
-            <button className="relatorios-card" onClick={() => placeholder('Visitas realizadas')}>
-              <span className="relatorios-card-icon">✅</span>
-              <div className="relatorios-card-info">
-                <span className="relatorios-card-titulo">Visitas realizadas</span>
-                <span className="relatorios-card-subtitulo">Histórico de visitas</span>
-              </div>
-              <span className="relatorios-card-seta">›</span>
-            </button>
-            <button className="relatorios-card" onClick={() => placeholder('Clientes inativos')}>
-              <span className="relatorios-card-icon">⚠️</span>
-              <div className="relatorios-card-info">
-                <span className="relatorios-card-titulo">Clientes inativos</span>
-                <span className="relatorios-card-subtitulo">Sem visita há 90+ dias</span>
-              </div>
-              <span className="relatorios-card-seta">›</span>
-            </button>
-          </div>
-        </section>
-
-        {/* Metas */}
-        <section className="relatorios-secao">
-          <h2 className="relatorios-secao-titulo">Metas</h2>
-          <div className="relatorios-lista">
-            <button className="relatorios-card" onClick={() => placeholder('Metas de vendas')}>
-              <span className="relatorios-card-icon">🎯</span>
-              <div className="relatorios-card-info">
-                <span className="relatorios-card-titulo">Metas de vendas</span>
-                <span className="relatorios-card-subtitulo">Acompanhamento mensal</span>
-              </div>
-              <span className="relatorios-card-seta">›</span>
-            </button>
-            <button className="relatorios-card" onClick={() => placeholder('Comissões')}>
-              <span className="relatorios-card-icon">💵</span>
-              <div className="relatorios-card-info">
-                <span className="relatorios-card-titulo">Comissões</span>
-                <span className="relatorios-card-subtitulo">Cálculo de comissão</span>
-              </div>
-              <span className="relatorios-card-seta">›</span>
-            </button>
-          </div>
-        </section>
+          ))}
+        </div>
       </div>
     </div>
   )
