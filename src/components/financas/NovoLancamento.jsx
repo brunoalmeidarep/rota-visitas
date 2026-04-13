@@ -6,8 +6,12 @@ import './NovoLancamento.css'
 
 // Fallback para crypto.randomUUID (não disponível em todos os ambientes)
 function gerarUUID() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return gerarUUID()
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+  } catch (e) {
+    // Ignorar erro e usar fallback
   }
   // Fallback: gerar UUID v4 manualmente
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
