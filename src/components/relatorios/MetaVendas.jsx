@@ -6,15 +6,25 @@ import { useRepresentada } from '../../contexts/RepresentadaContext'
 import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
 import './MetaVendas.css'
 
+const MESES = [
+  'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+]
+
+const MESES_CURTO = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
 function MetaVendas() {
   const navigate = useNavigate()
   const { repId } = useRepId()
   const { representadas, representadaSelecionada } = useRepresentada()
   const [isDark, setIsDark] = useState(false)
 
+  const anoAtual = new Date().getFullYear()
+  const mesAtual = new Date().getMonth()
+
   const [loading, setLoading] = useState(true)
-  const [mesSelecionado, setMesSelecionado] = useState(new Date().getMonth())
-  const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
+  const [mesSelecionado, setMesSelecionado] = useState(mesAtual)
+  const [anoSelecionado, setAnoSelecionado] = useState(anoAtual)
 
   const [vendidoMes, setVendidoMes] = useState(0)
   const [vendidoHoje, setVendidoHoje] = useState(0)
@@ -23,8 +33,8 @@ function MetaVendas() {
 
   const [mostrarSheet, setMostrarSheet] = useState(false)
   const [metaRepresentada, setMetaRepresentada] = useState('')
-  const [metaMesInput, setMetaMesInput] = useState(new Date().getMonth())
-  const [metaAnoInput, setMetaAnoInput] = useState(new Date().getFullYear())
+  const [metaMesInput, setMetaMesInput] = useState(mesAtual)
+  const [metaAnoInput, setMetaAnoInput] = useState(anoAtual)
   const [metaValorDisplay, setMetaValorDisplay] = useState('R$ 0,00')
   const [metaValor, setMetaValor] = useState(0)
   const [salvandoMeta, setSalvandoMeta] = useState(false)
@@ -47,6 +57,15 @@ function MetaVendas() {
     if (!repId) return
     fetchDados()
   }, [repId, mesSelecionado, anoSelecionado, representadaSelecionada])
+
+  // Pre-preencher sheet com periodo selecionado
+  function abrirSheet() {
+    setMetaMesInput(mesSelecionado)
+    setMetaAnoInput(anoSelecionado)
+    setMetaValorDisplay('R$ 0,00')
+    setMetaValor(0)
+    setMostrarSheet(true)
+  }
 
   async function fetchDados() {
     setLoading(true)
@@ -74,9 +93,8 @@ function MetaVendas() {
     setVendidoMes(totalMes)
 
     // Vendas de hoje (so se for o mes atual)
-    const mesAtual = new Date().getMonth()
-    const anoAtual = new Date().getFullYear()
-    if (mesSelecionado === mesAtual && anoSelecionado === anoAtual) {
+    const ehMesAtual = mesSelecionado === mesAtual && anoSelecionado === anoAtual
+    if (ehMesAtual) {
       const pedidosHoje = (pedidosMes || []).filter(p => p.created_at?.startsWith(hoje))
       const totalHoje = pedidosHoje.reduce((sum, p) => sum + (p.valor_total || 0), 0)
       setVendidoHoje(totalHoje)
@@ -99,23 +117,28 @@ function MetaVendas() {
     const { data: metaData } = await queryMeta.maybeSingle()
     setMetaMes(metaData)
 
-    // Historico (ultimos 6 meses)
-    const historicoMeses = []
-    for (let i = 1; i <= 6; i++) {
+    // Historico (ultimos 12 meses, apenas com dados)
+    await fetchHistorico()
+
+    setLoading(false)
+  }
+
+  async function fetchHistorico() {
+    const historicoData = []
+
+    // Buscar ultimos 12 meses a partir do mes selecionado
+    for (let i = 1; i <= 12; i++) {
       let m = mesSelecionado - i
       let a = anoSelecionado
-      if (m < 0) {
+      while (m < 0) {
         m += 12
         a -= 1
       }
-      historicoMeses.push({ mes: m, ano: a })
-    }
 
-    const historicoData = []
-    for (const { mes, ano } of historicoMeses) {
-      const inicio = new Date(ano, mes, 1)
-      const fim = new Date(ano, mes + 1, 0)
+      const inicio = new Date(a, m, 1)
+      const fim = new Date(a, m + 1, 0)
 
+      // Buscar vendas
       let qVendas = supabase
         .from('pedidos')
         .select('valor_total')
@@ -131,30 +154,35 @@ function MetaVendas() {
       const { data: vendas } = await qVendas
       const totalVendas = (vendas || []).reduce((sum, p) => sum + (p.valor_total || 0), 0)
 
+      // Buscar meta
       let qMeta = supabase
         .from('metas')
         .select('valor')
         .eq('rep_id', repId)
-        .eq('mes', mes + 1)
-        .eq('ano', ano)
+        .eq('mes', m + 1)
+        .eq('ano', a)
 
       if (representadaSelecionada) {
         qMeta = qMeta.eq('representada_id', representadaSelecionada.id)
       }
 
       const { data: meta } = await qMeta.maybeSingle()
+      const metaValor = meta?.valor || 0
 
-      historicoData.push({
-        mes,
-        ano,
-        vendido: totalVendas,
-        meta: meta?.valor || 0,
-        percentual: meta?.valor ? (totalVendas / meta.valor) * 100 : 0
-      })
+      // So adicionar se tiver vendas OU meta (nunca zerado)
+      if (totalVendas > 0 || metaValor > 0) {
+        historicoData.push({
+          mes: m,
+          ano: a,
+          vendido: totalVendas,
+          meta: metaValor,
+          percentual: metaValor > 0 ? (totalVendas / metaValor) * 100 : 0,
+          bateu: metaValor > 0 && totalVendas >= metaValor
+        })
+      }
     }
 
     setHistorico(historicoData)
-    setLoading(false)
   }
 
   function handleMetaValorChange(valor) {
@@ -175,6 +203,7 @@ function MetaVendas() {
 
     setSalvandoMeta(true)
 
+    // Upsert: verificar se ja existe
     const { data: existente } = await supabase
       .from('metas')
       .select('id')
@@ -193,6 +222,8 @@ function MetaVendas() {
       if (error) {
         console.error('[MetaVendas] Erro ao atualizar:', error)
         alert('Erro ao salvar meta')
+        setSalvandoMeta(false)
+        return
       }
     } else {
       const { error } = await supabase
@@ -208,49 +239,38 @@ function MetaVendas() {
       if (error) {
         console.error('[MetaVendas] Erro ao inserir:', error)
         alert('Erro ao salvar meta')
+        setSalvandoMeta(false)
+        return
       }
     }
 
     setSalvandoMeta(false)
     setMostrarSheet(false)
-    setMetaValorDisplay('R$ 0,00')
-    setMetaValor(0)
     fetchDados()
   }
 
   function formatarValor(valor) {
-    if (!valor) return 'R$ 0'
+    if (valor === null || valor === undefined) return 'R$ 0,00'
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   }
 
-  function getNomeMes(mes) {
-    const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-    return nomes[mes]
-  }
-
-  function gerarPeriodos() {
-    const periodos = []
-    const hoje = new Date()
-    for (let i = 0; i < 6; i++) {
-      let m = hoje.getMonth() - i
-      let a = hoje.getFullYear()
-      if (m < 0) {
-        m += 12
-        a -= 1
-      }
-      periodos.push({ mes: m, ano: a, label: `${getNomeMes(m)} ${a}` })
+  // Gerar anos para o select (3 anos atras ate ano atual)
+  function gerarAnos() {
+    const anos = []
+    for (let a = anoAtual; a >= anoAtual - 2; a--) {
+      anos.push(a)
     }
-    return periodos
+    return anos
   }
 
-  const periodos = gerarPeriodos()
-  const percentualMeta = metaMes?.valor ? (vendidoMes / metaMes.valor) * 100 : 0
-  const mesAtual = new Date().getMonth()
-  const anoAtual = new Date().getFullYear()
   const ehMesAtual = mesSelecionado === mesAtual && anoSelecionado === anoAtual
+  const percentualMeta = metaMes?.valor ? (vendidoMes / metaMes.valor) * 100 : 0
+  const temVendas = vendidoMes > 0
+  const temMeta = metaMes !== null && metaMes?.valor > 0
 
-  // Calcular dias uteis restantes
+  // Calcular dias uteis restantes no mes atual
   function getDiasUteisRestantes() {
+    if (!ehMesAtual) return 0
     const hoje = new Date()
     const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
     let dias = 0
@@ -263,8 +283,15 @@ function MetaVendas() {
   }
 
   const diasUteis = getDiasUteisRestantes()
-  const faltaVender = metaMes?.valor ? Math.max(0, metaMes.valor - vendidoMes) : 0
+  const faltaVender = temMeta ? Math.max(0, metaMes.valor - vendidoMes) : 0
   const porDia = diasUteis > 0 ? faltaVender / diasUteis : 0
+  const metaBatida = temMeta && vendidoMes >= metaMes.valor
+
+  // Determinar estado da tela
+  // Estado 1: tem meta E tem vendas (ou meta batida)
+  // Estado 2: tem vendas MAS nao tem meta
+  // Estado 3: sem vendas E sem meta
+  const estado = temMeta ? 1 : temVendas ? 2 : 3
 
   return (
     <div className={`meta-vendas ${isDark ? 'dark' : 'light'}`}>
@@ -275,28 +302,33 @@ function MetaVendas() {
           </svg>
         </button>
         <h1>Meta de Vendas</h1>
-        <button className="mv-config" onClick={() => setMostrarSheet(true)}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
-          </svg>
+        <button className="mv-config" onClick={abrirSheet}>
+          <span>⚙️</span>
         </button>
       </header>
 
-      {/* Filtro de periodo */}
-      <div className="mv-filtros">
-        {periodos.map((p, idx) => (
-          <button
-            key={idx}
-            className={`mv-filtro ${p.mes === mesSelecionado && p.ano === anoSelecionado ? 'active' : ''}`}
-            onClick={() => {
-              setMesSelecionado(p.mes)
-              setAnoSelecionado(p.ano)
-            }}
+      {/* Seletor de periodo: Mes + Ano */}
+      <div className="mv-periodo">
+        <div className="mv-periodo-select">
+          <select
+            value={mesSelecionado}
+            onChange={e => setMesSelecionado(Number(e.target.value))}
           >
-            {p.label}
-          </button>
-        ))}
+            {MESES.map((nome, idx) => (
+              <option key={idx} value={idx}>{nome}</option>
+            ))}
+          </select>
+        </div>
+        <div className="mv-periodo-select">
+          <select
+            value={anoSelecionado}
+            onChange={e => setAnoSelecionado(Number(e.target.value))}
+          >
+            {gerarAnos().map(a => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="mv-content">
@@ -304,80 +336,99 @@ function MetaVendas() {
           <div className="mv-loading">Carregando...</div>
         ) : (
           <>
-            {/* Card Vendido */}
-            <div className="mv-card">
+            {/* Card Vendido - sempre aparece */}
+            <div className={`mv-card ${estado === 3 ? 'sem-dados' : ''}`}>
               <div className="mv-card-header">
                 <span className="mv-card-icon vendido">💰</span>
                 <span className="mv-card-label">Vendido no mes</span>
               </div>
-              <div className="mv-card-valor">{formatarValor(vendidoMes)}</div>
+              <div className={`mv-card-valor ${estado === 3 ? 'zerado' : ''}`}>
+                {formatarValor(vendidoMes)}
+              </div>
               {ehMesAtual && vendidoHoje > 0 && (
                 <div className="mv-card-hoje">Hoje {formatarValor(vendidoHoje)}</div>
               )}
             </div>
 
-            {/* Card Meta */}
-            <div className="mv-card">
-              <div className="mv-card-header">
-                <span className="mv-card-icon meta">🎯</span>
-                <span className="mv-card-label">Meta do mes</span>
-              </div>
-              {metaMes ? (
-                <>
+            {/* Estado 1: Com meta cadastrada */}
+            {estado === 1 && (
+              <>
+                {/* Card Meta */}
+                <div className="mv-card">
+                  <div className="mv-card-header">
+                    <span className="mv-card-icon meta">🎯</span>
+                    <span className="mv-card-label">Meta do mes</span>
+                  </div>
                   <div className="mv-card-valor">{formatarValor(metaMes.valor)}</div>
                   <div className="mv-progress-container">
                     <div className="mv-progress-bar">
                       <div
-                        className={`mv-progress-fill ${percentualMeta >= 100 ? 'completo' : percentualMeta >= 80 ? 'bom' : percentualMeta >= 50 ? 'medio' : 'baixo'}`}
+                        className={`mv-progress-fill ${percentualMeta >= 100 ? 'verde' : percentualMeta >= 80 ? 'verde' : percentualMeta >= 50 ? 'amarelo' : 'vermelho'}`}
                         style={{ width: `${Math.min(100, percentualMeta)}%` }}
                       />
                     </div>
-                    <span className={`mv-progress-badge ${percentualMeta >= 100 ? 'completo' : percentualMeta >= 80 ? 'bom' : percentualMeta >= 50 ? 'medio' : 'baixo'}`}>
+                    <span className={`mv-progress-badge ${percentualMeta >= 80 ? 'verde' : percentualMeta >= 50 ? 'amarelo' : 'vermelho'}`}>
                       {percentualMeta.toFixed(0)}%
                     </span>
                   </div>
-                </>
-              ) : (
-                <div className="mv-sem-meta">
-                  <p>Nenhuma meta cadastrada</p>
-                  <button onClick={() => setMostrarSheet(true)}>+ Cadastrar meta</button>
                 </div>
-              )}
-            </div>
 
-            {/* Card Necessario (so no mes atual com meta) */}
-            {ehMesAtual && metaMes && faltaVender > 0 && (
-              <div className="mv-card necessario">
-                <div className="mv-card-header">
-                  <span className="mv-card-icon necessario">📊</span>
-                  <span className="mv-card-label">Necessario vender</span>
-                </div>
-                <div className="mv-card-valor">{formatarValor(porDia)}<span className="mv-por-dia">/dia util</span></div>
-                <div className="mv-card-detalhe">
-                  Equivalente a {formatarValor(faltaVender)} restantes em {diasUteis} dias uteis
+                {/* Card Necessario vender - so mes atual e meta nao batida */}
+                {ehMesAtual && !metaBatida && diasUteis > 0 && (
+                  <div className="mv-card necessario">
+                    <div className="mv-card-header">
+                      <span className="mv-card-icon necessario">📊</span>
+                      <span className="mv-card-label">Necessario vender por dia util</span>
+                    </div>
+                    <div className="mv-card-valor">{formatarValor(porDia)}</div>
+                    <div className="mv-card-detalhe">
+                      {diasUteis} dias uteis restantes em {MESES[mesSelecionado].toLowerCase()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Card Meta batida */}
+                {ehMesAtual && metaBatida && (
+                  <div className="mv-card sucesso">
+                    <div className="mv-card-header">
+                      <span className="mv-card-icon sucesso">🎉</span>
+                      <span className="mv-card-label">Meta batida!</span>
+                    </div>
+                    <div className="mv-card-valor">+{formatarValor(vendidoMes - metaMes.valor)}</div>
+                    <div className="mv-card-detalhe">Acima da meta</div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Estado 2: Sem meta mas com vendas */}
+            {estado === 2 && (
+              <div className="mv-card sem-meta">
+                <div className="mv-sem-meta-content">
+                  <span className="mv-sem-meta-icon">🎯</span>
+                  <span className="mv-sem-meta-texto">Sem meta cadastrada</span>
+                  <button className="mv-sem-meta-btn" onClick={abrirSheet}>
+                    ⚙️ Cadastrar meta
+                  </button>
                 </div>
               </div>
             )}
 
-            {ehMesAtual && metaMes && faltaVender <= 0 && (
-              <div className="mv-card sucesso">
-                <div className="mv-card-header">
-                  <span className="mv-card-icon sucesso">🎉</span>
-                  <span className="mv-card-label">Meta batida!</span>
-                </div>
-                <div className="mv-card-valor">+{formatarValor(vendidoMes - metaMes.valor)}</div>
-                <div className="mv-card-detalhe">Acima da meta</div>
+            {/* Estado 3: Sem vendas e sem meta */}
+            {estado === 3 && (
+              <div className="mv-vazio">
+                <p>Nenhum dado para exibir neste periodo</p>
               </div>
             )}
 
-            {/* Historico */}
-            {historico.length > 0 && (
+            {/* Historico - so mostrar se tiver dados */}
+            {historico.length > 0 && estado !== 3 && (
               <div className="mv-historico">
                 <h3>Historico</h3>
                 <div className="mv-historico-lista">
                   {historico.map((h, idx) => (
-                    <div key={idx} className={`mv-historico-item ${h.meta > 0 && h.vendido >= h.meta ? 'bateu' : h.meta > 0 ? 'nao-bateu' : ''}`}>
-                      <div className="mv-historico-mes">{getNomeMes(h.mes)} {h.ano}</div>
+                    <div key={idx} className={`mv-historico-item ${h.meta > 0 ? (h.bateu ? 'bateu' : 'nao-bateu') : ''}`}>
+                      <div className="mv-historico-mes">{MESES_CURTO[h.mes]} {h.ano}</div>
                       <div className="mv-historico-valores">
                         <span className="mv-historico-vendido">{formatarValor(h.vendido)}</span>
                         {h.meta > 0 && (
@@ -388,8 +439,8 @@ function MetaVendas() {
                         )}
                       </div>
                       {h.meta > 0 && (
-                        <span className={`mv-historico-badge ${h.vendido >= h.meta ? 'bateu' : 'nao-bateu'}`}>
-                          {h.percentual.toFixed(0)}%
+                        <span className={`mv-historico-badge ${h.bateu ? 'bateu' : 'nao-bateu'}`}>
+                          {h.bateu ? '✓' : '✗'} {h.percentual.toFixed(0)}%
                         </span>
                       )}
                     </div>
@@ -425,15 +476,15 @@ function MetaVendas() {
               <div className="mv-sheet-campo">
                 <label>Mes</label>
                 <select value={metaMesInput} onChange={e => setMetaMesInput(Number(e.target.value))}>
-                  {[0,1,2,3,4,5,6,7,8,9,10,11].map(m => (
-                    <option key={m} value={m}>{getNomeMes(m)}</option>
+                  {MESES.map((nome, idx) => (
+                    <option key={idx} value={idx}>{nome}</option>
                   ))}
                 </select>
               </div>
               <div className="mv-sheet-campo">
                 <label>Ano</label>
                 <select value={metaAnoInput} onChange={e => setMetaAnoInput(Number(e.target.value))}>
-                  {[anoAtual - 1, anoAtual, anoAtual + 1].map(a => (
+                  {gerarAnos().map(a => (
                     <option key={a} value={a}>{a}</option>
                   ))}
                 </select>
