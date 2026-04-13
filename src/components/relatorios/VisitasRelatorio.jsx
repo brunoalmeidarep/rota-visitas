@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import PDFVisitas from './PDFVisitas'
 import './VisitasRelatorio.css'
 
 function VisitasRelatorio() {
@@ -19,6 +20,7 @@ function VisitasRelatorio() {
   const [totalVisitas, setTotalVisitas] = useState(0)
   const [clientesVisitados, setClientesVisitados] = useState(0)
   const [mediaPorDia, setMediaPorDia] = useState(0)
+  const [nomeRep, setNomeRep] = useState('')
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -31,7 +33,17 @@ function VisitasRelatorio() {
   useEffect(() => {
     if (!repId) return
     fetchVisitas()
+    fetchNomeRep()
   }, [repId, filtro, dataInicio, dataFim])
+
+  async function fetchNomeRep() {
+    const { data } = await supabase
+      .from('representantes')
+      .select('nome')
+      .eq('id', repId)
+      .single()
+    if (data?.nome) setNomeRep(data.nome)
+  }
 
   function getPeriodo() {
     const hoje = new Date()
@@ -140,6 +152,43 @@ function VisitasRelatorio() {
     }
   }
 
+  function getPeriodoLabel() {
+    if (filtro === 'hoje') return 'Hoje'
+    if (filtro === 'semana') return 'Semana atual'
+    if (filtro === 'mes') return 'Mes atual'
+    if (filtro === 'custom' && dataInicio && dataFim) {
+      return `${new Date(dataInicio).toLocaleDateString('pt-BR')} a ${new Date(dataFim).toLocaleDateString('pt-BR')}`
+    }
+    return ''
+  }
+
+  function exportarPDF() {
+    if (visitas.length === 0) {
+      alert('Nenhum dado para exportar')
+      return
+    }
+
+    const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
+    const documento = (
+      <PDFVisitas
+        visitas={visitas}
+        totalVisitas={totalVisitas}
+        clientesVisitados={clientesVisitados}
+        mediaPorDia={mediaPorDia}
+        nomeRep={nomeRep}
+        periodo={getPeriodoLabel()}
+      />
+    )
+
+    navigate('/relatorios/pdf', {
+      state: {
+        documento,
+        nomeArquivo: `visitas-${hoje}.pdf`,
+        titulo: 'Relatorio de Visitas'
+      }
+    })
+  }
+
   const grupos = agruparPorData(visitas)
 
   return (
@@ -151,7 +200,7 @@ function VisitasRelatorio() {
           </svg>
         </button>
         <h1>Relatorio de Visitas</h1>
-        <button className="vr-export" onClick={() => alert('Exportar - em desenvolvimento')}>
+        <button className="vr-export" onClick={exportarPDF} disabled={loading || visitas.length === 0}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>

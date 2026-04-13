@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import PDFClientesInativos from './PDFClientesInativos'
 import './ClientesInativos.css'
 
 function ClientesInativos() {
@@ -11,6 +12,7 @@ function ClientesInativos() {
 
   const [loading, setLoading] = useState(true)
   const [clientes, setClientes] = useState([])
+  const [nomeRep, setNomeRep] = useState('')
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -23,7 +25,17 @@ function ClientesInativos() {
   useEffect(() => {
     if (!repId) return
     fetchInativos()
+    fetchNomeRep()
   }, [repId])
+
+  async function fetchNomeRep() {
+    const { data } = await supabase
+      .from('representantes')
+      .select('nome')
+      .eq('id', repId)
+      .single()
+    if (data?.nome) setNomeRep(data.nome)
+  }
 
   async function fetchInativos() {
     setLoading(true)
@@ -105,6 +117,30 @@ function ClientesInativos() {
   const perigo = clientes.filter(c => c.faixa === 'perigo')
   const critico = clientes.filter(c => c.faixa === 'critico')
 
+  function exportarPDF() {
+    if (clientes.length === 0) {
+      alert('Nenhum dado para exportar')
+      return
+    }
+
+    const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
+    const documento = (
+      <PDFClientesInativos
+        clientes={clientes}
+        nomeRep={nomeRep}
+        periodo={`Gerado em ${new Date().toLocaleDateString('pt-BR')}`}
+      />
+    )
+
+    navigate('/relatorios/pdf', {
+      state: {
+        documento,
+        nomeArquivo: `clientes-inativos-${hoje}.pdf`,
+        titulo: 'Clientes Inativos'
+      }
+    })
+  }
+
   return (
     <div className={`clientes-inativos ${isDark ? 'dark' : 'light'}`}>
       <header className="ci-header">
@@ -114,7 +150,7 @@ function ClientesInativos() {
           </svg>
         </button>
         <h1>Clientes Inativos</h1>
-        <button className="ci-export" onClick={() => alert('Exportar - em desenvolvimento')}>
+        <button className="ci-export" onClick={exportarPDF} disabled={loading || clientes.length === 0}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>

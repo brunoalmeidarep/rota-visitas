@@ -38,6 +38,29 @@
   margin: 0;
 }
 
+.mv-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mv-export {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-secondary, #2c2c2e);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary, #ffffff);
+}
+
+.mv-export:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .mv-config {
   width: 36px;
   height: 36px;

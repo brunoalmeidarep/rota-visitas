@@ -1,0 +1,205 @@
+/* PreviewPDF.css */
+
+.preview-pdf {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #000000;
+}
+
+.pp-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #1c1c1e;
+  border-bottom: 1px solid #3a3a3c;
+}
+
+.pp-fechar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ffffff;
+}
+
+.pp-nome {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pp-compartilhar-header {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #007aff;
+}
+
+/* Corpo */
+.pp-corpo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pp-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #ffffff;
+}
+
+/* Loading */
+.pp-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #ffffff;
+}
+
+.pp-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #007aff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.pp-loading span {
+  font-size: 15px;
+  color: #8e8e93;
+}
+
+/* Erro */
+.pp-erro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.pp-erro span {
+  font-size: 48px;
+}
+
+.pp-erro p {
+  color: #8e8e93;
+  margin: 0;
+}
+
+.pp-erro button {
+  padding: 10px 20px;
+  background: #007aff;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* Footer */
+.pp-footer {
+  display: flex;
+  gap: 10px;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background: #1c1c1e;
+  border-top: 1px solid #3a3a3c;
+}
+
+.pp-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.pp-btn.compartilhar {
+  background: #007aff;
+  color: #ffffff;
+}
+
+.pp-btn.email {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.pp-btn.download {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.pp-btn svg {
+  flex-shrink: 0;
+}
+
+/* Tema claro */
+@media (prefers-color-scheme: light) {
+  .preview-pdf {
+    background: #f2f2f7;
+  }
+
+  .pp-header {
+    background: #ffffff;
+    border-bottom-color: #e0e0e0;
+  }
+
+  .pp-fechar {
+    background: #f2f2f7;
+    color: #000000;
+  }
+
+  .pp-nome {
+    color: #000000;
+  }
+
+  .pp-compartilhar-header {
+    background: #f2f2f7;
+  }
+
+  .pp-footer {
+    background: #ffffff;
+    border-top-color: #e0e0e0;
+  }
+
+  .pp-btn.email,
+  .pp-btn.download {
+    background: #f2f2f7;
+    color: #000000;
+  }
+}

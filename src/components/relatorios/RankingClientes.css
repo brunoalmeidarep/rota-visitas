@@ -38,17 +38,8 @@
   margin: 0;
 }
 
-.rc-export {
+.rc-header-spacer {
   width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--bg-secondary, #2c2c2e);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-primary, #ffffff);
 }
 
 /* Filtros */

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
+import PDFMetaVendas from './PDFMetaVendas'
 import './MetaVendas.css'
 
 const MESES = [
@@ -32,6 +33,7 @@ function MetaVendas() {
   const [historico, setHistorico] = useState([])
 
   const [mostrarSheet, setMostrarSheet] = useState(false)
+  const [nomeRep, setNomeRep] = useState('')
   const [metaRepresentada, setMetaRepresentada] = useState('')
   const [metaMesInput, setMetaMesInput] = useState(mesAtual)
   const [metaAnoInput, setMetaAnoInput] = useState(anoAtual)
@@ -56,7 +58,17 @@ function MetaVendas() {
   useEffect(() => {
     if (!repId) return
     fetchDados()
+    fetchNomeRep()
   }, [repId, mesSelecionado, anoSelecionado, representadaSelecionada])
+
+  async function fetchNomeRep() {
+    const { data } = await supabase
+      .from('representantes')
+      .select('nome')
+      .eq('id', repId)
+      .single()
+    if (data?.nome) setNomeRep(data.nome)
+  }
 
   // Pre-preencher sheet com periodo selecionado
   function abrirSheet() {
@@ -254,6 +266,37 @@ function MetaVendas() {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   }
 
+  function getPeriodoLabel() {
+    return `${MESES[mesSelecionado]} ${anoSelecionado}`
+  }
+
+  function exportarPDF() {
+    if (!temVendas && !temMeta) {
+      alert('Nenhum dado para exportar')
+      return
+    }
+
+    const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
+    const documento = (
+      <PDFMetaVendas
+        vendidoMes={vendidoMes}
+        metaMes={metaMes?.valor || 0}
+        percentual={percentualMeta}
+        historico={historico}
+        nomeRep={nomeRep}
+        periodo={getPeriodoLabel()}
+      />
+    )
+
+    navigate('/relatorios/pdf', {
+      state: {
+        documento,
+        nomeArquivo: `meta-vendas-${hoje}.pdf`,
+        titulo: 'Meta de Vendas'
+      }
+    })
+  }
+
   // Gerar anos para o select (3 anos atras ate ano atual)
   function gerarAnos() {
     const anos = []
@@ -302,9 +345,18 @@ function MetaVendas() {
           </svg>
         </button>
         <h1>Meta de Vendas</h1>
-        <button className="mv-config" onClick={abrirSheet}>
-          <span>⚙️</span>
-        </button>
+        <div className="mv-header-actions">
+          <button className="mv-export" onClick={exportarPDF} disabled={loading || (!temVendas && !temMeta)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <button className="mv-config" onClick={abrirSheet}>
+            <span>⚙️</span>
+          </button>
+        </div>
       </header>
 
       {/* Seletor de periodo: Mes + Ano */}

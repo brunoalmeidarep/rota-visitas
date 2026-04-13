@@ -33,6 +33,7 @@ import VendasProduto from './components/relatorios/VendasProduto'
 import ClientesInativos from './components/relatorios/ClientesInativos'
 import ResumoVendas from './components/relatorios/ResumoVendas'
 import VisitasRelatorio from './components/relatorios/VisitasRelatorio'
+import PreviewPDF from './components/relatorios/PreviewPDF'
 import Financas from './components/financas/Financas'
 import Tarefas from './components/tarefas/Tarefas'
 
@@ -123,6 +124,7 @@ function App() {
         <Route path="/relatorios/inativos" element={<ClientesInativos />} />
         <Route path="/relatorios/resumo" element={<ResumoVendas />} />
         <Route path="/relatorios/visitas" element={<VisitasRelatorio />} />
+        <Route path="/relatorios/pdf" element={<PreviewPDF />} />
         <Route path="/financas" element={<Financas />} />
         <Route path="/tarefas" element={<Tarefas />} />
         <Route path="/mapa" element={<Mapa />} />

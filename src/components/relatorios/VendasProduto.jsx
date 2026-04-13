@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
+import PDFVendasProduto from './PDFVendasProduto'
 import './VendasProduto.css'
 
 function VendasProduto() {
@@ -16,6 +17,7 @@ function VendasProduto() {
   const [produtos, setProdutos] = useState([])
   const [totalGeral, setTotalGeral] = useState(0)
   const [totalUnidades, setTotalUnidades] = useState(0)
+  const [nomeRep, setNomeRep] = useState('')
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -28,7 +30,17 @@ function VendasProduto() {
   useEffect(() => {
     if (!repId) return
     fetchProdutos()
+    fetchNomeRep()
   }, [repId, periodo, representadaSelecionada])
+
+  async function fetchNomeRep() {
+    const { data } = await supabase
+      .from('representantes')
+      .select('nome')
+      .eq('id', repId)
+      .single()
+    if (data?.nome) setNomeRep(data.nome)
+  }
 
   async function fetchProdutos() {
     setLoading(true)
@@ -100,6 +112,38 @@ function VendasProduto() {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   }
 
+  function getPeriodoLabel() {
+    if (periodo === 30) return 'Ultimos 30 dias'
+    if (periodo === 90) return 'Ultimos 90 dias'
+    return 'Ultimo ano'
+  }
+
+  function exportarPDF() {
+    if (produtos.length === 0) {
+      alert('Nenhum dado para exportar')
+      return
+    }
+
+    const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
+    const documento = (
+      <PDFVendasProduto
+        produtos={produtos}
+        totalGeral={totalGeral}
+        totalUnidades={totalUnidades}
+        nomeRep={nomeRep}
+        periodo={getPeriodoLabel()}
+      />
+    )
+
+    navigate('/relatorios/pdf', {
+      state: {
+        documento,
+        nomeArquivo: `vendas-produto-${hoje}.pdf`,
+        titulo: 'Vendas por Produto'
+      }
+    })
+  }
+
   return (
     <div className={`vendas-produto ${isDark ? 'dark' : 'light'}`}>
       <header className="vp-header">
@@ -109,7 +153,7 @@ function VendasProduto() {
           </svg>
         </button>
         <h1>Vendas por Produto</h1>
-        <button className="vp-export" onClick={() => alert('Exportar - em desenvolvimento')}>
+        <button className="vp-export" onClick={exportarPDF} disabled={loading || produtos.length === 0}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>
