@@ -139,7 +139,7 @@ function Financas() {
     .reduce((acc, l) => acc + (l.valor || 0), 0)
 
   const despesas = lancamentos
-    .filter(l => l.tipo === 'despesa')
+    .filter(l => l.tipo === 'gasto')
     .reduce((acc, l) => acc + (l.valor || 0), 0)
 
   const resultado = receitas - despesas
@@ -147,7 +147,7 @@ function Financas() {
   // Filtrar por aba
   const lancamentosFiltrados = lancamentos.filter(l => {
     if (abaAtiva === 'comissoes') return l.tipo === 'receita'
-    if (abaAtiva === 'despesas') return l.tipo === 'despesa'
+    if (abaAtiva === 'despesas') return l.tipo === 'gasto'
     return false
   })
 
@@ -465,7 +465,7 @@ function Financas() {
                         </span>
                       </div>
                       <span className={`fin-item-valor ${item.tipo}`}>
-                        {item.tipo === 'despesa' ? '-' : '+'}{formatarValor(item.valor)}
+                        {item.tipo === 'gasto' ? '-' : '+'}{formatarValor(item.valor)}
                       </span>
                     </div>
                   ))}

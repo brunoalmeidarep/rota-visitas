@@ -44,22 +44,31 @@ function DespesaRapida({ onClose, onSuccess, isDark }) {
       const hoje = new Date().toISOString().split('T')[0]
       const categoriaNome = CATEGORIAS.find(c => c.id === categoria)?.nome || categoria
 
-      const { error } = await supabase
-        .from('financeiro')
-        .insert({
+      const registro = {
           rep_id: repId,
-          tipo: 'despesa',
+          tipo: 'gasto',
           categoria: categoriaNome,
-          valor: valor,
+          valor: Number(valor),
           descricao: descricao.trim() || null,
           data: hoje,
           tipo_lancamento: 'unico',
           projetado: false
-        })
+        }
+
+      console.log('[DespesaRapida] Inserindo:', JSON.stringify(registro, null, 2))
+
+      const { error } = await supabase
+        .from('financeiro')
+        .insert(registro)
 
       if (error) {
-        console.error('[DespesaRapida] Erro:', error)
-        alert('Erro ao salvar despesa')
+        console.error('[DespesaRapida] Erro Supabase:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        alert(`Erro ao salvar: ${error.message || error.details || 'Erro desconhecido'}`)
         setSalvando(false)
         return
       }

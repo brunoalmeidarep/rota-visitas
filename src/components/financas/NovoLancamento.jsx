@@ -73,8 +73,15 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
       return
     }
 
-    if (!valor || valor <= 0) {
-      alert('Informe o valor')
+    if (!valor || valor <= 0 || isNaN(valor)) {
+      alert('Informe um valor válido')
+      console.error('[NovoLancamento] Valor inválido:', valor, typeof valor)
+      return
+    }
+
+    if (!repId) {
+      alert('Erro: rep_id não encontrado. Faça login novamente.')
+      console.error('[NovoLancamento] repId não disponível')
       return
     }
 
@@ -84,26 +91,41 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
       const categoriaNome = categorias.find(c => c.id === categoria)?.nome || categoria
       const grupoId = crypto.randomUUID()
 
+      // Mapear tipo: 'despesa' -> 'gasto', 'receita' -> 'receita'
+      const tipoDb = tipoLancamento === 'despesa' ? 'gasto' : 'receita'
+
       if (frequencia === 'unico' || tipoLancamento === 'receita') {
         // Lançamento único
+        const registro = {
+          rep_id: repId,
+          tipo: tipoDb,
+          categoria: categoriaNome,
+          valor: Number(valor),
+          descricao: descricao.trim() || null,
+          data: data,
+          tipo_lancamento: 'unico',
+          projetado: false
+        }
+
+        console.log('[NovoLancamento] Inserindo registro único:', JSON.stringify(registro, null, 2))
+
         const { error } = await supabase
           .from('financeiro')
-          .insert({
-            rep_id: repId,
-            tipo: tipoLancamento,
-            categoria: categoriaNome,
-            valor: valor,
-            descricao: descricao.trim() || null,
-            data: data,
-            tipo_lancamento: 'unico',
-            projetado: false
-          })
+          .insert(registro)
 
-        if (error) throw error
+        if (error) {
+          console.error('[NovoLancamento] Erro Supabase:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          throw error
+        }
 
       } else if (frequencia === 'parcelado') {
         // Criar N parcelas
-        const valorParcela = valor / parcelas
+        const valorParcela = Number(valor) / parcelas
         const dataBase = new Date(data)
         const hoje = new Date()
         hoje.setHours(0, 0, 0, 0)
@@ -117,9 +139,9 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
 
           registros.push({
             rep_id: repId,
-            tipo: tipoLancamento,
+            tipo: tipoDb,
             categoria: categoriaNome,
-            valor: valorParcela,
+            valor: Number(valorParcela.toFixed(2)),
             descricao: descricao.trim() || null,
             data: dataParcela.toISOString().split('T')[0],
             tipo_lancamento: 'parcelado',
@@ -130,11 +152,21 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
           })
         }
 
+        console.log('[NovoLancamento] Inserindo parcelas:', JSON.stringify(registros, null, 2))
+
         const { error } = await supabase
           .from('financeiro')
           .insert(registros)
 
-        if (error) throw error
+        if (error) {
+          console.error('[NovoLancamento] Erro Supabase parcelas:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          throw error
+        }
 
       } else if (frequencia === 'recorrente') {
         // Criar 12 meses de lançamentos recorrentes
@@ -154,9 +186,9 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
 
           registros.push({
             rep_id: repId,
-            tipo: tipoLancamento,
+            tipo: tipoDb,
             categoria: categoriaNome,
-            valor: valor,
+            valor: Number(valor),
             descricao: descricao.trim() || null,
             data: dataLancamento.toISOString().split('T')[0],
             tipo_lancamento: 'recorrente',
@@ -166,18 +198,29 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
           })
         }
 
+        console.log('[NovoLancamento] Inserindo recorrentes:', JSON.stringify(registros, null, 2))
+
         const { error } = await supabase
           .from('financeiro')
           .insert(registros)
 
-        if (error) throw error
+        if (error) {
+          console.error('[NovoLancamento] Erro Supabase recorrente:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          throw error
+        }
       }
 
       onSuccess()
 
     } catch (err) {
-      console.error('[NovoLancamento] Erro:', err)
-      alert('Erro ao salvar lançamento')
+      console.error('[NovoLancamento] Exceção completa:', err)
+      const mensagem = err.message || err.details || 'Erro desconhecido'
+      alert(`Erro ao salvar: ${mensagem}`)
     }
 
     setSalvando(false)
