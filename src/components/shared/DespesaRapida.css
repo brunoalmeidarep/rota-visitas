@@ -114,24 +114,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   margin-bottom: 16px;
 }
 
-.despesa-valor-prefix {
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--despesa-text-secondary);
-}
-
 .despesa-valor-input {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
   color: var(--despesa-text);
   background: transparent;
   border: none;
   text-align: center;
-  width: 150px;
+  width: 200px;
   outline: none;
 }
 

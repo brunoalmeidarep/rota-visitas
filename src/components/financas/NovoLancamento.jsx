@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
 import './NovoLancamento.css'
 
 const CATEGORIAS_RECEITA = [
@@ -25,7 +26,8 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
 
   const [tipoLancamento, setTipoLancamento] = useState('despesa') // receita ou despesa
   const [categoria, setCategoria] = useState('')
-  const [valor, setValor] = useState('')
+  const [valor, setValor] = useState(0)
+  const [valorDisplay, setValorDisplay] = useState('R$ 0,00')
   const [descricao, setDescricao] = useState('')
   const [data, setData] = useState(new Date().toISOString().split('T')[0])
 
@@ -43,28 +45,16 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
   const categorias = tipoLancamento === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA
 
   function handleValorChange(valorStr) {
-    let limpo = valorStr.replace(/[^\d,]/g, '')
-    const partes = limpo.split(',')
-    if (partes.length > 2) {
-      limpo = partes[0] + ',' + partes.slice(1).join('')
-    }
-    if (partes.length === 2 && partes[1].length > 2) {
-      limpo = partes[0] + ',' + partes[1].slice(0, 2)
-    }
-    setValor(limpo)
-  }
-
-  function parsearValor(str) {
-    if (!str) return 0
-    return parseFloat(str.replace(',', '.')) || 0
+    const formatted = formatarInputMoeda(valorStr)
+    setValorDisplay(formatted)
+    setValor(parseMoeda(formatted))
   }
 
   // Calcular preview parcelado
   function getPreviewParcelado() {
-    const valorTotal = parsearValor(valor)
-    if (!valorTotal || parcelas < 2) return null
+    if (!valor || parcelas < 2) return null
 
-    const valorParcela = valorTotal / parcelas
+    const valorParcela = valor / parcelas
     const dataInicio = new Date(data)
     const dataFim = new Date(data)
     dataFim.setMonth(dataFim.getMonth() + parcelas - 1)
@@ -83,8 +73,7 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
       return
     }
 
-    const valorNum = parsearValor(valor)
-    if (!valorNum || valorNum <= 0) {
+    if (!valor || valor <= 0) {
       alert('Informe o valor')
       return
     }
@@ -103,7 +92,7 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
             rep_id: repId,
             tipo: tipoLancamento,
             categoria: categoriaNome,
-            valor: valorNum,
+            valor: valor,
             descricao: descricao.trim() || null,
             data: data,
             tipo_lancamento: 'unico',
@@ -114,7 +103,7 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
 
       } else if (frequencia === 'parcelado') {
         // Criar N parcelas
-        const valorParcela = valorNum / parcelas
+        const valorParcela = valor / parcelas
         const dataBase = new Date(data)
         const hoje = new Date()
         hoje.setHours(0, 0, 0, 0)
@@ -167,7 +156,7 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
             rep_id: repId,
             tipo: tipoLancamento,
             categoria: categoriaNome,
-            valor: valorNum,
+            valor: valor,
             descricao: descricao.trim() || null,
             data: dataLancamento.toISOString().split('T')[0],
             tipo_lancamento: 'recorrente',
@@ -247,14 +236,13 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
         <div className="lancamento-secao">
           <label>Valor</label>
           <div className="lancamento-valor-container">
-            <span className="lancamento-valor-prefix">R$</span>
             <input
               type="text"
               className="lancamento-valor-input"
-              placeholder="0,00"
-              value={valor}
+              placeholder="R$ 0,00"
+              value={valorDisplay}
               onChange={(e) => handleValorChange(e.target.value)}
-              inputMode="decimal"
+              inputMode="numeric"
             />
           </div>
         </div>

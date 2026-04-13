@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
 import './Bonificacao.css'
 
 function Bonificacao() {
@@ -18,7 +19,8 @@ function Bonificacao() {
   const [mostrarNova, setMostrarNova] = useState(false)
   const [representadas, setRepresentadas] = useState([])
   const [representadaId, setRepresentadaId] = useState('')
-  const [valor, setValor] = useState('')
+  const [valor, setValor] = useState(0)
+  const [valorDisplay, setValorDisplay] = useState('R$ 0,00')
   const [obs, setObs] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -90,28 +92,9 @@ function Bonificacao() {
 
   // Formatar valor
   function handleValorChange(valorStr) {
-    let limpo = valorStr.replace(/[^\d,]/g, '')
-    const partes = limpo.split(',')
-    if (partes.length > 2) {
-      limpo = partes[0] + ',' + partes.slice(1).join('')
-    }
-    if (partes.length === 2 && partes[1].length > 2) {
-      limpo = partes[0] + ',' + partes[1].slice(0, 2)
-    }
-    setValor(limpo)
-  }
-
-  function parsearValor(str) {
-    if (!str) return 0
-    return parseFloat(str.replace(',', '.')) || 0
-  }
-
-  function formatarValor(num) {
-    if (!num) return 'R$ 0,00'
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(num)
+    const formatted = formatarInputMoeda(valorStr)
+    setValorDisplay(formatted)
+    setValor(parseMoeda(formatted))
   }
 
   function formatarData(dataStr) {
@@ -155,7 +138,7 @@ function Bonificacao() {
     .reduce((acc, b) => acc + (b.valor || 0), 0)
 
   async function salvarBonificacao() {
-    if (!valor || parsearValor(valor) <= 0) {
+    if (!valor || valor <= 0) {
       alert('Informe o valor')
       return
     }
@@ -174,7 +157,7 @@ function Bonificacao() {
           cliente_nome: cliente?.nome,
           representada_id: representadaId || null,
           representada_nome: representadaNome,
-          valor: parsearValor(valor),
+          valor: valor,
           obs: obs.trim() || null,
           data: hoje
         })
@@ -198,7 +181,8 @@ function Bonificacao() {
 
       // Fechar sheet
       setMostrarNova(false)
-      setValor('')
+      setValor(0)
+      setValorDisplay('R$ 0,00')
       setObs('')
 
     } catch (err) {
@@ -313,13 +297,12 @@ function Bonificacao() {
             <div className="bonif-campo">
               <label>Valor</label>
               <div className="bonif-valor-input">
-                <span className="bonif-prefix">R$</span>
                 <input
                   type="text"
-                  placeholder="0,00"
-                  value={valor}
+                  placeholder="R$ 0,00"
+                  value={valorDisplay}
                   onChange={(e) => handleValorChange(e.target.value)}
-                  inputMode="decimal"
+                  inputMode="numeric"
                 />
               </div>
             </div>

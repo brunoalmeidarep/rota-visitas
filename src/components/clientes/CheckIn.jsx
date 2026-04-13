@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
 import './CheckIn.css'
 
 const CATEGORIAS_GASTO = [
@@ -25,7 +26,8 @@ function CheckIn({ cliente, onClose, onConfirm }) {
   // Gasto colapsado
   const [mostrarGasto, setMostrarGasto] = useState(false)
   const [gastoCategoria, setGastoCategoria] = useState('')
-  const [gastoValor, setGastoValor] = useState('')
+  const [gastoValor, setGastoValor] = useState(0)
+  const [gastoValorDisplay, setGastoValorDisplay] = useState('R$ 0,00')
   const [gastoObs, setGastoObs] = useState('')
   const [mostrarCategorias, setMostrarCategorias] = useState(false)
 
@@ -39,21 +41,10 @@ function CheckIn({ cliente, onClose, onConfirm }) {
   }, [])
 
   // Formatar valor
-  function handleValorChange(valor) {
-    let limpo = valor.replace(/[^\d,]/g, '')
-    const partes = limpo.split(',')
-    if (partes.length > 2) {
-      limpo = partes[0] + ',' + partes.slice(1).join('')
-    }
-    if (partes.length === 2 && partes[1].length > 2) {
-      limpo = partes[0] + ',' + partes[1].slice(0, 2)
-    }
-    setGastoValor(limpo)
-  }
-
-  function parsearValor(str) {
-    if (!str) return 0
-    return parseFloat(str.replace(',', '.')) || 0
+  function handleValorChange(valorStr) {
+    const formatted = formatarInputMoeda(valorStr)
+    setGastoValorDisplay(formatted)
+    setGastoValor(parseMoeda(formatted))
   }
 
   async function confirmarCheckIn() {
@@ -110,7 +101,7 @@ function CheckIn({ cliente, onClose, onConfirm }) {
       }
 
       // Se tem gasto, salvar
-      if (mostrarGasto && gastoCategoria && gastoValor) {
+      if (mostrarGasto && gastoCategoria && gastoValor > 0) {
         await supabase
           .from('gastos_cliente')
           .insert({
@@ -119,7 +110,7 @@ function CheckIn({ cliente, onClose, onConfirm }) {
             visita_id: visitaId,
             cliente_nome: cliente.nome,
             categoria: gastoCategoria,
-            valor: parsearValor(gastoValor),
+            valor: gastoValor,
             descricao: gastoObs.trim() || null,
             data: hoje
           })
@@ -197,7 +188,8 @@ function CheckIn({ cliente, onClose, onConfirm }) {
               <button className="checkin-gasto-remover" onClick={() => {
                 setMostrarGasto(false)
                 setGastoCategoria('')
-                setGastoValor('')
+                setGastoValor(0)
+                setGastoValorDisplay('R$ 0,00')
                 setGastoObs('')
               }}>×</button>
             </div>
@@ -220,12 +212,12 @@ function CheckIn({ cliente, onClose, onConfirm }) {
 
             {/* Valor */}
             <div className="checkin-gasto-campo">
-              <span className="checkin-prefix">R$</span>
               <input
                 type="text"
-                placeholder="0,00"
-                value={gastoValor}
+                placeholder="R$ 0,00"
+                value={gastoValorDisplay}
                 onChange={(e) => handleValorChange(e.target.value)}
+                inputMode="numeric"
               />
             </div>
 

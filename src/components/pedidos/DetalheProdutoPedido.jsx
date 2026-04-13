@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
 import './DetalheProdutoPedido.css'
 
 function DetalheProdutoPedido() {
@@ -11,7 +12,9 @@ function DetalheProdutoPedido() {
   const [pedido, setPedido] = useState(null)
   const [quantidade, setQuantidade] = useState(0)
   const [tipoDesconto, setTipoDesconto] = useState('percentual') // 'percentual' | 'valor'
-  const [descontoValor, setDescontoValor] = useState('')
+  const [descontoPercentual, setDescontoPercentual] = useState('')
+  const [descontoReais, setDescontoReais] = useState(0)
+  const [descontoReaisDisplay, setDescontoReaisDisplay] = useState('R$ 0,00')
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [isDark, setIsDark] = useState(false)
@@ -43,8 +46,13 @@ function DetalheProdutoPedido() {
         const itemExistente = pedidoRes.data.itens?.find(i => i.produto_id === produtoId)
         if (itemExistente) {
           setQuantidade(itemExistente.quantidade || 0)
-          if (itemExistente.desconto) {
-            setDescontoValor(itemExistente.desconto.toString().replace('.', ','))
+          if (itemExistente.desconto_percentual) {
+            setTipoDesconto('percentual')
+            setDescontoPercentual(itemExistente.desconto_percentual.toString().replace('.', ','))
+          } else if (itemExistente.desconto) {
+            setTipoDesconto('valor')
+            setDescontoReais(itemExistente.desconto)
+            setDescontoReaisDisplay(formatarInputMoeda((itemExistente.desconto * 100).toString()))
           }
         }
       }
@@ -55,15 +63,7 @@ function DetalheProdutoPedido() {
     fetchDados()
   }, [produtoId, pedidoId])
 
-  function formatarValor(valor) {
-    if (!valor) return 'R$ 0,00'
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(valor)
-  }
-
-  function handleDescontoChange(valor) {
+  function handleDescontoPercentualChange(valor) {
     let limpo = valor.replace(/[^\d,]/g, '')
     const partes = limpo.split(',')
     if (partes.length > 2) {
@@ -72,10 +72,16 @@ function DetalheProdutoPedido() {
     if (partes.length === 2 && partes[1].length > 2) {
       limpo = partes[0] + ',' + partes[1].slice(0, 2)
     }
-    setDescontoValor(limpo)
+    setDescontoPercentual(limpo)
   }
 
-  function parsearValor(str) {
+  function handleDescontoReaisChange(valorStr) {
+    const formatted = formatarInputMoeda(valorStr)
+    setDescontoReaisDisplay(formatted)
+    setDescontoReais(parseMoeda(formatted))
+  }
+
+  function parsearPercentual(str) {
     if (!str) return 0
     return parseFloat(str.replace(',', '.')) || 0
   }
@@ -85,12 +91,12 @@ function DetalheProdutoPedido() {
   const ipi = produto?.ipi || 0
   const precoComIpi = precoTabela * (1 + ipi / 100)
 
-  const descontoNum = parsearValor(descontoValor)
+  const descontoPercentualNum = parsearPercentual(descontoPercentual)
   let valorDesconto = 0
-  if (tipoDesconto === 'percentual' && descontoNum > 0) {
-    valorDesconto = precoTabela * (descontoNum / 100)
+  if (tipoDesconto === 'percentual' && descontoPercentualNum > 0) {
+    valorDesconto = precoTabela * (descontoPercentualNum / 100)
   } else if (tipoDesconto === 'valor') {
-    valorDesconto = descontoNum
+    valorDesconto = descontoReais
   }
 
   const precoLiquido = Math.max(0, precoTabela - valorDesconto)
@@ -118,7 +124,7 @@ function DetalheProdutoPedido() {
           preco_unitario: precoTabela,
           ipi,
           desconto: valorDesconto,
-          desconto_percentual: tipoDesconto === 'percentual' ? descontoNum : null,
+          desconto_percentual: tipoDesconto === 'percentual' ? descontoPercentualNum : null,
           subtotal
         }
 
@@ -297,18 +303,28 @@ function DetalheProdutoPedido() {
             </button>
           </div>
 
-          <div className="dpp-desconto-input">
-            <span className="dpp-desconto-prefix">
-              {tipoDesconto === 'percentual' ? '%' : 'R$'}
-            </span>
-            <input
-              type="text"
-              placeholder="0,00"
-              value={descontoValor}
-              onChange={(e) => handleDescontoChange(e.target.value)}
-              inputMode="decimal"
-            />
-          </div>
+          {tipoDesconto === 'percentual' ? (
+            <div className="dpp-desconto-input">
+              <span className="dpp-desconto-prefix">%</span>
+              <input
+                type="text"
+                placeholder="0,00"
+                value={descontoPercentual}
+                onChange={(e) => handleDescontoPercentualChange(e.target.value)}
+                inputMode="decimal"
+              />
+            </div>
+          ) : (
+            <div className="dpp-desconto-input">
+              <input
+                type="text"
+                placeholder="R$ 0,00"
+                value={descontoReaisDisplay}
+                onChange={(e) => handleDescontoReaisChange(e.target.value)}
+                inputMode="numeric"
+              />
+            </div>
+          )}
 
           {valorDesconto > 0 && (
             <div className="dpp-economia">

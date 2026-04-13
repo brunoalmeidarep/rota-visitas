@@ -1,0 +1,68 @@
+/* InputMoeda.css */
+
+.input-moeda-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-moeda-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #8e8e93);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.input-moeda {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--input-bg, #1c1c1e);
+  border: 1px solid var(--border-color, #3a3a3c);
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.input-moeda::placeholder {
+  color: var(--text-secondary, #8e8e93);
+  opacity: 0.5;
+}
+
+.input-moeda:focus {
+  outline: none;
+  border-color: #007aff;
+}
+
+/* Variantes de tamanho */
+.input-moeda-container.large .input-moeda {
+  font-size: 28px;
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.input-moeda-container.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.input-moeda-container.inline .input-moeda-label {
+  margin: 0;
+}
+
+/* Tema claro */
+@media (prefers-color-scheme: light) {
+  .input-moeda {
+    background: #f2f2f7;
+    border-color: #e0e0e0;
+    color: #000000;
+  }
+
+  .input-moeda-label {
+    color: #6c6c70;
+  }
+}

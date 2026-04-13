@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
 import './GastosCliente.css'
 
 const CATEGORIAS = [
@@ -27,7 +28,8 @@ function GastosCliente() {
   // Sheet de novo gasto
   const [mostrarNovo, setMostrarNovo] = useState(false)
   const [categoria, setCategoria] = useState('')
-  const [valor, setValor] = useState('')
+  const [valor, setValor] = useState(0)
+  const [valorDisplay, setValorDisplay] = useState('R$ 0,00')
   const [descricao, setDescricao] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [mostrarCategorias, setMostrarCategorias] = useState(false)
@@ -80,28 +82,9 @@ function GastosCliente() {
 
   // Formatar valor
   function handleValorChange(valorStr) {
-    let limpo = valorStr.replace(/[^\d,]/g, '')
-    const partes = limpo.split(',')
-    if (partes.length > 2) {
-      limpo = partes[0] + ',' + partes.slice(1).join('')
-    }
-    if (partes.length === 2 && partes[1].length > 2) {
-      limpo = partes[0] + ',' + partes[1].slice(0, 2)
-    }
-    setValor(limpo)
-  }
-
-  function parsearValor(str) {
-    if (!str) return 0
-    return parseFloat(str.replace(',', '.')) || 0
-  }
-
-  function formatarValor(num) {
-    if (!num) return 'R$ 0,00'
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(num)
+    const formatted = formatarInputMoeda(valorStr)
+    setValorDisplay(formatted)
+    setValor(parseMoeda(formatted))
   }
 
   function formatarData(dataStr) {
@@ -164,7 +147,7 @@ function GastosCliente() {
       alert('Selecione a categoria')
       return
     }
-    if (!valor || parsearValor(valor) <= 0) {
+    if (!valor || valor <= 0) {
       alert('Informe o valor')
       return
     }
@@ -181,7 +164,7 @@ function GastosCliente() {
           cliente_id: clienteId,
           cliente_nome: cliente?.nome,
           categoria: categoria,
-          valor: parsearValor(valor),
+          valor: valor,
           descricao: descricao.trim() || null,
           data: hoje
         })
@@ -206,7 +189,8 @@ function GastosCliente() {
       // Fechar sheet
       setMostrarNovo(false)
       setCategoria('')
-      setValor('')
+      setValor(0)
+      setValorDisplay('R$ 0,00')
       setDescricao('')
 
     } catch (err) {
@@ -358,13 +342,12 @@ function GastosCliente() {
             <div className="gastos-campo">
               <label>Valor</label>
               <div className="gastos-valor-input">
-                <span className="gastos-prefix">R$</span>
                 <input
                   type="text"
-                  placeholder="0,00"
-                  value={valor}
+                  placeholder="R$ 0,00"
+                  value={valorDisplay}
                   onChange={(e) => handleValorChange(e.target.value)}
-                  inputMode="decimal"
+                  inputMode="numeric"
                 />
               </div>
             </div>

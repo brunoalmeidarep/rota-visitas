@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
 import './PedidoSimples.css'
 
 function PedidoSimples() {
@@ -17,7 +18,8 @@ function PedidoSimples() {
   const [representadas, setRepresentadas] = useState([])
   const [representadaId, setRepresentadaId] = useState('')
   const [tipo, setTipo] = useState(tipoInicial)
-  const [valorTotal, setValorTotal] = useState('')
+  const [valorTotal, setValorTotal] = useState(0)
+  const [valorTotalDisplay, setValorTotalDisplay] = useState('R$ 0,00')
   const [obs, setObs] = useState('')
   const [canal, setCanal] = useState('presencial')
   const [salvando, setSalvando] = useState(false)
@@ -74,25 +76,14 @@ function PedidoSimples() {
   }, [repId])
 
   // Formatar valor
-  function handleValorChange(valor) {
-    let limpo = valor.replace(/[^\d,]/g, '')
-    const partes = limpo.split(',')
-    if (partes.length > 2) {
-      limpo = partes[0] + ',' + partes.slice(1).join('')
-    }
-    if (partes.length === 2 && partes[1].length > 2) {
-      limpo = partes[0] + ',' + partes[1].slice(0, 2)
-    }
-    setValorTotal(limpo)
-  }
-
-  function parsearValor(str) {
-    if (!str) return 0
-    return parseFloat(str.replace(',', '.')) || 0
+  function handleValorChange(valorStr) {
+    const formatted = formatarInputMoeda(valorStr)
+    setValorTotalDisplay(formatted)
+    setValorTotal(parseMoeda(formatted))
   }
 
   async function salvarPedido() {
-    if (!valorTotal || parsearValor(valorTotal) <= 0) {
+    if (!valorTotal || valorTotal <= 0) {
       alert('Informe o valor total')
       return
     }
@@ -113,7 +104,7 @@ function PedidoSimples() {
           visita_id: visitaId || null,
           representada_id: representadaId || null,
           representada_nome: representadaNome,
-          valor_total: parsearValor(valorTotal),
+          valor_total: valorTotal,
           status: tipo === 'orcamento' ? 'orcamento' : 'pedido',
           canal: canal,
           obs: obs.trim() || null,
@@ -134,7 +125,7 @@ function PedidoSimples() {
         .from('clientes')
         .update({
           ultimo_pedido_data: hoje,
-          ultimo_pedido_valor: parsearValor(valorTotal)
+          ultimo_pedido_valor: valorTotal
         })
         .eq('id', clienteId)
 
@@ -245,13 +236,12 @@ function PedidoSimples() {
         <div className="ps-campo">
           <label>Valor total</label>
           <div className="ps-valor-input">
-            <span className="ps-prefix">R$</span>
             <input
               type="text"
-              placeholder="0,00"
-              value={valorTotal}
+              placeholder="R$ 0,00"
+              value={valorTotalDisplay}
               onChange={(e) => handleValorChange(e.target.value)}
-              inputMode="decimal"
+              inputMode="numeric"
             />
           </div>
         </div>

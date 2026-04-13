@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
 import './DespesaRapida.css'
 
 const CATEGORIAS = [
@@ -15,25 +16,15 @@ function DespesaRapida({ onClose, onSuccess, isDark }) {
   const { repId } = useRepId()
 
   const [categoria, setCategoria] = useState('')
-  const [valor, setValor] = useState('')
+  const [valor, setValor] = useState(0)
+  const [valorDisplay, setValorDisplay] = useState('R$ 0,00')
   const [descricao, setDescricao] = useState('')
   const [salvando, setSalvando] = useState(false)
 
   function handleValorChange(valorStr) {
-    let limpo = valorStr.replace(/[^\d,]/g, '')
-    const partes = limpo.split(',')
-    if (partes.length > 2) {
-      limpo = partes[0] + ',' + partes.slice(1).join('')
-    }
-    if (partes.length === 2 && partes[1].length > 2) {
-      limpo = partes[0] + ',' + partes[1].slice(0, 2)
-    }
-    setValor(limpo)
-  }
-
-  function parsearValor(str) {
-    if (!str) return 0
-    return parseFloat(str.replace(',', '.')) || 0
+    const formatted = formatarInputMoeda(valorStr)
+    setValorDisplay(formatted)
+    setValor(parseMoeda(formatted))
   }
 
   async function salvar() {
@@ -42,7 +33,7 @@ function DespesaRapida({ onClose, onSuccess, isDark }) {
       return
     }
 
-    if (!valor || parsearValor(valor) <= 0) {
+    if (!valor || valor <= 0) {
       alert('Informe o valor')
       return
     }
@@ -59,7 +50,7 @@ function DespesaRapida({ onClose, onSuccess, isDark }) {
           rep_id: repId,
           tipo: 'despesa',
           categoria: categoriaNome,
-          valor: parsearValor(valor),
+          valor: valor,
           descricao: descricao.trim() || null,
           data: hoje,
           tipo_lancamento: 'unico',
@@ -107,14 +98,13 @@ function DespesaRapida({ onClose, onSuccess, isDark }) {
 
         {/* Valor */}
         <div className="despesa-valor-container">
-          <span className="despesa-valor-prefix">R$</span>
           <input
             type="text"
             className="despesa-valor-input"
-            placeholder="0,00"
-            value={valor}
+            placeholder="R$ 0,00"
+            value={valorDisplay}
             onChange={(e) => handleValorChange(e.target.value)}
-            inputMode="decimal"
+            inputMode="numeric"
           />
         </div>
 
