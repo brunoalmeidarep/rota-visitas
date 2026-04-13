@@ -1,0 +1,145 @@
+/* Onboarding.css */
+
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  animation: onboardingFadeIn 0.3s ease;
+}
+
+@keyframes onboardingFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.onboarding-card {
+  width: 280px;
+  background: #ffffff;
+  border-radius: 20px;
+  overflow: hidden;
+  animation: onboardingSlideUp 0.3s ease;
+}
+
+@keyframes onboardingSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.onboarding-header {
+  background: #1a3a6b;
+  padding: 24px 20px;
+  text-align: center;
+  color: #ffffff;
+}
+
+.onboarding-icon {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.onboarding-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+
+.onboarding-header p {
+  font-size: 14px;
+  opacity: 0.8;
+  margin: 0;
+}
+
+/* Itens */
+.onboarding-items {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.onboarding-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.onboarding-item-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.onboarding-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.onboarding-item-titulo {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.onboarding-item-desc {
+  font-size: 12px;
+  color: #666666;
+}
+
+/* Botões */
+.onboarding-actions {
+  padding: 16px 20px 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.onboarding-btn-pular {
+  flex: 1;
+  padding: 12px;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666666;
+  cursor: pointer;
+}
+
+.onboarding-btn-pular:active {
+  background: #e0e0e0;
+}
+
+.onboarding-btn-comecar {
+  flex: 1.5;
+  padding: 12px;
+  background: #1a3a6b;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.onboarding-btn-comecar:active {
+  background: #152d54;
+}
+
+/* Tema escuro - card continua branco para contraste */
+.onboarding-overlay.dark .onboarding-card {
+  background: #ffffff;
+}

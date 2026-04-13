@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useRepId } from '../hooks/useRepId'
 import { useRepresentada } from '../contexts/RepresentadaContext'
+import Onboarding from './shared/Onboarding'
+import DespesaRapida from './shared/DespesaRapida'
 import './Home.css'
 
 function Home() {
@@ -13,6 +15,9 @@ function Home() {
   const [nomeRep, setNomeRep] = useState('')
   const [isDark, setIsDark] = useState(false)
   const [mostrarSheet, setMostrarSheet] = useState(false)
+  const [mostrarOnboarding, setMostrarOnboarding] = useState(false)
+  const [mostrarDespesa, setMostrarDespesa] = useState(false)
+  const [toast, setToast] = useState('')
 
   // Badges
   const [badgePedidos, setBadgePedidos] = useState({ count: 0, isNew: false })
@@ -36,6 +41,21 @@ function Home() {
     document.body.classList.toggle('light-mode', !isDark)
   }, [isDark])
 
+  // Verificar onboarding
+  useEffect(() => {
+    const onboardingCompleto = localStorage.getItem('onboarding_completo')
+    if (!onboardingCompleto) {
+      setMostrarOnboarding(true)
+    }
+  }, [])
+
+  // Limpar toast após 2s
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(''), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
 
   // Carregar nome do representante
   useEffect(() => {
@@ -237,6 +257,19 @@ function Home() {
                 <span className="home-badge-pending"></span>
               )}
 
+              {/* Botão + no card Finanças */}
+              {mod.id === 'financas' && (
+                <span
+                  className="home-card-plus"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setMostrarDespesa(true)
+                  }}
+                >
+                  +
+                </span>
+              )}
+
               <span className="home-card-icon">{mod.icone}</span>
               <span className="home-card-titulo">{mod.titulo}</span>
               <span className="home-card-subtitulo">{mod.subtitulo}</span>
@@ -346,6 +379,28 @@ function Home() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Onboarding primeiro acesso */}
+      {mostrarOnboarding && (
+        <Onboarding
+          onClose={() => setMostrarOnboarding(false)}
+          isDark={isDark}
+        />
+      )}
+
+      {/* Despesa rápida */}
+      {mostrarDespesa && (
+        <DespesaRapida
+          onClose={() => setMostrarDespesa(false)}
+          onSuccess={() => setToast('Despesa registrada!')}
+          isDark={isDark}
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="home-toast">{toast}</div>
       )}
     </div>
   )
