@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
-import PDFVisitas from './PDFVisitas'
 import './VisitasRelatorio.css'
 
 function VisitasRelatorio() {
@@ -169,20 +168,18 @@ function VisitasRelatorio() {
     }
 
     const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-    const documento = (
-      <PDFVisitas
-        visitas={visitas}
-        totalVisitas={totalVisitas}
-        clientesVisitados={clientesVisitados}
-        mediaPorDia={mediaPorDia}
-        nomeRep={nomeRep}
-        periodo={getPeriodoLabel()}
-      />
-    )
 
     navigate('/relatorios/pdf', {
       state: {
-        documento,
+        tipo: 'visitas',
+        dados: {
+          visitas,
+          totalVisitas,
+          clientesVisitados,
+          mediaPorDia,
+          nomeRep,
+          periodo: getPeriodoLabel()
+        },
         nomeArquivo: `visitas-${hoje}.pdf`,
         titulo: 'Relatorio de Visitas'
       }

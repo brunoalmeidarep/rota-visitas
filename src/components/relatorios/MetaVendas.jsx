@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
-import PDFMetaVendas from './PDFMetaVendas'
 import './MetaVendas.css'
 
 const MESES = [
@@ -277,20 +276,18 @@ function MetaVendas() {
     }
 
     const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-    const documento = (
-      <PDFMetaVendas
-        vendidoMes={vendidoMes}
-        metaMes={metaMes?.valor || 0}
-        percentual={percentualMeta}
-        historico={historico}
-        nomeRep={nomeRep}
-        periodo={getPeriodoLabel()}
-      />
-    )
 
     navigate('/relatorios/pdf', {
       state: {
-        documento,
+        tipo: 'meta-vendas',
+        dados: {
+          vendidoMes,
+          metaMes: metaMes?.valor || 0,
+          percentual: percentualMeta,
+          historico,
+          nomeRep,
+          periodo: getPeriodoLabel()
+        },
         nomeArquivo: `meta-vendas-${hoje}.pdf`,
         titulo: 'Meta de Vendas'
       }

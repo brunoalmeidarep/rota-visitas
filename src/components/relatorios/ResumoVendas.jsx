@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
-import PDFResumoVendas from './PDFResumoVendas'
 import './ResumoVendas.css'
 
 function ResumoVendas() {
@@ -162,21 +161,19 @@ function ResumoVendas() {
     }
 
     const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-    const documento = (
-      <PDFResumoVendas
-        totalVendido={totalVendido}
-        qtdPedidos={qtdPedidos}
-        ticketMedio={ticketMedio}
-        porRepresentada={porRepresentada}
-        pedidos={pedidos}
-        nomeRep={nomeRep}
-        periodo={getPeriodoLabel()}
-      />
-    )
 
     navigate('/relatorios/pdf', {
       state: {
-        documento,
+        tipo: 'resumo-vendas',
+        dados: {
+          totalVendido,
+          qtdPedidos,
+          ticketMedio,
+          porRepresentada,
+          pedidos,
+          nomeRep,
+          periodo: getPeriodoLabel()
+        },
         nomeArquivo: `resumo-vendas-${hoje}.pdf`,
         titulo: 'Resumo de Vendas'
       }

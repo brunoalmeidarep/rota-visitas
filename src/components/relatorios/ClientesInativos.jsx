@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
-import PDFClientesInativos from './PDFClientesInativos'
 import './ClientesInativos.css'
 
 function ClientesInativos() {
@@ -124,17 +123,15 @@ function ClientesInativos() {
     }
 
     const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-    const documento = (
-      <PDFClientesInativos
-        clientes={clientes}
-        nomeRep={nomeRep}
-        periodo={`Gerado em ${new Date().toLocaleDateString('pt-BR')}`}
-      />
-    )
 
     navigate('/relatorios/pdf', {
       state: {
-        documento,
+        tipo: 'clientes-inativos',
+        dados: {
+          clientes,
+          nomeRep,
+          periodo: `Gerado em ${new Date().toLocaleDateString('pt-BR')}`
+        },
         nomeArquivo: `clientes-inativos-${hoje}.pdf`,
         titulo: 'Clientes Inativos'
       }

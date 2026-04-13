@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
-import PDFVendasProduto from './PDFVendasProduto'
 import './VendasProduto.css'
 
 function VendasProduto() {
@@ -125,19 +124,17 @@ function VendasProduto() {
     }
 
     const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-    const documento = (
-      <PDFVendasProduto
-        produtos={produtos}
-        totalGeral={totalGeral}
-        totalUnidades={totalUnidades}
-        nomeRep={nomeRep}
-        periodo={getPeriodoLabel()}
-      />
-    )
 
     navigate('/relatorios/pdf', {
       state: {
-        documento,
+        tipo: 'vendas-produto',
+        dados: {
+          produtos,
+          totalGeral,
+          totalUnidades,
+          nomeRep,
+          periodo: getPeriodoLabel()
+        },
         nomeArquivo: `vendas-produto-${hoje}.pdf`,
         titulo: 'Vendas por Produto'
       }

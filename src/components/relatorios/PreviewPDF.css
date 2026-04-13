@@ -168,6 +168,25 @@
   flex-shrink: 0;
 }
 
+.pp-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pp-btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.pp-compartilhar-header:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Tema claro */
 @media (prefers-color-scheme: light) {
   .preview-pdf {
