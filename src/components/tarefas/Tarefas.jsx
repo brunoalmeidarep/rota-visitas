@@ -6,13 +6,22 @@ import './Tarefas.css'
 
 function Tarefas() {
   const navigate = useNavigate()
-  const { repId } = useRepId()
+  const { repId, loading: loadingRep } = useRepId()
 
   const [tarefas, setTarefas] = useState([])
   const [loading, setLoading] = useState(true)
   const [novaTarefa, setNovaTarefa] = useState('')
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [dataVencimento, setDataVencimento] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [toast, setToast] = useState('')
+
+  // Toast auto-hide
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(''), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
 
   useEffect(() => {
     if (!repId) return
@@ -21,12 +30,21 @@ function Tarefas() {
 
   async function fetchTarefas() {
     setLoading(true)
-    const { data } = await supabase
+
+    const { data, error } = await supabase
       .from('tarefas')
       .select('*')
       .eq('rep_id', repId)
-      .order('data', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[Tarefas] Erro ao carregar:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      })
+    }
 
     setTarefas(data || [])
     setLoading(false)
@@ -40,62 +58,98 @@ function Tarefas() {
       t.id === tarefa.id ? { ...t, concluida: novaConcluida } : t
     ))
 
-    await supabase
+    const { error } = await supabase
       .from('tarefas')
       .update({ concluida: novaConcluida })
       .eq('id', tarefa.id)
+
+    if (error) {
+      console.error('[Tarefas] Erro ao atualizar:', error)
+      // Reverter se falhou
+      setTarefas(prev => prev.map(t =>
+        t.id === tarefa.id ? { ...t, concluida: !novaConcluida } : t
+      ))
+    }
   }
 
   async function handleAdd() {
-    if (!novaTarefa.trim()) return
+    if (!novaTarefa.trim()) {
+      alert('Digite o texto da tarefa')
+      return
+    }
 
-    const nova = {
+    if (!repId) {
+      alert('Erro: rep_id não encontrado. Faça login novamente.')
+      console.error('[Tarefas] repId não disponível')
+      return
+    }
+
+    setSalvando(true)
+
+    const registro = {
       rep_id: repId,
-      titulo: novaTarefa.trim(),
-      data: dataVencimento || null,
+      texto: novaTarefa.trim(),
       concluida: false
     }
 
-    const { data } = await supabase
+    console.log('[Tarefas] Inserindo tarefa:', JSON.stringify(registro, null, 2))
+
+    const { data, error } = await supabase
       .from('tarefas')
-      .insert(nova)
+      .insert(registro)
       .select()
       .single()
 
-    if (data) {
-      setTarefas(prev => [data, ...prev])
+    if (error) {
+      console.error('[Tarefas] Erro Supabase:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      })
+      alert(`Erro ao salvar: ${error.message || error.details || 'Erro desconhecido'}`)
+      setSalvando(false)
+      return
     }
 
+    console.log('[Tarefas] Tarefa salva com sucesso:', data)
+
+    // Adicionar à lista local
+    setTarefas(prev => [data, ...prev])
     setNovaTarefa('')
-    setDataVencimento('')
     setMostrarForm(false)
+    setToast('Tarefa adicionada!')
+    setSalvando(false)
   }
 
   async function handleDelete(id) {
     const confirma = confirm('Excluir esta tarefa?')
     if (!confirma) return
 
+    // Remove otimisticamente
+    const tarefaRemovida = tarefas.find(t => t.id === id)
     setTarefas(prev => prev.filter(t => t.id !== id))
 
-    await supabase
+    const { error } = await supabase
       .from('tarefas')
       .delete()
       .eq('id', id)
+
+    if (error) {
+      console.error('[Tarefas] Erro ao excluir:', error)
+      // Reverter se falhou
+      if (tarefaRemovida) {
+        setTarefas(prev => [...prev, tarefaRemovida])
+      }
+    }
   }
 
-  // Agrupar tarefas
-  const hoje = new Date().toISOString().split('T')[0]
-
-  const atrasadas = tarefas.filter(t => !t.concluida && t.data && t.data < hoje)
-  const paraHoje = tarefas.filter(t => !t.concluida && t.data === hoje)
-  const semData = tarefas.filter(t => !t.concluida && !t.data)
-  const proximas = tarefas.filter(t => !t.concluida && t.data && t.data > hoje)
+  // Separar pendentes e concluídas
+  const pendentes = tarefas.filter(t => !t.concluida)
   const concluidas = tarefas.filter(t => t.concluida)
 
-  function formatarData(data) {
-    if (!data) return ''
-    const [ano, mes, dia] = data.split('-')
-    return `${dia}/${mes}`
+  if (loadingRep) {
+    return <div className="tarefas"><div className="tarefas-loading">Carregando...</div></div>
   }
 
   return (
@@ -131,100 +185,38 @@ function Tarefas() {
               <div className="tarefas-form">
                 <input
                   type="text"
-                  placeholder="Nova tarefa..."
+                  placeholder="O que precisa fazer?"
                   value={novaTarefa}
                   onChange={(e) => setNovaTarefa(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                   autoFocus
-                />
-                <input
-                  type="date"
-                  value={dataVencimento}
-                  onChange={(e) => setDataVencimento(e.target.value)}
-                  placeholder="Data (opcional)"
                 />
                 <div className="tarefas-form-actions">
                   <button className="btn-cancelar" onClick={() => {
                     setMostrarForm(false)
                     setNovaTarefa('')
-                    setDataVencimento('')
                   }}>
                     Cancelar
                   </button>
-                  <button className="btn-salvar" onClick={handleAdd}>
-                    Adicionar
+                  <button
+                    className="btn-salvar"
+                    onClick={handleAdd}
+                    disabled={salvando}
+                  >
+                    {salvando ? 'Salvando...' : 'Salvar'}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Atrasadas */}
-            {atrasadas.length > 0 && (
-              <section className="tarefas-grupo">
-                <h2 className="tarefas-grupo-titulo atrasada">
-                  Atrasadas ({atrasadas.length})
-                </h2>
-                <div className="tarefas-lista">
-                  {atrasadas.map(tarefa => (
-                    <div key={tarefa.id} className="tarefa-item atrasada">
-                      <button
-                        className="tarefa-check"
-                        onClick={() => handleToggle(tarefa)}
-                      >
-                        <span className="tarefa-check-box"></span>
-                      </button>
-                      <div className="tarefa-info">
-                        <span className="tarefa-titulo">{tarefa.titulo}</span>
-                        <span className="tarefa-data atrasada">{formatarData(tarefa.data)}</span>
-                      </div>
-                      <button className="tarefa-delete" onClick={() => handleDelete(tarefa.id)}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M18 6L6 18M6 6l12 12"/>
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Hoje */}
-            {paraHoje.length > 0 && (
-              <section className="tarefas-grupo">
-                <h2 className="tarefas-grupo-titulo hoje">
-                  Hoje ({paraHoje.length})
-                </h2>
-                <div className="tarefas-lista">
-                  {paraHoje.map(tarefa => (
-                    <div key={tarefa.id} className="tarefa-item">
-                      <button
-                        className="tarefa-check"
-                        onClick={() => handleToggle(tarefa)}
-                      >
-                        <span className="tarefa-check-box"></span>
-                      </button>
-                      <div className="tarefa-info">
-                        <span className="tarefa-titulo">{tarefa.titulo}</span>
-                        <span className="tarefa-data hoje">Hoje</span>
-                      </div>
-                      <button className="tarefa-delete" onClick={() => handleDelete(tarefa.id)}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M18 6L6 18M6 6l12 12"/>
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Sem data */}
-            {semData.length > 0 && (
+            {/* Pendentes */}
+            {pendentes.length > 0 && (
               <section className="tarefas-grupo">
                 <h2 className="tarefas-grupo-titulo">
-                  Sem data ({semData.length})
+                  Pendentes ({pendentes.length})
                 </h2>
                 <div className="tarefas-lista">
-                  {semData.map(tarefa => (
+                  {pendentes.map(tarefa => (
                     <div key={tarefa.id} className="tarefa-item">
                       <button
                         className="tarefa-check"
@@ -233,37 +225,7 @@ function Tarefas() {
                         <span className="tarefa-check-box"></span>
                       </button>
                       <div className="tarefa-info">
-                        <span className="tarefa-titulo">{tarefa.titulo}</span>
-                      </div>
-                      <button className="tarefa-delete" onClick={() => handleDelete(tarefa.id)}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M18 6L6 18M6 6l12 12"/>
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Próximas */}
-            {proximas.length > 0 && (
-              <section className="tarefas-grupo">
-                <h2 className="tarefas-grupo-titulo">
-                  Próximas ({proximas.length})
-                </h2>
-                <div className="tarefas-lista">
-                  {proximas.map(tarefa => (
-                    <div key={tarefa.id} className="tarefa-item">
-                      <button
-                        className="tarefa-check"
-                        onClick={() => handleToggle(tarefa)}
-                      >
-                        <span className="tarefa-check-box"></span>
-                      </button>
-                      <div className="tarefa-info">
-                        <span className="tarefa-titulo">{tarefa.titulo}</span>
-                        <span className="tarefa-data">{formatarData(tarefa.data)}</span>
+                        <span className="tarefa-texto">{tarefa.texto}</span>
                       </div>
                       <button className="tarefa-delete" onClick={() => handleDelete(tarefa.id)}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -292,10 +254,7 @@ function Tarefas() {
                         <span className="tarefa-check-box">✓</span>
                       </button>
                       <div className="tarefa-info">
-                        <span className="tarefa-titulo">{tarefa.titulo}</span>
-                        {tarefa.data && (
-                          <span className="tarefa-data">{formatarData(tarefa.data)}</span>
-                        )}
+                        <span className="tarefa-texto">{tarefa.texto}</span>
                       </div>
                       <button className="tarefa-delete" onClick={() => handleDelete(tarefa.id)}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -310,6 +269,11 @@ function Tarefas() {
           </>
         )}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="tarefas-toast">{toast}</div>
+      )}
     </div>
   )
 }

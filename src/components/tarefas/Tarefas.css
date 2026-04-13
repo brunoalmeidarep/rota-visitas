@@ -250,29 +250,15 @@
   min-width: 0;
 }
 
-.tarefa-titulo {
+.tarefa-texto {
   font-size: 15px;
   font-weight: 500;
   color: var(--text-primary, #ffffff);
 }
 
-.tarefa-item.concluida .tarefa-titulo {
+.tarefa-item.concluida .tarefa-texto {
   text-decoration: line-through;
   color: var(--text-muted, #636366);
-}
-
-.tarefa-data {
-  font-size: 12px;
-  color: var(--text-secondary, #8e8e93);
-}
-
-.tarefa-data.atrasada {
-  color: #ff3b30;
-}
-
-.tarefa-data.hoje {
-  color: #007aff;
-  font-weight: 600;
 }
 
 .tarefa-delete {
@@ -294,6 +280,40 @@
   opacity: 1;
   background: rgba(255, 59, 48, 0.15);
   color: #ff3b30;
+}
+
+/* Toast */
+.tarefas-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #34c759;
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(52, 199, 89, 0.4);
+  z-index: 2000;
+  animation: toastFadeIn 0.3s ease;
+}
+
+@keyframes toastFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Botão salvar disabled */
+.tarefas-form-actions .btn-salvar:disabled {
+  background: #8e8e93;
+  cursor: not-allowed;
 }
 
 /* Tema claro */
@@ -346,16 +366,12 @@
     background: rgba(255, 59, 48, 0.08);
   }
 
-  .tarefa-titulo {
+  .tarefa-texto {
     color: #000000;
   }
 
-  .tarefa-item.concluida .tarefa-titulo {
+  .tarefa-item.concluida .tarefa-texto {
     color: #8e8e93;
-  }
-
-  .tarefa-data {
-    color: #6c6c70;
   }
 
   .tarefa-check-box {
