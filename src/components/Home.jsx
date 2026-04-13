@@ -109,13 +109,12 @@ function Home() {
         .eq('data', hoje)
         .eq('concluido', false)
 
-      // Tarefas pendentes do dia
+      // Tarefas pendentes (sem filtro de data)
       const { count: tarefasCount } = await supabase
         .from('tarefas')
         .select('*', { count: 'exact', head: true })
         .eq('rep_id', repId)
         .eq('concluida', false)
-        .or(`data.is.null,data.eq.${hoje}`)
 
       setTarefasPendentes(tarefasCount || 0)
 
@@ -297,7 +296,7 @@ function Home() {
             <div className="home-tarefas-text">
               <span className="home-tarefas-titulo">Tarefas</span>
               <span className="home-tarefas-subtitulo">
-                {tarefasPendentes > 0 ? `${tarefasPendentes} pendente${tarefasPendentes > 1 ? 's' : ''} hoje` : 'Nenhuma pendente'}
+                {tarefasPendentes > 0 ? `${tarefasPendentes} pendente${tarefasPendentes > 1 ? 's' : ''}` : 'Nenhuma pendente'}
               </span>
             </div>
           </button>

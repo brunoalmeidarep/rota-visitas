@@ -23,9 +23,38 @@ function Tarefas() {
     }
   }, [toast])
 
+  // Limpeza automática de tarefas concluídas na virada do dia
+  async function verificarLimpeza() {
+    const hoje = new Date().toISOString().split('T')[0]
+    const ultimaLimpeza = localStorage.getItem('tarefas_ultima_limpeza')
+
+    if (ultimaLimpeza !== hoje) {
+      console.log('[Tarefas] Executando limpeza de tarefas concluídas...')
+
+      const { error } = await supabase
+        .from('tarefas')
+        .delete()
+        .eq('rep_id', repId)
+        .eq('concluida', true)
+
+      if (error) {
+        console.error('[Tarefas] Erro na limpeza:', error)
+      } else {
+        console.log('[Tarefas] Limpeza concluída')
+        localStorage.setItem('tarefas_ultima_limpeza', hoje)
+      }
+    }
+  }
+
   useEffect(() => {
     if (!repId) return
-    fetchTarefas()
+
+    async function inicializar() {
+      await verificarLimpeza()
+      await fetchTarefas()
+    }
+
+    inicializar()
   }, [repId])
 
   async function fetchTarefas() {
