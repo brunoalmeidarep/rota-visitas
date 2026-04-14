@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useRepId } from './useRepId'
 
 // Mock para desenvolvimento — trocar por RevenueCat em produção
-const PLANO_MOCK = 'pro' // 'starter' | 'pro' | 'enterprise'
+const PLANO_MOCK = 'starter' // 'starter' | 'pro' | 'enterprise'
 const USE_MOCK = true // Setar false para usar plano do banco
 
 export function usePlano() {
