@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useRepId } from '../hooks/useRepId'
+import { usePlano } from '../hooks/usePlano'
 import { useRepresentada } from '../contexts/RepresentadaContext'
 import Onboarding from './shared/Onboarding'
 import DespesaRapida from './shared/DespesaRapida'
@@ -10,6 +11,7 @@ import './Home.css'
 function Home() {
   const navigate = useNavigate()
   const { repId } = useRepId()
+  const { isStarter } = usePlano()
   const { representadas, representadaSelecionada, trocarRepresentada, loading: loadingRep } = useRepresentada()
 
   const [nomeRep, setNomeRep] = useState('')
@@ -150,13 +152,13 @@ function Home() {
     navigate(rota)
   }
 
-  // Módulos do grid (2x3)
+  // Módulos do grid (2x3) - condicional por plano
   const modulos = [
     {
       id: 'pedidos',
-      icone: '📋',
+      icone: isStarter ? '🔒' : '📋',
       titulo: 'Pedidos',
-      subtitulo: 'Orçamentos e vendas',
+      subtitulo: isStarter ? 'Pedido simples' : 'Orçamentos e vendas',
       rota: '/pedidos',
       badge: badgePedidos
     },
@@ -168,14 +170,15 @@ function Home() {
       rota: '/clientes',
       badge: badgeVisitas
     },
-    {
+    // Produtos só aparece para Pro/Enterprise
+    ...(!isStarter ? [{
       id: 'produtos',
       icone: '📦',
       titulo: 'Produtos',
       subtitulo: 'Catálogo',
       rota: '/produtos',
       badge: null
-    },
+    }] : []),
     {
       id: 'planner',
       icone: '📅',
