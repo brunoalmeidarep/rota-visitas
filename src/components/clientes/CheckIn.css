@@ -99,6 +99,13 @@
   color: var(--checkin-text);
 }
 
+.checkin-opcao-subtexto {
+  font-size: 12px;
+  color: var(--checkin-text-secondary);
+  margin-left: auto;
+  font-weight: 400;
+}
+
 /* Gasto toggle */
 .checkin-gasto-toggle {
   display: flex;

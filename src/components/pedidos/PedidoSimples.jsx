@@ -13,6 +13,7 @@ function PedidoSimples() {
   const clienteId = searchParams.get('cliente')
   const visitaId = searchParams.get('visita')
   const tipoInicial = searchParams.get('tipo') || 'pedido'
+  const tipoDefinido = searchParams.has('tipo') // Se veio do check-in, tipo já está definido
 
   const [cliente, setCliente] = useState(null)
   const [representadas, setRepresentadas] = useState([])
@@ -149,7 +150,14 @@ function PedidoSimples() {
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <span className="ps-header-titulo">Novo Pedido</span>
+        <div className="ps-header-center">
+          <span className={`ps-badge ${tipo === 'orcamento' ? 'orcamento' : 'pedido'}`}>
+            {tipo === 'orcamento' ? 'Orçamento' : 'Pedido'}
+          </span>
+          <span className="ps-header-titulo">
+            {tipo === 'orcamento' ? 'Novo Orçamento' : 'Novo Pedido'}
+          </span>
+        </div>
         <button
           className="ps-salvar"
           onClick={salvarPedido}
@@ -213,24 +221,26 @@ function PedidoSimples() {
           </div>
         )}
 
-        {/* Tipo */}
-        <div className="ps-campo">
-          <label>Tipo</label>
-          <div className="ps-toggle">
-            <button
-              className={`ps-toggle-btn ${tipo === 'pedido' ? 'active' : ''}`}
-              onClick={() => setTipo('pedido')}
-            >
-              Pedido
-            </button>
-            <button
-              className={`ps-toggle-btn ${tipo === 'orcamento' ? 'active' : ''}`}
-              onClick={() => setTipo('orcamento')}
-            >
-              Orçamento
-            </button>
+        {/* Tipo - só mostra se não veio definido do check-in */}
+        {!tipoDefinido && (
+          <div className="ps-campo">
+            <label>Tipo</label>
+            <div className="ps-toggle">
+              <button
+                className={`ps-toggle-btn ${tipo === 'pedido' ? 'active' : ''}`}
+                onClick={() => setTipo('pedido')}
+              >
+                Pedido
+              </button>
+              <button
+                className={`ps-toggle-btn ${tipo === 'orcamento' ? 'active' : ''}`}
+                onClick={() => setTipo('orcamento')}
+              >
+                Orçamento
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Valor total */}
         <div className="ps-campo">
@@ -260,8 +270,16 @@ function PedidoSimples() {
 
         {/* Aviso Pro */}
         <div className="ps-aviso-pro">
-          <span className="ps-aviso-icon">🔒</span>
-          <span>Catálogo de produtos disponível no plano Pro</span>
+          <div className="ps-aviso-texto">
+            <span className="ps-aviso-icon">🔒</span>
+            <span>Catálogo de produtos disponível no plano Pro</span>
+          </div>
+          <button
+            className="ps-aviso-link"
+            onClick={() => navigate('/upgrade')}
+          >
+            Conhecer o Pro →
+          </button>
         </div>
       </div>
     </div>

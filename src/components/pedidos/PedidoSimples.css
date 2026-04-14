@@ -63,6 +63,31 @@
   opacity: 0.7;
 }
 
+.ps-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ps-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.ps-badge.pedido {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--success, #34c759);
+}
+
+.ps-badge.orcamento {
+  background: rgba(255, 149, 0, 0.15);
+  color: var(--warning, #ff9500);
+}
+
 .ps-header-titulo {
   font-size: 17px;
   font-weight: 600;
@@ -259,6 +284,7 @@
 .ps-aviso-pro {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   padding: 14px 16px;
   background: rgba(255, 149, 0, 0.1);
@@ -267,11 +293,31 @@
   margin-top: auto;
 }
 
+.ps-aviso-texto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .ps-aviso-icon {
   font-size: 18px;
 }
 
-.ps-aviso-pro span:last-child {
+.ps-aviso-texto span:last-child {
   font-size: 13px;
   color: var(--warning, #ff9500);
+}
+
+.ps-aviso-link {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary, #007aff);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ps-aviso-link:active {
+  opacity: 0.7;
 }

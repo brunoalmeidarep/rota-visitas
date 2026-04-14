@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { usePlano } from '../../hooks/usePlano'
 import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
 import './CheckIn.css'
 
@@ -17,6 +18,7 @@ const CATEGORIAS_GASTO = [
 function CheckIn({ cliente, onClose, onConfirm }) {
   const navigate = useNavigate()
   const { repId } = useRepId()
+  const { isStarter } = usePlano()
 
   const [opcaoSelecionada, setOpcaoSelecionada] = useState('checkin')
   const [obs, setObs] = useState('')
@@ -118,9 +120,21 @@ function CheckIn({ cliente, onClose, onConfirm }) {
 
       // Se for check-in + pedido ou orçamento, navegar
       if (opcaoSelecionada === 'pedido') {
-        navigate(`/pedidos/novo/simples?cliente=${cliente.id}&visita=${visitaId}&tipo=pedido`)
+        if (isStarter) {
+          // Starter: pedido simples (só valor total)
+          navigate(`/pedidos/novo/simples?cliente=${cliente.id}&visita=${visitaId}&tipo=pedido`)
+        } else {
+          // Pro/Enterprise: pedido com catálogo
+          navigate(`/pedidos/novo?cliente=${cliente.id}&visita=${visitaId}&tipo=pedido`)
+        }
       } else if (opcaoSelecionada === 'orcamento') {
-        navigate(`/pedidos/novo/simples?cliente=${cliente.id}&visita=${visitaId}&tipo=orcamento`)
+        if (isStarter) {
+          // Starter: orçamento simples (só valor total)
+          navigate(`/pedidos/novo/simples?cliente=${cliente.id}&visita=${visitaId}&tipo=orcamento`)
+        } else {
+          // Pro/Enterprise: orçamento com catálogo
+          navigate(`/pedidos/novo?cliente=${cliente.id}&visita=${visitaId}&tipo=orcamento`)
+        }
       } else {
         // Só check-in
         if (onConfirm) onConfirm()
@@ -163,7 +177,10 @@ function CheckIn({ cliente, onClose, onConfirm }) {
             onClick={() => setOpcaoSelecionada('pedido')}
           >
             <span className="checkin-opcao-icon">📋</span>
-            <span className="checkin-opcao-texto">Check-in + Pedido</span>
+            <span className="checkin-opcao-texto">
+              {isStarter ? 'Check-in + Pedido simples' : 'Check-in + Pedido'}
+            </span>
+            {isStarter && <span className="checkin-opcao-subtexto">valor total</span>}
           </button>
 
           <button
@@ -171,7 +188,10 @@ function CheckIn({ cliente, onClose, onConfirm }) {
             onClick={() => setOpcaoSelecionada('orcamento')}
           >
             <span className="checkin-opcao-icon">📄</span>
-            <span className="checkin-opcao-texto">Check-in + Orçamento</span>
+            <span className="checkin-opcao-texto">
+              {isStarter ? 'Check-in + Orçamento simples' : 'Check-in + Orçamento'}
+            </span>
+            {isStarter && <span className="checkin-opcao-subtexto">valor total</span>}
           </button>
         </div>
 
