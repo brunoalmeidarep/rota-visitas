@@ -16,15 +16,22 @@ function PedidoSimples() {
   const tipoDefinido = searchParams.has('tipo') // Se veio do check-in, tipo já está definido
 
   const [cliente, setCliente] = useState(null)
+  const [clientes, setClientes] = useState([])
+  const [buscaCliente, setBuscaCliente] = useState('')
+  const [clienteSelecionadoId, setClienteSelecionadoId] = useState(clienteId || '')
+  const [mostrarListaClientes, setMostrarListaClientes] = useState(false)
   const [representadas, setRepresentadas] = useState([])
   const [representadaId, setRepresentadaId] = useState('')
   const [tipo, setTipo] = useState(tipoInicial)
   const [valorTotal, setValorTotal] = useState(0)
   const [valorTotalDisplay, setValorTotalDisplay] = useState('R$ 0,00')
   const [obs, setObs] = useState('')
-  const [canal, setCanal] = useState('presencial')
+  const [canal, setCanal] = useState(visitaId ? 'presencial' : 'whatsapp')
   const [salvando, setSalvando] = useState(false)
   const [isDark, setIsDark] = useState(false)
+
+  // Se veio do check-in, cliente é fixo
+  const clienteFixo = !!clienteId
 
   const dataHora = new Date()
   const dataFormatada = dataHora.toLocaleDateString('pt-BR')
@@ -39,7 +46,7 @@ function PedidoSimples() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar cliente
+  // Carregar cliente específico (quando vem do check-in)
   useEffect(() => {
     if (!clienteId) return
 
@@ -55,6 +62,37 @@ function PedidoSimples() {
 
     fetchCliente()
   }, [clienteId])
+
+  // Carregar lista de clientes (quando não vem do check-in)
+  useEffect(() => {
+    if (clienteFixo || !repId) return
+
+    async function fetchClientes() {
+      const { data } = await supabase
+        .from('clientes')
+        .select('id, nome, cidade')
+        .eq('rep_id', repId)
+        .order('nome')
+
+      if (data) setClientes(data)
+    }
+
+    fetchClientes()
+  }, [repId, clienteFixo])
+
+  // Filtrar clientes pela busca
+  const clientesFiltrados = clientes.filter(c =>
+    c.nome.toLowerCase().includes(buscaCliente.toLowerCase()) ||
+    c.cidade?.toLowerCase().includes(buscaCliente.toLowerCase())
+  )
+
+  // Selecionar cliente da lista
+  function selecionarCliente(c) {
+    setCliente(c)
+    setClienteSelecionadoId(c.id)
+    setBuscaCliente('')
+    setMostrarListaClientes(false)
+  }
 
   // Carregar representadas
   useEffect(() => {
@@ -84,6 +122,11 @@ function PedidoSimples() {
   }
 
   async function salvarPedido() {
+    if (!cliente || !clienteSelecionadoId) {
+      alert('Selecione um cliente')
+      return
+    }
+
     if (!valorTotal || valorTotal <= 0) {
       alert('Informe o valor total')
       return
@@ -100,7 +143,7 @@ function PedidoSimples() {
         .from('pedidos')
         .insert({
           rep_id: repId,
-          cliente_id: clienteId,
+          cliente_id: clienteSelecionadoId,
           cliente_nome: cliente?.nome,
           visita_id: visitaId || null,
           representada_id: representadaId || null,
@@ -128,10 +171,10 @@ function PedidoSimples() {
           ultimo_pedido_data: hoje,
           ultimo_pedido_valor: valorTotal
         })
-        .eq('id', clienteId)
+        .eq('id', clienteSelecionadoId)
 
       // Navegar de volta
-      navigate(`/clientes/${clienteId}`)
+      navigate(`/clientes/${clienteSelecionadoId}`)
 
     } catch (err) {
       console.error('[PedidoSimples] Exceção:', err)
@@ -175,37 +218,43 @@ function PedidoSimples() {
       )}
 
       <div className="ps-content">
-        {/* Cliente */}
-        {cliente && (
-          <div className="ps-cliente">
-            <span className="ps-cliente-nome">{cliente.nome}</span>
-            <span className="ps-cliente-cidade">{cliente.cidade}</span>
-          </div>
-        )}
-
-        {/* Canal */}
+        {/* 1. Cliente */}
         <div className="ps-campo">
-          <label>Canal</label>
-          <div className="ps-toggle">
-            <button
-              className={`ps-toggle-btn ${canal === 'presencial' ? 'active' : ''}`}
-              onClick={() => setCanal('presencial')}
-            >
-              🏪 Presencial
-            </button>
-            <button
-              className={`ps-toggle-btn ${canal === 'whatsapp' ? 'active' : ''}`}
-              onClick={() => setCanal('whatsapp')}
-            >
-              📱 WhatsApp
-            </button>
-          </div>
-          {canal === 'whatsapp' && (
-            <span className="ps-aviso">Não registra visita presencial</span>
+          <label>Cliente *</label>
+          {clienteFixo && cliente ? (
+            // Cliente fixo (veio do check-in)
+            <div className="ps-cliente-fixo">
+              <span className="ps-cliente-nome">{cliente.nome}</span>
+              <span className="ps-cliente-cidade">{cliente.cidade}</span>
+            </div>
+          ) : (
+            // Seleção de cliente
+            <div className="ps-cliente-select">
+              {cliente ? (
+                <button
+                  className="ps-cliente-selecionado"
+                  onClick={() => setMostrarListaClientes(true)}
+                >
+                  <div className="ps-cliente-info">
+                    <span className="ps-cliente-nome">{cliente.nome}</span>
+                    <span className="ps-cliente-cidade">{cliente.cidade}</span>
+                  </div>
+                  <span className="ps-cliente-trocar">trocar</span>
+                </button>
+              ) : (
+                <button
+                  className="ps-cliente-placeholder"
+                  onClick={() => setMostrarListaClientes(true)}
+                >
+                  <span>Selecionar cliente</span>
+                  <span className="ps-seta">›</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
 
-        {/* Representada */}
+        {/* 2. Representada */}
         {representadas.length > 0 && (
           <div className="ps-campo">
             <label>Representada</label>
@@ -242,7 +291,7 @@ function PedidoSimples() {
           </div>
         )}
 
-        {/* Valor total */}
+        {/* 3. Valor total */}
         <div className="ps-campo">
           <label>Valor total</label>
           <div className="ps-valor-input">
@@ -282,6 +331,52 @@ function PedidoSimples() {
           </button>
         </div>
       </div>
+
+      {/* Sheet de seleção de cliente */}
+      {mostrarListaClientes && (
+        <div className="ps-sheet-overlay" onClick={() => setMostrarListaClientes(false)}>
+          <div className="ps-sheet" onClick={e => e.stopPropagation()}>
+            <div className="ps-sheet-handle"></div>
+            <h3>Selecionar cliente</h3>
+
+            {/* Busca */}
+            <div className="ps-sheet-busca">
+              <input
+                type="text"
+                placeholder="Buscar por nome ou cidade..."
+                value={buscaCliente}
+                onChange={(e) => setBuscaCliente(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            {/* Lista de clientes */}
+            <div className="ps-sheet-lista">
+              {clientesFiltrados.length === 0 ? (
+                <div className="ps-sheet-vazio">
+                  {buscaCliente ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
+                </div>
+              ) : (
+                clientesFiltrados.map(c => (
+                  <button
+                    key={c.id}
+                    className={`ps-sheet-item ${clienteSelecionadoId === c.id ? 'active' : ''}`}
+                    onClick={() => selecionarCliente(c)}
+                  >
+                    <div className="ps-sheet-item-info">
+                      <span className="ps-sheet-item-nome">{c.nome}</span>
+                      <span className="ps-sheet-item-cidade">{c.cidade}</span>
+                    </div>
+                    {clienteSelecionadoId === c.id && (
+                      <span className="ps-sheet-check">✓</span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
