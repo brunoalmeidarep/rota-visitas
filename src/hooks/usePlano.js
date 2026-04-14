@@ -1,40 +1,38 @@
-import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { useRepId } from './useRepId'
-
-// Mock para desenvolvimento — trocar por RevenueCat em produção
-const PLANO_MOCK = 'starter' // 'starter' | 'pro' | 'enterprise'
-const USE_MOCK = true // Setar false para usar plano do banco
+import { useState, useEffect } from 'react'
 
 export function usePlano() {
-  const { repId } = useRepId()
-  const [plano, setPlano] = useState(USE_MOCK ? PLANO_MOCK : 'starter')
-  const [loading, setLoading] = useState(!USE_MOCK)
+  const [plano, setPlano] = useState('starter')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (USE_MOCK || !repId) return
+    const carregarPlano = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { setLoading(false); return }
 
-    async function fetchPlano() {
-      // TODO produção: integrar RevenueCat SDK
-      // const { customerInfo } = await Purchases.getCustomerInfo()
-      // const planoAtivo = customerInfo.entitlements.active['pro'] ? 'pro' : 'starter'
+        const { data } = await supabase
+          .from('representantes')
+          .select('plano')
+          .eq('auth_id', user.id)
+          .single()
 
-      const { data } = await supabase
-        .from('representantes')
-        .select('plano')
-        .eq('id', repId)
-        .single()
-
-      setPlano(data?.plano || 'starter')
-      setLoading(false)
+        setPlano(data?.plano || 'starter')
+      } catch(e) {
+        setPlano('starter')
+      } finally {
+        setLoading(false)
+      }
     }
 
-    fetchPlano()
-  }, [repId])
+    carregarPlano()
+  }, [])
 
-  const isPro = plano === 'pro' || plano === 'enterprise'
-  const isEnterprise = plano === 'enterprise'
-  const isStarter = plano === 'starter'
-
-  return { plano, isPro, isEnterprise, isStarter, loading }
+  return {
+    plano,
+    loading,
+    isPro: plano === 'pro' || plano === 'enterprise',
+    isEnterprise: plano === 'enterprise',
+    isStarter: plano === 'starter'
+  }
 }
