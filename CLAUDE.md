@@ -503,6 +503,15 @@ Planner sincronizado com Apple Calendar (iOS) e Google Calendar (Android). Imple
 - Implementar quando empacotar no Capacitor — não funciona no browser
 - No browser (desenvolvimento): simular com alert ou toast no horário configurado
 
+### Integração RevenueCat → Supabase (automação de planos)
+- RevenueCat webhook → Supabase Edge Function
+- Edge Function atualiza campo `plano` na tabela `representantes`
+- Eventos: INITIAL_PURCHASE, RENEWAL, CANCELLATION, EXPIRATION
+- Planos: 'starter' (free/expirado) | 'pro' | 'enterprise'
+- RevenueCat SDK já instalado no projeto Capacitor
+- API key test: test_LdgSCheoRkYWQjsVXvimHlcCwDR
+- Implementar quando app estiver na App Store com assinaturas ativas
+
 ---
 
 ## Deploy
