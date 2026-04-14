@@ -156,9 +156,9 @@ function Home() {
   const modulos = [
     {
       id: 'pedidos',
-      icone: isStarter ? '🔒' : '📋',
+      icone: '📋',
       titulo: 'Pedidos',
-      subtitulo: isStarter ? 'Pedido simples' : 'Orçamentos e vendas',
+      subtitulo: 'Orçamentos e vendas',
       rota: '/pedidos',
       badge: badgePedidos
     },
