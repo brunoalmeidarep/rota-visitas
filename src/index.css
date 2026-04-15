@@ -4,6 +4,17 @@
   padding: 0;
 }
 
+/* Fix modo escuro em inputs */
+input, textarea, select {
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--surface);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-secondary);
+}
+
 /* Tema claro (padrão) */
 :root, body.light-mode {
   --primary: #007aff;

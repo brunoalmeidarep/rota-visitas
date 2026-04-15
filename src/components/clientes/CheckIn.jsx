@@ -42,6 +42,12 @@ function CheckIn({ cliente, onClose, onConfirm }) {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
+  // Travar scroll do body quando sheet abrir
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
   // Formatar valor
   function handleValorChange(valorStr) {
     const formatted = formatarInputMoeda(valorStr)
@@ -104,7 +110,15 @@ function CheckIn({ cliente, onClose, onConfirm }) {
 
       // Se tem gasto, salvar
       if (mostrarGasto && gastoCategoria && gastoValor > 0) {
-        await supabase
+        console.log('[CheckIn] Salvando gasto:', {
+          cliente_id: cliente.id,
+          rep_id: repId,
+          visita_id: visitaId,
+          categoria: gastoCategoria,
+          valor: gastoValor
+        })
+
+        const { error: erroGasto } = await supabase
           .from('gastos_cliente')
           .insert({
             cliente_id: cliente.id,
@@ -116,6 +130,17 @@ function CheckIn({ cliente, onClose, onConfirm }) {
             descricao: gastoObs.trim() || null,
             data: hoje
           })
+
+        if (erroGasto) {
+          console.error('[CheckIn] Erro ao salvar gasto:', {
+            message: erroGasto.message,
+            code: erroGasto.code,
+            details: erroGasto.details,
+            hint: erroGasto.hint
+          })
+        } else {
+          console.log('[CheckIn] Gasto salvo com sucesso')
+        }
       }
 
       // Se for check-in + pedido ou orçamento, navegar

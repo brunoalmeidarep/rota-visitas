@@ -12,6 +12,7 @@ function ResumoVendas() {
   const [isDark, setIsDark] = useState(false)
 
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
   const [filtro, setFiltro] = useState('atual') // atual, anterior, custom
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
@@ -71,19 +72,43 @@ function ResumoVendas() {
 
   async function fetchResumo() {
     setLoading(true)
+    setErro(null)
 
-    const { inicio, fim } = getPeriodo()
+    const timeout = setTimeout(() => {
+      setLoading(false)
+      setErro('Tempo esgotado. Tente novamente.')
+    }, 10000)
 
-    const { data } = await supabase
-      .from('pedidos')
-      .select('*')
-      .eq('rep_id', repId)
-      .eq('status', 'pedido')
-      .gte('created_at', inicio.toISOString())
-      .lte('created_at', fim.toISOString() + 'T23:59:59')
-      .order('created_at', { ascending: false })
+    try {
+      const { inicio, fim } = getPeriodo()
 
-    const pedidosData = data || []
+      console.log('[ResumoVendas] Buscando pedidos:', {
+        rep_id: repId,
+        data_inicio: inicio.toISOString(),
+        data_fim: fim.toISOString()
+      })
+
+      const { data, error } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('rep_id', repId)
+        .eq('status', 'pedido')
+        .gte('created_at', inicio.toISOString())
+        .lte('created_at', fim.toISOString() + 'T23:59:59')
+        .order('created_at', { ascending: false })
+
+      clearTimeout(timeout)
+
+      if (error) {
+        console.error('[ResumoVendas] Erro:', error)
+        setErro('Erro ao carregar dados')
+        setLoading(false)
+        return
+      }
+
+      console.log('[ResumoVendas] Pedidos encontrados:', data?.length || 0)
+
+      const pedidosData = data || []
 
     // Calcular totais
     const total = pedidosData.reduce((sum, p) => sum + (p.valor_total || 0), 0)
@@ -125,6 +150,12 @@ function ResumoVendas() {
 
     setPorRepresentada(repOrdenadas)
     setLoading(false)
+    } catch (err) {
+      clearTimeout(timeout)
+      console.error('[ResumoVendas] Exceção:', err)
+      setErro('Erro ao processar dados')
+      setLoading(false)
+    }
   }
 
   function formatarValor(valor) {
@@ -223,6 +254,14 @@ function ResumoVendas() {
       <div className="rv-content">
         {loading ? (
           <div className="rv-loading">Carregando...</div>
+        ) : erro ? (
+          <div className="rv-vazio">
+            <span className="rv-vazio-icon">⚠️</span>
+            <p>{erro}</p>
+            <button onClick={fetchResumo} style={{ marginTop: 12, padding: '8px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+              Tentar novamente
+            </button>
+          </div>
         ) : (
           <>
             {/* Stats */}

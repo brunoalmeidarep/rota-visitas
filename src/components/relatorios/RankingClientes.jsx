@@ -12,6 +12,7 @@ function RankingClientes() {
   const [isDark, setIsDark] = useState(false)
 
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
   const [periodo, setPeriodo] = useState(90)
   const [ranking, setRanking] = useState([])
   const [totalGeral, setTotalGeral] = useState(0)
@@ -31,22 +32,48 @@ function RankingClientes() {
 
   async function fetchRanking() {
     setLoading(true)
+    setErro(null)
 
-    const dataLimite = new Date()
-    dataLimite.setDate(dataLimite.getDate() - periodo)
+    // Timeout de 10 segundos
+    const timeout = setTimeout(() => {
+      setLoading(false)
+      setErro('Tempo esgotado. Tente novamente.')
+    }, 10000)
 
-    let query = supabase
-      .from('pedidos')
-      .select('cliente_id, cliente_nome, valor_total')
-      .eq('rep_id', repId)
-      .eq('status', 'pedido')
-      .gte('created_at', dataLimite.toISOString())
+    try {
+      const dataLimite = new Date()
+      dataLimite.setDate(dataLimite.getDate() - periodo)
 
-    if (representadaSelecionada) {
-      query = query.eq('representada_id', representadaSelecionada.id)
-    }
+      console.log('[RankingClientes] Buscando pedidos:', {
+        rep_id: repId,
+        representada_id: representadaSelecionada?.id,
+        data_limite: dataLimite.toISOString(),
+        periodo
+      })
 
-    const { data } = await query
+      let query = supabase
+        .from('pedidos')
+        .select('cliente_id, cliente_nome, valor_total')
+        .eq('rep_id', repId)
+        .eq('status', 'pedido')
+        .gte('created_at', dataLimite.toISOString())
+
+      if (representadaSelecionada) {
+        query = query.eq('representada_id', representadaSelecionada.id)
+      }
+
+      const { data, error } = await query
+
+      clearTimeout(timeout)
+
+      if (error) {
+        console.error('[RankingClientes] Erro:', error)
+        setErro('Erro ao carregar dados')
+        setLoading(false)
+        return
+      }
+
+      console.log('[RankingClientes] Pedidos encontrados:', data?.length || 0)
 
     // Agrupar por cliente
     const porCliente = {}
@@ -94,6 +121,12 @@ function RankingClientes() {
     setRanking(comCurva)
     setTotalGeral(total)
     setLoading(false)
+    } catch (err) {
+      clearTimeout(timeout)
+      console.error('[RankingClientes] Exceção:', err)
+      setErro('Erro ao processar dados')
+      setLoading(false)
+    }
   }
 
   function formatarValor(valor) {
@@ -155,6 +188,14 @@ function RankingClientes() {
       <div className="rc-content">
         {loading ? (
           <div className="rc-loading">Carregando...</div>
+        ) : erro ? (
+          <div className="rc-vazio">
+            <span className="rc-vazio-icon">⚠️</span>
+            <p>{erro}</p>
+            <button onClick={fetchRanking} style={{ marginTop: 12, padding: '8px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+              Tentar novamente
+            </button>
+          </div>
         ) : ranking.length === 0 ? (
           <div className="rc-vazio">
             <span className="rc-vazio-icon">🏆</span>

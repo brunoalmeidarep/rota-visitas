@@ -416,3 +416,94 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Stat clicável */
+.perfil-stat-clickable {
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s;
+}
+
+.perfil-stat-clickable:active {
+  transform: scale(0.95);
+}
+
+/* Modal períodos */
+.perfil-periodos-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.perfil-periodos-sheet {
+  width: 100%;
+  background: var(--perfil-surface);
+  border-radius: 20px 20px 0 0;
+  padding: 12px 16px 32px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.perfil-periodos-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--perfil-border);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.perfil-periodos-sheet h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--perfil-text);
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.perfil-periodos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.perfil-periodo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--perfil-bg);
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--perfil-text);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.perfil-periodo-item.active {
+  background: rgba(0, 122, 255, 0.15);
+}
+
+.perfil-periodo-item:active {
+  opacity: 0.85;
+}
+
+.perfil-periodo-check {
+  color: var(--primary, #007aff);
+  font-size: 18px;
+  font-weight: 600;
+}

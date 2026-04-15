@@ -50,10 +50,21 @@ function PerfilCliente() {
   const [visitas, setVisitas] = useState([])
   const [pedidos, setPedidos] = useState([])
   const [orcamentos, setOrcamentos] = useState([])
-  const [total12Meses, setTotal12Meses] = useState(0)
+  const [totalPeriodo, setTotalPeriodo] = useState(0)
+  const [periodoSelecionado, setPeriodoSelecionado] = useState(() => {
+    return localStorage.getItem('periodo_vendas') || '12m'
+  })
+  const [mostrarPeriodos, setMostrarPeriodos] = useState(false)
 
   // Check-in modal
   const [mostrarCheckIn, setMostrarCheckIn] = useState(false)
+
+  const PERIODOS = [
+    { id: '30d', label: '30 dias', dias: 30 },
+    { id: '90d', label: '90 dias', dias: 90 },
+    { id: '6m', label: '6 meses', dias: 180 },
+    { id: '12m', label: '12 meses', dias: 365 }
+  ]
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -132,10 +143,19 @@ function PerfilCliente() {
         .limit(5)
 
       if (orcamentosData) setOrcamentos(orcamentosData)
+    }
 
-      // Total 12 meses
+    fetchHistorico()
+  }, [id, repId])
+
+  // Calcular total por período selecionado
+  useEffect(() => {
+    async function fetchTotalPeriodo() {
+      if (!id || !repId) return
+
+      const periodo = PERIODOS.find(p => p.id === periodoSelecionado) || PERIODOS[3]
       const dataLimite = new Date()
-      dataLimite.setFullYear(dataLimite.getFullYear() - 1)
+      dataLimite.setDate(dataLimite.getDate() - periodo.dias)
 
       const { data: totalData } = await supabase
         .from('pedidos')
@@ -147,12 +167,23 @@ function PerfilCliente() {
 
       if (totalData) {
         const total = totalData.reduce((acc, p) => acc + (p.valor_total || 0), 0)
-        setTotal12Meses(total)
+        setTotalPeriodo(total)
       }
     }
 
-    fetchHistorico()
-  }, [id, repId])
+    fetchTotalPeriodo()
+  }, [id, repId, periodoSelecionado])
+
+  function selecionarPeriodo(periodoId) {
+    setPeriodoSelecionado(periodoId)
+    localStorage.setItem('periodo_vendas', periodoId)
+    setMostrarPeriodos(false)
+  }
+
+  function getPeriodoLabel() {
+    const periodo = PERIODOS.find(p => p.id === periodoSelecionado)
+    return periodo ? periodo.label : '12 meses'
+  }
 
   // Abre no mapa
   function abrirNoMapa() {
@@ -242,10 +273,10 @@ function PerfilCliente() {
             </div>
             <div className="perfil-stat-label">Último pedido</div>
           </div>
-          <div className="perfil-stat">
-            <div className="perfil-stat-valor">{formatarValor(total12Meses)}</div>
-            <div className="perfil-stat-label">12 meses</div>
-          </div>
+          <button className="perfil-stat perfil-stat-clickable" onClick={() => setMostrarPeriodos(true)}>
+            <div className="perfil-stat-valor">{formatarValor(totalPeriodo)}</div>
+            <div className="perfil-stat-label">{getPeriodoLabel()} ▼</div>
+          </button>
         </div>
       </div>
 
@@ -435,6 +466,28 @@ function PerfilCliente() {
             if (visitasData) setVisitas(visitasData)
           }}
         />
+      )}
+
+      {/* Modal seleção de período */}
+      {mostrarPeriodos && (
+        <div className="perfil-periodos-overlay" onClick={() => setMostrarPeriodos(false)}>
+          <div className="perfil-periodos-sheet" onClick={e => e.stopPropagation()}>
+            <div className="perfil-periodos-handle"></div>
+            <h3>Período de vendas</h3>
+            <div className="perfil-periodos-lista">
+              {PERIODOS.map(p => (
+                <button
+                  key={p.id}
+                  className={`perfil-periodo-item ${periodoSelecionado === p.id ? 'active' : ''}`}
+                  onClick={() => selecionarPeriodo(p.id)}
+                >
+                  <span>{p.label}</span>
+                  {periodoSelecionado === p.id && <span className="perfil-periodo-check">✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

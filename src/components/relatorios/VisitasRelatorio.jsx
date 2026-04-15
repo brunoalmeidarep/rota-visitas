@@ -10,6 +10,7 @@ function VisitasRelatorio() {
   const [isDark, setIsDark] = useState(false)
 
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
   const [filtro, setFiltro] = useState('semana') // hoje, semana, mes, custom
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
@@ -74,34 +75,65 @@ function VisitasRelatorio() {
 
   async function fetchVisitas() {
     setLoading(true)
+    setErro(null)
 
-    const { inicio, fim } = getPeriodo()
+    // Timeout de 10 segundos
+    const timeout = setTimeout(() => {
+      setLoading(false)
+      setErro('Tempo esgotado. Tente novamente.')
+    }, 10000)
 
-    const { data } = await supabase
-      .from('visitas')
-      .select('*')
-      .eq('rep_id', repId)
-      .gte('data', inicio.toISOString().split('T')[0])
-      .lte('data', fim.toISOString().split('T')[0])
-      .order('data', { ascending: false })
-      .order('created_at', { ascending: false })
+    try {
+      const { inicio, fim } = getPeriodo()
 
-    const visitasData = data || []
+      console.log('[VisitasRelatorio] Buscando visitas:', {
+        rep_id: repId,
+        data_inicio: inicio.toISOString().split('T')[0],
+        data_fim: fim.toISOString().split('T')[0]
+      })
 
-    // Calcular stats
-    const total = visitasData.length
-    const clientesUnicos = new Set(visitasData.map(v => v.cliente_id)).size
+      const { data, error } = await supabase
+        .from('visitas')
+        .select('*')
+        .eq('rep_id', repId)
+        .gte('data', inicio.toISOString().split('T')[0])
+        .lte('data', fim.toISOString().split('T')[0])
+        .order('data', { ascending: false })
+        .order('created_at', { ascending: false })
 
-    // Calcular dias no periodo
-    const diffTime = Math.abs(fim - inicio)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1
-    const media = total / diffDays
+      clearTimeout(timeout)
 
-    setVisitas(visitasData)
-    setTotalVisitas(total)
-    setClientesVisitados(clientesUnicos)
-    setMediaPorDia(media)
-    setLoading(false)
+      if (error) {
+        console.error('[VisitasRelatorio] Erro:', error)
+        setErro('Erro ao carregar dados')
+        setLoading(false)
+        return
+      }
+
+      console.log('[VisitasRelatorio] Visitas encontradas:', data?.length || 0)
+
+      const visitasData = data || []
+
+      // Calcular stats
+      const total = visitasData.length
+      const clientesUnicos = new Set(visitasData.map(v => v.cliente_id)).size
+
+      // Calcular dias no periodo
+      const diffTime = Math.abs(fim - inicio)
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1
+      const media = total / diffDays
+
+      setVisitas(visitasData)
+      setTotalVisitas(total)
+      setClientesVisitados(clientesUnicos)
+      setMediaPorDia(media)
+      setLoading(false)
+    } catch (err) {
+      clearTimeout(timeout)
+      console.error('[VisitasRelatorio] Exceção:', err)
+      setErro('Erro ao processar dados')
+      setLoading(false)
+    }
   }
 
   function agruparPorData(items) {
@@ -237,6 +269,14 @@ function VisitasRelatorio() {
       <div className="vr-content">
         {loading ? (
           <div className="vr-loading">Carregando...</div>
+        ) : erro ? (
+          <div className="vr-vazio">
+            <span className="vr-vazio-icon">⚠️</span>
+            <p>{erro}</p>
+            <button onClick={fetchVisitas} style={{ marginTop: 12, padding: '8px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+              Tentar novamente
+            </button>
+          </div>
         ) : (
           <>
             {/* Stats */}

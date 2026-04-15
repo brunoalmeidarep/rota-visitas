@@ -149,25 +149,36 @@ function Bonificacao() {
       const hoje = new Date().toISOString().split('T')[0]
       const representadaNome = representadas.find(r => r.id === representadaId)?.nome || null
 
+      const registro = {
+        rep_id: repId,
+        cliente_id: clienteId,
+        cliente_nome: cliente?.nome,
+        representada_id: representadaId || null,
+        representada_nome: representadaNome,
+        valor: valor,
+        obs: obs.trim() || null,
+        data: hoje
+      }
+
+      console.log('[Bonificacao] Salvando:', JSON.stringify(registro, null, 2))
+
       const { error } = await supabase
         .from('bonificacoes')
-        .insert({
-          rep_id: repId,
-          cliente_id: clienteId,
-          cliente_nome: cliente?.nome,
-          representada_id: representadaId || null,
-          representada_nome: representadaNome,
-          valor: valor,
-          obs: obs.trim() || null,
-          data: hoje
-        })
+        .insert(registro)
 
       if (error) {
-        console.error('[Bonificacao] Erro:', error)
-        alert('Erro ao salvar bonificação')
+        console.error('[Bonificacao] Erro Supabase:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        alert(`Erro ao salvar: ${error.message || error.details || 'Erro desconhecido'}`)
         setSalvando(false)
         return
       }
+
+      console.log('[Bonificacao] Salvo com sucesso')
 
       // Recarregar lista
       const { data: novaLista } = await supabase
