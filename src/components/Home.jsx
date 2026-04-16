@@ -104,15 +104,11 @@ function Home() {
 
       // Badge Planner: eventos do dia
       const hoje = new Date().toISOString().split('T')[0]
-      const { data: plannerData } = await supabase
+      const { count: plannerCount } = await supabase
         .from('planner')
-        .select('eventos')
+        .select('*', { count: 'exact', head: true })
         .eq('rep_id', repId)
         .eq('data', hoje)
-        .single()
-
-      // Contar eventos do dia
-      const plannerCount = plannerData?.eventos?.length || 0
 
       // Tarefas pendentes (sem filtro de data)
       const { count: tarefasCount } = await supabase

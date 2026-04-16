@@ -185,19 +185,30 @@ function Planner() {
     try {
       const { data, error } = await supabase
         .from('planner')
-        .select('*')
+        .select('id, titulo, data, hora, tipo, cliente_id')
         .eq('rep_id', repId)
 
       if (error) {
         console.error('[Planner] Erro ao carregar:', error)
       } else {
+        // Agrupar eventos por data
         const dados = {}
         data.forEach(item => {
-          dados[item.data] = {
-            cidades: item.cidades || '',
-            notas: item.notas || '',
-            eventos: item.eventos || []
+          const ds = item.data
+          if (!dados[ds]) {
+            dados[ds] = { eventos: [] }
           }
+          dados[ds].eventos.push({
+            id: item.id,
+            txt: item.titulo || '',
+            hora: item.hora || '09:00',
+            cor: item.tipo || 'blue',
+            cliente_id: item.cliente_id
+          })
+        })
+        // Ordenar eventos por hora em cada dia
+        Object.keys(dados).forEach(ds => {
+          dados[ds].eventos.sort((a, b) => (a.hora || '').localeCompare(b.hora || ''))
         })
         setPlannerDados(dados)
       }
@@ -292,46 +303,38 @@ function Planner() {
 
   // ==================== PLANNER - FUNÇÕES ====================
 
-  async function salvarPlannerDia(campo, valor) {
-    const ds = dataStr(plannerDiaSel)
-    const atual = plannerDados[ds] || { cidades: '', notas: '', eventos: [] }
-    const novosDados = { ...atual, [campo]: valor }
-
-    setPlannerDados(prev => ({ ...prev, [ds]: novosDados }))
-
-    try {
-      await supabase.from('planner').upsert({
-        rep_id: repId,
-        data: ds,
-        cidades: novosDados.cidades,
-        notas: novosDados.notas,
-        eventos: novosDados.eventos,
-        atualizado_em: new Date().toISOString()
-      }, { onConflict: 'rep_id,data' })
-    } catch (err) {
-      console.error('[Planner] Erro ao salvar:', err)
-    }
-  }
-
   async function adicionarCompromisso() {
     if (!modalTxt.trim()) return
 
     const ds = dataStr(plannerDiaSel)
-    const atual = plannerDados[ds] || { cidades: '', notas: '', eventos: [] }
-    const novosEventos = [...(atual.eventos || []), { txt: modalTxt.trim(), hora: modalHora, cor: modalCor }]
-
-    const novosDados = { ...atual, eventos: novosEventos }
-    setPlannerDados(prev => ({ ...prev, [ds]: novosDados }))
 
     try {
-      await supabase.from('planner').upsert({
-        rep_id: repId,
-        data: ds,
-        cidades: novosDados.cidades,
-        notas: novosDados.notas,
-        eventos: novosEventos,
-        atualizado_em: new Date().toISOString()
-      }, { onConflict: 'rep_id,data' })
+      const { data: novoEvento, error } = await supabase
+        .from('planner')
+        .insert({
+          rep_id: repId,
+          titulo: modalTxt.trim(),
+          data: ds,
+          hora: modalHora,
+          tipo: modalCor
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('[Planner] Erro ao salvar evento:', error)
+      } else {
+        // Atualizar state local
+        const atual = plannerDados[ds] || { eventos: [] }
+        const novosEventos = [...atual.eventos, {
+          id: novoEvento.id,
+          txt: novoEvento.titulo,
+          hora: novoEvento.hora,
+          cor: novoEvento.tipo
+        }].sort((a, b) => (a.hora || '').localeCompare(b.hora || ''))
+
+        setPlannerDados(prev => ({ ...prev, [ds]: { eventos: novosEventos } }))
+      }
     } catch (err) {
       console.error('[Planner] Erro ao salvar evento:', err)
     }
@@ -342,23 +345,23 @@ function Planner() {
     setModalCor('blue')
   }
 
-  async function deletarCompromisso(idx) {
+  async function deletarCompromisso(eventoId) {
     const ds = dataStr(plannerDiaSel)
-    const atual = plannerDados[ds] || { cidades: '', notas: '', eventos: [] }
-    const novosEventos = atual.eventos.filter((_, i) => i !== idx)
-
-    const novosDados = { ...atual, eventos: novosEventos }
-    setPlannerDados(prev => ({ ...prev, [ds]: novosDados }))
 
     try {
-      await supabase.from('planner').upsert({
-        rep_id: repId,
-        data: ds,
-        cidades: novosDados.cidades,
-        notas: novosDados.notas,
-        eventos: novosEventos,
-        atualizado_em: new Date().toISOString()
-      }, { onConflict: 'rep_id,data' })
+      const { error } = await supabase
+        .from('planner')
+        .delete()
+        .eq('id', eventoId)
+
+      if (error) {
+        console.error('[Planner] Erro ao deletar evento:', error)
+      } else {
+        // Atualizar state local
+        const atual = plannerDados[ds] || { eventos: [] }
+        const novosEventos = atual.eventos.filter(ev => ev.id !== eventoId)
+        setPlannerDados(prev => ({ ...prev, [ds]: { eventos: novosEventos } }))
+      }
     } catch (err) {
       console.error('[Planner] Erro ao deletar evento:', err)
     }
@@ -381,7 +384,9 @@ function Planner() {
   }
 
   function getDadosDia(ds) {
-    return plannerDados[ds] || { cidades: '', notas: '', eventos: [] }
+    const dados = plannerDados[ds] || { eventos: [] }
+    // Manter compatibilidade com UI (campos não usados)
+    return { ...dados, cidades: '', notas: '' }
   }
 
   function agruparVisitasPorCidade() {
@@ -1380,7 +1385,6 @@ function Planner() {
 
                 const temVisita = ds === selStr && visitasDia.length > 0
                 const temEventos = dadosDia.eventos?.length > 0
-                const temPlanejado = dadosDia.cidades?.trim()
 
                 dias.push(
                   <div
@@ -1395,7 +1399,6 @@ function Planner() {
                     <div className="planner-dia-mini-dots">
                       {temVisita && <div className="planner-dia-mini-dot green"></div>}
                       {temEventos && <div className="planner-dia-mini-dot orange"></div>}
-                      {temPlanejado && !temVisita && <div className="planner-dia-mini-dot blue"></div>}
                     </div>
                   </div>
                 )
@@ -1425,31 +1428,16 @@ function Planner() {
               <button className="planner-rota-card-btn">Planejar Rota →</button>
             </div>
 
-            {/* Cidades planejadas */}
-            <div className="planner-bloco">
-              <div className="planner-bloco-label">📍 Cidades planejadas</div>
-              <textarea
-                className="planner-bloco-textarea"
-                placeholder="Ex: Joinville — Cliente A, Cliente B"
-                value={dadosSel.cidades || ''}
-                onChange={(e) => setPlannerDados(prev => ({
-                  ...prev,
-                  [selStr]: { ...dadosSel, cidades: e.target.value }
-                }))}
-                onBlur={(e) => salvarPlannerDia('cidades', e.target.value)}
-              />
-            </div>
-
             {/* Compromissos */}
             <div className="planner-bloco">
               <div className="planner-bloco-label">📌 Compromissos</div>
               {dadosSel.eventos?.length > 0 ? (
-                dadosSel.eventos.map((ev, idx) => (
-                  <div key={idx} className="planner-evento-item">
+                dadosSel.eventos.map((ev) => (
+                  <div key={ev.id} className="planner-evento-item">
                     <div className="planner-evento-cor" style={{ background: COR_MAP[ev.cor] || COR_MAP.blue }}></div>
                     <div className="planner-evento-txt">{ev.txt}</div>
                     <div className="planner-evento-hora">{ev.hora || ''}</div>
-                    <button className="planner-evento-del" onClick={() => deletarCompromisso(idx)}>×</button>
+                    <button className="planner-evento-del" onClick={() => deletarCompromisso(ev.id)}>×</button>
                   </div>
                 ))
               ) : (
@@ -1482,19 +1470,6 @@ function Planner() {
             )}
 
             {/* Notas */}
-            <div className="planner-bloco">
-              <div className="planner-bloco-label">📝 Notas</div>
-              <textarea
-                className="planner-bloco-textarea"
-                placeholder="Anotações livres..."
-                value={dadosSel.notas || ''}
-                onChange={(e) => setPlannerDados(prev => ({
-                  ...prev,
-                  [selStr]: { ...dadosSel, notas: e.target.value }
-                }))}
-                onBlur={(e) => salvarPlannerDia('notas', e.target.value)}
-              />
-            </div>
           </div>
         </div>
       )}
@@ -1542,12 +1517,11 @@ function Planner() {
 
                   const temVisita = ds === selStr && visitasDia.length > 0
                   const temEventos = dadosDia.eventos?.length > 0
-                  const temPlanejado = dadosDia.cidades?.trim()
 
                   let cls = 'planner-cal-d'
                   if (ehHojeD) cls += ' hoje'
                   if (ehSel) cls += ' selecionado'
-                  if (temVisita || temEventos || temPlanejado) cls += ' tem-algo'
+                  if (temVisita || temEventos) cls += ' tem-algo'
 
                   cells.push(
                     <div
@@ -1559,7 +1533,6 @@ function Planner() {
                       <div className="planner-cal-d-dots">
                         {temVisita && <div className="planner-cal-d-dot green"></div>}
                         {temEventos && <div className="planner-cal-d-dot orange"></div>}
-                        {temPlanejado && !temVisita && !temEventos && <div className="planner-cal-d-dot blue"></div>}
                       </div>
                     </div>
                   )
@@ -1632,23 +1605,6 @@ function Planner() {
               </div>
             )}
 
-            {dadosSel.cidades && (
-              <div className="planner-bloco">
-                <div className="planner-bloco-label">📍 Planejado</div>
-                <div className="planner-texto-readonly">
-                  {dadosSel.cidades.split('\n').map((l, i) => <div key={i}>{l}</div>)}
-                </div>
-              </div>
-            )}
-
-            {dadosSel.notas && (
-              <div className="planner-bloco">
-                <div className="planner-bloco-label">📝 Notas</div>
-                <div className="planner-texto-readonly">
-                  {dadosSel.notas.split('\n').map((l, i) => <div key={i}>{l}</div>)}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
