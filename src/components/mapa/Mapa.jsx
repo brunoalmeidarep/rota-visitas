@@ -101,15 +101,15 @@ function Mapa() {
       // Buscar última visita de cada cliente (busca todas e agrupa no frontend)
       const { data: visitasData } = await supabase
         .from('visitas')
-        .select('cliente_id, created_at')
+        .select('cliente_id, data')
         .eq('rep_id', repId)
-        .order('created_at', { ascending: false })
+        .order('data', { ascending: false })
 
       // Agrupar última visita por cliente
       const ultimaVisitaPorCliente = {}
       visitasData?.forEach(v => {
         if (!ultimaVisitaPorCliente[v.cliente_id]) {
-          ultimaVisitaPorCliente[v.cliente_id] = v.created_at
+          ultimaVisitaPorCliente[v.cliente_id] = v.data
         }
       })
 
