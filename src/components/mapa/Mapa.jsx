@@ -43,32 +43,20 @@ function Mapa() {
 
   // Inicializar mapa imediatamente ao montar
   useEffect(() => {
-    console.log('[Mapa] useEffect init - container:', !!mapContainer.current, 'map existe:', !!map.current)
-
     if (!mapContainer.current || map.current) return
 
-    try {
-      console.log('[Mapa] Criando mapa...')
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/dark-v11',
-        center: [-48.8487, -26.3045], // Joinville default
-        zoom: 12
-      })
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-48.8487, -26.3045], // Joinville default
+      zoom: 12
+    })
 
-      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
 
-      map.current.on('load', () => {
-        console.log('[Mapa] Mapa carregado!')
-        setMapReady(true)
-      })
-
-      map.current.on('error', (e) => {
-        console.error('[Mapa] Erro no mapa:', e)
-      })
-    } catch (err) {
-      console.error('[Mapa] Erro ao criar mapa:', err)
-    }
+    map.current.on('load', () => {
+      setMapReady(true)
+    })
 
     return () => {
       if (map.current) {
