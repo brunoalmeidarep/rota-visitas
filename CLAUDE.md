@@ -512,6 +512,42 @@ Planner sincronizado com Apple Calendar (iOS) e Google Calendar (Android). Imple
 - API key test: test_LdgSCheoRkYWQjsVXvimHlcCwDR
 - Implementar quando app estiver na App Store com assinaturas ativas
 
+### Modo offline completo (PWA offline-first)
+- Estratégia: IndexedDB como banco local + Service Worker para interceptar requests
+- Biblioteca recomendada: Dexie.js (wrapper do IndexedDB) + Workbox (Service Worker)
+- Comportamento: app funciona 100% offline, sincroniza silenciosamente quando internet voltar
+- Escopo completo: check-in, pedidos, gastos, observações, tarefas, finanças, relatórios
+
+**Arquitetura:**
+1. Toda escrita vai PRIMEIRO para IndexedDB local
+2. Service Worker tenta sincronizar com Supabase em background
+3. Se offline: dado fica na fila de sincronização (sync queue)
+4. Quando internet voltar: Service Worker drena a fila automaticamente
+5. Leituras: buscar do IndexedDB local (instantâneo) + atualizar do Supabase em background
+
+**Fila de sincronização:**
+- Tabela local `sync_queue`: { id, tabela, operacao (insert/update/delete), payload, tentativas, created_at }
+- Tentar sincronizar a cada reconexão de rede (navigator.onLine event)
+- Retry automático com backoff exponencial
+- Conflito: last-write-wins com timestamp
+
+**Dados que precisam de cache local:**
+- clientes (carteira completa)
+- visitas, checkins
+- pedidos e itens
+- gastos, financeiro
+- tarefas
+- produtos e representadas
+
+**Dados que podem ser só online:**
+- relatórios (são calculados, não críticos offline)
+- PDFs (gerados sob demanda)
+
+**Implementar quando:**
+- App estiver estável na App Store
+- Base de usuários crescendo e demanda confirmada
+- Estimativa: 2-3 semanas de desenvolvimento dedicado
+
 ---
 
 ## Deploy
