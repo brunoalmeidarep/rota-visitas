@@ -1,0 +1,236 @@
+.mapa-container {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* Header */
+.mapa-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+.mapa-header h1 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.mapa-voltar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mapa-header-spacer {
+  width: 36px;
+}
+
+/* Legenda */
+.mapa-legenda {
+  display: flex;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  z-index: 10;
+}
+
+.mapa-legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.mapa-legenda-label {
+  font-size: 11px;
+}
+
+/* Canvas do mapa */
+.mapa-canvas {
+  flex: 1;
+  position: relative;
+}
+
+.mapa-canvas .mapboxgl-map {
+  width: 100%;
+  height: 100%;
+}
+
+.mapa-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Ocultar logo e atribuicao */
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib {
+  display: none !important;
+}
+
+/* Markers */
+.mapa-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.mapa-marker-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+.mapa-marker-label {
+  margin-top: 2px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Popup */
+.mapboxgl-popup {
+  max-width: 200px !important;
+}
+
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  background: var(--surface) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  overflow: hidden;
+}
+
+.mapboxgl-popup-tip {
+  border-top-color: var(--surface) !important;
+}
+
+.mapa-popup {
+  padding: 12px;
+}
+
+.mapa-popup-nome {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.mapa-popup-cidade {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.mapa-popup-visita {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.mapa-popup-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mapa-popup-btn:active {
+  opacity: 0.8;
+}
+
+/* Filtros */
+.mapa-filtros {
+  padding: 12px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.mapa-filtros-pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mapa-filtros-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.mapa-filtro {
+  padding: 8px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mapa-filtro.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.mapa-filtros-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Dark mode adjustments */
+.dark .mapa-marker-label {
+  background: rgba(30, 30, 30, 0.9);
+}
+
+.dark .mapboxgl-popup-content {
+  background: #1c1c1e !important;
+}
+
+.dark .mapboxgl-popup-tip {
+  border-top-color: #1c1c1e !important;
+}

@@ -23,6 +23,7 @@
   "dependencies": {
     "@react-pdf/renderer": "^4.4.1",
     "@supabase/supabase-js": "^2.101.1",
+    "mapbox-gl": "^3.21.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.0"

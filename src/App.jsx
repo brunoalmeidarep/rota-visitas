@@ -36,18 +36,7 @@ import VisitasRelatorio from './components/relatorios/VisitasRelatorio'
 import PreviewPDF from './components/relatorios/PreviewPDF'
 import Financas from './components/financas/Financas'
 import Tarefas from './components/tarefas/Tarefas'
-
-// Placeholder components (serão substituídos pelos reais)
-
-const Mapa = () => (
-  <div className="screen">
-    <header className="screen-header">
-      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
-      <h1>Mapa</h1>
-    </header>
-    <div className="screen-content"><p>Em desenvolvimento...</p></div>
-  </div>
-)
+import Mapa from './components/mapa/Mapa'
 
 
 const EditarCliente = () => (
