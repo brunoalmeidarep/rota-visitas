@@ -6,7 +6,8 @@ import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import './Mapa.css'
 
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
+// Token do Mapbox
+mapboxgl.accessToken = 'pk.eyJ1IjoiYnJ1bm9tcnAiLCJhIjoiY21vMHZpenBhMGNpNDJycHV3N3Z4a2NreiJ9.gjgY__dvCLzH69odm4OSLQ'
 
 const STATUS_CONFIG = {
   ativo: { cor: '#34c759', label: 'Ativo', emoji: '🟢', desc: '≤30 dias' },
@@ -42,20 +43,32 @@ function Mapa() {
 
   // Inicializar mapa imediatamente ao montar
   useEffect(() => {
+    console.log('[Mapa] useEffect init - container:', !!mapContainer.current, 'map existe:', !!map.current)
+
     if (!mapContainer.current || map.current) return
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [-48.8487, -26.3045], // Joinville default
-      zoom: 12
-    })
+    try {
+      console.log('[Mapa] Criando mapa...')
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/dark-v11',
+        center: [-48.8487, -26.3045], // Joinville default
+        zoom: 12
+      })
 
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
 
-    map.current.on('load', () => {
-      setMapReady(true)
-    })
+      map.current.on('load', () => {
+        console.log('[Mapa] Mapa carregado!')
+        setMapReady(true)
+      })
+
+      map.current.on('error', (e) => {
+        console.error('[Mapa] Erro no mapa:', e)
+      })
+    } catch (err) {
+      console.error('[Mapa] Erro ao criar mapa:', err)
+    }
 
     return () => {
       if (map.current) {
@@ -234,14 +247,12 @@ function Mapa() {
       </div>
 
       {/* Mapa */}
-      <div className="mapa-wrapper">
-        <div ref={mapContainer} className="mapa-canvas" />
-        {loading && (
-          <div className="mapa-loading">
-            <span>Carregando mapa...</span>
-          </div>
-        )}
-      </div>
+      <div ref={mapContainer} className="mapa-canvas" />
+      {loading && (
+        <div className="mapa-loading">
+          <span>Carregando...</span>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="mapa-filtros">
