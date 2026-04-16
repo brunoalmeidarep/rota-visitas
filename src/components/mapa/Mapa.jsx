@@ -37,8 +37,33 @@ function Mapa() {
 
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [mapReady, setMapReady] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState('todos')
-  const [centroInicial, setCentroInicial] = useState([-48.8487, -26.3045]) // Joinville
+
+  // Inicializar mapa imediatamente ao montar
+  useEffect(() => {
+    if (!mapContainer.current || map.current) return
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-48.8487, -26.3045], // Joinville default
+      zoom: 12
+    })
+
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
+
+    map.current.on('load', () => {
+      setMapReady(true)
+    })
+
+    return () => {
+      if (map.current) {
+        map.current.remove()
+        map.current = null
+      }
+    }
+  }, [])
 
   // Carregar clientes com última visita
   useEffect(() => {
@@ -54,8 +79,8 @@ function Mapa() {
         .eq('id', repId)
         .single()
 
-      if (repData?.lat_base && repData?.lng_base) {
-        setCentroInicial([repData.lng_base, repData.lat_base])
+      if (repData?.lat_base && repData?.lng_base && map.current) {
+        map.current.setCenter([repData.lng_base, repData.lat_base])
       }
 
       // Buscar clientes com coordenadas
@@ -103,30 +128,9 @@ function Mapa() {
     fetchDados()
   }, [repId])
 
-  // Inicializar mapa
+  // Adicionar markers quando mapa e dados estiverem prontos
   useEffect(() => {
-    if (map.current || loading) return
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: centroInicial,
-      zoom: 12
-    })
-
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
-
-    return () => {
-      if (map.current) {
-        map.current.remove()
-        map.current = null
-      }
-    }
-  }, [loading, centroInicial])
-
-  // Adicionar markers
-  useEffect(() => {
-    if (!map.current || loading || clientes.length === 0) return
+    if (!map.current || !mapReady || loading) return
 
     // Limpar markers anteriores
     markersRef.current.forEach(m => m.remove())
@@ -191,7 +195,7 @@ function Mapa() {
     return () => {
       delete window.navegarCliente
     }
-  }, [clientes, filtroStatus, loading, navigate])
+  }, [clientes, filtroStatus, mapReady, loading, navigate])
 
   // Contagens por status
   const contagens = {
@@ -230,7 +234,8 @@ function Mapa() {
       </div>
 
       {/* Mapa */}
-      <div ref={mapContainer} className="mapa-canvas">
+      <div className="mapa-wrapper">
+        <div ref={mapContainer} className="mapa-canvas" />
         {loading && (
           <div className="mapa-loading">
             <span>Carregando mapa...</span>

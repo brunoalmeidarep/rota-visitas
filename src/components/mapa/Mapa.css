@@ -65,15 +65,27 @@
   font-size: 11px;
 }
 
-/* Canvas do mapa */
-.mapa-canvas {
+/* Wrapper do mapa - precisa de position relative para o canvas absolute funcionar */
+.mapa-wrapper {
   flex: 1;
   position: relative;
+  min-height: 200px;
 }
 
-.mapa-canvas .mapboxgl-map {
+/* Canvas do mapa - position absolute para preencher o wrapper */
+.mapa-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
   height: 100%;
+}
+
+.mapboxgl-canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .mapa-loading {
@@ -85,6 +97,7 @@
   background: var(--bg);
   color: var(--text-secondary);
   font-size: 14px;
+  z-index: 5;
 }
 
 /* Ocultar logo e atribuicao */
