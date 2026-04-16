@@ -102,14 +102,17 @@ function Home() {
         .eq('rep_id', repId)
         .or(`ultima_visita.is.null,ultima_visita.lt.${dataLimiteStr}`)
 
-      // Badge Planner: tarefas do dia não concluídas
+      // Badge Planner: eventos do dia
       const hoje = new Date().toISOString().split('T')[0]
-      const { count: plannerCount } = await supabase
+      const { data: plannerData } = await supabase
         .from('planner')
-        .select('*', { count: 'exact', head: true })
+        .select('eventos')
         .eq('rep_id', repId)
         .eq('data', hoje)
-        .eq('concluido', false)
+        .single()
+
+      // Contar eventos do dia
+      const plannerCount = plannerData?.eventos?.length || 0
 
       // Tarefas pendentes (sem filtro de data)
       const { count: tarefasCount } = await supabase
