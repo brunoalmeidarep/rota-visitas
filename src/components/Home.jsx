@@ -111,12 +111,13 @@ function Home() {
         .eq('data', hoje)
 
       // Tarefas pendentes (sem filtro de data)
-      const { count: tarefasCount } = await supabase
+      const { count: tarefasCount, error: tarefasError } = await supabase
         .from('tarefas')
         .select('*', { count: 'exact', head: true })
         .eq('rep_id', repId)
         .eq('concluida', false)
 
+      console.log('[Home] Tarefas pendentes - count:', tarefasCount, 'error:', tarefasError, 'repId:', repId)
       setTarefasPendentes(tarefasCount || 0)
 
       // Verificar localStorage para saber se já foram vistos

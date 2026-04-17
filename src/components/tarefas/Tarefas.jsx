@@ -47,9 +47,15 @@ function Tarefas() {
   }
 
   useEffect(() => {
-    if (!repId) return
+    console.log('[Tarefas] useEffect disparado, repId:', repId, 'loadingRep:', loadingRep)
+
+    if (!repId) {
+      console.log('[Tarefas] repId não disponível, aguardando...')
+      return
+    }
 
     async function inicializar() {
+      console.log('[Tarefas] Inicializando com repId:', repId)
       await verificarLimpeza()
       await fetchTarefas()
     }
@@ -58,6 +64,15 @@ function Tarefas() {
   }, [repId])
 
   async function fetchTarefas() {
+    console.log('[Tarefas] ====== CARREGANDO TAREFAS ======')
+    console.log('[Tarefas] repId:', repId)
+
+    if (!repId) {
+      console.warn('[Tarefas] repId não disponível, abortando fetch')
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
 
     const { data, error } = await supabase
@@ -65,6 +80,11 @@ function Tarefas() {
       .select('*')
       .eq('rep_id', repId)
       .order('created_at', { ascending: false })
+
+    console.log('[Tarefas] Resultado da query:')
+    console.log('[Tarefas] - data:', data)
+    console.log('[Tarefas] - error:', error)
+    console.log('[Tarefas] - quantidade:', data?.length || 0)
 
     if (error) {
       console.error('[Tarefas] Erro ao carregar:', {
