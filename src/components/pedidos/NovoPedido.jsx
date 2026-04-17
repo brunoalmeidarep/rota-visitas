@@ -60,12 +60,18 @@ function NovoPedido() {
     }
   }, [clienteId, canal])
 
-  // Redirecionar Starter para PedidoSimples
+  // Redirecionar Starter para PedidoSimples (aguardar loading do plano)
   useEffect(() => {
+    if (loadingPlano) {
+      console.log('[NovoPedido] Aguardando plano carregar...')
+      return // Não redirecionar enquanto está carregando
+    }
+    console.log('[NovoPedido] Plano carregado, isStarter:', isStarter)
     if (isStarter) {
+      console.log('[NovoPedido] Redirecionando para PedidoSimples')
       navigate('/pedidos/novo/simples', { replace: true })
     }
-  }, [isStarter, navigate])
+  }, [isStarter, loadingPlano, navigate])
 
   // Detectar modo claro/escuro
   useEffect(() => {
