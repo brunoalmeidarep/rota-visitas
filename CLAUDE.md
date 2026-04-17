@@ -482,6 +482,34 @@ Situações críticas a implementar quando desenvolver o módulo Enterprise:
 - Ao criar pedido no Enterprise, verificar se o rep logado é o responsável pelo cliente naquela representada
 - Rep solo (Starter/Pro) não é afetado — todos os clientes são dele
 
+### Enterprise — Painel Guarda-chuva (Indústria)
+Painel web para a indústria gerenciar sua força de vendas. Telas principais:
+
+**Dashboard:**
+- Pedidos pendentes · aprovados hoje · faturamento do mês
+
+**Fila de pedidos:**
+- Lista por rep · por cliente · por valor · por data
+
+**Detalhe do pedido:**
+- Todos os dados + histórico de ações + campo de motivo
+
+**Cadastros:**
+- Representantes · clientes · produtos · política comercial
+
+**Relatórios:**
+- Performance por rep · produtos mais vendidos · clientes inativos
+
+**Regras de clientes no Enterprise (ver seção acima):**
+- Clientes pertencem ao workspace da empresa, não ao rep
+- Rep só vê e atende clientes designados a ele
+- Pedido de cliente de outro rep é bloqueado
+
+**Implementar quando:**
+- Base de rep solo (Starter/Pro) estiver estável e com usuários pagantes
+- Primeiro cliente Enterprise identificado e com requisitos claros
+- Estimativa: 4-6 semanas de desenvolvimento dedicado
+
 ### Integração com calendário nativo
 Planner sincronizado com Apple Calendar (iOS) e Google Calendar (Android). Implementar quando app estiver como PWA. Requer CalDAV / Google Calendar API.
 
