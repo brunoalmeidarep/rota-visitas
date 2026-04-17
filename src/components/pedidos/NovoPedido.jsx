@@ -18,8 +18,13 @@ const CATEGORIAS_GASTO = [
 function NovoPedido() {
   const navigate = useNavigate()
   const { repId } = useRepId()
-  const { isStarter } = usePlano()
+  const { plano, isStarter, isPro, loading: loadingPlano } = usePlano()
   const { representadaSelecionada } = useRepresentada()
+
+  // Log do plano para debug
+  useEffect(() => {
+    console.log('[NovoPedido] Plano atual:', plano, 'isStarter:', isStarter, 'isPro:', isPro, 'loading:', loadingPlano)
+  }, [plano, isStarter, isPro, loadingPlano])
 
   // Restaurar dados do sessionStorage
   const dadosSalvos = sessionStorage.getItem('novoPedido')

@@ -18,7 +18,12 @@ const CATEGORIAS_GASTO = [
 function CheckIn({ cliente, onClose, onConfirm }) {
   const navigate = useNavigate()
   const { repId } = useRepId()
-  const { isStarter } = usePlano()
+  const { plano, isStarter, isPro, loading: loadingPlano } = usePlano()
+
+  // Log do plano para debug
+  useEffect(() => {
+    console.log('[CheckIn] Plano atual:', plano, 'isStarter:', isStarter, 'isPro:', isPro, 'loading:', loadingPlano)
+  }, [plano, isStarter, isPro, loadingPlano])
 
   const [opcaoSelecionada, setOpcaoSelecionada] = useState('checkin')
   const [obs, setObs] = useState('')
