@@ -510,6 +510,12 @@ Painel web para a indústria gerenciar sua força de vendas. Telas principais:
 - Primeiro cliente Enterprise identificado e com requisitos claros
 - Estimativa: 4-6 semanas de desenvolvimento dedicado
 
+### SalesRP — Perfis de acesso futuros
+- **Supervisor:** aprovação/reprovação de pedidos com % margem de contribuição por item
+  - Pode ser dentro do próprio app Minha Rota RP com perfil especial
+- **Gerente comercial:** dashboard de performance separado, só leitura
+  - Métricas: ranking reps, evolução vendas, produtos mais vendidos, clientes inativos
+
 ### Integração com calendário nativo
 Planner sincronizado com Apple Calendar (iOS) e Google Calendar (Android). Implementar quando app estiver como PWA. Requer CalDAV / Google Calendar API.
 
