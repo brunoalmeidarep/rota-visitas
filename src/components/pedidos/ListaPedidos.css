@@ -236,51 +236,67 @@
 
 /* Grupo */
 .lp-grupo {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .lp-grupo-header {
-  padding: 12px 4px 8px;
+  padding: 8px 4px;
 }
 
 .lp-grupo-data {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--lp-text);
-  text-transform: capitalize;
+  color: var(--lp-text-secondary);
+  text-transform: none;
 }
 
-/* Card */
-.lp-card {
+/* Card do grupo (container branco) */
+.lp-grupo-card {
   background: var(--lp-surface);
-  border: 1px solid var(--lp-border);
   border-radius: 12px;
-  padding: 14px 16px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  transition: transform 0.15s;
+  overflow: hidden;
 }
 
-.lp-card:active {
-  transform: scale(0.98);
+/* Item dentro do grupo */
+.lp-item-wrapper {
+  position: relative;
+  overflow: hidden;
 }
 
-.lp-card-main {
+.lp-item {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: transform 0.2s ease-out, background 0.15s;
+  transform: translateX(0);
+  background: var(--lp-surface);
+  position: relative;
+  z-index: 2;
 }
 
-.lp-card-info {
+.lp-item:active {
+  background: var(--lp-bg);
+}
+
+.lp-item.with-border {
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.lp-item-wrapper.swiped .lp-item {
+  transform: translateX(-90px);
+}
+
+.lp-item-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
-.lp-card-cliente {
+.lp-item-cliente {
   font-size: 15px;
   font-weight: 600;
   color: var(--lp-text);
@@ -289,76 +305,53 @@
   text-overflow: ellipsis;
 }
 
-.lp-card-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.lp-item-meta {
   font-size: 13px;
   color: var(--lp-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.lp-card-canal {
-  font-size: 12px;
-}
-
-.lp-card-right {
+.lp-item-right {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
+  padding-left: 12px;
 }
 
-.lp-card-valor {
+.lp-item-valor {
   font-size: 15px;
   font-weight: 600;
   color: var(--lp-text);
 }
 
-.lp-card-badge {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
+.lp-item-badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
 }
 
-.lp-card-badge.orcamento {
+.lp-item-badge.orcamento {
   background: rgba(255, 149, 0, 0.15);
   color: #ff9500;
 }
 
-.lp-card-badge.pedido {
+.lp-item-badge.pedido {
   background: rgba(52, 199, 89, 0.15);
   color: #34c759;
 }
 
-.lp-card-badge.transmitido {
+.lp-item-badge.transmitido {
   background: rgba(0, 122, 255, 0.15);
   color: #007aff;
 }
 
-/* Swipe wrapper */
-.lp-card-wrapper {
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.lp-card-wrapper .lp-card {
-  position: relative;
-  z-index: 2;
-  margin-bottom: 0;
-  transition: transform 0.2s ease-out;
-  transform: translateX(0);
-  background: var(--lp-surface);
-}
-
-.lp-card-wrapper.swiped .lp-card {
-  transform: translateX(-90px);
-}
-
-.lp-card-cancelar {
+/* Botão cancelar no swipe */
+.lp-item-cancelar {
   position: absolute;
   right: 0;
   top: 0;
@@ -375,17 +368,16 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border-radius: 0 12px 12px 0;
   z-index: 1;
   opacity: 0;
   transition: opacity 0.2s ease-out;
 }
 
-.lp-card-wrapper.swiped .lp-card-cancelar {
+.lp-item-wrapper.swiped .lp-item-cancelar {
   opacity: 1;
 }
 
-.lp-card-cancelar:active {
+.lp-item-cancelar:active {
   background: #d63028;
 }
 

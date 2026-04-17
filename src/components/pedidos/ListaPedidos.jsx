@@ -94,15 +94,15 @@ function ListaPedidos() {
     const hoje = new Date().toISOString().split('T')[0]
     const ontem = new Date(Date.now() - 86400000).toISOString().split('T')[0]
 
-    if (dataStr === hoje) return 'Hoje'
-    if (dataStr === ontem) return 'Ontem'
-
     const d = new Date(dataStr + 'T12:00:00')
-    return d.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    })
+    const ddmm = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+
+    if (dataStr === hoje) return `Hoje · ${ddmm}`
+    if (dataStr === ontem) return `Ontem · ${ddmm}`
+
+    const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'long' })
+    const diaSemanaCapitalizado = diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)
+    return `${diaSemanaCapitalizado} · ${ddmm}`
   }
 
   function formatarValor(valor) {
@@ -277,54 +277,51 @@ function ListaPedidos() {
               <div className="lp-grupo-header">
                 <span className="lp-grupo-data">{grupo.label}</span>
               </div>
-              {grupo.items.map(p => (
-                <div
-                  key={p.id}
-                  className={`lp-card-wrapper ${swipeAberto === p.id ? 'swiped' : ''}`}
-                  onClick={(e) => e.stopPropagation()}
-                >
+              <div className="lp-grupo-card">
+                {grupo.items.map((p, itemIdx) => (
                   <div
-                    className="lp-card"
-                    onClick={() => {
-                      if (swipeAberto === p.id) {
-                        setSwipeAberto(null)
-                      } else {
-                        navigate(`/pedidos/${p.id}`)
-                      }
-                    }}
-                    onTouchStart={(e) => handleTouchStart(e, p.id, p.status)}
-                    onTouchEnd={(e) => handleTouchEnd(e, p.id, p.status)}
+                    key={p.id}
+                    className={`lp-item-wrapper ${swipeAberto === p.id ? 'swiped' : ''}`}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="lp-card-main">
-                      <div className="lp-card-info">
-                        <span className="lp-card-cliente">{p.cliente_nome || 'Cliente'}</span>
-                        <span className="lp-card-meta">
-                          {p.representada_nome && <span>{p.representada_nome}</span>}
-                          <span className="lp-card-canal">
-                            {p.canal === 'whatsapp' ? '💬' : '✅'}
-                          </span>
-                          {p.numero && <span>#{p.numero}</span>}
+                    <div
+                      className={`lp-item ${itemIdx < grupo.items.length - 1 ? 'with-border' : ''}`}
+                      onClick={() => {
+                        if (swipeAberto === p.id) {
+                          setSwipeAberto(null)
+                        } else {
+                          navigate(`/pedidos/${p.id}`)
+                        }
+                      }}
+                      onTouchStart={(e) => handleTouchStart(e, p.id, p.status)}
+                      onTouchEnd={(e) => handleTouchEnd(e, p.id, p.status)}
+                    >
+                      <div className="lp-item-info">
+                        <span className="lp-item-cliente">{p.cliente_nome || 'Cliente'}</span>
+                        <span className="lp-item-meta">
+                          {p.representada_nome || '-'}
+                          {p.condicao_pagamento && ` · ${p.condicao_pagamento}`}
                         </span>
                       </div>
-                      <div className="lp-card-right">
-                        <span className="lp-card-valor">{formatarValor(p.valor_total)}</span>
-                        <span className={`lp-card-badge ${p.status}`}>
+                      <div className="lp-item-right">
+                        <span className="lp-item-valor">{formatarValor(p.valor_total)}</span>
+                        <span className={`lp-item-badge ${p.status}`}>
                           {p.status === 'orcamento' ? 'Orçamento' :
                            p.status === 'transmitido' ? 'Transmitido' : 'Pedido'}
                         </span>
                       </div>
                     </div>
+                    {p.status === 'orcamento' && (
+                      <button
+                        className="lp-item-cancelar"
+                        onClick={(e) => cancelarOrcamento(e, p.id)}
+                      >
+                        🗑️ Cancelar
+                      </button>
+                    )}
                   </div>
-                  {p.status === 'orcamento' && (
-                    <button
-                      className="lp-card-cancelar"
-                      onClick={(e) => cancelarOrcamento(e, p.id)}
-                    >
-                      🗑️ Cancelar
-                    </button>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           ))
         )}
