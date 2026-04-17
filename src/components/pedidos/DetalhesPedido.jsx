@@ -349,6 +349,39 @@ function DetalhesPedido() {
     setGerandoPDF(false)
   }
 
+  async function cancelarOrcamento() {
+    if (!confirm('Você tem certeza que deseja cancelar esse orçamento? Esta ação não pode ser desfeita.')) {
+      return
+    }
+
+    setSalvando(true)
+
+    try {
+      const { error } = await supabase
+        .from('pedidos')
+        .delete()
+        .eq('id', pedidoId)
+
+      if (error) {
+        console.error('[DetalhesPedido] Erro ao cancelar:', error)
+        alert('Erro ao cancelar orçamento')
+        setSalvando(false)
+        return
+      }
+
+      setToastTipo('sucesso')
+      setToast('Orçamento cancelado')
+      setTimeout(() => {
+        navigate('/pedidos')
+      }, 800)
+
+    } catch (err) {
+      console.error('[DetalhesPedido] Exceção:', err)
+      alert('Erro ao cancelar orçamento')
+      setSalvando(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className={`detalhes-pedido ${isDark ? 'dark' : 'light'}`}>
@@ -616,9 +649,18 @@ function DetalhesPedido() {
         {!isReadonly && (
           <div className="dp-acoes">
             {isEditavel ? (
-              <button className="dp-btn-gerar" onClick={gerarPedido} disabled={salvando}>
-                Gerar pedido
-              </button>
+              <>
+                <button className="dp-btn-gerar" onClick={gerarPedido} disabled={salvando}>
+                  Gerar pedido
+                </button>
+                <button
+                  className="dp-btn-cancelar-orcamento"
+                  onClick={cancelarOrcamento}
+                  disabled={salvando}
+                >
+                  🗑️ Cancelar orçamento
+                </button>
+              </>
             ) : (
               <>
                 <button className="dp-btn-acao" onClick={duplicarPedido} disabled={salvando}>

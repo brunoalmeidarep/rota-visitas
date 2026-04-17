@@ -463,6 +463,24 @@
   cursor: not-allowed;
 }
 
+.dp-btn-cancelar-orcamento {
+  width: 100%;
+  padding: 14px;
+  margin-top: 8px;
+  background: transparent;
+  border: 1px solid #ff3b30;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #ff3b30;
+  cursor: pointer;
+}
+
+.dp-btn-cancelar-orcamento:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .dp-btn-acao {
   flex: 1;
   padding: 14px 12px;

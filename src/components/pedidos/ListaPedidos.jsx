@@ -15,6 +15,11 @@ function ListaPedidos() {
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState('todos')
   const [isDark, setIsDark] = useState(false)
+  const [toast, setToast] = useState('')
+
+  // Swipe state
+  const [swipeAberto, setSwipeAberto] = useState(null)
+  const [touchStartX, setTouchStartX] = useState(0)
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -114,6 +119,74 @@ function ListaPedidos() {
     }).format(valor)
   }
 
+  // Toast auto-hide
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(''), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
+
+  // Fechar swipe ao clicar fora
+  useEffect(() => {
+    function handleClickOutside() {
+      if (swipeAberto) {
+        setSwipeAberto(null)
+      }
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [swipeAberto])
+
+  function handleTouchStart(e, pedidoId, status) {
+    if (status !== 'orcamento') return
+    setTouchStartX(e.touches[0].clientX)
+  }
+
+  function handleTouchEnd(e, pedidoId, status) {
+    if (status !== 'orcamento') return
+    const touchEndX = e.changedTouches[0].clientX
+    const diff = touchStartX - touchEndX
+
+    if (diff > 60) {
+      // Swipe para esquerda - abrir
+      setSwipeAberto(pedidoId)
+    } else if (diff < -60) {
+      // Swipe para direita - fechar
+      setSwipeAberto(null)
+    }
+  }
+
+  async function cancelarOrcamento(e, pedidoId) {
+    e.stopPropagation()
+
+    if (!confirm('Você tem certeza que deseja cancelar esse orçamento? Esta ação não pode ser desfeita.')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('pedidos')
+        .delete()
+        .eq('id', pedidoId)
+
+      if (error) {
+        console.error('[ListaPedidos] Erro ao cancelar:', error)
+        alert('Erro ao cancelar orçamento')
+        return
+      }
+
+      // Remover da lista local
+      setPedidos(prev => prev.filter(p => p.id !== pedidoId))
+      setSwipeAberto(null)
+      setToast('Orçamento cancelado')
+
+    } catch (err) {
+      console.error('[ListaPedidos] Exceção:', err)
+      alert('Erro ao cancelar orçamento')
+    }
+  }
+
   function handleNovo() {
     if (isStarter) {
       navigate('/pedidos/novo/simples')
@@ -207,34 +280,60 @@ function ListaPedidos() {
               {grupo.items.map(p => (
                 <div
                   key={p.id}
-                  className="lp-card"
-                  onClick={() => navigate(`/pedidos/${p.id}`)}
+                  className={`lp-card-wrapper ${swipeAberto === p.id ? 'swiped' : ''}`}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="lp-card-main">
-                    <div className="lp-card-info">
-                      <span className="lp-card-cliente">{p.cliente_nome || 'Cliente'}</span>
-                      <span className="lp-card-meta">
-                        {p.representada_nome && <span>{p.representada_nome}</span>}
-                        <span className="lp-card-canal">
-                          {p.canal === 'whatsapp' ? '💬' : '✅'}
+                  <div
+                    className="lp-card"
+                    onClick={() => {
+                      if (swipeAberto === p.id) {
+                        setSwipeAberto(null)
+                      } else {
+                        navigate(`/pedidos/${p.id}`)
+                      }
+                    }}
+                    onTouchStart={(e) => handleTouchStart(e, p.id, p.status)}
+                    onTouchEnd={(e) => handleTouchEnd(e, p.id, p.status)}
+                  >
+                    <div className="lp-card-main">
+                      <div className="lp-card-info">
+                        <span className="lp-card-cliente">{p.cliente_nome || 'Cliente'}</span>
+                        <span className="lp-card-meta">
+                          {p.representada_nome && <span>{p.representada_nome}</span>}
+                          <span className="lp-card-canal">
+                            {p.canal === 'whatsapp' ? '💬' : '✅'}
+                          </span>
+                          {p.numero && <span>#{p.numero}</span>}
                         </span>
-                        {p.numero && <span>#{p.numero}</span>}
-                      </span>
-                    </div>
-                    <div className="lp-card-right">
-                      <span className="lp-card-valor">{formatarValor(p.valor_total)}</span>
-                      <span className={`lp-card-badge ${p.status}`}>
-                        {p.status === 'orcamento' ? 'Orçamento' :
-                         p.status === 'transmitido' ? 'Transmitido' : 'Pedido'}
-                      </span>
+                      </div>
+                      <div className="lp-card-right">
+                        <span className="lp-card-valor">{formatarValor(p.valor_total)}</span>
+                        <span className={`lp-card-badge ${p.status}`}>
+                          {p.status === 'orcamento' ? 'Orçamento' :
+                           p.status === 'transmitido' ? 'Transmitido' : 'Pedido'}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  {p.status === 'orcamento' && (
+                    <button
+                      className="lp-card-cancelar"
+                      onClick={(e) => cancelarOrcamento(e, p.id)}
+                    >
+                      🗑️ Cancelar
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           ))
         )}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="lp-toast">{toast}</div>
+      )}
     </div>
   )
 }

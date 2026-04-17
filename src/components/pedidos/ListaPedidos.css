@@ -337,3 +337,70 @@
   background: rgba(0, 122, 255, 0.15);
   color: #007aff;
 }
+
+/* Swipe wrapper */
+.lp-card-wrapper {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.lp-card-wrapper .lp-card {
+  margin-bottom: 0;
+  transition: transform 0.2s ease-out;
+}
+
+.lp-card-wrapper.swiped .lp-card {
+  transform: translateX(-90px);
+}
+
+.lp-card-cancelar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 90px;
+  background: #ff3b30;
+  border: none;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 0 12px 12px 0;
+}
+
+.lp-card-cancelar:active {
+  background: #d63028;
+}
+
+/* Toast */
+.lp-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: #1c1c1e;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1000;
+  animation: toastIn 0.2s ease-out;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
