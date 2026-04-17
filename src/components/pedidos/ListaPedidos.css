@@ -346,8 +346,12 @@
 }
 
 .lp-card-wrapper .lp-card {
+  position: relative;
+  z-index: 2;
   margin-bottom: 0;
   transition: transform 0.2s ease-out;
+  transform: translateX(0);
+  background: var(--lp-surface);
 }
 
 .lp-card-wrapper.swiped .lp-card {
@@ -372,6 +376,13 @@
   justify-content: center;
   gap: 4px;
   border-radius: 0 12px 12px 0;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+.lp-card-wrapper.swiped .lp-card-cancelar {
+  opacity: 1;
 }
 
 .lp-card-cancelar:active {
