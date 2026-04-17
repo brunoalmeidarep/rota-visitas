@@ -77,45 +77,21 @@
   gap: 8px;
 }
 
-.lp-btn-meta {
+.lp-btn-icon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
+  background: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 18px;
-}
-
-.lp-btn-meta:active {
-  opacity: 0.7;
-}
-
-.lp-btn-novo {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: var(--success, #34c759);
+  font-size: 22px;
   color: #ffffff;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
 }
 
-.lp-btn-novo svg {
-  stroke: #ffffff;
-  width: 16px;
-  height: 16px;
-}
-
-.lp-btn-novo:active {
-  opacity: 0.85;
+.lp-btn-icon:active {
+  opacity: 0.7;
 }
 
 /* Busca */

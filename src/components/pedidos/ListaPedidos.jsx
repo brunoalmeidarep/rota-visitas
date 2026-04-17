@@ -208,14 +208,11 @@ function ListaPedidos() {
         </button>
         <span className="lp-header-titulo">Pedidos</span>
         <div className="lp-header-acoes">
-          <button className="lp-btn-meta" onClick={() => navigate('/relatorios/meta')}>
+          <button className="lp-btn-icon" onClick={() => navigate('/relatorios/meta')}>
             <span>📈</span>
           </button>
-          <button className="lp-btn-novo" onClick={handleNovo}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-            Novo
+          <button className="lp-btn-icon" onClick={handleNovo}>
+            <span>+</span>
           </button>
         </div>
       </header>
