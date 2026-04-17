@@ -34,6 +34,12 @@ function CarteiraClientes() {
   const [buscaCidade, setBuscaCidade] = useState('')
   const [cidadesTemp, setCidadesTemp] = useState([])
 
+  // Estado para ordenação
+  const [ordenacao, setOrdenacao] = useState(() => {
+    return localStorage.getItem('clientes_ordenacao') || 'az'
+  })
+  const [sheetOrdenacao, setSheetOrdenacao] = useState(false)
+
   // Estado para geocodificação em massa
   const [geocodificando, setGeocodificando] = useState(false)
   const [geoProgresso, setGeoProgresso] = useState({ atual: 0, total: 0, sucesso: 0 })
@@ -298,7 +304,7 @@ function CarteiraClientes() {
 
   // Filtra clientes (busca + status + cidades)
   const clientesFiltrados = useMemo(() => {
-    return clientesPorCidade.filter(c => {
+    let resultado = clientesPorCidade.filter(c => {
       // Filtro de busca
       const termoBusca = busca.toLowerCase()
       const matchBusca = !busca ||
@@ -311,7 +317,49 @@ function CarteiraClientes() {
 
       return matchBusca && matchStatus
     })
-  }, [clientesPorCidade, busca, filtroAtivo])
+
+    // Aplicar ordenação
+    resultado.sort((a, b) => {
+      switch (ordenacao) {
+        case 'az':
+          return (a.nome || '').localeCompare(b.nome || '', 'pt-BR')
+        case 'za':
+          return (b.nome || '').localeCompare(a.nome || '', 'pt-BR')
+        case 'visita_recente':
+          if (!a.ultima_visita && !b.ultima_visita) return 0
+          if (!a.ultima_visita) return 1
+          if (!b.ultima_visita) return -1
+          return new Date(b.ultima_visita) - new Date(a.ultima_visita)
+        case 'visita_antiga':
+          if (!a.ultima_visita && !b.ultima_visita) return 0
+          if (!a.ultima_visita) return -1
+          if (!b.ultima_visita) return 1
+          return new Date(a.ultima_visita) - new Date(b.ultima_visita)
+        case 'cidade':
+          return (a.cidade || '').localeCompare(b.cidade || '', 'pt-BR')
+        default:
+          return 0
+      }
+    })
+
+    return resultado
+  }, [clientesPorCidade, busca, filtroAtivo, ordenacao])
+
+  // Função para trocar ordenação
+  function selecionarOrdenacao(tipo) {
+    setOrdenacao(tipo)
+    localStorage.setItem('clientes_ordenacao', tipo)
+    setSheetOrdenacao(false)
+  }
+
+  // Labels de ordenação
+  const ordenacaoLabels = {
+    az: 'A→Z (alfabético)',
+    za: 'Z→A',
+    visita_recente: 'Última visita (recente)',
+    visita_antiga: 'Última visita (antiga)',
+    cidade: 'Cidade (A→Z)'
+  }
 
   // Estado de carregamento inicial
   if (loadingRep || (loading && !carregouUmaVez)) {
@@ -363,6 +411,9 @@ function CarteiraClientes() {
         </button>
         <h1>Clientes</h1>
         <div className="header-actions">
+          <button className="header-btn-ordenar" onClick={() => setSheetOrdenacao(true)}>
+            <span>↕️</span>
+          </button>
           <button className="header-btn-cidades" onClick={abrirSheetCidades}>
             <span>📍 Cidades</span>
             {cidadesSelecionadas.length > 0 && (
@@ -607,6 +658,36 @@ function CarteiraClientes() {
               <button className="btn-aplicar-cidades" onClick={aplicarCidades}>
                 Aplicar filtro
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sheet de ordenação */}
+      {sheetOrdenacao && (
+        <div className="sheet-overlay" onClick={() => setSheetOrdenacao(false)}>
+          <div className="sheet-ordenacao" onClick={e => e.stopPropagation()}>
+            <div className="sheet-header">
+              <h2>Ordenar por</h2>
+              <button className="sheet-close" onClick={() => setSheetOrdenacao(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="sheet-lista-ordenacao">
+              {Object.entries(ordenacaoLabels).map(([key, label]) => (
+                <button
+                  key={key}
+                  className={`ordenacao-item ${ordenacao === key ? 'active' : ''}`}
+                  onClick={() => selecionarOrdenacao(key)}
+                >
+                  <span className="ordenacao-label">{label}</span>
+                  {ordenacao === key && <span className="ordenacao-check">✓</span>}
+                </button>
+              ))}
             </div>
           </div>
         </div>

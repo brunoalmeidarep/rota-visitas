@@ -61,7 +61,7 @@ function Bonificacao() {
         .select('*')
         .eq('cliente_id', clienteId)
         .eq('rep_id', repId)
-        .order('data', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (data) setBonificacoes(data)
       setLoading(false)
@@ -99,7 +99,7 @@ function Bonificacao() {
 
   function formatarData(dataStr) {
     if (!dataStr) return '-'
-    const d = new Date(dataStr + 'T12:00:00')
+    const d = new Date(dataStr)
     return d.toLocaleDateString('pt-BR')
   }
 
@@ -107,7 +107,7 @@ function Bonificacao() {
   function agruparPorMes(items) {
     const grupos = {}
     items.forEach(item => {
-      const d = new Date(item.data + 'T12:00:00')
+      const d = new Date(item.created_at)
       const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
       if (!grupos[chave]) {
@@ -124,7 +124,7 @@ function Bonificacao() {
   // Calcular totais
   const totalAno = bonificacoes
     .filter(b => {
-      const ano = new Date(b.data + 'T12:00:00').getFullYear()
+      const ano = new Date(b.created_at).getFullYear()
       return ano === new Date().getFullYear()
     })
     .reduce((acc, b) => acc + (b.valor || 0), 0)
@@ -132,7 +132,7 @@ function Bonificacao() {
   const mesAtual = new Date().getMonth()
   const totalMes = bonificacoes
     .filter(b => {
-      const d = new Date(b.data + 'T12:00:00')
+      const d = new Date(b.created_at)
       return d.getFullYear() === new Date().getFullYear() && d.getMonth() === mesAtual
     })
     .reduce((acc, b) => acc + (b.valor || 0), 0)
@@ -156,8 +156,7 @@ function Bonificacao() {
         representada_id: representadaId || null,
         representada_nome: representadaNome,
         valor: valor,
-        obs: obs.trim() || null,
-        data: hoje
+        obs: obs.trim() || null
       }
 
       console.log('[Bonificacao] Salvando:', JSON.stringify(registro, null, 2))
@@ -186,7 +185,7 @@ function Bonificacao() {
         .select('*')
         .eq('cliente_id', clienteId)
         .eq('rep_id', repId)
-        .order('data', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (novaLista) setBonificacoes(novaLista)
 
@@ -270,7 +269,7 @@ function Bonificacao() {
                   <div className="bonif-card-icon">🎁</div>
                   <div className="bonif-card-info">
                     <span className="bonif-card-empresa">{b.representada_nome || 'Sem empresa'}</span>
-                    <span className="bonif-card-data">{formatarData(b.data)}</span>
+                    <span className="bonif-card-data">{formatarData(b.created_at)}</span>
                     {b.obs && <span className="bonif-card-obs">{b.obs}</span>}
                   </div>
                   <span className="bonif-card-valor">{formatarValor(b.valor)}</span>

@@ -664,3 +664,77 @@
   transform: scale(0.98);
   opacity: 0.9;
 }
+
+/* Botão Ordenar no Header */
+.header-btn-ordenar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(26, 58, 107, 0.1);
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.header-btn-ordenar:active {
+  transform: scale(0.95);
+  opacity: 0.9;
+}
+
+/* Sheet de Ordenação */
+.sheet-ordenacao {
+  width: 100%;
+  max-width: 500px;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.25s ease-out;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+.sheet-lista-ordenacao {
+  padding: 8px 20px 16px;
+}
+
+.ordenacao-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.ordenacao-item:last-child {
+  border-bottom: none;
+}
+
+.ordenacao-item:active {
+  opacity: 0.7;
+}
+
+.ordenacao-item.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.ordenacao-label {
+  flex: 1;
+}
+
+.ordenacao-check {
+  color: var(--primary);
+  font-size: 18px;
+  font-weight: 600;
+}

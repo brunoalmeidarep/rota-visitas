@@ -110,36 +110,36 @@ function CheckIn({ cliente, onClose, onConfirm }) {
 
       // Se tem gasto, salvar
       if (mostrarGasto && gastoCategoria && gastoValor > 0) {
-        console.log('[CheckIn] Salvando gasto:', {
+        const gastoPayload = {
           cliente_id: cliente.id,
           rep_id: repId,
           visita_id: visitaId,
+          cliente_nome: cliente.nome,
           categoria: gastoCategoria,
-          valor: gastoValor
-        })
+          valor: gastoValor,
+          descricao: gastoObs.trim() || null,
+          data: hoje
+        }
 
-        const { error: erroGasto } = await supabase
+        console.log('[CheckIn] ====== SALVANDO GASTO ======')
+        console.log('[CheckIn] Payload completo:', JSON.stringify(gastoPayload, null, 2))
+
+        const { data: gastoData, error: erroGasto } = await supabase
           .from('gastos_cliente')
-          .insert({
-            cliente_id: cliente.id,
-            rep_id: repId,
-            visita_id: visitaId,
-            cliente_nome: cliente.nome,
-            categoria: gastoCategoria,
-            valor: gastoValor,
-            descricao: gastoObs.trim() || null,
-            data: hoje
-          })
+          .insert(gastoPayload)
+          .select()
 
         if (erroGasto) {
-          console.error('[CheckIn] Erro ao salvar gasto:', {
-            message: erroGasto.message,
-            code: erroGasto.code,
-            details: erroGasto.details,
-            hint: erroGasto.hint
-          })
+          console.error('[CheckIn] ====== ERRO AO SALVAR GASTO ======')
+          console.error('[CheckIn] Erro completo:', JSON.stringify(erroGasto, null, 2))
+          console.error('[CheckIn] message:', erroGasto.message)
+          console.error('[CheckIn] code:', erroGasto.code)
+          console.error('[CheckIn] details:', erroGasto.details)
+          console.error('[CheckIn] hint:', erroGasto.hint)
+          alert(`Erro ao salvar gasto: ${erroGasto.message || erroGasto.details || 'Erro desconhecido'}`)
         } else {
-          console.log('[CheckIn] Gasto salvo com sucesso')
+          console.log('[CheckIn] ====== GASTO SALVO COM SUCESSO ======')
+          console.log('[CheckIn] Resposta:', JSON.stringify(gastoData, null, 2))
         }
       }
 
