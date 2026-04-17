@@ -114,7 +114,7 @@ function Bonificacao() {
         grupos[chave] = { label, items: [], total: 0 }
       }
       grupos[chave].items.push(item)
-      grupos[chave].total += item.valor || 0
+      grupos[chave].total += item.valor_total || 0
     })
     return Object.entries(grupos)
       .sort(([a], [b]) => b.localeCompare(a))
@@ -127,7 +127,7 @@ function Bonificacao() {
       const ano = new Date(b.created_at).getFullYear()
       return ano === new Date().getFullYear()
     })
-    .reduce((acc, b) => acc + (b.valor || 0), 0)
+    .reduce((acc, b) => acc + (b.valor_total || 0), 0)
 
   const mesAtual = new Date().getMonth()
   const totalMes = bonificacoes
@@ -135,7 +135,7 @@ function Bonificacao() {
       const d = new Date(b.created_at)
       return d.getFullYear() === new Date().getFullYear() && d.getMonth() === mesAtual
     })
-    .reduce((acc, b) => acc + (b.valor || 0), 0)
+    .reduce((acc, b) => acc + (b.valor_total || 0), 0)
 
   async function salvarBonificacao() {
     if (!valor || valor <= 0) {
@@ -149,14 +149,17 @@ function Bonificacao() {
       const hoje = new Date().toISOString().split('T')[0]
       const representadaNome = representadas.find(r => r.id === representadaId)?.nome || null
 
+      // Tabela bonificacoes: id, cliente_id, cliente_nome, representada_id, representada_nome, motivo, valor_total, parcelas, status, rep_id
       const registro = {
         rep_id: repId,
         cliente_id: clienteId,
         cliente_nome: cliente?.nome,
         representada_id: representadaId || null,
         representada_nome: representadaNome,
-        valor: valor,
-        obs: obs.trim() || null
+        valor_total: valor,
+        motivo: obs.trim() || null,
+        parcelas: 1,
+        status: 'ativo'
       }
 
       console.log('[Bonificacao] Salvando:', JSON.stringify(registro, null, 2))
@@ -270,9 +273,9 @@ function Bonificacao() {
                   <div className="bonif-card-info">
                     <span className="bonif-card-empresa">{b.representada_nome || 'Sem empresa'}</span>
                     <span className="bonif-card-data">{formatarData(b.created_at)}</span>
-                    {b.obs && <span className="bonif-card-obs">{b.obs}</span>}
+                    {b.motivo && <span className="bonif-card-obs">{b.motivo}</span>}
                   </div>
-                  <span className="bonif-card-valor">{formatarValor(b.valor)}</span>
+                  <span className="bonif-card-valor">{formatarValor(b.valor_total)}</span>
                 </div>
               ))}
             </div>
