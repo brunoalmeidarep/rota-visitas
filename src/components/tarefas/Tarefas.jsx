@@ -79,7 +79,7 @@ function Tarefas() {
       .from('tarefas')
       .select('*')
       .eq('rep_id', repId)
-      .order('created_at', { ascending: false })
+      .order('data_criacao', { ascending: false })
 
     console.log('[Tarefas] Resultado da query:')
     console.log('[Tarefas] - data:', data)
@@ -135,10 +135,12 @@ function Tarefas() {
 
     setSalvando(true)
 
+    // Tabela tarefas: id, rep_id, texto, concluida, data_criacao, data_conclusao, hora_lembrete
     const registro = {
       rep_id: repId,
       texto: novaTarefa.trim(),
-      concluida: false
+      concluida: false,
+      data_criacao: new Date().toISOString()
     }
 
     console.log('[Tarefas] Inserindo tarefa:', JSON.stringify(registro, null, 2))
