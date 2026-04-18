@@ -268,6 +268,15 @@ function DetalhesPedido() {
       if (rep?.empresa_id) {
         dadosUpdate.empresa_id = rep.empresa_id
         dadosUpdate.status_empresa = 'aguardando'
+        // Campos denormalizados para o SalesRP (evita JOINs)
+        dadosUpdate.cliente_cnpj = cliente?.cnpj_cpf || null
+        dadosUpdate.cliente_telefone = cliente?.telefone || null
+        dadosUpdate.cliente_cidade = cliente?.cidade || null
+        dadosUpdate.cliente_estado = cliente?.estado || null
+        dadosUpdate.rep_nome = representante?.nome || null
+        dadosUpdate.rep_telefone = representante?.telefone || null
+        dadosUpdate.rep_email = representante?.email || null
+        dadosUpdate.qtd_itens = pedido?.itens?.length || 0
       }
 
       const { error } = await supabase
