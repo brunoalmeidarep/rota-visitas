@@ -100,15 +100,65 @@ function Catalogo() {
   })
 
   function alterarQuantidade(produtoId, delta) {
+    const produto = produtos.find(p => p.id === produtoId)
+    const multiplo = produto?.multiplo_venda || produto?.multiplo || 1
+
     setItens(prev => {
       const atual = prev[produtoId] || 0
-      const nova = Math.max(0, atual + delta)
+      const nova = Math.max(0, atual + (delta * multiplo))
       if (nova === 0) {
         const { [produtoId]: _, ...rest } = prev
         return rest
       }
       return { ...prev, [produtoId]: nova }
     })
+  }
+
+  function formatarQuantidadeComMultiplo(quantidade, produto) {
+    const multiplo = produto?.multiplo_venda || produto?.multiplo || 1
+    if (multiplo <= 1) return quantidade.toString()
+
+    const unidade = produto?.unidade || 'UN'
+    const unidadeMultiplo = getUnidadeMultiplo(unidade)
+    const qtdMultiplos = Math.floor(quantidade / multiplo)
+
+    if (qtdMultiplos > 0) {
+      return `${quantidade} ${unidade} (${qtdMultiplos} ${unidadeMultiplo})`
+    }
+    return quantidade.toString()
+  }
+
+  function getUnidadeMultiplo(unidade) {
+    const map = {
+      'UN': 'cx',
+      'PC': 'cx',
+      'KG': 'fd',
+      'L': 'cx',
+      'M': 'rl'
+    }
+    return map[unidade] || 'cx'
+  }
+
+  function formatarTotalUnidades() {
+    const partes = []
+    let totalUn = 0
+
+    Object.entries(itens).forEach(([produtoId, qtd]) => {
+      const produto = produtos.find(p => p.id === produtoId)
+      const multiplo = produto?.multiplo_venda || produto?.multiplo || 1
+      totalUn += qtd
+
+      if (multiplo > 1 && qtd >= multiplo) {
+        const qtdMultiplos = Math.floor(qtd / multiplo)
+        const unidadeMultiplo = getUnidadeMultiplo(produto?.unidade || 'UN')
+        partes.push(`${qtdMultiplos} ${unidadeMultiplo}`)
+      }
+    })
+
+    if (partes.length > 0) {
+      return `${totalUn} un (${partes.join(' + ')})`
+    }
+    return `${totalUn} un`
   }
 
   function formatarValor(valor) {
@@ -299,22 +349,29 @@ function Catalogo() {
                 </div>
 
                 <div className="cat-produto-acoes" onClick={e => e.stopPropagation()}>
-                  <button
-                    className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
-                    onClick={() => alterarQuantidade(produto.id, -1)}
-                    disabled={quantidade === 0}
-                  >
-                    −
-                  </button>
-                  <span className={`cat-qty ${quantidade > 0 ? 'active' : ''}`}>
-                    {quantidade}
-                  </span>
-                  <button
-                    className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
-                    onClick={() => alterarQuantidade(produto.id, 1)}
-                  >
-                    +
-                  </button>
+                  {(() => {
+                    const multiplo = produto.multiplo_venda || produto.multiplo || 1
+                    return (
+                      <>
+                        <button
+                          className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
+                          onClick={() => alterarQuantidade(produto.id, -1)}
+                          disabled={quantidade === 0}
+                        >
+                          −{multiplo > 1 ? multiplo : ''}
+                        </button>
+                        <span className={`cat-qty ${quantidade > 0 ? 'active' : ''}`}>
+                          {quantidade}
+                        </span>
+                        <button
+                          className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
+                          onClick={() => alterarQuantidade(produto.id, 1)}
+                        >
+                          +{multiplo > 1 ? multiplo : ''}
+                        </button>
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             )
@@ -326,7 +383,9 @@ function Catalogo() {
       {totalItens > 0 && (
         <div className="cat-footer">
           <div className="cat-footer-info">
-            <span className="cat-footer-itens">{totalItens} itens · {totalUnidades} un</span>
+            <span className="cat-footer-itens">
+              {totalItens} {totalItens === 1 ? 'item' : 'itens'} · {formatarTotalUnidades()}
+            </span>
           </div>
           <span className="cat-footer-total">{formatarValor(totalValor)}</span>
         </div>
