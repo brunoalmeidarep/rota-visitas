@@ -9,10 +9,36 @@ input, textarea, select {
   color-scheme: light dark;
   color: var(--text);
   background: var(--surface);
+  border: 1px solid var(--border);
 }
 
 input::placeholder, textarea::placeholder {
   color: var(--text-secondary);
+}
+
+/* Fix inputs para prefers-color-scheme: dark (iOS/Safari) */
+@media (prefers-color-scheme: dark) {
+  input, textarea, select {
+    background-color: #2c2c2e;
+    color: #ffffff;
+    border-color: #3a3a3c;
+    -webkit-text-fill-color: #ffffff;
+    color-scheme: dark;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #8e8e93;
+    -webkit-text-fill-color: #8e8e93;
+  }
+
+  /* Fix autocomplete Safari/iOS */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 30px #2c2c2e inset;
+    -webkit-text-fill-color: #ffffff;
+    caret-color: #ffffff;
+  }
 }
 
 /* Tema claro (padrão) */
