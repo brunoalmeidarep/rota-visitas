@@ -280,6 +280,13 @@ function CadastroCliente() {
     setSalvando(true)
     setErro('')
 
+    // Buscar empresa_id do representante
+    const { data: rep } = await supabase
+      .from('representantes')
+      .select('empresa_id')
+      .eq('id', repId)
+      .single()
+
     const cidadeCompleta = estado ? `${cidade} - ${estado}` : cidade
 
     // Usa razão social como nome principal, nome fantasia como fallback
@@ -307,7 +314,8 @@ function CadastroCliente() {
       cidade: cidadeCompleta.trim(),
       lat: coords?.lat || null,
       lng: coords?.lng || null,
-      rep_id: repId
+      rep_id: repId,
+      empresa_id: rep?.empresa_id || null
     }
 
     console.log('[CadastroCliente] Salvando:', novoCliente)
