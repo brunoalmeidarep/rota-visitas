@@ -9,6 +9,9 @@ function Mais() {
     const confirma = confirm('Deseja realmente sair?')
     if (!confirma) return
 
+    // Limpar cache de plano
+    localStorage.removeItem('plano_cache')
+
     await supabase.auth.signOut()
     // O App.jsx vai detectar a mudança de sessão e mostrar o Login
   }

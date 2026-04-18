@@ -11,8 +11,11 @@ import './Home.css'
 function Home() {
   const navigate = useNavigate()
   const { repId } = useRepId()
-  const { isStarter } = usePlano()
+  const { isStarter, loading: loadingPlano } = usePlano()
   const { representadas, representadaSelecionada, trocarRepresentada, loading: loadingRep } = useRepresentada()
+
+  // Cache de plano para evitar flash
+  const temCachePlano = !!localStorage.getItem('plano_cache')
 
   const [nomeRep, setNomeRep] = useState('')
   const [isDark, setIsDark] = useState(false)
@@ -204,6 +207,17 @@ function Home() {
       badge: null
     }
   ]
+
+  // Só mostrar skeleton se loading E sem cache
+  if (loadingPlano && !temCachePlano) {
+    return (
+      <div className={`home ${isDark ? 'dark' : 'light'}`}>
+        <div style={{ padding: 20, color: '#888', textAlign: 'center', marginTop: 100 }}>
+          Carregando...
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`home ${isDark ? 'dark' : 'light'}`}>

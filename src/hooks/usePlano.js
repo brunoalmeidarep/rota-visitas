@@ -2,16 +2,18 @@ import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 
 export function usePlano() {
-  const [plano, setPlano] = useState(null)
+  const cachePlano = localStorage.getItem('plano_cache')
+  const [plano, setPlano] = useState(cachePlano || null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const carregarPlano = async () => {
+      // Limpar caches antigos
       localStorage.removeItem('plano_usuario')
       localStorage.removeItem('user_plano')
       localStorage.removeItem('cached_plano')
 
-      console.log('[usePlano] Carregando plano do banco...')
+      console.log('[usePlano] Cache atual:', cachePlano, '| Carregando do banco...')
 
       try {
         const { data: { user } } = await supabase.auth.getUser()
@@ -33,6 +35,9 @@ export function usePlano() {
 
         const planoFinal = (data?.plano || 'starter').toLowerCase()
         console.log('[usePlano] Plano definido:', planoFinal)
+
+        // Salvar no cache
+        localStorage.setItem('plano_cache', planoFinal)
         setPlano(planoFinal)
       } catch(e) {
         console.error('[usePlano] Erro ao carregar plano:', e)
