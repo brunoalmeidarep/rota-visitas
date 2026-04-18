@@ -67,7 +67,14 @@ function Catalogo() {
         .eq('ativo', true)
         .order('nome')
 
-      if (data) setProdutos(data)
+      if (data) {
+        // Remover duplicatas por ID (caso existam)
+        const uniqueMap = new Map()
+        data.forEach(p => uniqueMap.set(p.id, p))
+        const uniqueProdutos = Array.from(uniqueMap.values())
+        console.log('[Catalogo] Produtos carregados:', data.length, '| Únicos:', uniqueProdutos.length)
+        setProdutos(uniqueProdutos)
+      }
       setLoading(false)
     }
 
@@ -117,7 +124,8 @@ function Catalogo() {
   const totalValor = Object.entries(itens).reduce((acc, [produtoId, qtd]) => {
     const produto = produtos.find(p => p.id === produtoId)
     if (!produto) return acc
-    const precoComIpi = (produto.preco || 0) * (1 + (produto.ipi || 0) / 100)
+    const ipiValor = Number(produto.ipi) || 0
+    const precoComIpi = (produto.preco || 0) * (1 + ipiValor / 100)
     return acc + (precoComIpi * qtd)
   }, 0)
 
@@ -253,8 +261,9 @@ function Catalogo() {
         ) : (
           produtosFiltrados.map(produto => {
             const quantidade = itens[produto.id] || 0
-            const temIpi = produto.ipi && produto.ipi > 0
-            const precoComIpi = (produto.preco || 0) * (1 + (produto.ipi || 0) / 100)
+            const ipiValor = Number(produto.ipi) || 0
+            const temIpi = ipiValor > 0
+            const precoComIpi = (produto.preco || 0) * (1 + ipiValor / 100)
 
             return (
               <div
