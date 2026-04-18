@@ -138,24 +138,34 @@ function PedidoSimples() {
       const hoje = new Date().toISOString().split('T')[0]
       const representadaNome = representadas.find(r => r.id === representadaId)?.nome || null
 
+      console.log('[PedidoSimples] Salvando pedido com valor:', valorTotal)
+      console.log('[PedidoSimples] valorTotalDisplay:', valorTotalDisplay)
+      console.log('[PedidoSimples] parseMoeda result:', parseMoeda(valorTotalDisplay))
+
       // Criar pedido
+      const dadosPedido = {
+        rep_id: repId,
+        cliente_id: clienteSelecionadoId,
+        cliente_nome: cliente?.nome,
+        visita_id: visitaId || null,
+        representada_id: representadaId || null,
+        representada_nome: representadaNome,
+        valor_total: valorTotal,
+        status: tipo === 'orcamento' ? 'orcamento' : 'pedido',
+        canal: canal,
+        obs: obs.trim() || null,
+        created_at: new Date().toISOString()
+      }
+
+      console.log('[PedidoSimples] dadosPedido:', JSON.stringify(dadosPedido, null, 2))
+
       const { data: novoPedido, error } = await supabase
         .from('pedidos')
-        .insert({
-          rep_id: repId,
-          cliente_id: clienteSelecionadoId,
-          cliente_nome: cliente?.nome,
-          visita_id: visitaId || null,
-          representada_id: representadaId || null,
-          representada_nome: representadaNome,
-          valor_total: valorTotal,
-          status: tipo === 'orcamento' ? 'orcamento' : 'pedido',
-          canal: canal,
-          obs: obs.trim() || null,
-          created_at: new Date().toISOString()
-        })
+        .insert(dadosPedido)
         .select()
         .single()
+
+      console.log('[PedidoSimples] Resposta Supabase:', { data: novoPedido, error })
 
       if (error) {
         console.error('[PedidoSimples] Erro:', error)

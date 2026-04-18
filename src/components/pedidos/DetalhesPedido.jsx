@@ -11,7 +11,7 @@ function DetalhesPedido() {
   const location = useLocation()
   const { id: pedidoId } = useParams()
   const { repId } = useRepId()
-  const { isEnterprise } = usePlano()
+  const { isStarter, isPro, isEnterprise, loading: loadingPlano } = usePlano()
 
   // Navegacao contextual: se veio do perfil/historico do cliente, voltar para la
   const fromCliente = location.state?.from === 'cliente' || location.state?.from === 'historico'
@@ -145,11 +145,13 @@ function DetalhesPedido() {
 
   const isEditavel = pedido?.status === 'orcamento' && !isReadonly
   const totalItens = pedido?.itens?.length || 0
-  const subtotal = (pedido?.itens || []).reduce((acc, item) =>
-    acc + (item.subtotal || item.preco_unitario * item.quantidade || 0), 0
-  )
+  const subtotal = totalItens > 0
+    ? (pedido?.itens || []).reduce((acc, item) =>
+        acc + (item.subtotal || item.preco_unitario * item.quantidade || 0), 0
+      )
+    : pedido?.valor_total || 0
   const descontoTotal = pedido?.valor_desconto || 0
-  const total = subtotal - descontoTotal
+  const total = totalItens > 0 ? subtotal - descontoTotal : pedido?.valor_total || 0
 
   async function salvar() {
     console.log('[salvar] 1. Iniciando...')
@@ -570,70 +572,72 @@ function DetalhesPedido() {
           </div>
         </div>
 
-        {/* Produtos */}
-        <div className="dp-card">
-          <div className="dp-card-header">
-            <span className="dp-card-titulo">Produtos ({totalItens})</span>
-            {isEditavel && (
-              <button
-                className="dp-btn-adicionar"
-                onClick={() => navigate(`/pedidos/${pedidoId}/catalogo`)}
-              >
-                + Adicionar
-              </button>
-            )}
-          </div>
-
-          {totalItens === 0 ? (
-            <div className="dp-produtos-vazio">
-              <p>Nenhum produto adicionado</p>
+        {/* Produtos - só mostra seção completa para Pro/Enterprise */}
+        {!isStarter && (
+          <div className="dp-card">
+            <div className="dp-card-header">
+              <span className="dp-card-titulo">Produtos ({totalItens})</span>
               {isEditavel && (
-                <button onClick={() => navigate(`/pedidos/${pedidoId}/catalogo`)}>
-                  Adicionar produtos
+                <button
+                  className="dp-btn-adicionar"
+                  onClick={() => navigate(`/pedidos/${pedidoId}/catalogo`)}
+                >
+                  + Adicionar
                 </button>
               )}
             </div>
-          ) : (
-            <div className="dp-produtos-lista">
-              {pedido.itens.map((item, index) => {
-                const temDescontoItem = item.desconto_percentual > 0 || item.desconto_valor > 0
-                const temDescontoPolitica = item.politica_desconto
-                const precoOriginal = item.preco_tabela || item.preco_unitario
-                return (
-                  <div key={index} className="dp-produto-item">
-                    <div className="dp-produto-info">
-                      <span className="dp-produto-nome">{item.produto_nome}</span>
-                      <span className="dp-produto-codigo">{item.produto_codigo}</span>
-                      <div className="dp-produto-precos">
+
+            {totalItens === 0 ? (
+              <div className="dp-produtos-vazio">
+                <p>Nenhum produto adicionado</p>
+                {isEditavel && (
+                  <button onClick={() => navigate(`/pedidos/${pedidoId}/catalogo`)}>
+                    Adicionar produtos
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="dp-produtos-lista">
+                {pedido.itens.map((item, index) => {
+                  const temDescontoItem = item.desconto_percentual > 0 || item.desconto_valor > 0
+                  const temDescontoPolitica = item.politica_desconto
+                  const precoOriginal = item.preco_tabela || item.preco_unitario
+                  return (
+                    <div key={index} className="dp-produto-item">
+                      <div className="dp-produto-info">
+                        <span className="dp-produto-nome">{item.produto_nome}</span>
+                        <span className="dp-produto-codigo">{item.produto_codigo}</span>
+                        <div className="dp-produto-precos">
+                          {temDescontoItem && (
+                            <>
+                              <span className="dp-preco-riscado">{formatarValor(precoOriginal)}/un</span>
+                              <span className="dp-preco-liquido">{formatarValor(item.preco_unitario)}/un</span>
+                            </>
+                          )}
+                          {!temDescontoItem && (
+                            <span className="dp-preco-normal">{formatarValor(item.preco_unitario)}/un</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="dp-produto-right">
+                        <span className="dp-produto-qty">{item.quantidade} un</span>
+                        <span className="dp-produto-valor">{formatarValor(item.subtotal)}</span>
                         {temDescontoItem && (
-                          <>
-                            <span className="dp-preco-riscado">{formatarValor(precoOriginal)}/un</span>
-                            <span className="dp-preco-liquido">{formatarValor(item.preco_unitario)}/un</span>
-                          </>
+                          <span className="dp-badge-desconto-item">
+                            desc. {item.desconto_percentual || Math.round((1 - item.preco_unitario / precoOriginal) * 100)}%
+                          </span>
                         )}
-                        {!temDescontoItem && (
-                          <span className="dp-preco-normal">{formatarValor(item.preco_unitario)}/un</span>
+                        {temDescontoPolitica && (
+                          <span className="dp-badge-desconto-politica">{item.politica_desconto}</span>
                         )}
                       </div>
                     </div>
-                    <div className="dp-produto-right">
-                      <span className="dp-produto-qty">{item.quantidade} un</span>
-                      <span className="dp-produto-valor">{formatarValor(item.subtotal)}</span>
-                      {temDescontoItem && (
-                        <span className="dp-badge-desconto-item">
-                          desc. {item.desconto_percentual || Math.round((1 - item.preco_unitario / precoOriginal) * 100)}%
-                        </span>
-                      )}
-                      {temDescontoPolitica && (
-                        <span className="dp-badge-desconto-politica">{item.politica_desconto}</span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Resumo */}
         <div className="dp-card dp-resumo">
