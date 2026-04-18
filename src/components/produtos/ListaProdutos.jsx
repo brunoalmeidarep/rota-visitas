@@ -46,7 +46,13 @@ function ListaProdutos() {
       if (error) {
         console.error('[ListaProdutos] Erro:', error)
       } else {
-        setProdutos(data || [])
+        console.log('[ListaProdutos] Produtos carregados:', data?.length, data)
+        // Remover duplicatas por ID (caso existam)
+        const uniqueMap = new Map()
+        data?.forEach(p => uniqueMap.set(p.id, p))
+        const uniqueProdutos = Array.from(uniqueMap.values())
+        console.log('[ListaProdutos] Produtos únicos:', uniqueProdutos.length)
+        setProdutos(uniqueProdutos)
       }
 
       setLoading(false)
@@ -241,10 +247,7 @@ function ListaProdutos() {
                     </div>
                     <div className="lp-produto-info">
                       <span className="lp-produto-nome">{produto.nome}</span>
-                      <span className="lp-produto-codigo">
-                        {produto.codigo || '-'}
-                        {produto.ncm && ` · NCM ${produto.ncm}`}
-                      </span>
+                      <span className="lp-produto-codigo">{produto.codigo || '-'}</span>
                       <div className="lp-produto-preco-row">
                         <span className="lp-produto-preco">
                           {formatarPreco(produto.preco)}/{produto.unidade || 'UN'}
