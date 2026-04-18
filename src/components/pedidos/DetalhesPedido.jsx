@@ -234,6 +234,13 @@ function DetalhesPedido() {
     setSalvando(true)
 
     try {
+      // Verificar se rep tem empresa_id (Enterprise)
+      const { data: rep } = await supabase
+        .from('representantes')
+        .select('empresa_id, plano')
+        .eq('id', repId)
+        .single()
+
       // Gerar número do pedido
       const { data: ultimoPedido } = await supabase
         .from('pedidos')
@@ -245,18 +252,27 @@ function DetalhesPedido() {
 
       const novoNumero = (ultimoPedido?.[0]?.numero || 0) + 1
 
+      // Montar dados do update
+      const dadosUpdate = {
+        status: 'pedido',
+        numero: novoNumero,
+        condicao_pagamento: condicaoPagamento.trim() || null,
+        tipo: tipoPedido || 'Venda',
+        info_adicionais: infoAdicionais.trim() || null,
+        oc_cliente: ocCliente.trim() || null,
+        valor_total: total,
+        data_pedido: new Date().toISOString()
+      }
+
+      // Se rep tem empresa_id (Enterprise), enviar para aprovação
+      if (rep?.empresa_id) {
+        dadosUpdate.empresa_id = rep.empresa_id
+        dadosUpdate.status_empresa = 'aguardando'
+      }
+
       const { error } = await supabase
         .from('pedidos')
-        .update({
-          status: 'pedido',
-          numero: novoNumero,
-          condicao_pagamento: condicaoPagamento.trim() || null,
-          tipo: tipoPedido || 'Venda',
-          info_adicionais: infoAdicionais.trim() || null,
-          oc_cliente: ocCliente.trim() || null,
-          valor_total: total,
-          data_pedido: new Date().toISOString()
-        })
+        .update(dadosUpdate)
         .eq('id', pedidoId)
 
       if (error) {
@@ -286,6 +302,13 @@ function DetalhesPedido() {
 
       if (pedidoAtualizado) {
         setPedido(pedidoAtualizado)
+      }
+
+      // Mostrar mensagem apropriada
+      if (rep?.empresa_id) {
+        setToastTipo('sucesso')
+        setToast('Pedido enviado para aprovação')
+        setTimeout(() => setToast(''), 3000)
       }
 
     } catch (err) {
