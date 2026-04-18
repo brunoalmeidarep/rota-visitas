@@ -68,11 +68,12 @@ function Catalogo() {
         .order('nome')
 
       if (data) {
-        // Remover duplicatas por ID (caso existam)
-        const uniqueMap = new Map()
-        data.forEach(p => uniqueMap.set(p.id, p))
-        const uniqueProdutos = Array.from(uniqueMap.values())
-        console.log('[Catalogo] Produtos carregados:', data.length, '| Únicos:', uniqueProdutos.length)
+        console.log('[Catalogo] Produtos carregados:', data.length)
+        // Remover duplicatas por nome + código (manter o primeiro)
+        const uniqueProdutos = data.filter((p, i, arr) =>
+          arr.findIndex(x => x.codigo === p.codigo && x.nome === p.nome) === i
+        )
+        console.log('[Catalogo] Produtos únicos:', uniqueProdutos.length)
         setProdutos(uniqueProdutos)
       }
       setLoading(false)
