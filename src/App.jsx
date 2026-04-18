@@ -12,6 +12,7 @@ import Bonificacao from './components/clientes/Bonificacao'
 import GastosCliente from './components/clientes/GastosCliente'
 import DetalheVisita from './components/clientes/DetalheVisita'
 import HistoricoCliente from './components/clientes/HistoricoCliente'
+import Checkin from './components/clientes/Checkin'
 import PedidoSimples from './components/pedidos/PedidoSimples'
 import ListaPedidos from './components/pedidos/ListaPedidos'
 import NovoPedido from './components/pedidos/NovoPedido'
@@ -96,6 +97,7 @@ function App() {
         <Route path="/clientes/:id/pedidos" element={<HistoricoCliente />} />
         <Route path="/clientes/:id/orcamentos" element={<HistoricoCliente />} />
         <Route path="/clientes/:id/visitas/:visitaId" element={<DetalheVisita />} />
+        <Route path="/clientes/:id/checkin" element={<Checkin />} />
         <Route path="/pedidos/novo/simples" element={<PedidoSimples />} />
         <Route path="/produtos" element={<ListaProdutos />} />
         <Route path="/produtos/novo" element={<CadastroProduto />} />

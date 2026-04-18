@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
-import CheckIn from './CheckinLegacy'
 import './PerfilCliente.css'
 
 // Formata valor monetário de forma abreviada
@@ -56,8 +55,6 @@ function PerfilCliente() {
   })
   const [mostrarPeriodos, setMostrarPeriodos] = useState(false)
 
-  // Check-in modal
-  const [mostrarCheckIn, setMostrarCheckIn] = useState(false)
 
   const PERIODOS = [
     { id: '30d', label: '30 dias', dias: 30 },
@@ -282,7 +279,7 @@ function PerfilCliente() {
 
       {/* Ações rápidas */}
       <div className="perfil-acoes">
-        <button className="perfil-acao" onClick={() => setMostrarCheckIn(true)}>
+        <button className="perfil-acao" onClick={() => navigate(`/clientes/${id}/checkin`)}>
           <span className="perfil-acao-icon">✅</span>
           <span className="perfil-acao-texto">Check-in</span>
         </button>
@@ -438,35 +435,6 @@ function PerfilCliente() {
           )}
         </div>
       </div>
-
-      {/* Check-in Modal */}
-      {mostrarCheckIn && (
-        <CheckIn
-          cliente={cliente}
-          onClose={() => setMostrarCheckIn(false)}
-          onConfirm={async () => {
-            // Recarregar última visita
-            const { data: updatedCliente } = await supabase
-              .from('clientes')
-              .select('*')
-              .eq('id', id)
-              .single()
-
-            if (updatedCliente) setCliente(updatedCliente)
-
-            // Recarregar visitas
-            const { data: visitasData } = await supabase
-              .from('visitas')
-              .select('id, data, hora, tipo, obs')
-              .eq('cliente_id', id)
-              .eq('rep_id', repId)
-              .order('data', { ascending: false })
-              .limit(5)
-
-            if (visitasData) setVisitas(visitasData)
-          }}
-        />
-      )}
 
       {/* Modal seleção de período */}
       {mostrarPeriodos && (
