@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
-import CheckIn from './CheckIn'
+import CheckIn from './CheckinLegacy'
 import './PerfilCliente.css'
 
 // Formata valor monetário de forma abreviada

@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
 import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
-import './CheckIn.css'
+import './CheckinLegacy.css'
 
 const CATEGORIAS_GASTO = [
   { id: 'alimentacao', nome: 'Alimentação', icone: '🍽️' },
