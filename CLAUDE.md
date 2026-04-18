@@ -50,6 +50,39 @@ CRM e app de força de vendas para representantes comerciais.
 
 ---
 
+## Status atual — Abril 2026
+
+### Minha Rota RP v2
+- **Deploy:** v2.rota-visitas.pages.dev
+- **Supabase:** byglymeulgeomoldhrrh.supabase.co
+- **Planos:** funcionando por usuário (campo `plano` na tabela `representantes`)
+- **Usuários de teste:**
+  - Bruno: pro
+  - Victor Missfeld: pro
+  - Victor Pomerode: starter
+
+### SalesRP (Painel Administrativo)
+- **Pasta local:** C:/Users/Bruno/Documents/salesrp
+- **Mesmo Supabase do v2**
+- **Deploy:** ainda local (localhost:5173)
+- **Empresa de teste:** Inkor (id: `3be1b7a6-3ab4-4eae-8f25-7bea31af3f8f`)
+- **Admin:** Bruno Almeida (brunoc.almeida.sc@gmail.com)
+- **Tabelas criadas:** `empresas`, `empresas_admins`, `pedido_itens`, `politica_comercial_empresa`
+- **Colunas adicionadas:**
+  - `pedidos`: empresa_id, status_empresa, observacao_empresa, aprovado_por, aprovado_em, descontos_rep, descontos_cascata
+  - `representantes`: empresa_id, is_direto, codigo_rep, telefone
+  - `clientes`: empresa_id
+
+### Bugs corrigidos nesta sessão
+- Cache de plano evita flash de conteúdo errado na Home
+- Inputs visíveis no modo escuro iOS
+- Múltiplos de venda no catálogo
+- Importação Excel de produtos
+- Query clientes sem join inválido
+- Fuso horário UTC-3 nos filtros de data do dashboard
+
+---
+
 ## Regra crítica — rep_id
 NUNCA usar auth.uid() diretamente como rep_id.
 Sempre buscar: SELECT id FROM representantes WHERE email = user.email
