@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
 import { abrirPreviewPDF, compartilharPDF } from './PDFOrcamento'
+import { limparCarrinho } from '../../lib/carrinhoStorage'
 import './DetalhesPedido.css'
 
 function DetalhesPedido() {
@@ -402,6 +403,8 @@ function DetalhesPedido() {
         setSalvando(false)
         return
       }
+
+      limparCarrinho(pedidoId)
 
       setToastTipo('sucesso')
       setToast('Orçamento cancelado')

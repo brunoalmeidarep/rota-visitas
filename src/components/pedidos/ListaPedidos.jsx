@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
+import { limparCarrinho } from '../../lib/carrinhoStorage'
 import './ListaPedidos.css'
 
 function ListaPedidos() {
@@ -175,6 +176,8 @@ function ListaPedidos() {
         alert('Erro ao cancelar orçamento')
         return
       }
+
+      limparCarrinho(pedidoId)
 
       // Remover da lista local
       setPedidos(prev => prev.filter(p => p.id !== pedidoId))

@@ -168,7 +168,7 @@ function DetalheProdutoPedido() {
     return (
       <div className={`detalhe-produto-pedido ${isDark ? 'dark' : 'light'}`}>
         <header className="dpp-header">
-          <button className="dpp-cancelar" onClick={() => navigate(-1)}>Cancelar</button>
+          <button className="dpp-cancelar" onClick={() => navigate(-1)}>Voltar</button>
           <span className="dpp-header-titulo">Produto</span>
           <div style={{ width: 60 }}></div>
         </header>
@@ -182,7 +182,7 @@ function DetalheProdutoPedido() {
       {/* Header */}
       <header className="dpp-header">
         <button className="dpp-cancelar" onClick={() => navigate(-1)}>
-          Cancelar
+          Voltar
         </button>
         <span className="dpp-header-titulo">
           {produto?.nome?.length > 20

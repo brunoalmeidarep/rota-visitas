@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { salvarCarrinho, lerCarrinho, limparCarrinho } from '../../lib/carrinhoStorage'
 import './Catalogo.css'
 
 function Catalogo() {
@@ -17,6 +18,7 @@ function Catalogo() {
   const [loading, setLoading] = useState(true)
   const [isDark, setIsDark] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const carregouDoBanco = useRef(false)
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -40,19 +42,31 @@ function Catalogo() {
 
       if (data) {
         setPedido(data)
-        // Converter itens existentes para objeto { produtoId: quantidade }
-        if (data.itens && Array.isArray(data.itens)) {
+
+        // Prioridade: sessionStorage > banco
+        const itensStorage = lerCarrinho(pedidoId)
+        if (itensStorage && Object.keys(itensStorage).length > 0) {
+          setItens(itensStorage)
+        } else if (data.itens && Array.isArray(data.itens)) {
           const itensObj = {}
           data.itens.forEach(item => {
             itensObj[item.produto_id] = item.quantidade
           })
           setItens(itensObj)
         }
+
+        carregouDoBanco.current = true
       }
     }
 
     fetchPedido()
   }, [pedidoId])
+
+  // Salvar carrinho no sessionStorage quando itens mudar
+  useEffect(() => {
+    if (!pedidoId || !carregouDoBanco.current) return
+    salvarCarrinho(pedidoId, itens)
+  }, [pedidoId, itens])
 
   // Carregar produtos
   useEffect(() => {
@@ -219,6 +233,9 @@ function Catalogo() {
         setSalvando(false)
         return
       }
+
+      // Limpar carrinho do storage após sucesso
+      limparCarrinho(pedidoId)
 
       // Navegar para detalhe do pedido
       navigate(`/pedidos/${pedidoId}`)
