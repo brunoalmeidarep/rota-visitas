@@ -234,11 +234,6 @@ function NovoPedido() {
     navigate(`/clientes/${clienteId}/orcamentos`, { state: { from: 'novo-pedido' } })
   }
 
-  // Criar novo orçamento (fechar aviso)
-  function criarNovoOrcamento() {
-    setAvisoOrcamentoFechado(true)
-  }
-
   // Orçamentos a exibir (máximo 2)
   const orcamentosVisiveis = orcamentosAbertos.slice(0, 2)
   const orcamentosRestantes = orcamentosAbertos.length - 2
@@ -575,9 +570,6 @@ function NovoPedido() {
               </button>
             )}
 
-            <button className="np-oa-criar-novo" onClick={criarNovoOrcamento}>
-              Criar novo orçamento
-            </button>
           </div>
         )}
       </div>
