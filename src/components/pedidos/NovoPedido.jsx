@@ -62,16 +62,15 @@ function NovoPedido() {
 
   // Redirecionar Starter para PedidoSimples (aguardar loading do plano)
   useEffect(() => {
+    console.log('[NovoPedido] useEffect plano - loadingPlano:', loadingPlano, 'plano:', plano, 'isStarter:', isStarter)
     if (loadingPlano) {
-      console.log('[NovoPedido] Aguardando plano carregar...')
-      return // Não redirecionar enquanto está carregando
+      return
     }
-    console.log('[NovoPedido] Plano carregado, isStarter:', isStarter)
     if (isStarter) {
-      console.log('[NovoPedido] Redirecionando para PedidoSimples')
+      console.log('[NovoPedido] REDIRECIONANDO para PedidoSimples porque isStarter=true')
       navigate('/pedidos/novo/simples', { replace: true })
     }
-  }, [isStarter, loadingPlano, navigate])
+  }, [plano, isStarter, loadingPlano, navigate])
 
   // Detectar modo claro/escuro
   useEffect(() => {

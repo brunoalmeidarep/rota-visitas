@@ -32,7 +32,7 @@ export function usePlano() {
 
         console.log('[usePlano] Resposta do banco:', { data, error })
 
-        const planoFinal = data?.plano || 'starter'
+        const planoFinal = (data?.plano || 'starter').toLowerCase()
         console.log('[usePlano] Plano definido:', planoFinal)
         setPlano(planoFinal)
       } catch(e) {
