@@ -218,15 +218,9 @@ function NovoPedido() {
     return representadaSelecionada && orc.representada_id === representadaSelecionada.id
   }
 
-  // Navegar para orçamento
+  // Navegar para orçamento (sempre editável)
   function navegarOrcamento(orc) {
-    if (isRepresentadaAtual(orc)) {
-      // Mesma representada - pode editar
-      navigate(`/pedidos/${orc.id}`)
-    } else {
-      // Outra representada - somente leitura
-      navigate(`/pedidos/${orc.id}`, { state: { readonly: true, from: 'novo-pedido' } })
-    }
+    navigate(`/pedidos/${orc.id}`, { state: { from: 'novo-pedido' } })
   }
 
   // Ver todos os orçamentos do cliente
@@ -557,9 +551,7 @@ function NovoPedido() {
                       <span className="np-oa-data">{formatarData(orc.created_at)}</span>
                     </div>
                   </div>
-                  <span className="np-oa-acao">
-                    {isRepresentadaAtual(orc) ? 'Continuar ›' : 'Ver ›'}
-                  </span>
+                  <span className="np-oa-acao">Continuar ›</span>
                 </button>
               ))}
             </div>

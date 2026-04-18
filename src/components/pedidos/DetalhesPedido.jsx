@@ -316,12 +316,10 @@ function DetalhesPedido() {
         setPedido(pedidoAtualizado)
       }
 
-      // Mostrar mensagem apropriada
-      if (rep?.empresa_id) {
-        setToastTipo('sucesso')
-        setToast('Pedido enviado para aprovação')
-        setTimeout(() => setToast(''), 3000)
-      }
+      // Mostrar mensagem de sucesso
+      setToastTipo('sucesso')
+      setToast('Pedido gerado com sucesso')
+      setTimeout(() => setToast(''), 3000)
 
     } catch (err) {
       console.error('[DetalhesPedido] Exceção:', err)
