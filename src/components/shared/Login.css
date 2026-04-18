@@ -60,10 +60,20 @@
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   font-size: 15px;
-  color: #1f2937;
-  background: #f9fafb;
+  color: #1c1c1e;
+  background: #f2f2f7;
+  -webkit-text-fill-color: #1c1c1e;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.campo input:-webkit-autofill,
+.campo input:-webkit-autofill:hover,
+.campo input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1c1c1e;
+  -webkit-box-shadow: 0 0 0 1000px #f2f2f7 inset;
+  box-shadow: 0 0 0 1000px #f2f2f7 inset;
+  background-color: #f2f2f7 !important;
 }
 
 .campo input:focus {

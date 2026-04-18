@@ -2,24 +2,23 @@ import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 
 export function usePlano() {
-  const [plano, setPlano] = useState('starter')
+  const [plano, setPlano] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const carregarPlano = async () => {
-      // Limpar qualquer cache antigo de plano
       localStorage.removeItem('plano_usuario')
       localStorage.removeItem('user_plano')
       localStorage.removeItem('cached_plano')
 
-      console.log('[usePlano] Carregando plano do banco (sem cache)...')
+      console.log('[usePlano] Carregando plano do banco...')
 
       try {
         const { data: { user } } = await supabase.auth.getUser()
-        console.log('[usePlano] Usuário:', user?.id, user?.email)
+        console.log('[usePlano] Usuario:', user?.id, user?.email)
 
         if (!user) {
-          console.log('[usePlano] Sem usuário logado')
+          console.log('[usePlano] Sem usuario logado')
           setLoading(false)
           return
         }
@@ -46,15 +45,11 @@ export function usePlano() {
     carregarPlano()
   }, [])
 
-  const isPro = plano === 'pro' || plano === 'enterprise'
-  const isEnterprise = plano === 'enterprise'
-  const isStarter = plano === 'starter'
-
   return {
-    plano,
+    plano: plano || 'starter',
     loading,
-    isPro,
-    isEnterprise,
-    isStarter
+    isPro: plano === 'pro' || plano === 'enterprise',
+    isEnterprise: plano === 'enterprise',
+    isStarter: plano === 'starter' || plano === null
   }
 }

@@ -62,6 +62,10 @@ function CheckIn({ cliente, onClose, onConfirm }) {
 
   async function confirmarCheckIn() {
     if (!cliente || !repId) return
+    if (loadingPlano) {
+      console.log('[CheckIn] Aguardando plano carregar...')
+      return
+    }
 
     setSalvando(true)
 
