@@ -8,7 +8,7 @@ import './ResumoVendas.css'
 function ResumoVendas() {
   const navigate = useNavigate()
   const { repId } = useRepId()
-  const { representadas } = useRepresentada()
+  const { representadas, representadaSelecionada } = useRepresentada()
   const [isDark, setIsDark] = useState(false)
 
   const [loading, setLoading] = useState(true)
@@ -35,10 +35,10 @@ function ResumoVendas() {
   }, [])
 
   useEffect(() => {
-    if (!repId) return
+    if (!repId || !representadaSelecionada) return
     fetchResumo()
     fetchNomeRep()
-  }, [repId, filtro, dataInicio, dataFim])
+  }, [repId, representadaSelecionada, filtro, dataInicio, dataFim])
 
   async function fetchNomeRep() {
     const { data } = await supabase
@@ -84,18 +84,27 @@ function ResumoVendas() {
 
       console.log('[ResumoVendas] Buscando pedidos:', {
         rep_id: repId,
+        representada: representadaSelecionada,
         data_inicio: inicio.toISOString(),
         data_fim: fim.toISOString()
       })
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('pedidos')
         .select('*')
         .eq('rep_id', repId)
         .eq('status', 'pedido')
         .gte('created_at', inicio.toISOString())
         .lte('created_at', fim.toISOString() + 'T23:59:59')
-        .order('created_at', { ascending: false })
+
+      // Filtrar por representada ou empresa conforme o tipo selecionado
+      if (representadaSelecionada.tipo === 'empresa') {
+        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+      } else {
+        query = query.eq('representada_id', representadaSelecionada.id)
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
 
       clearTimeout(timeout)
 

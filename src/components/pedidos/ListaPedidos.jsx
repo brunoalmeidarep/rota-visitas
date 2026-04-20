@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
+import { useRepresentada } from '../../contexts/RepresentadaContext'
 import { limparCarrinho } from '../../lib/carrinhoStorage'
 import './ListaPedidos.css'
 
@@ -10,6 +11,7 @@ function ListaPedidos() {
   const navigate = useNavigate()
   const { repId } = useRepId()
   const { isPro, isStarter } = usePlano()
+  const { representadaSelecionada } = useRepresentada()
 
   const [pedidos, setPedidos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -31,17 +33,26 @@ function ListaPedidos() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar pedidos
+  // Carregar pedidos filtrados por representada/empresa selecionada
   useEffect(() => {
-    if (!repId) return
+    if (!repId || !representadaSelecionada) return
 
     async function fetchPedidos() {
       setLoading(true)
-      const { data, error } = await supabase
+
+      let query = supabase
         .from('pedidos')
         .select('*')
         .eq('rep_id', repId)
-        .order('created_at', { ascending: false })
+
+      // Filtrar por representada ou empresa conforme o tipo selecionado
+      if (representadaSelecionada.tipo === 'empresa') {
+        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+      } else {
+        query = query.eq('representada_id', representadaSelecionada.id)
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
 
       if (error) {
         console.error('[ListaPedidos] Erro:', error)
@@ -52,7 +63,7 @@ function ListaPedidos() {
     }
 
     fetchPedidos()
-  }, [repId])
+  }, [repId, representadaSelecionada])
 
   // Filtrar pedidos
   const pedidosFiltrados = pedidos.filter(p => {
@@ -107,13 +118,7 @@ function ListaPedidos() {
   }
 
   function formatarValor(valor) {
-    if (!valor || valor === 0) return 'R$ 0'
-    if (valor >= 1000000) {
-      return `R$ ${(valor / 1000000).toFixed(1).replace('.', ',')}M`
-    }
-    if (valor >= 10000) {
-      return `R$ ${(valor / 1000).toFixed(1).replace('.', ',')}k`
-    }
+    if (!valor || valor === 0) return 'R$ 0,00'
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'

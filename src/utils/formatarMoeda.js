@@ -30,8 +30,6 @@ export function parseMoeda(valorFormatado) {
 // Exibe valor formatado (para mostrar em tela, não em input)
 export function exibirMoeda(valor) {
   const num = Number(valor) || 0
-  if (num >= 1000000) return `R$ ${(num/1000000).toFixed(1).replace('.',',')}M`
-  if (num >= 10000) return `R$ ${(num/1000).toFixed(1).replace('.',',')}k`
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 

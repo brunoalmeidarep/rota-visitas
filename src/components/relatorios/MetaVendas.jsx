@@ -95,7 +95,11 @@ function MetaVendas() {
       .lte('created_at', fimMes.toISOString() + 'T23:59:59')
 
     if (representadaSelecionada) {
-      queryVendas = queryVendas.eq('representada_id', representadaSelecionada.id)
+      if (representadaSelecionada.tipo === 'empresa') {
+        queryVendas = queryVendas.eq('empresa_id', representadaSelecionada.empresa_id)
+      } else {
+        queryVendas = queryVendas.eq('representada_id', representadaSelecionada.id)
+      }
     }
 
     const { data: pedidosMes } = await queryVendas
@@ -122,7 +126,11 @@ function MetaVendas() {
       .eq('ano', anoSelecionado)
 
     if (representadaSelecionada) {
-      queryMeta = queryMeta.eq('representada_id', representadaSelecionada.id)
+      if (representadaSelecionada.tipo === 'empresa') {
+        queryMeta = queryMeta.eq('empresa_id', representadaSelecionada.empresa_id)
+      } else {
+        queryMeta = queryMeta.eq('representada_id', representadaSelecionada.id)
+      }
     }
 
     const { data: metaData } = await queryMeta.maybeSingle()
@@ -159,7 +167,11 @@ function MetaVendas() {
         .lte('created_at', fim.toISOString() + 'T23:59:59')
 
       if (representadaSelecionada) {
-        qVendas = qVendas.eq('representada_id', representadaSelecionada.id)
+        if (representadaSelecionada.tipo === 'empresa') {
+          qVendas = qVendas.eq('empresa_id', representadaSelecionada.empresa_id)
+        } else {
+          qVendas = qVendas.eq('representada_id', representadaSelecionada.id)
+        }
       }
 
       const { data: vendas } = await qVendas
@@ -174,7 +186,11 @@ function MetaVendas() {
         .eq('ano', a)
 
       if (representadaSelecionada) {
-        qMeta = qMeta.eq('representada_id', representadaSelecionada.id)
+        if (representadaSelecionada.tipo === 'empresa') {
+          qMeta = qMeta.eq('empresa_id', representadaSelecionada.empresa_id)
+        } else {
+          qMeta = qMeta.eq('representada_id', representadaSelecionada.id)
+        }
       }
 
       const { data: meta } = await qMeta.maybeSingle()

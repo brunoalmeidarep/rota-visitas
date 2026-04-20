@@ -55,7 +55,11 @@ function VendasProduto() {
       .gte('created_at', dataLimite.toISOString())
 
     if (representadaSelecionada) {
-      query = query.eq('representada_id', representadaSelecionada.id)
+      if (representadaSelecionada.tipo === 'empresa') {
+        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+      } else {
+        query = query.eq('representada_id', representadaSelecionada.id)
+      }
     }
 
     const { data } = await query

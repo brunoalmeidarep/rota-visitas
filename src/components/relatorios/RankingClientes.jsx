@@ -58,8 +58,13 @@ function RankingClientes() {
         .eq('status', 'pedido')
         .gte('created_at', dataLimite.toISOString())
 
+      // Filtrar por representada ou empresa conforme o tipo selecionado
       if (representadaSelecionada) {
-        query = query.eq('representada_id', representadaSelecionada.id)
+        if (representadaSelecionada.tipo === 'empresa') {
+          query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+        } else {
+          query = query.eq('representada_id', representadaSelecionada.id)
+        }
       }
 
       const { data, error } = await query
