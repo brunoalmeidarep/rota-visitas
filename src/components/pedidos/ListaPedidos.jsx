@@ -55,12 +55,16 @@ function ListaPedidos() {
 
       // Filtrar por representada ou empresa conforme o tipo selecionado
       if (representadaSelecionada.tipo === 'empresa') {
+        console.log('[ListaPedidos] query empresa_id:', representadaSelecionada.empresa_id)
         query = query.eq('empresa_id', representadaSelecionada.empresa_id)
       } else {
+        console.log('[ListaPedidos] query representada_id:', representadaSelecionada.id)
         query = query.eq('representada_id', representadaSelecionada.id)
       }
 
       const { data, error } = await query.order('created_at', { ascending: false })
+
+      console.log('[ListaPedidos] pedidos retornados:', data?.length, data)
 
       if (error) {
         console.error('[ListaPedidos] Erro:', error)
