@@ -40,6 +40,11 @@ function ListaPedidos() {
     async function fetchPedidos() {
       setLoading(true)
 
+      // Debug logs
+      console.log('[ListaPedidos] representadaSelecionada:', representadaSelecionada)
+      console.log('[ListaPedidos] tipo:', representadaSelecionada?.tipo)
+      console.log('[ListaPedidos] empresa_id:', representadaSelecionada?.empresa_id)
+
       let query = supabase
         .from('pedidos')
         .select('*')
