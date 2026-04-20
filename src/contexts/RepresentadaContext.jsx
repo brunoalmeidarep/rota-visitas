@@ -71,6 +71,12 @@ export function RepresentadaProvider({ children }) {
             empresa_id: v.empresa_id
           }))
 
+        // Debug logs
+        console.log('[Enterprise] repId:', repId)
+        console.log('[Enterprise] vinculosEnterprise:', vinculosEnterprise)
+        console.log('[Enterprise] errorEnterprise:', errorEnterprise)
+        console.log('[Enterprise] enterpriseList:', enterpriseList)
+
         // 3. Unificar as duas listas
         const todasRepresentadas = [...proList, ...enterpriseList]
         console.log('[RepresentadaContext] PRO:', proList.length, 'Enterprise:', enterpriseList.length)
