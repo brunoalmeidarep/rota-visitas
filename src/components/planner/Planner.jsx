@@ -714,12 +714,43 @@ function Planner() {
     let ordemOtimizada = clientesSel.map(c => String(c.id))
     let usouFallback = false
 
-    // Função auxiliar para calcular com Haversine
+    // Função auxiliar para otimizar com nearest neighbor e calcular com Haversine
     const calcularHaversine = () => {
+      // Nearest neighbor: começar do primeiro cliente e ir ao mais próximo
+      const restantes = [...clientesSel]
+      const ordenado = []
+
+      // Ponto de partida: primeiro cliente ou coordenadas de partida
+      let pontoAtual = restantes.shift()
+      ordenado.push(pontoAtual)
+
+      while (restantes.length > 0) {
+        let menorDist = Infinity
+        let maisProximoIdx = 0
+
+        for (let i = 0; i < restantes.length; i++) {
+          const dist = calcDistKm(
+            parseFloat(pontoAtual.lat), parseFloat(pontoAtual.lng),
+            parseFloat(restantes[i].lat), parseFloat(restantes[i].lng)
+          )
+          if (dist < menorDist) {
+            menorDist = dist
+            maisProximoIdx = i
+          }
+        }
+
+        pontoAtual = restantes.splice(maisProximoIdx, 1)[0]
+        ordenado.push(pontoAtual)
+      }
+
+      // Atualizar ordem otimizada
+      ordemOtimizada = ordenado.map(c => String(c.id))
+
+      // Calcular distância total na ordem otimizada
       let km = 0
-      for (let i = 0; i < clientesSel.length - 1; i++) {
-        const a = clientesSel[i]
-        const b = clientesSel[i + 1]
+      for (let i = 0; i < ordenado.length - 1; i++) {
+        const a = ordenado[i]
+        const b = ordenado[i + 1]
         if (a.lat && b.lat) {
           km += calcDistKm(parseFloat(a.lat), parseFloat(a.lng), parseFloat(b.lat), parseFloat(b.lng))
         }

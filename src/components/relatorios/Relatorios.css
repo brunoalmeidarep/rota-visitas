@@ -120,6 +120,22 @@
   color: var(--text-muted, #636366);
 }
 
+/* Item bloqueado (Starter) */
+.relatorios-card.bloqueado {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.relatorios-card.bloqueado:active {
+  transform: none;
+  background: var(--bg-secondary, #2c2c2e);
+}
+
+.premium-lock {
+  margin-left: 6px;
+  font-size: 14px;
+}
+
 /* Tema claro */
 @media (prefers-color-scheme: light) {
   .relatorios {

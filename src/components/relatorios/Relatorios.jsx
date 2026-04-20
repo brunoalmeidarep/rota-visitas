@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { usePlano } from '../../hooks/usePlano'
 import './Relatorios.css'
 
 function Relatorios() {
   const navigate = useNavigate()
+  const { isStarter } = usePlano()
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
@@ -45,7 +47,8 @@ function Relatorios() {
       titulo: 'Vendas por Produto',
       subtitulo: 'Produtos mais vendidos',
       rota: '/relatorios/produtos',
-      cor: '#af52de'
+      cor: '#af52de',
+      premium: true
     },
     {
       id: 'inativos',
@@ -78,25 +81,34 @@ function Relatorios() {
 
       <div className="relatorios-content">
         <div className="relatorios-lista">
-          {relatorios.map(rel => (
-            <button
-              key={rel.id}
-              className="relatorios-card"
-              onClick={() => navigate(rel.rota)}
-            >
-              <span
-                className="relatorios-card-icon"
-                style={{ background: `${rel.cor}20` }}
+          {relatorios.map(rel => {
+            const bloqueado = rel.premium && isStarter
+
+            return (
+              <button
+                key={rel.id}
+                className={`relatorios-card ${bloqueado ? 'bloqueado' : ''}`}
+                onClick={() => !bloqueado && navigate(rel.rota)}
               >
-                {rel.icone}
-              </span>
-              <div className="relatorios-card-info">
-                <span className="relatorios-card-titulo">{rel.titulo}</span>
-                <span className="relatorios-card-subtitulo">{rel.subtitulo}</span>
-              </div>
-              <span className="relatorios-card-seta">›</span>
-            </button>
-          ))}
+                <span
+                  className="relatorios-card-icon"
+                  style={{ background: `${rel.cor}20` }}
+                >
+                  {rel.icone}
+                </span>
+                <div className="relatorios-card-info">
+                  <span className="relatorios-card-titulo">
+                    {rel.titulo}
+                    {bloqueado && <span className="premium-lock" title="Disponível no plano Pro">🔒</span>}
+                  </span>
+                  <span className="relatorios-card-subtitulo">
+                    {bloqueado ? 'Disponível no plano Pro' : rel.subtitulo}
+                  </span>
+                </div>
+                <span className="relatorios-card-seta">{bloqueado ? '' : '›'}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

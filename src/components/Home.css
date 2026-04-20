@@ -223,6 +223,23 @@
   background: #ff9500;
 }
 
+/* Card bloqueado (Starter) */
+.home-card.bloqueado {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.home-card.bloqueado:active {
+  transform: none;
+}
+
+.home-card-lock {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 14px;
+}
+
 .home-card-icon {
   font-size: 36px;
   line-height: 1;
@@ -530,6 +547,20 @@
   font-size: 15px;
   font-weight: 600;
   color: var(--home-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-sheet-badge-enterprise {
+  font-size: 10px;
+  font-weight: 500;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .home-sheet-item-email {

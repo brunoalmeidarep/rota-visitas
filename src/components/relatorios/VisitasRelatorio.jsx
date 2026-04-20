@@ -99,7 +99,7 @@ function VisitasRelatorio() {
         .gte('data', inicio.toISOString().split('T')[0])
         .lte('data', fim.toISOString().split('T')[0])
         .order('data', { ascending: false })
-        .order('created_at', { ascending: false })
+        .order('criado_em', { ascending: false })
 
       clearTimeout(timeout)
 

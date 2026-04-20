@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { useRepresentada } from '../../contexts/RepresentadaContext'
 import { salvarCarrinho, lerCarrinho, limparCarrinho } from '../../lib/carrinhoStorage'
 import './Catalogo.css'
 
@@ -9,6 +10,7 @@ function Catalogo() {
   const navigate = useNavigate()
   const { id: pedidoId } = useParams()
   const { repId } = useRepId()
+  const { representadaSelecionada } = useRepresentada()
 
   const [pedido, setPedido] = useState(null)
   const [produtos, setProdutos] = useState([])
@@ -68,18 +70,29 @@ function Catalogo() {
     salvarCarrinho(pedidoId, itens)
   }, [pedidoId, itens])
 
-  // Carregar produtos
+  // Carregar produtos (considera tipo da representada selecionada)
   useEffect(() => {
-    if (!pedido?.representada_id) return
+    if (!pedido?.representada_id || !repId || !representadaSelecionada) return
 
     async function fetchProdutos() {
       setLoading(true)
-      const { data } = await supabase
+
+      let query = supabase
         .from('produtos')
         .select('*')
-        .eq('representada_id', pedido.representada_id)
         .eq('ativo', true)
-        .order('nome')
+
+      // Enterprise: busca por empresa_id (catálogo da indústria)
+      // PRO: busca por rep_id (catálogo próprio do representante)
+      if (representadaSelecionada.plano === 'enterprise' && representadaSelecionada.empresa_id) {
+        console.log('[Catalogo] Modo Enterprise - buscando por empresa_id:', representadaSelecionada.empresa_id)
+        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+      } else {
+        console.log('[Catalogo] Modo PRO - buscando por rep_id:', repId)
+        query = query.eq('rep_id', repId)
+      }
+
+      const { data } = await query.order('nome')
 
       if (data) {
         console.log('[Catalogo] Produtos carregados:', data.length)
@@ -94,7 +107,7 @@ function Catalogo() {
     }
 
     fetchProdutos()
-  }, [pedido?.representada_id])
+  }, [pedido?.representada_id, repId, representadaSelecionada])
 
   // Filtrar produtos
   const produtosFiltrados = produtos.filter(p => {

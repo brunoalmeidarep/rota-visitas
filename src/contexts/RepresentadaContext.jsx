@@ -10,32 +10,85 @@ export function RepresentadaProvider({ children }) {
   const [representadaSelecionada, setRepresentadaSelecionada] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Carregar representadas do banco
+  // Carregar representadas (PRO) e vínculos enterprise
   useEffect(() => {
     if (!repId) return
 
     async function fetchRepresentadas() {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('representadas')
-        .select('*')
-        .eq('rep_id', repId)
-        .order('nome')
 
-      if (error) {
-        console.error('[RepresentadaContext] Erro:', error)
-      } else {
-        setRepresentadas(data || [])
+      try {
+        // 1. Buscar representadas manuais do rep (plano PRO)
+        const { data: representadasPro, error: errorPro } = await supabase
+          .from('representadas')
+          .select('*')
+          .eq('rep_id', repId)
+          .order('nome')
+
+        if (errorPro) {
+          console.error('[RepresentadaContext] Erro representadas PRO:', errorPro)
+        }
+
+        // Adicionar tipo/plano às representadas PRO
+        const proList = (representadasPro || []).map(r => ({
+          ...r,
+          tipo: 'representada',
+          plano: 'pro'
+        }))
+
+        // 2. Buscar vínculos enterprise (representante_empresas JOIN empresas)
+        const { data: vinculosEnterprise, error: errorEnterprise } = await supabase
+          .from('representante_empresas')
+          .select(`
+            rep_id,
+            empresa_id,
+            plano,
+            codigo,
+            empresas (
+              id,
+              nome,
+              logo,
+              cor_pdf
+            )
+          `)
+          .eq('rep_id', repId)
+          .eq('ativo', true)
+
+        if (errorEnterprise) {
+          console.error('[RepresentadaContext] Erro vínculos Enterprise:', errorEnterprise)
+        }
+
+        // Transformar vínculos enterprise em formato compatível
+        const enterpriseList = (vinculosEnterprise || [])
+          .filter(v => v.empresas) // Só incluir se a empresa existe
+          .map(v => ({
+            id: v.empresa_id,
+            nome: v.empresas.nome,
+            logo: v.empresas.logo,
+            cor_pdf: v.empresas.cor_pdf,
+            tipo: 'empresa',
+            plano: v.plano || 'enterprise',
+            empresa_id: v.empresa_id
+          }))
+
+        // 3. Unificar as duas listas
+        const todasRepresentadas = [...proList, ...enterpriseList]
+        console.log('[RepresentadaContext] PRO:', proList.length, 'Enterprise:', enterpriseList.length)
+
+        setRepresentadas(todasRepresentadas)
 
         // Restaurar selecionada do localStorage ou usar a primeira
         const salvaId = localStorage.getItem('representada_selecionada')
-        if (salvaId && data?.find(r => r.id === salvaId)) {
-          setRepresentadaSelecionada(data.find(r => r.id === salvaId))
-        } else if (data && data.length > 0) {
-          setRepresentadaSelecionada(data[0])
-          localStorage.setItem('representada_selecionada', data[0].id)
+        if (salvaId && todasRepresentadas.find(r => r.id === salvaId)) {
+          setRepresentadaSelecionada(todasRepresentadas.find(r => r.id === salvaId))
+        } else if (todasRepresentadas.length > 0) {
+          setRepresentadaSelecionada(todasRepresentadas[0])
+          localStorage.setItem('representada_selecionada', todasRepresentadas[0].id)
         }
+      } catch (err) {
+        console.error('[RepresentadaContext] Erro geral:', err)
       }
+
       setLoading(false)
     }
 
@@ -52,26 +105,66 @@ export function RepresentadaProvider({ children }) {
   async function recarregarRepresentadas() {
     if (!repId) return
 
-    const { data } = await supabase
+    // 1. Representadas PRO
+    const { data: representadasPro } = await supabase
       .from('representadas')
       .select('*')
       .eq('rep_id', repId)
       .order('nome')
 
-    if (data) {
-      setRepresentadas(data)
-      // Se a selecionada nao existe mais, selecionar a primeira
-      if (representadaSelecionada && !data.find(r => r.id === representadaSelecionada.id)) {
-        if (data.length > 0) {
-          setRepresentadaSelecionada(data[0])
-          localStorage.setItem('representada_selecionada', data[0].id)
-        } else {
-          setRepresentadaSelecionada(null)
-          localStorage.removeItem('representada_selecionada')
-        }
+    const proList = (representadasPro || []).map(r => ({
+      ...r,
+      tipo: 'representada',
+      plano: 'pro'
+    }))
+
+    // 2. Vínculos Enterprise
+    const { data: vinculosEnterprise } = await supabase
+      .from('representante_empresas')
+      .select(`
+        rep_id,
+        empresa_id,
+        plano,
+        codigo,
+        empresas (
+          id,
+          nome,
+          logo,
+          cor_pdf
+        )
+      `)
+      .eq('rep_id', repId)
+      .eq('ativo', true)
+
+    const enterpriseList = (vinculosEnterprise || [])
+      .filter(v => v.empresas)
+      .map(v => ({
+        id: v.empresa_id,
+        nome: v.empresas.nome,
+        logo: v.empresas.logo,
+        cor_pdf: v.empresas.cor_pdf,
+        tipo: 'empresa',
+        plano: v.plano || 'enterprise',
+        empresa_id: v.empresa_id
+      }))
+
+    const todasRepresentadas = [...proList, ...enterpriseList]
+    setRepresentadas(todasRepresentadas)
+
+    // Se a selecionada nao existe mais, selecionar a primeira
+    if (representadaSelecionada && !todasRepresentadas.find(r => r.id === representadaSelecionada.id)) {
+      if (todasRepresentadas.length > 0) {
+        setRepresentadaSelecionada(todasRepresentadas[0])
+        localStorage.setItem('representada_selecionada', todasRepresentadas[0].id)
+      } else {
+        setRepresentadaSelecionada(null)
+        localStorage.removeItem('representada_selecionada')
       }
     }
   }
+
+  // Helper para verificar se a selecionada é enterprise
+  const isEnterprise = representadaSelecionada?.plano === 'enterprise'
 
   return (
     <RepresentadaContext.Provider value={{
@@ -79,7 +172,8 @@ export function RepresentadaProvider({ children }) {
       representadaSelecionada,
       trocarRepresentada,
       recarregarRepresentadas,
-      loading
+      loading,
+      isEnterprise
     }}>
       {children}
     </RepresentadaContext.Provider>

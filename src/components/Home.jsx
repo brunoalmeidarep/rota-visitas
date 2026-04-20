@@ -155,7 +155,7 @@ function Home() {
     navigate(rota)
   }
 
-  // Módulos do grid (2x3) - condicional por plano
+  // Módulos do grid (2x3)
   const modulos = [
     {
       id: 'pedidos',
@@ -173,15 +173,15 @@ function Home() {
       rota: '/clientes',
       badge: badgeVisitas
     },
-    // Produtos só aparece para Pro/Enterprise
-    ...(!isStarter ? [{
+    {
       id: 'produtos',
       icone: '📦',
       titulo: 'Produtos',
       subtitulo: 'Catálogo',
       rota: '/produtos',
-      badge: null
-    }] : []),
+      badge: null,
+      premium: true
+    },
     {
       id: 'planner',
       icone: '📅',
@@ -258,39 +258,48 @@ function Home() {
       <main className="home-content">
         {/* Grid de módulos */}
         <div className="home-grid">
-          {modulos.map((mod) => (
-            <button
-              key={mod.id}
-              className={`home-card ${mod.badge?.count > 0 && !mod.badge.isNew ? 'has-pending' : ''}`}
-              onClick={() => navegarPara(mod.rota, mod.badge ? mod.id : null)}
-            >
-              {/* Badge vermelho (novo) */}
-              {mod.badge?.count > 0 && mod.badge.isNew && (
-                <span className="home-badge-new">{mod.badge.count}</span>
-              )}
-              {/* Ponto laranja (pendência vista) */}
-              {mod.badge?.count > 0 && !mod.badge.isNew && (
-                <span className="home-badge-pending"></span>
-              )}
+          {modulos.map((mod) => {
+            const bloqueado = mod.premium && isStarter
 
-              {/* Botão + no card Finanças */}
-              {mod.id === 'financas' && (
-                <span
-                  className="home-card-plus"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setMostrarDespesa(true)
-                  }}
-                >
-                  +
-                </span>
-              )}
+            return (
+              <button
+                key={mod.id}
+                className={`home-card ${mod.badge?.count > 0 && !mod.badge.isNew ? 'has-pending' : ''} ${bloqueado ? 'bloqueado' : ''}`}
+                onClick={() => !bloqueado && navegarPara(mod.rota, mod.badge ? mod.id : null)}
+              >
+                {/* Badge vermelho (novo) */}
+                {mod.badge?.count > 0 && mod.badge.isNew && (
+                  <span className="home-badge-new">{mod.badge.count}</span>
+                )}
+                {/* Ponto laranja (pendência vista) */}
+                {mod.badge?.count > 0 && !mod.badge.isNew && (
+                  <span className="home-badge-pending"></span>
+                )}
 
-              <span className="home-card-icon">{mod.icone}</span>
-              <span className="home-card-titulo">{mod.titulo}</span>
-              <span className="home-card-subtitulo">{mod.subtitulo}</span>
-            </button>
-          ))}
+                {/* Cadeado para itens premium bloqueados */}
+                {bloqueado && (
+                  <span className="home-card-lock" title="Disponível no plano Pro">🔒</span>
+                )}
+
+                {/* Botão + no card Finanças */}
+                {mod.id === 'financas' && !bloqueado && (
+                  <span
+                    className="home-card-plus"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setMostrarDespesa(true)
+                    }}
+                  >
+                    +
+                  </span>
+                )}
+
+                <span className="home-card-icon">{mod.icone}</span>
+                <span className="home-card-titulo">{mod.titulo}</span>
+                <span className="home-card-subtitulo">{bloqueado ? 'Plano Pro' : mod.subtitulo}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Linha 4: Planejar rota + Tarefas */}
@@ -374,7 +383,12 @@ function Home() {
                     )}
                   </div>
                   <div className="home-sheet-item-info">
-                    <span className="home-sheet-item-nome">{rep.nome}</span>
+                    <span className="home-sheet-item-nome">
+                      {rep.nome}
+                      {rep.plano === 'enterprise' && (
+                        <span className="home-sheet-badge-enterprise">Enterprise</span>
+                      )}
+                    </span>
                     <span className="home-sheet-item-email">{rep.email || '-'}</span>
                   </div>
                   {representadaSelecionada?.id === rep.id && (

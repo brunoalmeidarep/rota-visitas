@@ -25,7 +25,7 @@ function ListaProdutos() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar produtos
+  // Carregar produtos (considera tipo da representada selecionada)
   useEffect(() => {
     if (!repId || !representadaSelecionada) {
       setProdutos([])
@@ -36,12 +36,21 @@ function ListaProdutos() {
     async function fetchProdutos() {
       setLoading(true)
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('produtos')
         .select('*')
-        .eq('rep_id', repId)
-        .eq('representada_id', representadaSelecionada.id)
-        .order('nome')
+
+      // Enterprise: busca por empresa_id (catálogo da indústria)
+      // PRO: busca por rep_id (catálogo próprio do representante)
+      if (representadaSelecionada.plano === 'enterprise' && representadaSelecionada.empresa_id) {
+        console.log('[ListaProdutos] Modo Enterprise - buscando por empresa_id:', representadaSelecionada.empresa_id)
+        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+      } else {
+        console.log('[ListaProdutos] Modo PRO - buscando por rep_id:', repId)
+        query = query.eq('rep_id', repId)
+      }
+
+      const { data, error } = await query.order('nome')
 
       if (error) {
         console.error('[ListaProdutos] Erro:', error)
