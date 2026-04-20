@@ -47,8 +47,8 @@ export function RepresentadaProvider({ children }) {
             empresas (
               id,
               nome,
-              logo,
-              cor_pdf
+              logo_url,
+              cor_primaria
             )
           `)
           .eq('rep_id', repId)
@@ -64,8 +64,8 @@ export function RepresentadaProvider({ children }) {
           .map(v => ({
             id: v.empresa_id,
             nome: v.empresas.nome,
-            logo: v.empresas.logo,
-            cor_pdf: v.empresas.cor_pdf,
+            logo_url: v.empresas.logo_url,
+            cor_primaria: v.empresas.cor_primaria,
             tipo: 'empresa',
             plano: v.plano || 'enterprise',
             empresa_id: v.empresa_id
@@ -129,8 +129,8 @@ export function RepresentadaProvider({ children }) {
         empresas (
           id,
           nome,
-          logo,
-          cor_pdf
+          logo_url,
+          cor_primaria
         )
       `)
       .eq('rep_id', repId)
@@ -141,8 +141,8 @@ export function RepresentadaProvider({ children }) {
       .map(v => ({
         id: v.empresa_id,
         nome: v.empresas.nome,
-        logo: v.empresas.logo,
-        cor_pdf: v.empresas.cor_pdf,
+        logo_url: v.empresas.logo_url,
+        cor_primaria: v.empresas.cor_primaria,
         tipo: 'empresa',
         plano: v.plano || 'enterprise',
         empresa_id: v.empresa_id
