@@ -62,9 +62,11 @@ function ListaPedidos() {
         query = query.eq('representada_id', representadaSelecionada.id)
       }
 
+      console.log('[ListaPedidos] executando query com empresa_id:', representadaSelecionada?.empresa_id)
+
       const { data, error } = await query.order('created_at', { ascending: false })
 
-      console.log('[ListaPedidos] pedidos retornados:', data?.length, data)
+      console.log('[ListaPedidos] pedidos retornados:', data?.length, data?.map(p => ({id: p.id, empresa_id: p.empresa_id, representada_id: p.representada_id})))
 
       if (error) {
         console.error('[ListaPedidos] Erro:', error)
