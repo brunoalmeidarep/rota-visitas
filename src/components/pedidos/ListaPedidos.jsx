@@ -13,6 +13,9 @@ function ListaPedidos() {
   const { isPro, isStarter } = usePlano()
   const { representadaSelecionada } = useRepresentada()
 
+  // Debug - verificar o que está chegando do context
+  console.log('[ListaPedidos] representadaSelecionada no render:', representadaSelecionada)
+
   const [pedidos, setPedidos] = useState([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
