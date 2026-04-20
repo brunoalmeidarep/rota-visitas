@@ -552,15 +552,28 @@
   gap: 8px;
 }
 
-.home-sheet-badge-enterprise {
+/* Badges de plano */
+.home-sheet-badge {
   font-size: 10px;
   font-weight: 500;
-  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
   padding: 2px 6px;
   border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.home-sheet-badge-free,
+.home-sheet-badge-starter {
+  background: #8e8e93;
+}
+
+.home-sheet-badge-pro {
+  background: linear-gradient(135deg, #34c759, #30d158);
+}
+
+.home-sheet-badge-enterprise {
+  background: linear-gradient(135deg, #667eea, #764ba2);
 }
 
 .home-sheet-item-email {

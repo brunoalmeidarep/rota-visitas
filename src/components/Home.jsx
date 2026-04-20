@@ -374,10 +374,10 @@ function Home() {
                   }}
                 >
                   <div className="home-sheet-item-icon">
-                    {rep.logo ? (
-                      <img src={rep.logo} alt="" />
+                    {rep.logo_url ? (
+                      <img src={rep.logo_url} alt="" />
                     ) : (
-                      <div className="home-sheet-item-placeholder" style={{ background: rep.cor_pdf || '#1a3a6b' }}>
+                      <div className="home-sheet-item-placeholder" style={{ background: rep.cor_primaria || '#1a3a6b' }}>
                         {rep.nome?.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -385,9 +385,9 @@ function Home() {
                   <div className="home-sheet-item-info">
                     <span className="home-sheet-item-nome">
                       {rep.nome}
-                      {rep.plano === 'enterprise' && (
-                        <span className="home-sheet-badge-enterprise">Enterprise</span>
-                      )}
+                      <span className={`home-sheet-badge home-sheet-badge-${rep.plano || 'starter'}`}>
+                        {(rep.plano || 'starter').toUpperCase()}
+                      </span>
                     </span>
                     <span className="home-sheet-item-email">{rep.email || '-'}</span>
                   </div>
