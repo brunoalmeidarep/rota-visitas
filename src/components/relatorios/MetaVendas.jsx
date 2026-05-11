@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
@@ -23,6 +24,7 @@ function MetaVendas() {
   const mesAtual = new Date().getMonth()
 
   const [loading, setLoading] = useState(true)
+  const [offline, setOffline] = useState(false)
   const [mesSelecionado, setMesSelecionado] = useState(mesAtual)
   const [anoSelecionado, setAnoSelecionado] = useState(anoAtual)
 
@@ -79,39 +81,48 @@ function MetaVendas() {
   }
 
   async function fetchDados() {
+    if (!navigator.onLine) {
+      setLoading(false)
+      setOffline(true)
+      return
+    }
+    setOffline(false)
+    if (representadaSelecionada?.tipo === 'empresa') {
+      return fetchDadosEnterprise()
+    }
+    return fetchDadosPro()
+  }
+
+  async function fetchDadosPro() {
     setLoading(true)
 
     const inicioMes = new Date(anoSelecionado, mesSelecionado, 1)
     const fimMes = new Date(anoSelecionado, mesSelecionado + 1, 0)
-    const hoje = new Date().toISOString().split('T')[0]
+    const hoje = dataLocal()
 
     // Vendas do mes
     let queryVendas = supabase
       .from('pedidos')
-      .select('valor_total, created_at')
+      .select('valor_liquido, created_at')
       .eq('rep_id', repId)
       .eq('status', 'pedido')
       .gte('created_at', inicioMes.toISOString())
       .lte('created_at', fimMes.toISOString() + 'T23:59:59')
 
     if (representadaSelecionada) {
-      if (representadaSelecionada.tipo === 'empresa') {
-        queryVendas = queryVendas.eq('empresa_id', representadaSelecionada.empresa_id)
-      } else {
-        queryVendas = queryVendas.eq('representada_id', representadaSelecionada.id)
-      }
+      queryVendas = queryVendas.eq('representada_id', representadaSelecionada.id)
     }
 
     const { data: pedidosMes } = await queryVendas
 
-    const totalMes = (pedidosMes || []).reduce((sum, p) => sum + (p.valor_total || 0), 0)
+    const totalMes = (pedidosMes || []).reduce((sum, p) => sum + (p.valor_liquido || 0), 0)
     setVendidoMes(totalMes)
 
     // Vendas de hoje (so se for o mes atual)
     const ehMesAtual = mesSelecionado === mesAtual && anoSelecionado === anoAtual
     if (ehMesAtual) {
       const pedidosHoje = (pedidosMes || []).filter(p => p.created_at?.startsWith(hoje))
-      const totalHoje = pedidosHoje.reduce((sum, p) => sum + (p.valor_total || 0), 0)
+      const totalHoje = pedidosHoje.reduce((sum, p) => sum + (p.valor_liquido || 0), 0)
       setVendidoHoje(totalHoje)
     } else {
       setVendidoHoje(0)
@@ -126,23 +137,81 @@ function MetaVendas() {
       .eq('ano', anoSelecionado)
 
     if (representadaSelecionada) {
-      if (representadaSelecionada.tipo === 'empresa') {
-        queryMeta = queryMeta.eq('empresa_id', representadaSelecionada.empresa_id)
-      } else {
-        queryMeta = queryMeta.eq('representada_id', representadaSelecionada.id)
-      }
+      queryMeta = queryMeta.eq('representada_id', representadaSelecionada.id)
     }
 
     const { data: metaData } = await queryMeta.maybeSingle()
     setMetaMes(metaData)
 
     // Historico (ultimos 12 meses, apenas com dados)
-    await fetchHistorico()
+    await fetchHistoricoPro()
+
+    setLoading(false)
+  }
+
+  async function fetchDadosEnterprise() {
+    setLoading(true)
+
+    const empresaId = representadaSelecionada.empresa_id
+    const hoje = dataLocal()
+
+    // Vendas do mes via view vendas_rep_mensal (so transmitidos)
+    const { data: vendasView } = await supabase
+      .from('vendas_rep_mensal')
+      .select('*')
+      .eq('rep_id', repId)
+      .eq('empresa_id', empresaId)
+      .eq('mes', mesSelecionado + 1)
+      .eq('ano', anoSelecionado)
+      .maybeSingle()
+
+    const totalMes = vendasView?.valor_vendido || 0
+    setVendidoMes(totalMes)
+
+    // Vendas de hoje (buscar pedidos transmitidos hoje)
+    const ehMesAtual = mesSelecionado === mesAtual && anoSelecionado === anoAtual
+    if (ehMesAtual) {
+      const { data: pedidosHoje } = await supabase
+        .from('pedidos')
+        .select('valor_liquido')
+        .eq('rep_id', repId)
+        .eq('empresa_id', empresaId)
+        .eq('erp_status', 'transmitido')
+        .gte('erp_transmitido_em', hoje + 'T00:00:00')
+        .lte('erp_transmitido_em', hoje + 'T23:59:59')
+
+      const totalHoje = (pedidosHoje || []).reduce((sum, p) => sum + (p.valor_liquido || 0), 0)
+      setVendidoHoje(totalHoje)
+    } else {
+      setVendidoHoje(0)
+    }
+
+    // Meta do mes (metas_rep_mensal para Enterprise)
+    const { data: metaData } = await supabase
+      .from('metas_rep_mensal')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .eq('rep_id', repId)
+      .eq('ano', anoSelecionado)
+      .eq('mes', mesSelecionado + 1)
+      .maybeSingle()
+
+    setMetaMes(metaData ? { valor: metaData.meta_valor } : null)
+
+    // Historico (ultimos 12 meses, apenas com dados)
+    await fetchHistoricoEnterprise()
 
     setLoading(false)
   }
 
   async function fetchHistorico() {
+    if (representadaSelecionada?.tipo === 'empresa') {
+      return fetchHistoricoEnterprise()
+    }
+    return fetchHistoricoPro()
+  }
+
+  async function fetchHistoricoPro() {
     const historicoData = []
 
     // Buscar ultimos 12 meses a partir do mes selecionado
@@ -160,22 +229,18 @@ function MetaVendas() {
       // Buscar vendas
       let qVendas = supabase
         .from('pedidos')
-        .select('valor_total')
+        .select('valor_liquido')
         .eq('rep_id', repId)
         .eq('status', 'pedido')
         .gte('created_at', inicio.toISOString())
         .lte('created_at', fim.toISOString() + 'T23:59:59')
 
       if (representadaSelecionada) {
-        if (representadaSelecionada.tipo === 'empresa') {
-          qVendas = qVendas.eq('empresa_id', representadaSelecionada.empresa_id)
-        } else {
-          qVendas = qVendas.eq('representada_id', representadaSelecionada.id)
-        }
+        qVendas = qVendas.eq('representada_id', representadaSelecionada.id)
       }
 
       const { data: vendas } = await qVendas
-      const totalVendas = (vendas || []).reduce((sum, p) => sum + (p.valor_total || 0), 0)
+      const totalVendas = (vendas || []).reduce((sum, p) => sum + (p.valor_liquido || 0), 0)
 
       // Buscar meta
       let qMeta = supabase
@@ -186,15 +251,64 @@ function MetaVendas() {
         .eq('ano', a)
 
       if (representadaSelecionada) {
-        if (representadaSelecionada.tipo === 'empresa') {
-          qMeta = qMeta.eq('empresa_id', representadaSelecionada.empresa_id)
-        } else {
-          qMeta = qMeta.eq('representada_id', representadaSelecionada.id)
-        }
+        qMeta = qMeta.eq('representada_id', representadaSelecionada.id)
       }
 
       const { data: meta } = await qMeta.maybeSingle()
       const metaValor = meta?.valor || 0
+
+      // So adicionar se tiver vendas OU meta (nunca zerado)
+      if (totalVendas > 0 || metaValor > 0) {
+        historicoData.push({
+          mes: m,
+          ano: a,
+          vendido: totalVendas,
+          meta: metaValor,
+          percentual: metaValor > 0 ? (totalVendas / metaValor) * 100 : 0,
+          bateu: metaValor > 0 && totalVendas >= metaValor
+        })
+      }
+    }
+
+    setHistorico(historicoData)
+  }
+
+  async function fetchHistoricoEnterprise() {
+    const empresaId = representadaSelecionada.empresa_id
+    const historicoData = []
+
+    // Buscar ultimos 12 meses via view vendas_rep_mensal
+    for (let i = 1; i <= 12; i++) {
+      let m = mesSelecionado - i
+      let a = anoSelecionado
+      while (m < 0) {
+        m += 12
+        a -= 1
+      }
+
+      // Buscar vendas transmitidas via view
+      const { data: vendasView } = await supabase
+        .from('vendas_rep_mensal')
+        .select('valor_vendido')
+        .eq('rep_id', repId)
+        .eq('empresa_id', empresaId)
+        .eq('mes', m + 1)
+        .eq('ano', a)
+        .maybeSingle()
+
+      const totalVendas = vendasView?.valor_vendido || 0
+
+      // Buscar meta (metas_rep_mensal para Enterprise)
+      const { data: meta } = await supabase
+        .from('metas_rep_mensal')
+        .select('meta_valor')
+        .eq('empresa_id', empresaId)
+        .eq('rep_id', repId)
+        .eq('ano', a)
+        .eq('mes', m + 1)
+        .maybeSingle()
+
+      const metaValor = meta?.meta_valor || 0
 
       // So adicionar se tiver vendas OU meta (nunca zerado)
       if (totalVendas > 0 || metaValor > 0) {
@@ -371,6 +485,12 @@ function MetaVendas() {
           </button>
         </div>
       </header>
+
+      {offline && (
+        <div style={{ background: '#ff9500', color: '#fff', padding: '8px 16px', textAlign: 'center', fontSize: 14 }}>
+          Voce esta offline. Conecte-se para ver os dados.
+        </div>
+      )}
 
       {/* Seletor de periodo: Mes + Ano */}
       <div className="mv-periodo">

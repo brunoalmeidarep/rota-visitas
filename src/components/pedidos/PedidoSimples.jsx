@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
 import './PedidoSimples.css'
@@ -135,7 +136,7 @@ function PedidoSimples() {
     setSalvando(true)
 
     try {
-      const hoje = new Date().toISOString().split('T')[0]
+      const hoje = dataLocal()
       const representadaNome = representadas.find(r => r.id === representadaId)?.nome || null
 
       console.log('[PedidoSimples] Salvando pedido com valor:', valorTotal)
@@ -150,7 +151,8 @@ function PedidoSimples() {
         visita_id: visitaId || null,
         representada_id: representadaId || null,
         representada_nome: representadaNome,
-        valor_total: valorTotal,
+        valor_bruto: valorTotal,
+        valor_desconto: 0,
         status: tipo === 'orcamento' ? 'orcamento' : 'pedido',
         canal: canal,
         obs: obs.trim() || null,

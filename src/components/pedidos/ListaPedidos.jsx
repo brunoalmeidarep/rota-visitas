@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { dataLocal, dataOntem } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import { limparCarrinho } from '../../lib/carrinhoStorage'
+import { db } from '../../lib/db'
 import './ListaPedidos.css'
 
 function ListaPedidos() {
@@ -36,46 +38,41 @@ function ListaPedidos() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar pedidos filtrados por representada/empresa selecionada
+  // Carregar pedidos filtrados por representada/empresa selecionada (do IndexedDB)
   useEffect(() => {
     if (!repId || !representadaSelecionada) return
-
     async function fetchPedidos() {
       setLoading(true)
+      try {
+        const todos = await db.pedidos
+          .where('rep_id')
+          .equals(repId)
+          .toArray()
 
-      // Debug logs
-      console.log('[ListaPedidos] representadaSelecionada:', representadaSelecionada)
-      console.log('[ListaPedidos] tipo:', representadaSelecionada?.tipo)
-      console.log('[ListaPedidos] empresa_id:', representadaSelecionada?.empresa_id)
+        const filtrados = todos.filter(p => {
+          if (representadaSelecionada.tipo === 'empresa') {
+            return p.empresa_id === representadaSelecionada.empresa_id
+          } else {
+            return p.representada_id === representadaSelecionada.id
+          }
+        })
 
-      let query = supabase
-        .from('pedidos')
-        .select('*')
-        .eq('rep_id', repId)
+        // Ordena por created_at desc (mais recente primeiro). Pedidos offline (sem created_at) vão pro topo
+        filtrados.sort((a, b) => {
+          if (!a.created_at && !b.created_at) return 0
+          if (!a.created_at) return -1
+          if (!b.created_at) return 1
+          return new Date(b.created_at) - new Date(a.created_at)
+        })
 
-      // Filtrar por representada ou empresa conforme o tipo selecionado
-      if (representadaSelecionada.tipo === 'empresa') {
-        console.log('[ListaPedidos] query empresa_id:', representadaSelecionada.empresa_id)
-        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
-      } else {
-        console.log('[ListaPedidos] query representada_id:', representadaSelecionada.id)
-        query = query.eq('representada_id', representadaSelecionada.id)
-      }
-
-      console.log('[ListaPedidos] executando query com empresa_id:', representadaSelecionada?.empresa_id)
-
-      const { data, error } = await query.order('created_at', { ascending: false })
-
-      console.log('[ListaPedidos] pedidos retornados:', data?.length, data?.map(p => ({id: p.id, empresa_id: p.empresa_id, representada_id: p.representada_id})))
-
-      if (error) {
-        console.error('[ListaPedidos] Erro:', error)
-      } else {
-        setPedidos(data || [])
+        console.log('[ListaPedidos] pedidos carregados do IndexedDB:', filtrados.length)
+        setPedidos(filtrados)
+      } catch (err) {
+        console.error('[ListaPedidos] Erro:', err)
+        setPedidos([])
       }
       setLoading(false)
     }
-
     fetchPedidos()
   }, [repId, representadaSelecionada])
 
@@ -100,7 +97,9 @@ function ListaPedidos() {
   function agruparPorData(items) {
     const grupos = {}
     items.forEach(item => {
-      const data = item.created_at?.split('T')[0] || 'sem-data'
+      const data = item.created_at
+        ? dataLocal(new Date(item.created_at))
+        : 'sem-data'
       if (!grupos[data]) {
         grupos[data] = []
       }
@@ -117,8 +116,8 @@ function ListaPedidos() {
 
   function formatarDataGrupo(dataStr) {
     if (dataStr === 'sem-data') return 'Sem data'
-    const hoje = new Date().toISOString().split('T')[0]
-    const ontem = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    const hoje = dataLocal()
+    const ontem = dataOntem()
 
     const d = new Date(dataStr + 'T12:00:00')
     const ddmm = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
@@ -323,11 +322,16 @@ function ListaPedidos() {
                         </span>
                       </div>
                       <div className="lp-item-right">
-                        <span className="lp-item-valor">{formatarValor(p.valor_total)}</span>
-                        <span className={`lp-item-badge ${p.status}`}>
-                          {p.status === 'orcamento' ? 'Orçamento' :
-                           p.status === 'transmitido' ? 'Transmitido' : 'Pedido'}
-                        </span>
+                        <span className="lp-item-valor">{formatarValor(p.valor_liquido)}</span>
+                        <div className="lp-item-badges">
+                          {p.pedido_origem_id && (
+                            <span className="lp-item-badge-saldo">SALDO</span>
+                          )}
+                          <span className={`lp-item-badge ${p.status}`}>
+                            {p.status === 'orcamento' ? 'Orçamento' :
+                             p.status === 'transmitido' ? 'Transmitido' : 'Pedido'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     {p.status === 'orcamento' && (

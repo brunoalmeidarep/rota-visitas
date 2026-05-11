@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRepId } from '../hooks/useRepId'
+import { useSync } from '../hooks/useSync'
 
 const RepresentadaContext = createContext(null)
 
@@ -111,8 +112,16 @@ export function RepresentadaProvider({ children }) {
 
   // Funcao para trocar representada
   function trocarRepresentada(representada) {
+    if (!representada) return
     setRepresentadaSelecionada(representada)
     localStorage.setItem('representada_selecionada', representada.id)
+    // Dispara sync da nova empresa em background
+    const novoEmpresaId = representada.plano === 'enterprise' ? representada.empresa_id : representada.id
+    if (sync && sync.sincronizar && novoEmpresaId) {
+      sync.sincronizar(true).catch(err => {
+        console.warn('[RepresentadaContext] Erro ao sincronizar após troca:', err)
+      })
+    }
   }
 
   // Funcao para recarregar representadas
@@ -188,6 +197,16 @@ export function RepresentadaProvider({ children }) {
   // Helper para verificar se a selecionada é enterprise
   const isEnterprise = representadaSelecionada?.plano === 'enterprise'
 
+  // Determina qual ID usar pra sincronização
+  // Enterprise: usa empresa_id. PRO: usa id da representada (a representada PRO É a empresa do rep no schema)
+  const empresaIdParaSync = representadaSelecionada
+    ? (representadaSelecionada.plano === 'enterprise'
+        ? representadaSelecionada.empresa_id
+        : representadaSelecionada.id)
+    : null
+
+  const sync = useSync(empresaIdParaSync)
+
   return (
     <RepresentadaContext.Provider value={{
       representadas,
@@ -195,7 +214,8 @@ export function RepresentadaProvider({ children }) {
       trocarRepresentada,
       recarregarRepresentadas,
       loading,
-      isEnterprise
+      isEnterprise,
+      sync
     }}>
       {children}
     </RepresentadaContext.Provider>

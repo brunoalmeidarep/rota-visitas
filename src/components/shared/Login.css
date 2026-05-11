@@ -4,7 +4,8 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: linear-gradient(135deg, #1a3a6b 0%, #0f172a 100%);
+  background: linear-gradient(135deg, #1a3a6b 0%, #0f172a 100%) url('/login-bg.jpg?v=2') center/cover no-repeat;
+  background-attachment: scroll;
 }
 
 .login-card {
@@ -23,9 +24,10 @@
 }
 
 .logo-icon {
-  font-size: 48px;
+  width: 96px;
+  height: 96px;
   display: block;
-  margin-bottom: 12px;
+  margin: 0 auto 12px;
 }
 
 .login-logo h1 {

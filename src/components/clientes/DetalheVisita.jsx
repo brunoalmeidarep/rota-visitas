@@ -143,7 +143,7 @@ function DetalheVisita() {
     return categorias[id] || { nome: id, icone: '💰' }
   }
 
-  const totalPedidos = pedidos.reduce((acc, p) => acc + (p.valor_total || 0), 0)
+  const totalPedidos = pedidos.reduce((acc, p) => acc + (p.valor_liquido || 0), 0)
   const totalGastos = gastos.reduce((acc, g) => acc + (g.valor || 0), 0)
 
   if (loading) {
@@ -241,7 +241,7 @@ function DetalheVisita() {
                     <span className="dv-item-nome">{p.representada_nome || 'Pedido'}</span>
                     {getStatusBadge(p.status)}
                   </div>
-                  <span className="dv-item-valor">{formatarValor(p.valor_total)}</span>
+                  <span className="dv-item-valor">{formatarValor(p.valor_liquido)}</span>
                 </div>
               ))}
             </div>

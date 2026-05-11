@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import InputEndereco from '../shared/InputEndereco'
 import './Planner.css'
@@ -180,61 +181,54 @@ function Planner() {
 
   const carregarTodoPlanner = useCallback(async () => {
     if (!repId) return
-
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('planner')
-        .select('id, titulo, data, hora, tipo, cliente_id')
-        .eq('rep_id', repId)
+      const data = await db.planner
+        .where('rep_id')
+        .equals(repId)
+        .toArray()
 
-      if (error) {
-        console.error('[Planner] Erro ao carregar:', error)
-      } else {
-        // Agrupar eventos por data
-        const dados = {}
-        data.forEach(item => {
-          const ds = item.data
-          if (!dados[ds]) {
-            dados[ds] = { eventos: [] }
-          }
-          dados[ds].eventos.push({
-            id: item.id,
-            txt: item.titulo || '',
-            hora: item.hora || '09:00',
-            cor: item.tipo || 'blue',
-            cliente_id: item.cliente_id
-          })
+      // Agrupar eventos por data
+      const dados = {}
+      for (const item of data || []) {
+        const ds = item.data
+        if (!ds) continue
+        if (!dados[ds]) {
+          dados[ds] = { eventos: [] }
+        }
+        dados[ds].eventos.push({
+          id: item.id,
+          txt: item.titulo || '',
+          hora: item.hora || '09:00',
+          cor: item.tipo || 'blue',
+          cliente_id: item.cliente_id
         })
-        // Ordenar eventos por hora em cada dia
-        Object.keys(dados).forEach(ds => {
-          dados[ds].eventos.sort((a, b) => (a.hora || '').localeCompare(b.hora || ''))
-        })
-        setPlannerDados(dados)
       }
+      // Ordenar eventos por hora em cada dia
+      Object.keys(dados).forEach(ds => {
+        dados[ds].eventos.sort((a, b) => (a.hora || '').localeCompare(b.hora || ''))
+      })
+      setPlannerDados(dados)
     } catch (err) {
-      console.error('[Planner] Exceção:', err)
+      console.error('[Planner] Erro:', err)
+      setPlannerDados({})
     }
     setLoading(false)
   }, [repId])
 
   const carregarVisitasDia = useCallback(async (ds) => {
     if (!repId) return
-
     try {
-      const { data, error } = await supabase
-        .from('visitas')
-        .select('id, cliente_id, nome_cliente, cidade, hora, tipo')
-        .eq('rep_id', repId)
-        .eq('data', ds)
-        .neq('tipo', 'whatsapp')
-        .order('hora')
-
-      if (!error && data) {
-        setVisitasDia(data)
-      }
+      const todas = await db.visitas
+        .where('rep_id')
+        .equals(repId)
+        .toArray()
+      const filtradas = todas
+        .filter(v => v.data === ds && v.tipo !== 'whatsapp')
+        .sort((a, b) => (a.hora || '').localeCompare(b.hora || ''))
+      setVisitasDia(filtradas)
     } catch (err) {
-      console.error('[Planner] Erro ao carregar visitas:', err)
+      console.error('[Planner] Erro visitas:', err)
     }
   }, [repId])
 
@@ -243,14 +237,14 @@ function Planner() {
   const carregarRotas = useCallback(async () => {
     if (!repId) return
     try {
-      const { data } = await supabase
-        .from('rotas')
-        .select('*')
-        .eq('rep_id', repId)
-        .order('created_at', { ascending: false })
-      setRotasCache(data || [])
-    } catch (e) {
-      console.error('[Rotas] Erro:', e)
+      const data = await db.rotas
+        .where('rep_id')
+        .equals(repId)
+        .toArray()
+      data.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+      setRotasCache(data)
+    } catch (err) {
+      console.error('[Planner] Erro rotas:', err)
       setRotasCache([])
     }
   }, [repId])
@@ -258,11 +252,10 @@ function Planner() {
   const carregarClientes = useCallback(async () => {
     if (!repId) return
     try {
-      const { data } = await supabase
-        .from('clientes')
-        .select('id, nome, cidade, endereco, lat, lng')
-        .eq('rep_id', repId)
-        .order('nome')
+      const data = await db.clientes
+        .where('rep_id')
+        .equals(repId)
+        .sortBy('nome')
       setClientesCache(data || [])
     } catch (e) {
       console.error('[Clientes] Erro:', e)

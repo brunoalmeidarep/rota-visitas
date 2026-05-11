@@ -1,9 +1,14 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
+import { nomeFornecedor } from '../../utils/fornecedor'
 import './ListaProdutos.css'
+
+const PAGE_SIZE = 50
+const DEBOUNCE_MS = 350
 
 function ListaProdutos() {
   const navigate = useNavigate()
@@ -12,9 +17,17 @@ function ListaProdutos() {
 
   const [produtos, setProdutos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [carregandoMais, setCarregandoMais] = useState(false)
   const [busca, setBusca] = useState('')
+  const [buscaDebounced, setBuscaDebounced] = useState('')
   const [filtroAtivo, setFiltroAtivo] = useState('todos')
+  const [stats, setStats] = useState({ total: 0, ativos: 0, inativos: 0 })
+  const [temMais, setTemMais] = useState(true)
   const [isDark, setIsDark] = useState(false)
+
+  const paginaRef = useRef(0)
+  const sentinelRef = useRef(null)
+  const requestIdRef = useRef(0)
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -25,85 +38,174 @@ function ListaProdutos() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar produtos (considera tipo da representada selecionada)
+  // Debounce
+  useEffect(() => {
+    const t = setTimeout(() => setBuscaDebounced(busca.trim()), DEBOUNCE_MS)
+    return () => clearTimeout(t)
+  }, [busca])
+
+  // Stats totais (chama 1 vez ao trocar empresa/rep, não toda paginação)
+  useEffect(() => {
+    if (!repId || !representadaSelecionada) {
+      setStats({ total: 0, ativos: 0, inativos: 0 })
+      return
+    }
+
+    async function loadStats() {
+      // Stats do IndexedDB (funciona online e offline)
+      try {
+        let todosParaStats = await db.produtos
+          .filter(p => p.desativado_manualmente === false)
+          .toArray()
+
+        if (representadaSelecionada?.plano === 'enterprise' && representadaSelecionada?.empresa_id) {
+          todosParaStats = todosParaStats.filter(p => p.empresa_id === representadaSelecionada.empresa_id)
+        } else if (repId) {
+          todosParaStats = todosParaStats.filter(p => p.rep_id === repId)
+        }
+
+        const total = todosParaStats.length
+        const ativos = todosParaStats.filter(p => p.ativo === true).length
+
+        setStats({
+          total,
+          ativos,
+          inativos: total - ativos
+        })
+      } catch (err) {
+        console.error('[ListaProdutos] Erro stats:', err)
+        setStats({ total: 0, ativos: 0, inativos: 0 })
+      }
+    }
+    loadStats()
+  }, [repId, representadaSelecionada])
+
+  // Monta query base
+  const montarQueryBase = useCallback(() => {
+    let query = supabase
+      .from('produtos_com_preco_distribuidora')
+      .select('id, nome, codigo, codigo_barras, preco, preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia, ipi, unidade, fotos, foto_url, ativo, fornecedores(nome, nome_fantasia)')
+      .eq('desativado_manualmente', false)
+
+    if (representadaSelecionada?.plano === 'enterprise' && representadaSelecionada?.empresa_id) {
+      query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+    } else if (repId) {
+      query = query.eq('rep_id', repId)
+    }
+
+    // Filtro de status
+    if (filtroAtivo === 'ativos') {
+      query = query.eq('ativo', true)
+    } else if (filtroAtivo === 'inativos') {
+      query = query.eq('ativo', false)
+    }
+
+    return query
+  }, [representadaSelecionada, repId, filtroAtivo])
+
+  const aplicarBusca = useCallback((query, termo) => {
+    if (!termo) return query
+    const t = termo.replace(/,/g, ' ').trim()
+    return query.or(`nome.ilike.%${t}%,codigo.ilike.%${t}%,codigo_barras.ilike.%${t}%`)
+  }, [])
+
+  // Reset + busca ao mudar busca/empresa/filtro (lê do IndexedDB)
   useEffect(() => {
     if (!repId || !representadaSelecionada) {
       setProdutos([])
       setLoading(false)
       return
     }
+    setLoading(true)
 
-    async function fetchProdutos() {
-      setLoading(true)
+    async function buscar() {
+      try {
+        let todos = await db.produtos
+          .filter(p => p.desativado_manualmente === false)
+          .toArray()
 
-      let query = supabase
-        .from('produtos')
-        .select('*')
+        // Filtro por empresa (enterprise) ou rep (PRO)
+        if (representadaSelecionada?.plano === 'enterprise' && representadaSelecionada?.empresa_id) {
+          todos = todos.filter(p => p.empresa_id === representadaSelecionada.empresa_id)
+        } else if (repId) {
+          todos = todos.filter(p => p.rep_id === repId)
+        }
 
-      // Enterprise: busca por empresa_id (catálogo da indústria)
-      // PRO: busca por rep_id (catálogo próprio do representante)
-      if (representadaSelecionada.plano === 'enterprise' && representadaSelecionada.empresa_id) {
-        console.log('[ListaProdutos] Modo Enterprise - buscando por empresa_id:', representadaSelecionada.empresa_id)
-        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
-      } else {
-        console.log('[ListaProdutos] Modo PRO - buscando por rep_id:', repId)
-        query = query.eq('rep_id', repId)
+        // Filtro de busca
+        const termo = (buscaDebounced || '').replace(/,/g, ' ').trim().toLowerCase()
+        if (termo) {
+          todos = todos.filter(p => {
+            const nome = (p.nome || '').toLowerCase()
+            const codigo = (p.codigo || '').toLowerCase()
+            const codBarras = (p.codigo_barras || '').toLowerCase()
+            return nome.includes(termo) || codigo.includes(termo) || codBarras.includes(termo)
+          })
+        }
+
+        // Filtro ativo
+        if (typeof filtroAtivo !== 'undefined' && filtroAtivo !== 'todos') {
+          if (filtroAtivo === 'ativos') {
+            todos = todos.filter(p => p.ativo === true)
+          } else if (filtroAtivo === 'inativos') {
+            todos = todos.filter(p => p.ativo === false)
+          }
+        }
+
+        todos.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+        setProdutos(todos)
+        setTemMais(false)
+      } catch (err) {
+        console.error('[ListaProdutos] Erro IndexedDB:', err)
+        setProdutos([])
       }
-
-      const { data, error } = await query.order('nome')
-
-      if (error) {
-        console.error('[ListaProdutos] Erro:', error)
-      } else {
-        console.log('[ListaProdutos] Produtos carregados:', data?.length)
-        // Remover duplicatas por nome + código (manter o primeiro)
-        const uniqueProdutos = data?.filter((p, i, arr) =>
-          arr.findIndex(x => x.codigo === p.codigo && x.nome === p.nome) === i
-        ) || []
-        console.log('[ListaProdutos] Produtos únicos:', uniqueProdutos.length)
-        setProdutos(uniqueProdutos)
-      }
-
       setLoading(false)
     }
 
-    fetchProdutos()
-  }, [repId, representadaSelecionada])
+    buscar()
+  }, [repId, representadaSelecionada, buscaDebounced, filtroAtivo])
 
-  // Contagens
-  const contagens = useMemo(() => {
-    const counts = { todos: 0, ativos: 0, inativos: 0 }
-    produtos.forEach(p => {
-      counts.todos++
-      if (p.ativo !== false) {
-        counts.ativos++
-      } else {
-        counts.inativos++
-      }
-    })
-    return counts
-  }, [produtos])
+  // Carrega mais
+  const carregarMais = useCallback(async () => {
+    if (carregandoMais || !temMais || loading) return
 
-  // Filtrar produtos
-  const produtosFiltrados = useMemo(() => {
-    return produtos.filter(p => {
-      // Filtro de busca
-      const termoBusca = busca.toLowerCase()
-      const matchBusca = !busca ||
-        p.nome?.toLowerCase().includes(termoBusca) ||
-        p.codigo?.toLowerCase().includes(termoBusca)
+    const currentRequestId = requestIdRef.current
+    setCarregandoMais(true)
+    paginaRef.current += 1
 
-      // Filtro de status
-      let matchStatus = true
-      if (filtroAtivo === 'ativos') {
-        matchStatus = p.ativo !== false
-      } else if (filtroAtivo === 'inativos') {
-        matchStatus = p.ativo === false
-      }
+    const offset = paginaRef.current * PAGE_SIZE
+    let query = montarQueryBase()
+    query = aplicarBusca(query, buscaDebounced)
+    query = query.order('nome').range(offset, offset + PAGE_SIZE - 1)
 
-      return matchBusca && matchStatus
-    })
-  }, [produtos, busca, filtroAtivo])
+    const { data, error } = await query
+    if (currentRequestId !== requestIdRef.current) {
+      setCarregandoMais(false)
+      return
+    }
+
+    if (error) {
+      console.error('[ListaProdutos] Erro paginação:', error)
+      setTemMais(false)
+    } else {
+      setProdutos(prev => [...prev, ...(data || [])])
+      setTemMais((data?.length || 0) === PAGE_SIZE)
+    }
+    setCarregandoMais(false)
+  }, [carregandoMais, temMais, loading, buscaDebounced, montarQueryBase, aplicarBusca])
+
+  // IntersectionObserver
+  useEffect(() => {
+    if (!sentinelRef.current) return
+    const el = sentinelRef.current
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) carregarMais()
+      },
+      { rootMargin: '300px' }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [carregarMais])
 
   function formatarPreco(valor) {
     if (!valor && valor !== 0) return '-'
@@ -111,23 +213,6 @@ function ListaProdutos() {
       style: 'currency',
       currency: 'BRL'
     }).format(valor)
-  }
-
-  if (loading) {
-    return (
-      <div className={`lista-produtos ${isDark ? 'dark' : 'light'}`}>
-        <header className="lp-header">
-          <button className="lp-voltar" onClick={() => navigate('/')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-          </button>
-          <span className="lp-header-titulo">Produtos</span>
-          <div style={{ width: 40 }}></div>
-        </header>
-        <div className="lp-loading">Carregando...</div>
-      </div>
-    )
   }
 
   return (
@@ -148,7 +233,6 @@ function ListaProdutos() {
         </button>
       </header>
 
-      {/* Representada selecionada */}
       {representadaSelecionada && (
         <div className="lp-representada">
           <span className="lp-rep-label">Empresa:</span>
@@ -173,7 +257,7 @@ function ListaProdutos() {
             <input
               type="text"
               className="lp-busca-input"
-              placeholder="Buscar por nome ou código..."
+              placeholder="Buscar por nome, código ou referência..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />
@@ -193,37 +277,39 @@ function ListaProdutos() {
               className={`lp-stat-item ${filtroAtivo === 'todos' ? 'active' : ''}`}
               onClick={() => setFiltroAtivo('todos')}
             >
-              <span className="lp-stat-count">{contagens.todos}</span>
+              <span className="lp-stat-count">{stats.total}</span>
               <span className="lp-stat-label">Todos</span>
             </button>
             <button
               className={`lp-stat-item ${filtroAtivo === 'ativos' ? 'active' : ''}`}
               onClick={() => setFiltroAtivo('ativos')}
             >
-              <span className="lp-stat-count verde">{contagens.ativos}</span>
+              <span className="lp-stat-count verde">{stats.ativos}</span>
               <span className="lp-stat-label">Ativos</span>
             </button>
             <button
               className={`lp-stat-item ${filtroAtivo === 'inativos' ? 'active' : ''}`}
               onClick={() => setFiltroAtivo('inativos')}
             >
-              <span className="lp-stat-count vermelho">{contagens.inativos}</span>
+              <span className="lp-stat-count vermelho">{stats.inativos}</span>
               <span className="lp-stat-label">Inativos</span>
             </button>
           </div>
 
-          {/* Lista de Produtos */}
+          {/* Lista */}
           <div className="lp-lista">
-            {produtosFiltrados.length === 0 ? (
+            {loading ? (
+              <div className="lp-loading">Carregando...</div>
+            ) : produtos.length === 0 ? (
               <div className="lp-vazio">
-                {busca ? (
+                {buscaDebounced ? (
                   <>
                     <p>Nenhum produto encontrado</p>
                     <button className="lp-btn-limpar" onClick={() => setBusca('')}>
                       Limpar busca
                     </button>
                   </>
-                ) : produtos.length === 0 ? (
+                ) : stats.total === 0 ? (
                   <>
                     <div className="lp-vazio-icon">📦</div>
                     <h3>Nenhum produto cadastrado</h3>
@@ -237,42 +323,89 @@ function ListaProdutos() {
                 )}
               </div>
             ) : (
-              produtosFiltrados.map(produto => {
-                const isInativo = produto.ativo === false
-                const fotoUrl = produto.fotos?.[0] || null
+              <>
+                {produtos.map(produto => {
+                  const isInativo = produto.ativo === false
+                  const fotoUrl = produto.fotos?.[0] || produto.foto_url || null
+                  const marcaNome = nomeFornecedor(produto)
+                  const temDesconto = produto.desconto_pct_aplicado > 0 &&
+                    produto.preco_distribuidora != null &&
+                    produto.preco_loja != null &&
+                    produto.preco_distribuidora < produto.preco_loja
+                  const precoExibir = produto.preco_distribuidora ?? produto.preco_loja ?? produto.preco
 
-                return (
-                  <button
-                    key={produto.id}
-                    className={`lp-produto-card ${isInativo ? 'inativo' : ''}`}
-                    onClick={() => navigate(`/produtos/${produto.id}`)}
-                  >
-                    <div className="lp-produto-foto">
-                      {fotoUrl ? (
-                        <img src={fotoUrl} alt={produto.nome} />
-                      ) : (
-                        <span className="lp-produto-foto-placeholder">📦</span>
-                      )}
-                    </div>
-                    <div className="lp-produto-info">
-                      <span className="lp-produto-nome">{produto.nome}</span>
-                      <span className="lp-produto-codigo">{produto.codigo || '-'}</span>
-                      <div className="lp-produto-preco-row">
-                        <span className="lp-produto-preco">
-                          {formatarPreco(produto.preco)}/{produto.unidade || 'UN'}
-                        </span>
-                        {produto.ipi > 0 && (
-                          <span className="lp-badge-ipi">IPI {produto.ipi}%</span>
-                        )}
-                        {isInativo && (
-                          <span className="lp-badge-inativo">Inativo</span>
+                  return (
+                    <button
+                      key={produto.id}
+                      className={`lp-produto-card ${isInativo ? 'inativo' : ''}`}
+                      onClick={() => navigate(`/produtos/${produto.id}`)}
+                    >
+                      <div className="lp-produto-foto">
+                        {fotoUrl ? (
+                          <img src={fotoUrl} alt={produto.nome} loading="lazy" />
+                        ) : (
+                          <span className="lp-produto-foto-placeholder">📦</span>
                         )}
                       </div>
-                    </div>
-                    <span className="lp-produto-seta">›</span>
-                  </button>
-                )
-              })
+                      <div className="lp-produto-info">
+                        <span className="lp-produto-nome">{produto.nome}</span>
+                        <span className="lp-produto-codigo">
+                          Cód: {produto.codigo || '-'}
+                          {produto.codigo_barras && (
+                            <> · Ref: {produto.codigo_barras}</>
+                          )}
+                        </span>
+                        <div className="lp-produto-preco-row">
+                          {temDesconto ? (
+                            <>
+                              <span className="lp-produto-preco-riscado">
+                                {formatarPreco(produto.preco_loja)}
+                              </span>
+                              <span className="lp-produto-preco-destaque">
+                                {formatarPreco(precoExibir)}/{produto.unidade || 'UN'}
+                              </span>
+                              <span className="lp-badge-desconto">
+                                -{Math.round(produto.desconto_pct_aplicado)}%
+                              </span>
+                            </>
+                          ) : (
+                            <span className="lp-produto-preco">
+                              {formatarPreco(precoExibir)}/{produto.unidade || 'UN'}
+                            </span>
+                          )}
+                          {produto.ipi > 0 && (
+                            <span className="lp-badge-ipi">IPI {produto.ipi}%</span>
+                          )}
+                          {isInativo && (
+                            <span className="lp-badge-inativo">Inativo</span>
+                          )}
+                        </div>
+                        {produto.nome_familia && (
+                          <span className="lp-produto-familia">{produto.nome_familia}</span>
+                        )}
+                      </div>
+                      <div className="lp-produto-right">
+                        {marcaNome && (
+                          <span className="lp-badge-fornecedor">{marcaNome}</span>
+                        )}
+                        <span className="lp-produto-seta">›</span>
+                      </div>
+                    </button>
+                  )
+                })}
+
+                {/* Sentinela infinite scroll */}
+                {temMais && (
+                  <div ref={sentinelRef} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    {carregandoMais ? 'Carregando mais...' : ''}
+                  </div>
+                )}
+                {!temMais && produtos.length > 0 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px', opacity: 0.6 }}>
+                    — fim dos resultados —
+                  </div>
+                )}
+              </>
             )}
           </div>
         </>

@@ -147,7 +147,7 @@ function Login() {
       <div className="login-card">
         {/* Logo */}
         <div className="login-logo">
-          <span className="logo-icon">💼</span>
+          <img src="/icon-192.png" alt="Minha Rota RP" className="logo-icon" />
           <h1>Minha Rota RP</h1>
           <p>CRM para representantes comerciais</p>
         </div>

@@ -175,8 +175,8 @@ function DescontosPedido() {
     const dadosUpdate = {
       politicas_ativas: politicasAtivas,
       descontos_rep: descontosRep,
-      valor_desconto: totalDesconto,
-      valor_total: total
+      valor_bruto: subtotalTabela,
+      valor_desconto: totalDesconto
     }
 
     console.log('[DescontosPedido] Salvando:', JSON.stringify(dadosUpdate, null, 2))

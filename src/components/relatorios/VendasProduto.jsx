@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import './VendasProduto.css'
@@ -47,22 +48,19 @@ function VendasProduto() {
     const dataLimite = new Date()
     dataLimite.setDate(dataLimite.getDate() - periodo)
 
-    let query = supabase
-      .from('pedidos')
-      .select('itens')
-      .eq('rep_id', repId)
-      .eq('status', 'pedido')
-      .gte('created_at', dataLimite.toISOString())
+    const todos = await db.pedidos.where('rep_id').equals(repId).toArray()
+    let data = todos.filter(p =>
+      p.status === 'pedido' &&
+      new Date(p.created_at) >= dataLimite
+    )
 
     if (representadaSelecionada) {
       if (representadaSelecionada.tipo === 'empresa') {
-        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+        data = data.filter(p => p.empresa_id === representadaSelecionada.empresa_id)
       } else {
-        query = query.eq('representada_id', representadaSelecionada.id)
+        data = data.filter(p => p.representada_id === representadaSelecionada.id)
       }
     }
-
-    const { data } = await query
 
     // Agrupar itens por produto
     const porProduto = {}

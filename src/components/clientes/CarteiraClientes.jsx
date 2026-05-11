@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import './CarteiraClientes.css'
 
@@ -47,34 +48,19 @@ function CarteiraClientes() {
   // Função para buscar clientes (reutilizável)
   const fetchClientes = useCallback(async () => {
     if (!repId) return
-
     setLoading(true)
-    setErro(null)
-    console.log('[CarteiraClientes] Buscando clientes para rep_id:', repId)
-
     try {
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq('rep_id', repId)
-        .order('nome')
-
-      console.log('[CarteiraClientes] Resultado:', { data, error })
-
-      if (error) {
-        console.error('[CarteiraClientes] Erro Supabase:', error)
-        setErro(error.message || 'Erro ao carregar clientes')
-      } else {
-        setClientes(data || [])
-        console.log('[CarteiraClientes] Clientes carregados:', data?.length || 0)
-      }
+      const data = await db.clientes
+        .where('rep_id')
+        .equals(repId)
+        .sortBy('nome')
+      setClientes(data || [])
     } catch (err) {
-      console.error('[CarteiraClientes] Exceção:', err)
-      setErro('Erro de conexão. Verifique sua internet.')
-    } finally {
-      setLoading(false)
-      setCarregouUmaVez(true)
+      console.error('[CarteiraClientes] Erro:', err)
+      setClientes([])
     }
+    setLoading(false)
+    setCarregouUmaVez(true)
   }, [repId])
 
   // Debug: log repId

@@ -113,23 +113,26 @@
   margin-top: -8px;
 }
 
-/* Fotos */
-.cp-fotos-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+/* Fotos - Layout compacto */
+.cp-fotos-compact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.cp-foto-item {
+.cp-foto-thumb {
   position: relative;
-  aspect-ratio: 1;
-  border-radius: 12px;
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
   overflow: hidden;
   background: var(--cp-surface);
   border: 1px solid var(--cp-border);
+  flex-shrink: 0;
 }
 
-.cp-foto-item img {
+.cp-foto-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -137,54 +140,48 @@
 
 .cp-foto-remover {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 24px;
-  height: 24px;
-  border-radius: 12px;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
   background: rgba(0, 0, 0, 0.6);
   border: none;
   color: #ffffff;
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
 }
 
-.cp-foto-principal {
+.cp-foto-badge {
   position: absolute;
-  bottom: 6px;
-  left: 6px;
-  padding: 2px 6px;
+  bottom: 4px;
+  left: 4px;
+  padding: 2px 5px;
   background: rgba(0, 122, 255, 0.9);
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: #ffffff;
 }
 
-.cp-foto-add {
-  aspect-ratio: 1;
-  border-radius: 12px;
+.cp-foto-btn {
+  padding: 10px 16px;
   background: var(--cp-surface);
-  border: 2px dashed var(--cp-border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  cursor: pointer;
-  color: var(--cp-text-secondary);
-}
-
-.cp-foto-add span:first-child {
-  font-size: 24px;
+  border: 1px solid var(--cp-border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
   color: #007aff;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.cp-foto-add-text {
-  font-size: 11px;
+.cp-foto-btn:active {
+  opacity: 0.7;
 }
 
 /* Campo */
@@ -376,4 +373,83 @@
   align-items: center;
   justify-content: center;
   color: var(--cp-text-secondary);
+}
+
+/* Card da política de desconto (read-only) */
+.cp-politica-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+}
+
+.cp-politica-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cp-politica-row.destaque {
+  padding-top: 10px;
+  border-top: 1px solid var(--cp-border);
+}
+
+.cp-politica-label {
+  font-size: 13px;
+  color: var(--cp-text-secondary);
+}
+
+.cp-politica-valor {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cp-text);
+}
+
+.cp-politica-valor.verde {
+  color: #34c759;
+  font-size: 16px;
+}
+
+.cp-politica-hint {
+  font-size: 11px;
+  color: var(--cp-text-muted);
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+}
+
+/* Banner de read-only */
+.cp-readonly-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(0, 122, 255, 0.08);
+  border: 1px solid rgba(0, 122, 255, 0.2);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--cp-text-secondary);
+  margin-bottom: 16px;
+}
+
+.cp-readonly-banner svg {
+  stroke: #007aff;
+  flex-shrink: 0;
+}
+
+/* Estado disabled mais sutil pros campos */
+.cadastro-produto input:disabled,
+.cadastro-produto select:disabled,
+.cadastro-produto textarea:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: var(--cp-bg);
+}
+
+.cp-toggle-status:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }

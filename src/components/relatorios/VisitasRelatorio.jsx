@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
+import { dataLocal, dataOntem } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import './VisitasRelatorio.css'
 
@@ -92,33 +94,32 @@ function VisitasRelatorio() {
         data_fim: fim.toISOString().split('T')[0]
       })
 
-      const { data, error } = await supabase
-        .from('visitas')
-        .select('*')
-        .eq('rep_id', repId)
-        .gte('data', inicio.toISOString().split('T')[0])
-        .lte('data', fim.toISOString().split('T')[0])
-        .order('data', { ascending: false })
-        .order('criado_em', { ascending: false })
+      const inicioStr = inicio.toISOString().split('T')[0]
+      const fimStr = fim.toISOString().split('T')[0]
+
+      const todas = await db.visitas.where('rep_id').equals(repId).toArray()
+      const data = todas
+        .filter(v => v.data >= inicioStr && v.data <= fimStr)
+        .sort((a, b) => {
+          const cmpData = (b.data || '').localeCompare(a.data || '')
+          if (cmpData !== 0) return cmpData
+          return (b.criado_em || '').localeCompare(a.criado_em || '')
+        })
 
       clearTimeout(timeout)
-
-      if (error) {
-        console.error('[VisitasRelatorio] Erro:', error)
-        setErro('Erro ao carregar dados')
-        setLoading(false)
-        return
-      }
 
       console.log('[VisitasRelatorio] Visitas encontradas:', data?.length || 0)
 
       const visitasData = data || []
 
-      // Calcular stats
-      const total = visitasData.length
+      // Calcular stats — uma visita = um cliente único por dia
+      const visitasUnicasPorClienteDia = new Set(
+        visitasData.map(v => `${v.data || 'sem-data'}|${v.cliente_id || v.id}`)
+      )
+      const total = visitasUnicasPorClienteDia.size
       const clientesUnicos = new Set(visitasData.map(v => v.cliente_id)).size
 
-      // Calcular dias no periodo
+      // Calcular dias no período
       const diffTime = Math.abs(fim - inicio)
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1
       const media = total / diffDays
@@ -145,19 +146,34 @@ function VisitasRelatorio() {
       }
       grupos[data].push(item)
     })
+
+    // Para cada dia, deduplica por cliente (mantém apenas 1 visita por cliente/dia)
+    // Como as visitas já vêm ordenadas por created_at desc, pegamos a mais recente.
+    // Se preferir a primeira do dia, inverter ordem do array antes do dedupe.
     return Object.entries(grupos)
       .sort(([a], [b]) => b.localeCompare(a))
-      .map(([data, items]) => ({
-        data,
-        label: formatarDataGrupo(data),
-        items
-      }))
+      .map(([data, itensDoDia]) => {
+        const vistosClientes = new Set()
+        const itensDeduplicados = []
+        for (const visita of itensDoDia) {
+          const chave = visita.cliente_id || visita.id
+          if (!vistosClientes.has(chave)) {
+            vistosClientes.add(chave)
+            itensDeduplicados.push(visita)
+          }
+        }
+        return {
+          data,
+          label: formatarDataGrupo(data),
+          items: itensDeduplicados
+        }
+      })
   }
 
   function formatarDataGrupo(dataStr) {
     if (dataStr === 'sem-data') return 'Sem data'
-    const hoje = new Date().toISOString().split('T')[0]
-    const ontem = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    const hoje = dataLocal()
+    const ontem = dataOntem()
 
     if (dataStr === hoje) return 'Hoje'
     if (dataStr === ontem) return 'Ontem'
@@ -316,7 +332,7 @@ function VisitasRelatorio() {
                         onClick={() => navigate(`/clientes/${visita.cliente_id}`)}
                       >
                         <div className="vr-item-info">
-                          <span className="vr-item-nome">{visita.cliente_nome || 'Cliente'}</span>
+                          <span className="vr-item-nome">{visita.nome_cliente || visita.cliente_nome || 'Cliente'}</span>
                           <span className="vr-item-meta">
                             {visita.cliente_cidade || '-'}
                             {visita.created_at && ` • ${formatarHora(visita.created_at)}`}

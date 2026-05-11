@@ -1,10 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import { salvarCarrinho, lerCarrinho, limparCarrinho } from '../../lib/carrinhoStorage'
+import { nomeFornecedor } from '../../utils/fornecedor'
+import { db } from '../../lib/db'
+import { atualizarComOuSemConexao } from '../../lib/queue'
 import './Catalogo.css'
+
+const PAGE_SIZE = 50
+const DEBOUNCE_MS = 350
 
 function Catalogo() {
   const navigate = useNavigate()
@@ -16,11 +22,19 @@ function Catalogo() {
   const [produtos, setProdutos] = useState([])
   const [itens, setItens] = useState({}) // { produtoId: quantidade }
   const [busca, setBusca] = useState('')
-  const [filtro, setFiltro] = useState('todos')
+  const [buscaDebounced, setBuscaDebounced] = useState('')
   const [loading, setLoading] = useState(true)
+  const [carregandoMais, setCarregandoMais] = useState(false)
+  const [temMais, setTemMais] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
   const [isDark, setIsDark] = useState(false)
   const [salvando, setSalvando] = useState(false)
+
   const carregouDoBanco = useRef(false)
+  const paginaRef = useRef(0)
+  const sentinelRef = useRef(null)
+  const requestIdRef = useRef(0)
+  const todosProdutosRef = useRef([])
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -31,21 +45,37 @@ function Catalogo() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar pedido
+  // Debounce da busca
+  useEffect(() => {
+    const t = setTimeout(() => setBuscaDebounced(busca.trim()), DEBOUNCE_MS)
+    return () => clearTimeout(t)
+  }, [busca])
+
+  // Carregar pedido (IndexedDB primeiro, fallback Supabase se for ID real)
   useEffect(() => {
     if (!pedidoId) return
-
     async function fetchPedido() {
-      const { data } = await supabase
-        .from('pedidos')
-        .select('*')
-        .eq('id', pedidoId)
-        .single()
+      let data = null
+
+      // 1. Tenta IndexedDB local primeiro
+      try {
+        data = await db.pedidos.get(pedidoId)
+      } catch (e) {
+        console.warn('[Catalogo] Erro IndexedDB pedido:', e)
+      }
+
+      // 2. Se não achou local E ID não é offline, busca no Supabase
+      if (!data && !String(pedidoId).startsWith('offline_') && navigator.onLine) {
+        const r = await supabase
+          .from('pedidos')
+          .select('*')
+          .eq('id', pedidoId)
+          .maybeSingle()
+        data = r.data
+      }
 
       if (data) {
         setPedido(data)
-
-        // Prioridade: sessionStorage > banco
         const itensStorage = lerCarrinho(pedidoId)
         if (itensStorage && Object.keys(itensStorage).length > 0) {
           setItens(itensStorage)
@@ -56,11 +86,11 @@ function Catalogo() {
           })
           setItens(itensObj)
         }
-
         carregouDoBanco.current = true
+      } else {
+        console.warn('[Catalogo] Pedido não encontrado:', pedidoId)
       }
     }
-
     fetchPedido()
   }, [pedidoId])
 
@@ -70,61 +100,92 @@ function Catalogo() {
     salvarCarrinho(pedidoId, itens)
   }, [pedidoId, itens])
 
-  // Carregar produtos (considera tipo da representada selecionada)
+  // Buscar produtos do IndexedDB local (funciona offline e online)
   useEffect(() => {
-    if (!pedido?.representada_id || !repId || !representadaSelecionada) return
+    if (!pedido) return
+    if (!repId || !representadaSelecionada) return
+    const currentRequestId = ++requestIdRef.current
+    paginaRef.current = 0
+    setLoading(true)
+    setTemMais(true)
 
-    async function fetchProdutos() {
-      setLoading(true)
+    async function buscarPrimeiraPagina() {
+      try {
+        // Carrega TODOS os produtos do IndexedDB (já vem com preço/família/desconto)
+        let todos = await db.produtos
+          .filter(p => p.ativo === true && p.desativado_manualmente === false)
+          .toArray()
 
-      let query = supabase
-        .from('produtos')
-        .select('*')
-        .eq('ativo', true)
+        // Filtro por empresa (enterprise) ou rep_id (PRO)
+        if (representadaSelecionada?.plano === 'enterprise' && representadaSelecionada?.empresa_id) {
+          todos = todos.filter(p => p.empresa_id === representadaSelecionada.empresa_id)
+        } else if (repId) {
+          todos = todos.filter(p => p.rep_id === repId)
+        }
 
-      // Enterprise: busca por empresa_id (catálogo da indústria)
-      // PRO: busca por rep_id (catálogo próprio do representante)
-      if (representadaSelecionada.plano === 'enterprise' && representadaSelecionada.empresa_id) {
-        console.log('[Catalogo] Modo Enterprise - buscando por empresa_id:', representadaSelecionada.empresa_id)
-        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
-      } else {
-        console.log('[Catalogo] Modo PRO - buscando por rep_id:', repId)
-        query = query.eq('rep_id', repId)
-      }
+        // Filtro por busca (nome, código, código_barras — case insensitive)
+        const termo = (buscaDebounced || '').replace(/,/g, ' ').trim().toLowerCase()
+        if (termo) {
+          todos = todos.filter(p => {
+            const nome = (p.nome || '').toLowerCase()
+            const codigo = (p.codigo || '').toLowerCase()
+            const codBarras = (p.codigo_barras || '').toLowerCase()
+            return nome.includes(termo) || codigo.includes(termo) || codBarras.includes(termo)
+          })
+        }
 
-      const { data } = await query.order('nome')
+        // Ordena por nome
+        todos.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
 
-      if (data) {
-        console.log('[Catalogo] Produtos carregados:', data.length)
-        // Remover duplicatas por nome + código (manter o primeiro)
-        const uniqueProdutos = data.filter((p, i, arr) =>
-          arr.findIndex(x => x.codigo === p.codigo && x.nome === p.nome) === i
-        )
-        console.log('[Catalogo] Produtos únicos:', uniqueProdutos.length)
-        setProdutos(uniqueProdutos)
+        if (currentRequestId !== requestIdRef.current) return
+
+        // Guarda lista completa em ref pra paginação
+        todosProdutosRef.current = todos
+
+        // Mostra primeira página (50 produtos)
+        const primeiraPagina = todos.slice(0, PAGE_SIZE)
+        setProdutos(primeiraPagina)
+        setTotalCount(todos.length)
+        setTemMais(todos.length > PAGE_SIZE)
+      } catch (err) {
+        console.error('[Catalogo] Erro busca IndexedDB:', err)
+        setProdutos([])
+        setTotalCount(0)
+        setTemMais(false)
       }
       setLoading(false)
     }
+    buscarPrimeiraPagina()
+  }, [pedido, buscaDebounced, repId, representadaSelecionada])
 
-    fetchProdutos()
-  }, [pedido?.representada_id, repId, representadaSelecionada])
+  // Carregar próxima página (paginação em memória)
+  const carregarMais = useCallback(() => {
+    if (carregandoMais || !temMais || loading) return
+    setCarregandoMais(true)
+    paginaRef.current += 1
+    const offset = paginaRef.current * PAGE_SIZE
+    const todos = todosProdutosRef.current || []
+    const proximaPagina = todos.slice(offset, offset + PAGE_SIZE)
+    setProdutos(prev => [...prev, ...proximaPagina])
+    setTemMais(offset + PAGE_SIZE < todos.length)
+    setCarregandoMais(false)
+  }, [carregandoMais, temMais, loading])
 
-  // Filtrar produtos
-  const produtosFiltrados = produtos.filter(p => {
-    // Filtro por busca
-    if (busca) {
-      const termo = busca.toLowerCase()
-      const matchNome = p.nome?.toLowerCase().includes(termo)
-      const matchCodigo = p.codigo?.toLowerCase().includes(termo)
-      if (!matchNome && !matchCodigo) return false
-    }
-
-    // TODO: Filtro por categoria (reposições, promoções, destaques)
-    // Por enquanto só "todos" funciona
-    if (filtro !== 'todos') return false
-
-    return true
-  })
+  // IntersectionObserver pro infinite scroll
+  useEffect(() => {
+    if (!sentinelRef.current) return
+    const el = sentinelRef.current
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          carregarMais()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [carregarMais])
 
   function alterarQuantidade(produtoId, delta) {
     const produto = produtos.find(p => p.id === produtoId)
@@ -141,28 +202,8 @@ function Catalogo() {
     })
   }
 
-  function formatarQuantidadeComMultiplo(quantidade, produto) {
-    const multiplo = produto?.multiplo_venda || produto?.multiplo || 1
-    if (multiplo <= 1) return quantidade.toString()
-
-    const unidade = produto?.unidade || 'UN'
-    const unidadeMultiplo = getUnidadeMultiplo(unidade)
-    const qtdMultiplos = Math.floor(quantidade / multiplo)
-
-    if (qtdMultiplos > 0) {
-      return `${quantidade} ${unidade} (${qtdMultiplos} ${unidadeMultiplo})`
-    }
-    return quantidade.toString()
-  }
-
   function getUnidadeMultiplo(unidade) {
-    const map = {
-      'UN': 'cx',
-      'PC': 'cx',
-      'KG': 'fd',
-      'L': 'cx',
-      'M': 'rl'
-    }
+    const map = { 'UN': 'cx', 'PC': 'cx', 'KG': 'fd', 'L': 'cx', 'M': 'rl' }
     return map[unidade] || 'cx'
   }
 
@@ -196,9 +237,8 @@ function Catalogo() {
     }).format(valor)
   }
 
-  // Calcular totais
+  // Totais (do carrinho)
   const totalItens = Object.keys(itens).length
-  const totalUnidades = Object.values(itens).reduce((acc, q) => acc + q, 0)
   const totalValor = Object.entries(itens).reduce((acc, [produtoId, qtd]) => {
     const produto = produtos.find(p => p.id === produtoId)
     if (!produto) return acc
@@ -212,17 +252,32 @@ function Catalogo() {
       alert('Adicione pelo menos um produto')
       return
     }
-
     setSalvando(true)
-
     try {
-      // Converter itens para array
+      // Buscar dados completos dos produtos do carrinho (do IndexedDB)
+      const idsCarrinho = Object.keys(itens)
+      const idsNaLista = new Set(produtos.map(p => p.id))
+      const idsFaltantes = idsCarrinho.filter(id => !idsNaLista.has(id))
+      let produtosCarrinho = produtos.filter(p => idsCarrinho.includes(p.id))
+
+      if (idsFaltantes.length > 0) {
+        // Busca do IndexedDB (já tem preço, fornecedor, etc)
+        const faltantes = await db.produtos.bulkGet(idsFaltantes)
+        const faltantesValidos = (faltantes || []).filter(Boolean)
+        produtosCarrinho = [...produtosCarrinho, ...faltantesValidos]
+      }
+
       const itensArray = Object.entries(itens).map(([produtoId, quantidade]) => {
-        const produto = produtos.find(p => p.id === produtoId)
+        const produto = produtosCarrinho.find(p => p.id === produtoId)
+        const fornecedorNome = produto?.fornecedores?.nome_fantasia
+          || produto?.fornecedores?.nome
+          || produto?.fornecedor_nome
+          || null
         return {
           produto_id: produtoId,
           produto_nome: produto?.nome,
           produto_codigo: produto?.codigo,
+          produto_fornecedor: fornecedorNome,
           quantidade,
           preco_unitario: produto?.preco || 0,
           ipi: produto?.ipi || 0,
@@ -231,38 +286,43 @@ function Catalogo() {
         }
       })
 
-      // Atualizar pedido
-      const { error } = await supabase
-        .from('pedidos')
-        .update({
-          itens: itensArray,
-          valor_total: totalValor
-        })
-        .eq('id', pedidoId)
+      const valorTotalFinal = itensArray.reduce((acc, it) => {
+        const ipiValor = Number(it.ipi) || 0
+        const precoComIpi = (it.preco_unitario || 0) * (1 + ipiValor / 100)
+        return acc + (precoComIpi * it.quantidade)
+      }, 0)
 
-      if (error) {
-        console.error('[Catalogo] Erro:', error)
-        alert('Erro ao salvar produtos')
+      const resultado = await atualizarComOuSemConexao(
+        'pedidos',
+        pedidoId,
+        {
+          itens: itensArray,
+          valor_bruto: valorTotalFinal
+        },
+        { tabelaLocal: 'pedidos' }
+      )
+
+      if (!resultado.ok) {
+        console.error('[Catalogo] Erro:', resultado.motivo)
+        alert('Erro ao salvar produtos: ' + resultado.motivo)
         setSalvando(false)
         return
       }
 
-      // Limpar carrinho do storage após sucesso
+      if (resultado.offline) {
+        console.log('[Catalogo] Pedido salvo offline')
+      }
+
       limparCarrinho(pedidoId)
-
-      // Navegar para detalhe do pedido
       navigate(`/pedidos/${pedidoId}`)
-
     } catch (err) {
       console.error('[Catalogo] Exceção:', err)
-      alert('Erro ao salvar produtos')
+      alert('Erro ao salvar produtos: ' + (err?.message || err))
     }
-
     setSalvando(false)
   }
 
   function cancelar() {
-    // Voltar para a tela do pedido
     navigate(`/pedidos/${pedidoId}`)
   }
 
@@ -292,7 +352,7 @@ function Catalogo() {
           </svg>
           <input
             type="text"
-            placeholder="Buscar por nome ou código..."
+            placeholder="Buscar por nome, código ou código de barras..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
@@ -300,112 +360,133 @@ function Catalogo() {
             <button className="cat-busca-limpar" onClick={() => setBusca('')}>×</button>
           )}
         </div>
-      </div>
-
-      {/* Filtros */}
-      <div className="cat-filtros">
-        <button
-          className={`cat-filtro ${filtro === 'todos' ? 'active' : ''}`}
-          onClick={() => setFiltro('todos')}
-        >
-          Todos
-        </button>
-        <button
-          className={`cat-filtro ${filtro === 'reposicoes' ? 'active' : ''}`}
-          onClick={() => setFiltro('reposicoes')}
-        >
-          Reposições
-        </button>
-        <button
-          className={`cat-filtro ${filtro === 'promocoes' ? 'active' : ''}`}
-          onClick={() => setFiltro('promocoes')}
-        >
-          Promoções
-        </button>
-        <button
-          className={`cat-filtro ${filtro === 'destaques' ? 'active' : ''}`}
-          onClick={() => setFiltro('destaques')}
-        >
-          Destaques
-        </button>
+        {!loading && (
+          <div className="cat-resultado-count">
+            {totalCount > 0
+              ? `${totalCount.toLocaleString('pt-BR')} ${totalCount === 1 ? 'produto' : 'produtos'}`
+              : 'Nenhum produto encontrado'}
+          </div>
+        )}
       </div>
 
       {/* Lista de produtos */}
       <div className="cat-content">
         {loading ? (
           <div className="cat-loading">Carregando produtos...</div>
-        ) : produtosFiltrados.length === 0 ? (
+        ) : produtos.length === 0 ? (
           <div className="cat-vazio">
             <span className="cat-vazio-icon">📦</span>
-            <p>{busca ? 'Nenhum produto encontrado' : 'Nenhum produto cadastrado'}</p>
+            <p>{buscaDebounced ? 'Nenhum produto encontrado' : 'Nenhum produto disponível'}</p>
           </div>
         ) : (
-          produtosFiltrados.map(produto => {
-            const quantidade = itens[produto.id] || 0
-            const ipiValor = Number(produto.ipi) || 0
-            const temIpi = ipiValor > 0
-            const precoComIpi = (produto.preco || 0) * (1 + ipiValor / 100)
+          <>
+            {produtos.map(produto => {
+              const quantidade = itens[produto.id] || 0
+              const ipiValor = Number(produto.ipi) || 0
+              const temIpi = ipiValor > 0
+              const precoComIpi = (produto.preco || 0) * (1 + ipiValor / 100)
+              const fotoUrl = (produto.fotos && produto.fotos[0]) || produto.foto_url
 
-            return (
-              <div
-                key={produto.id}
-                className="cat-produto"
-                onClick={() => navigate(`/pedidos/${pedidoId}/produto/${produto.id}`)}
-              >
-                <div className="cat-produto-foto">
-                  {produto.fotos && produto.fotos.length > 0 ? (
-                    <img src={produto.fotos[0]} alt={produto.nome} />
-                  ) : (
-                    <span className="cat-produto-sem-foto">📦</span>
-                  )}
-                </div>
-
-                <div className="cat-produto-info">
-                  <span className="cat-produto-nome">{produto.nome}</span>
-                  <span className="cat-produto-codigo">{produto.codigo}</span>
-                  <div className="cat-produto-preco-row">
-                    <span className="cat-produto-preco">
-                      {formatarValor(produto.preco)}/{produto.unidade || 'UN'}
-                    </span>
-                    {temIpi && (
-                      <span className="cat-badge-ipi">IPI {produto.ipi}%</span>
+              const marcaNome = nomeFornecedor(produto)
+              return (
+                <div
+                  key={produto.id}
+                  className="cat-produto"
+                  onClick={() => navigate(`/pedidos/${pedidoId}/produto/${produto.id}`)}
+                >
+                  <div className="cat-produto-foto">
+                    {fotoUrl ? (
+                      <img src={fotoUrl} alt={produto.nome} loading="lazy" />
+                    ) : (
+                      <span className="cat-produto-sem-foto">📦</span>
                     )}
                   </div>
-                  {temIpi && (
-                    <span className="cat-produto-preco-ipi">
-                      c/ IPI: {formatarValor(precoComIpi)}
-                    </span>
-                  )}
-                </div>
 
-                <div className="cat-produto-acoes" onClick={e => e.stopPropagation()}>
-                  {(() => {
-                    const multiplo = produto.multiplo_venda || produto.multiplo || 1
-                    return (
-                      <>
-                        <button
-                          className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
-                          onClick={() => alterarQuantidade(produto.id, -1)}
-                          disabled={quantidade === 0}
-                        >
-                          −{multiplo > 1 ? multiplo : ''}
-                        </button>
-                        <span className={`cat-qty ${quantidade > 0 ? 'active' : ''}`}>
-                          {quantidade}
+                  <div className="cat-produto-info">
+                    <div className="cat-produto-header">
+                      <span className="cat-produto-nome">{produto.nome}</span>
+                      {marcaNome && (
+                        <span className="cat-badge-fornecedor">{marcaNome}</span>
+                      )}
+                    </div>
+                    <span className="cat-produto-codigo">
+                      Cód: {produto.codigo || '-'}
+                      {produto.codigo_barras && (
+                        <> · Ref: {produto.codigo_barras}</>
+                      )}
+                      {produto.nome_familia && (
+                        <> · {produto.nome_familia}</>
+                      )}
+                    </span>
+                    <div className="cat-produto-preco-row">
+                      {produto.desconto_pct_aplicado > 0 ? (
+                        <>
+                          <span className="cat-produto-preco-riscado">
+                            {formatarValor(produto.preco_loja)}/{produto.unidade || 'UN'}
+                          </span>
+                          <span className="cat-produto-preco-destaque">
+                            {formatarValor(produto.preco)}/{produto.unidade || 'UN'}
+                          </span>
+                          <span className="cat-badge-desconto">
+                            −{produto.desconto_pct_aplicado}%
+                          </span>
+                        </>
+                      ) : (
+                        <span className="cat-produto-preco">
+                          {formatarValor(produto.preco)}/{produto.unidade || 'UN'}
                         </span>
-                        <button
-                          className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
-                          onClick={() => alterarQuantidade(produto.id, 1)}
-                        >
-                          +{multiplo > 1 ? multiplo : ''}
-                        </button>
-                      </>
-                    )
-                  })()}
+                      )}
+                    </div>
+                    {temIpi && (
+                      <div className="cat-produto-ipi-row">
+                        <span className="cat-badge-ipi">IPI {produto.ipi}%</span>
+                        <span className="cat-produto-preco-ipi">
+                          c/ IPI: {formatarValor(precoComIpi)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="cat-produto-acoes" onClick={e => e.stopPropagation()}>
+                    {(() => {
+                      const multiplo = produto.multiplo_venda || produto.multiplo || 1
+                      return (
+                        <>
+                          <button
+                            className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
+                            onClick={() => alterarQuantidade(produto.id, -1)}
+                            disabled={quantidade === 0}
+                          >
+                            −{multiplo > 1 ? multiplo : ''}
+                          </button>
+                          <span className={`cat-qty ${quantidade > 0 ? 'active' : ''}`}>
+                            {quantidade}
+                          </span>
+                          <button
+                            className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
+                            onClick={() => alterarQuantidade(produto.id, 1)}
+                          >
+                            +{multiplo > 1 ? multiplo : ''}
+                          </button>
+                        </>
+                      )
+                    })()}
+                  </div>
                 </div>
+              )
+            })}
+
+            {/* Sentinela pro infinite scroll */}
+            {temMais && (
+              <div ref={sentinelRef} className="cat-sentinel">
+                {carregandoMais ? 'Carregando mais...' : ''}
               </div>
-            )
-          })
+            )}
+
+            {!temMais && produtos.length > 0 && (
+              <div className="cat-fim-lista">— fim dos resultados —</div>
+            )}
+          </>
         )}
       </div>
 

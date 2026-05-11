@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import './Tarefas.css'
 
@@ -25,7 +27,7 @@ function Tarefas() {
 
   // Limpeza automática de tarefas concluídas na virada do dia
   async function verificarLimpeza() {
-    const hoje = new Date().toISOString().split('T')[0]
+    const hoje = dataLocal()
     const ultimaLimpeza = localStorage.getItem('tarefas_ultima_limpeza')
 
     if (ultimaLimpeza !== hoje) {
@@ -64,38 +66,20 @@ function Tarefas() {
   }, [repId])
 
   async function fetchTarefas() {
-    console.log('[Tarefas] ====== CARREGANDO TAREFAS ======')
-    console.log('[Tarefas] repId:', repId)
-
-    if (!repId) {
-      console.warn('[Tarefas] repId não disponível, abortando fetch')
-      setLoading(false)
-      return
-    }
-
+    if (!repId) { setLoading(false); return }
     setLoading(true)
-
-    const { data, error } = await supabase
-      .from('tarefas')
-      .select('*')
-      .eq('rep_id', repId)
-      .order('data_criacao', { ascending: false })
-
-    console.log('[Tarefas] Resultado da query:')
-    console.log('[Tarefas] - data:', data)
-    console.log('[Tarefas] - error:', error)
-    console.log('[Tarefas] - quantidade:', data?.length || 0)
-
-    if (error) {
-      console.error('[Tarefas] Erro ao carregar:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      })
+    try {
+      const data = await db.tarefas
+        .where('rep_id')
+        .equals(repId)
+        .toArray()
+      // Ordena por data_criacao desc
+      data.sort((a, b) => new Date(b.data_criacao || 0) - new Date(a.data_criacao || 0))
+      setTarefas(data)
+    } catch (err) {
+      console.error('[Tarefas] Erro:', err)
+      setTarefas([])
     }
-
-    setTarefas(data || [])
     setLoading(false)
   }
 

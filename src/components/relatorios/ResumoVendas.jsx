@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import './ResumoVendas.css'
@@ -89,38 +90,31 @@ function ResumoVendas() {
         data_fim: fim.toISOString()
       })
 
-      let query = supabase
-        .from('pedidos')
-        .select('*')
-        .eq('rep_id', repId)
-        .eq('status', 'pedido')
-        .gte('created_at', inicio.toISOString())
-        .lte('created_at', fim.toISOString() + 'T23:59:59')
+      const todos = await db.pedidos.where('rep_id').equals(repId).toArray()
+      let data = todos.filter(p =>
+        p.status === 'pedido' &&
+        p.created_at >= inicio.toISOString() &&
+        p.created_at <= fim.toISOString() + 'T23:59:59'
+      )
 
       // Filtrar por representada ou empresa conforme o tipo selecionado
       if (representadaSelecionada.tipo === 'empresa') {
-        query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+        data = data.filter(p => p.empresa_id === representadaSelecionada.empresa_id)
       } else {
-        query = query.eq('representada_id', representadaSelecionada.id)
+        data = data.filter(p => p.representada_id === representadaSelecionada.id)
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false })
+      // Ordenar por data desc
+      data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
       clearTimeout(timeout)
-
-      if (error) {
-        console.error('[ResumoVendas] Erro:', error)
-        setErro('Erro ao carregar dados')
-        setLoading(false)
-        return
-      }
 
       console.log('[ResumoVendas] Pedidos encontrados:', data?.length || 0)
 
       const pedidosData = data || []
 
     // Calcular totais
-    const total = pedidosData.reduce((sum, p) => sum + (p.valor_total || 0), 0)
+    const total = pedidosData.reduce((sum, p) => sum + (p.valor_liquido || 0), 0)
     const qtd = pedidosData.length
     const itens = pedidosData.reduce((sum, p) => {
       const items = p.itens || []
@@ -146,7 +140,7 @@ function ResumoVendas() {
           pedidos: 0
         }
       }
-      porRep[repId].valor += p.valor_total || 0
+      porRep[repId].valor += p.valor_liquido || 0
       porRep[repId].pedidos += 1
     })
 
@@ -342,7 +336,7 @@ function ResumoVendas() {
                         </span>
                       </div>
                       <div className="rv-pedido-right">
-                        <span className="rv-pedido-valor">{formatarValor(p.valor_total)}</span>
+                        <span className="rv-pedido-valor">{formatarValor(p.valor_liquido)}</span>
                         <span className="rv-pedido-itens">
                           {(p.itens || []).length} itens
                         </span>

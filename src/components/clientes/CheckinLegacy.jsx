@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
 import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
@@ -70,7 +71,7 @@ function CheckIn({ cliente, onClose, onConfirm }) {
     setSalvando(true)
 
     try {
-      const hoje = new Date().toISOString().split('T')[0]
+      const hoje = dataLocal()
       const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
       // Verificar se já existe visita do dia para este cliente

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import './RankingClientes.css'
@@ -51,32 +52,22 @@ function RankingClientes() {
         periodo
       })
 
-      let query = supabase
-        .from('pedidos')
-        .select('cliente_id, cliente_nome, valor_total')
-        .eq('rep_id', repId)
-        .eq('status', 'pedido')
-        .gte('created_at', dataLimite.toISOString())
+      const todos = await db.pedidos.where('rep_id').equals(repId).toArray()
+      let data = todos.filter(p =>
+        p.status === 'pedido' &&
+        new Date(p.created_at) >= dataLimite
+      )
 
       // Filtrar por representada ou empresa conforme o tipo selecionado
       if (representadaSelecionada) {
         if (representadaSelecionada.tipo === 'empresa') {
-          query = query.eq('empresa_id', representadaSelecionada.empresa_id)
+          data = data.filter(p => p.empresa_id === representadaSelecionada.empresa_id)
         } else {
-          query = query.eq('representada_id', representadaSelecionada.id)
+          data = data.filter(p => p.representada_id === representadaSelecionada.id)
         }
       }
 
-      const { data, error } = await query
-
       clearTimeout(timeout)
-
-      if (error) {
-        console.error('[RankingClientes] Erro:', error)
-        setErro('Erro ao carregar dados')
-        setLoading(false)
-        return
-      }
 
       console.log('[RankingClientes] Pedidos encontrados:', data?.length || 0)
 
@@ -93,9 +84,9 @@ function RankingClientes() {
           pedidos: 0
         }
       }
-      porCliente[p.cliente_id].valor += p.valor_total || 0
+      porCliente[p.cliente_id].valor += p.valor_liquido || 0
       porCliente[p.cliente_id].pedidos += 1
-      total += p.valor_total || 0
+      total += p.valor_liquido || 0
     })
 
     // Ordenar por valor

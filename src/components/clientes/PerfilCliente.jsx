@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import './PerfilCliente.css'
 
@@ -74,74 +75,61 @@ function PerfilCliente() {
 
   // Carregar cliente
   useEffect(() => {
+    if (!id) return
     async function fetchCliente() {
-      if (!id) return
-
       setLoading(true)
       try {
-        const { data, error } = await supabase
-          .from('clientes')
-          .select('*')
-          .eq('id', id)
-          .single()
-
-        if (error) {
-          console.error('[PerfilCliente] Erro:', error)
-          setErro('Cliente não encontrado')
-        } else {
-          setCliente(data)
+        const localData = await db.clientes.get(id)
+        if (localData) {
+          setCliente(localData)
+        } else if (navigator.onLine) {
+          const { data } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle()
+          if (data) setCliente(data)
         }
       } catch (err) {
-        console.error('[PerfilCliente] Exceção:', err)
-        setErro('Erro ao carregar cliente')
+        console.error('[PerfilCliente] Erro:', err)
       }
       setLoading(false)
     }
-
     fetchCliente()
   }, [id])
 
   // Carregar histórico
   useEffect(() => {
+    if (!id || !repId) return
     async function fetchHistorico() {
-      if (!id || !repId) return
+      try {
+        // Visitas (do IndexedDB)
+        const visitasData = await db.visitas
+          .where('cliente_id')
+          .equals(id)
+          .toArray()
+        const visitasFiltradas = visitasData.filter(v => v.rep_id === repId)
+        visitasFiltradas.sort((a, b) => (b.data || '').localeCompare(a.data || ''))
+        setVisitas(visitasFiltradas.slice(0, 5))
 
-      // Visitas
-      const { data: visitasData } = await supabase
-        .from('visitas')
-        .select('id, data, hora, tipo, obs')
-        .eq('cliente_id', id)
-        .eq('rep_id', repId)
-        .order('data', { ascending: false })
-        .limit(5)
+        // Pedidos e orçamentos (do IndexedDB)
+        const todosPedidos = await db.pedidos
+          .where('cliente_id')
+          .equals(id)
+          .toArray()
+        const pedidosDoRep = todosPedidos.filter(p => p.rep_id === repId)
 
-      if (visitasData) setVisitas(visitasData)
+        const pedidosFinalizados = pedidosDoRep.filter(p => p.status === 'pedido')
+        pedidosFinalizados.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        setPedidos(pedidosFinalizados.slice(0, 5))
 
-      // Pedidos (status = pedido)
-      const { data: pedidosData } = await supabase
-        .from('pedidos')
-        .select('id, numero, valor_total, created_at, status, representada_nome')
-        .eq('cliente_id', id)
-        .eq('rep_id', repId)
-        .eq('status', 'pedido')
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      if (pedidosData) setPedidos(pedidosData)
-
-      // Orçamentos (status = orcamento)
-      const { data: orcamentosData } = await supabase
-        .from('pedidos')
-        .select('id, numero, valor_total, created_at, status, representada_nome')
-        .eq('cliente_id', id)
-        .eq('rep_id', repId)
-        .eq('status', 'orcamento')
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      if (orcamentosData) setOrcamentos(orcamentosData)
+        const orcamentosData = pedidosDoRep.filter(p => p.status === 'orcamento')
+        orcamentosData.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        setOrcamentos(orcamentosData.slice(0, 5))
+      } catch (err) {
+        console.error('[PerfilCliente] Erro histórico:', err)
+      }
     }
-
     fetchHistorico()
   }, [id, repId])
 
@@ -156,14 +144,14 @@ function PerfilCliente() {
 
       const { data: totalData } = await supabase
         .from('pedidos')
-        .select('valor_total')
+        .select('valor_liquido')
         .eq('cliente_id', id)
         .eq('rep_id', repId)
         .eq('status', 'pedido')
         .gte('created_at', dataLimite.toISOString())
 
       if (totalData) {
-        const total = totalData.reduce((acc, p) => acc + (p.valor_total || 0), 0)
+        const total = totalData.reduce((acc, p) => acc + (p.valor_liquido || 0), 0)
         setTotalPeriodo(total)
       }
     }
@@ -391,7 +379,7 @@ function PerfilCliente() {
                         <span className="perfil-historico-data">{formatarData(p.created_at)}</span>
                       </div>
                     </div>
-                    <span className="perfil-historico-valor">{formatarValor(p.valor_total)}</span>
+                    <span className="perfil-historico-valor">{formatarValor(p.valor_liquido)}</span>
                   </div>
                 ))
               )}
@@ -422,7 +410,7 @@ function PerfilCliente() {
                         <span className="perfil-historico-data">{formatarData(o.created_at)}</span>
                       </div>
                     </div>
-                    <span className="perfil-historico-valor">{formatarValor(o.valor_total)}</span>
+                    <span className="perfil-historico-valor">{formatarValor(o.valor_liquido)}</span>
                   </div>
                 ))
               )}

@@ -1,43 +1,53 @@
 import { Routes, Route } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { supabase } from './lib/supabase'
 import { RepresentadaProvider } from './contexts/RepresentadaContext'
+
+// Eager: telas críticas que carregam no bundle inicial
 import Login from './components/shared/Login'
 import Home from './components/Home'
-import CarteiraClientes from './components/clientes/CarteiraClientes'
-import CadastroCliente from './components/clientes/CadastroCliente'
-import PerfilCliente from './components/clientes/PerfilCliente'
-import DadosCliente from './components/clientes/DadosCliente'
-import Bonificacao from './components/clientes/Bonificacao'
-import GastosCliente from './components/clientes/GastosCliente'
-import DetalheVisita from './components/clientes/DetalheVisita'
-import HistoricoCliente from './components/clientes/HistoricoCliente'
-import Checkin from './components/clientes/Checkin'
-import PedidoSimples from './components/pedidos/PedidoSimples'
-import ListaPedidos from './components/pedidos/ListaPedidos'
-import NovoPedido from './components/pedidos/NovoPedido'
-import DetalhesPedido from './components/pedidos/DetalhesPedido'
-import Catalogo from './components/pedidos/Catalogo'
-import DetalheProdutoPedido from './components/pedidos/DetalheProdutoPedido'
-import DescontosPedido from './components/pedidos/DescontosPedido'
-import Planner from './components/planner/Planner'
-import Mais from './components/mais/Mais'
-import MeuPerfil from './components/mais/MeuPerfil'
-import Representadas from './components/mais/Representadas'
-import Segmentos from './components/mais/Segmentos'
-import ListaProdutos from './components/produtos/ListaProdutos'
-import CadastroProduto from './components/produtos/CadastroProduto'
-import Relatorios from './components/relatorios/Relatorios'
-import MetaVendas from './components/relatorios/MetaVendas'
-import RankingClientes from './components/relatorios/RankingClientes'
-import VendasProduto from './components/relatorios/VendasProduto'
-import ClientesInativos from './components/relatorios/ClientesInativos'
-import ResumoVendas from './components/relatorios/ResumoVendas'
-import VisitasRelatorio from './components/relatorios/VisitasRelatorio'
-import PreviewPDF from './components/relatorios/PreviewPDF'
-import Financas from './components/financas/Financas'
-import Tarefas from './components/tarefas/Tarefas'
-import Mapa from './components/mapa/Mapa'
+
+// Lazy: tudo o resto carrega sob demanda
+const CarteiraClientes = lazy(() => import('./components/clientes/CarteiraClientes'))
+const CadastroCliente = lazy(() => import('./components/clientes/CadastroCliente'))
+const PerfilCliente = lazy(() => import('./components/clientes/PerfilCliente'))
+const DadosCliente = lazy(() => import('./components/clientes/DadosCliente'))
+const Bonificacao = lazy(() => import('./components/clientes/Bonificacao'))
+const GastosCliente = lazy(() => import('./components/clientes/GastosCliente'))
+const DetalheVisita = lazy(() => import('./components/clientes/DetalheVisita'))
+const HistoricoCliente = lazy(() => import('./components/clientes/HistoricoCliente'))
+const Checkin = lazy(() => import('./components/clientes/Checkin'))
+
+const PedidoSimples = lazy(() => import('./components/pedidos/PedidoSimples'))
+const ListaPedidos = lazy(() => import('./components/pedidos/ListaPedidos'))
+const NovoPedido = lazy(() => import('./components/pedidos/NovoPedido'))
+const DetalhesPedido = lazy(() => import('./components/pedidos/DetalhesPedido'))
+const Catalogo = lazy(() => import('./components/pedidos/Catalogo'))
+const DetalheProdutoPedido = lazy(() => import('./components/pedidos/DetalheProdutoPedido'))
+const DescontosPedido = lazy(() => import('./components/pedidos/DescontosPedido'))
+
+const Planner = lazy(() => import('./components/planner/Planner'))
+
+const Mais = lazy(() => import('./components/mais/Mais'))
+const MeuPerfil = lazy(() => import('./components/mais/MeuPerfil'))
+const Representadas = lazy(() => import('./components/mais/Representadas'))
+const Segmentos = lazy(() => import('./components/mais/Segmentos'))
+
+const ListaProdutos = lazy(() => import('./components/produtos/ListaProdutos'))
+const CadastroProduto = lazy(() => import('./components/produtos/CadastroProduto'))
+
+const Relatorios = lazy(() => import('./components/relatorios/Relatorios'))
+const MetaVendas = lazy(() => import('./components/relatorios/MetaVendas'))
+const RankingClientes = lazy(() => import('./components/relatorios/RankingClientes'))
+const VendasProduto = lazy(() => import('./components/relatorios/VendasProduto'))
+const ClientesInativos = lazy(() => import('./components/relatorios/ClientesInativos'))
+const ResumoVendas = lazy(() => import('./components/relatorios/ResumoVendas'))
+const VisitasRelatorio = lazy(() => import('./components/relatorios/VisitasRelatorio'))
+const PreviewPDF = lazy(() => import('./components/relatorios/PreviewPDF'))
+
+const Financas = lazy(() => import('./components/financas/Financas'))
+const Tarefas = lazy(() => import('./components/tarefas/Tarefas'))
+const Mapa = lazy(() => import('./components/mapa/Mapa'))
 
 
 const EditarCliente = () => (
@@ -49,6 +59,21 @@ const EditarCliente = () => (
     <div className="screen-content"><p>Em desenvolvimento...</p></div>
   </div>
 )
+
+// Loader simples enquanto cada chunk carrega
+function TelaCarregando() {
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '50vh',
+      color: '#666'
+    }}>
+      Carregando...
+    </div>
+  )
+}
 
 function App() {
   const [user, setUser] = useState(null)
@@ -78,48 +103,50 @@ function App() {
   return (
     <RepresentadaProvider>
       <div className="app">
-        <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/pedidos" element={<ListaPedidos />} />
-        <Route path="/pedidos/novo" element={<NovoPedido />} />
-        <Route path="/pedidos/:id" element={<DetalhesPedido />} />
-        <Route path="/pedidos/:id/catalogo" element={<Catalogo />} />
-        <Route path="/pedidos/:id/produto/:produtoId" element={<DetalheProdutoPedido />} />
-        <Route path="/pedidos/:id/descontos" element={<DescontosPedido />} />
-        <Route path="/clientes" element={<CarteiraClientes />} />
-        <Route path="/clientes/novo" element={<CadastroCliente />} />
-        <Route path="/clientes/:id" element={<PerfilCliente />} />
-        <Route path="/clientes/:id/dados" element={<DadosCliente />} />
-        <Route path="/clientes/:id/editar" element={<EditarCliente />} />
-        <Route path="/clientes/:id/bonificacao" element={<Bonificacao />} />
-        <Route path="/clientes/:id/gastos" element={<GastosCliente />} />
-        <Route path="/clientes/:id/visitas" element={<HistoricoCliente />} />
-        <Route path="/clientes/:id/pedidos" element={<HistoricoCliente />} />
-        <Route path="/clientes/:id/orcamentos" element={<HistoricoCliente />} />
-        <Route path="/clientes/:id/visitas/:visitaId" element={<DetalheVisita />} />
-        <Route path="/clientes/:id/checkin" element={<Checkin />} />
-        <Route path="/pedidos/novo/simples" element={<PedidoSimples />} />
-        <Route path="/produtos" element={<ListaProdutos />} />
-        <Route path="/produtos/novo" element={<CadastroProduto />} />
-        <Route path="/produtos/:id" element={<CadastroProduto />} />
-        <Route path="/planner" element={<Planner />} />
-        <Route path="/opcoes" element={<Mais />} />
-        <Route path="/mais" element={<Mais />} />
-        <Route path="/mais/perfil" element={<MeuPerfil />} />
-        <Route path="/mais/representadas" element={<Representadas />} />
-        <Route path="/mais/segmentos" element={<Segmentos />} />
-        <Route path="/relatorios" element={<Relatorios />} />
-        <Route path="/relatorios/meta" element={<MetaVendas />} />
-        <Route path="/relatorios/ranking" element={<RankingClientes />} />
-        <Route path="/relatorios/produtos" element={<VendasProduto />} />
-        <Route path="/relatorios/inativos" element={<ClientesInativos />} />
-        <Route path="/relatorios/resumo" element={<ResumoVendas />} />
-        <Route path="/relatorios/visitas" element={<VisitasRelatorio />} />
-        <Route path="/relatorios/pdf" element={<PreviewPDF />} />
-        <Route path="/financas" element={<Financas />} />
-        <Route path="/tarefas" element={<Tarefas />} />
-        <Route path="/mapa" element={<Mapa />} />
-        </Routes>
+        <Suspense fallback={<TelaCarregando />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/pedidos" element={<ListaPedidos />} />
+            <Route path="/pedidos/novo" element={<NovoPedido />} />
+            <Route path="/pedidos/:id" element={<DetalhesPedido />} />
+            <Route path="/pedidos/:id/catalogo" element={<Catalogo />} />
+            <Route path="/pedidos/:id/produto/:produtoId" element={<DetalheProdutoPedido />} />
+            <Route path="/pedidos/:id/descontos" element={<DescontosPedido />} />
+            <Route path="/clientes" element={<CarteiraClientes />} />
+            <Route path="/clientes/novo" element={<CadastroCliente />} />
+            <Route path="/clientes/:id" element={<PerfilCliente />} />
+            <Route path="/clientes/:id/dados" element={<DadosCliente />} />
+            <Route path="/clientes/:id/editar" element={<EditarCliente />} />
+            <Route path="/clientes/:id/bonificacao" element={<Bonificacao />} />
+            <Route path="/clientes/:id/gastos" element={<GastosCliente />} />
+            <Route path="/clientes/:id/visitas" element={<HistoricoCliente />} />
+            <Route path="/clientes/:id/pedidos" element={<HistoricoCliente />} />
+            <Route path="/clientes/:id/orcamentos" element={<HistoricoCliente />} />
+            <Route path="/clientes/:id/visitas/:visitaId" element={<DetalheVisita />} />
+            <Route path="/clientes/:id/checkin" element={<Checkin />} />
+            <Route path="/pedidos/novo/simples" element={<PedidoSimples />} />
+            <Route path="/produtos" element={<ListaProdutos />} />
+            <Route path="/produtos/novo" element={<CadastroProduto />} />
+            <Route path="/produtos/:id" element={<CadastroProduto />} />
+            <Route path="/planner" element={<Planner />} />
+            <Route path="/opcoes" element={<Mais />} />
+            <Route path="/mais" element={<Mais />} />
+            <Route path="/mais/perfil" element={<MeuPerfil />} />
+            <Route path="/mais/representadas" element={<Representadas />} />
+            <Route path="/mais/segmentos" element={<Segmentos />} />
+            <Route path="/relatorios" element={<Relatorios />} />
+            <Route path="/relatorios/meta" element={<MetaVendas />} />
+            <Route path="/relatorios/ranking" element={<RankingClientes />} />
+            <Route path="/relatorios/produtos" element={<VendasProduto />} />
+            <Route path="/relatorios/inativos" element={<ClientesInativos />} />
+            <Route path="/relatorios/resumo" element={<ResumoVendas />} />
+            <Route path="/relatorios/visitas" element={<VisitasRelatorio />} />
+            <Route path="/relatorios/pdf" element={<PreviewPDF />} />
+            <Route path="/financas" element={<Financas />} />
+            <Route path="/tarefas" element={<Tarefas />} />
+            <Route path="/mapa" element={<Mapa />} />
+          </Routes>
+        </Suspense>
       </div>
     </RepresentadaProvider>
   )

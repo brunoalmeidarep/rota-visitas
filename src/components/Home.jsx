@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { dataLocal } from '../lib/data'
 import { useRepId } from '../hooks/useRepId'
 import { usePlano } from '../hooks/usePlano'
 import { useRepresentada } from '../contexts/RepresentadaContext'
@@ -12,7 +13,7 @@ function Home() {
   const navigate = useNavigate()
   const { repId } = useRepId()
   const { isStarter, loading: loadingPlano } = usePlano()
-  const { representadas, representadaSelecionada, trocarRepresentada, loading: loadingRep } = useRepresentada()
+  const { representadas, representadaSelecionada, trocarRepresentada, loading: loadingRep, sync } = useRepresentada()
 
   // Cache de plano para evitar flash
   const temCachePlano = !!localStorage.getItem('plano_cache')
@@ -106,7 +107,7 @@ function Home() {
         .or(`ultima_visita.is.null,ultima_visita.lt.${dataLimiteStr}`)
 
       // Badge Planner: eventos do dia
-      const hoje = new Date().toISOString().split('T')[0]
+      const hoje = dataLocal()
       const { count: plannerCount } = await supabase
         .from('planner')
         .select('*', { count: 'exact', head: true })
@@ -228,14 +229,45 @@ function Home() {
             <span className="home-saudacao">Olá, {nomeRep || 'Representante'}</span>
             <h1 className="home-titulo">Minha Rota RP</h1>
           </div>
-          <button className="home-config-btn" onClick={() => navigate('/opcoes')}>
-            <span>⚙️</span>
-          </button>
+          <div className="home-header-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              title={
+                sync?.sincronizando
+                  ? 'Sincronizando...'
+                  : sync?.online
+                    ? 'Online'
+                    : 'Offline — usando dados em cache'
+              }
+              style={{
+                display: 'inline-block',
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: sync?.sincronizando
+                  ? '#3b82f6'
+                  : sync?.online
+                    ? '#22c55e'
+                    : '#f59e0b',
+                boxShadow: sync?.sincronizando
+                  ? '0 0 8px #3b82f6'
+                  : 'none',
+                animation: sync?.sincronizando ? 'sync-pulse 1.2s infinite' : 'none',
+                flexShrink: 0
+              }}
+            />
+            <button className="home-config-btn" onClick={() => navigate('/opcoes')}>
+              <span>⚙️</span>
+            </button>
+          </div>
         </div>
 
         {/* Switcher de representada */}
         {!loadingRep && representadas.length > 0 ? (
-          <button className="home-rep-switcher" onClick={() => setMostrarSheet(true)}>
+          <div
+            className="home-rep-switcher"
+            onClick={representadas.length > 1 ? () => setMostrarSheet(true) : undefined}
+            style={{ cursor: representadas.length > 1 ? 'pointer' : 'default' }}
+          >
             <div className="home-rep-icon">
               {representadaSelecionada?.logo ? (
                 <img src={representadaSelecionada.logo} alt="" />
@@ -244,13 +276,14 @@ function Home() {
               )}
             </div>
             <span className="home-rep-nome">{representadaSelecionada?.nome || 'Selecionar'}</span>
-            <span className="home-rep-trocar">trocar ›</span>
-          </button>
+            {representadas.length > 1 && (
+              <span className="home-rep-trocar">trocar ›</span>
+            )}
+          </div>
         ) : !loadingRep && representadas.length === 0 ? (
-          <button className="home-rep-vazio" onClick={() => navigate('/mais/representadas')}>
+          <div className="home-rep-vazio">
             <span>Nenhuma empresa cadastrada</span>
-            <span className="home-rep-link">Cadastrar agora →</span>
-          </button>
+          </div>
         ) : null}
       </header>
 
@@ -398,15 +431,6 @@ function Home() {
               ))}
             </div>
 
-            <button
-              className="home-sheet-cadastrar"
-              onClick={() => {
-                setMostrarSheet(false)
-                navigate('/mais/representadas')
-              }}
-            >
-              + Cadastrar nova empresa
-            </button>
           </div>
         </div>
       )}

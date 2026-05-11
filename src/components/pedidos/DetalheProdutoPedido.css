@@ -97,13 +97,34 @@
   gap: 16px;
 }
 
-/* Foto */
+/* Foto (movida pro final, formato compacto) */
+.dpp-foto-pequena {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  background: var(--dpp-bg);
+  border-radius: 8px;
+  max-height: 220px;
+  overflow: hidden;
+}
+
+.dpp-foto-pequena img {
+  max-width: 100%;
+  max-height: 200px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+/* Mantido por compatibilidade caso seja usado em outra tela */
 .dpp-foto {
   width: 100%;
-  aspect-ratio: 4/3;
+  max-height: 200px;
   background: var(--dpp-surface);
   border: 1px solid var(--dpp-border);
-  border-radius: 16px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -111,13 +132,14 @@
 }
 
 .dpp-foto img {
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 200px;
   object-fit: contain;
 }
 
 .dpp-sem-foto {
-  font-size: 64px;
+  font-size: 48px;
+  opacity: 0.5;
 }
 
 /* Card */
@@ -137,12 +159,31 @@
   margin-bottom: 12px;
 }
 
+/* Card info com badge */
+.dpp-card-info {
+  position: relative;
+}
+
+.dpp-badge-fornecedor {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #f1efe8;
+  color: #5f5e5a;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
 /* Nome */
 .dpp-nome {
   font-size: 18px;
   font-weight: 700;
   color: var(--dpp-text);
   margin: 0 0 16px 0;
+  padding-right: 100px;
 }
 
 /* Info grid */
@@ -391,4 +432,66 @@
   font-size: 20px;
   font-weight: 700;
   color: var(--primary, #007aff);
+}
+
+/* Cascata de descontos */
+.dpp-cascata {
+  background: var(--dpp-surface);
+  border: 1px solid var(--dpp-border);
+  border-radius: 14px;
+  padding: 12px 16px;
+}
+
+.dpp-cascata-linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--dpp-text-secondary);
+}
+
+.dpp-cascata-rep {
+  color: #c0392b;
+  border-top: 0.5px solid var(--dpp-border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.dpp-cascata-final {
+  border-top: 0.5px solid var(--dpp-border);
+  margin-top: 6px;
+  padding-top: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dpp-text);
+}
+
+.dpp-preco-riscado {
+  text-decoration: line-through;
+  color: var(--dpp-text-muted);
+}
+
+.dpp-cascata-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: #34c759;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+
+.dpp-desconto-hint {
+  font-size: 11px;
+  color: var(--dpp-text-muted);
+  margin-top: 8px;
+  text-align: center;
+}
+
+.dpp-desconto-alerta {
+  font-size: 11px;
+  color: #ff9500;
+  margin-top: 8px;
+  text-align: center;
 }

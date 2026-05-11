@@ -306,7 +306,7 @@ function CadastroCliente() {
 
     const novoCliente = {
       nome: nomePrincipal,
-      cnpj: cnpj.trim() || null,
+      cnpj_cpf: cnpj.trim() || null,
       telefone: telefone.trim() || null,
       comprador: comprador.trim() || null,
       segmento: segmento || null,

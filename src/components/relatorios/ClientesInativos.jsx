@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import './ClientesInativos.css'
 
@@ -39,19 +40,14 @@ function ClientesInativos() {
   async function fetchInativos() {
     setLoading(true)
 
-    // Buscar todos os clientes
-    const { data: todosClientes } = await supabase
-      .from('clientes')
-      .select('id, nome, cidade')
-      .eq('rep_id', repId)
+    // Buscar todos os clientes (IndexedDB)
+    const todosClientes = await db.clientes.where('rep_id').equals(repId).toArray()
 
-    // Buscar ultimo pedido de cada cliente
-    const { data: pedidos } = await supabase
-      .from('pedidos')
-      .select('cliente_id, valor_total, created_at')
-      .eq('rep_id', repId)
-      .eq('status', 'pedido')
-      .order('created_at', { ascending: false })
+    // Buscar pedidos (IndexedDB)
+    const todosPedidos = await db.pedidos.where('rep_id').equals(repId).toArray()
+    const pedidos = todosPedidos
+      .filter(p => p.status === 'pedido')
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
     const hoje = new Date()
     const inativosComDados = []
@@ -85,7 +81,7 @@ function ClientesInativos() {
 
         inativosComDados.push({
           ...cliente,
-          ultimoPedidoValor: ultimoPedido.valor_total,
+          ultimoPedidoValor: ultimoPedido.valor_liquido,
           ultimoPedidoData: ultimoPedido.created_at,
           diasSemCompra: diffDias,
           faixa

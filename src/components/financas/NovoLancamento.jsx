@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
 import './NovoLancamento.css'
@@ -46,7 +47,7 @@ function NovoLancamento({ onClose, onSuccess, isDark }) {
   const [valor, setValor] = useState(0)
   const [valorDisplay, setValorDisplay] = useState('R$ 0,00')
   const [descricao, setDescricao] = useState('')
-  const [data, setData] = useState(new Date().toISOString().split('T')[0])
+  const [data, setData] = useState(dataLocal())
 
   // Tipo de frequência (só para despesa)
   const [frequencia, setFrequencia] = useState('unico') // unico, parcelado, recorrente

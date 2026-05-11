@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
+import { nomeFornecedor } from '../../utils/fornecedor'
 import './DetalheProdutoPedido.css'
 
 function DetalheProdutoPedido() {
@@ -11,10 +12,12 @@ function DetalheProdutoPedido() {
   const [produto, setProduto] = useState(null)
   const [pedido, setPedido] = useState(null)
   const [quantidade, setQuantidade] = useState(0)
-  const [tipoDesconto, setTipoDesconto] = useState('percentual') // 'percentual' | 'valor'
+  const [tipoDesconto, setTipoDesconto] = useState('percentual') // 'percentual' | 'valor' | 'preco'
   const [descontoPercentual, setDescontoPercentual] = useState('')
   const [descontoReais, setDescontoReais] = useState(0)
   const [descontoReaisDisplay, setDescontoReaisDisplay] = useState('R$ 0,00')
+  const [precoNegociado, setPrecoNegociado] = useState(0)
+  const [precoNegociadoDisplay, setPrecoNegociadoDisplay] = useState('R$ 0,00')
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [isDark, setIsDark] = useState(false)
@@ -35,18 +38,38 @@ function DetalheProdutoPedido() {
       setLoading(true)
 
       const [produtoRes, pedidoRes] = await Promise.all([
-        supabase.from('produtos').select('*').eq('id', produtoId).single(),
+        supabase.from('produtos').select('*, fornecedores(nome, nome_fantasia)').eq('id', produtoId).single(),
         supabase.from('pedidos').select('*').eq('id', pedidoId).single()
       ])
 
-      if (produtoRes.data) setProduto(produtoRes.data)
+      // Busca info de desconto da família
+      const { data: precoInfo } = await supabase
+        .from('produtos_com_preco_distribuidora')
+        .select('preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia')
+        .eq('produto_id', produtoId)
+        .single()
+
+      // Adiciona ao produto
+      if (produtoRes.data) {
+        if (precoInfo) {
+          produtoRes.data.preco_loja = precoInfo.preco_loja
+          produtoRes.data.preco_distribuidora = precoInfo.preco_distribuidora
+          produtoRes.data.desconto_pct_aplicado = Number(precoInfo.desconto_pct_aplicado) || 0
+          produtoRes.data.nome_familia = precoInfo.nome_familia
+        }
+        setProduto(produtoRes.data)
+      }
       if (pedidoRes.data) {
         setPedido(pedidoRes.data)
         // Verificar se já tem este item no pedido
         const itemExistente = pedidoRes.data.itens?.find(i => i.produto_id === produtoId)
         if (itemExistente) {
           setQuantidade(itemExistente.quantidade || 0)
-          if (itemExistente.desconto_percentual) {
+          if (itemExistente.preco_negociado_direto) {
+            setTipoDesconto('preco')
+            setPrecoNegociado(itemExistente.preco_negociado_direto)
+            setPrecoNegociadoDisplay(formatarInputMoeda((itemExistente.preco_negociado_direto * 100).toString()))
+          } else if (itemExistente.desconto_percentual) {
             setTipoDesconto('percentual')
             setDescontoPercentual(itemExistente.desconto_percentual.toString().replace('.', ','))
           } else if (itemExistente.desconto) {
@@ -81,22 +104,40 @@ function DetalheProdutoPedido() {
     setDescontoReais(parseMoeda(formatted))
   }
 
+  function handlePrecoNegociadoChange(valorStr) {
+    const formatted = formatarInputMoeda(valorStr)
+    setPrecoNegociadoDisplay(formatted)
+    setPrecoNegociado(parseMoeda(formatted))
+  }
+
   function parsearPercentual(str) {
     if (!str) return 0
     return parseFloat(str.replace(',', '.')) || 0
   }
 
   // Cálculos
-  const precoTabela = produto?.preco || 0
+  const precoTabela = produto?.preco_distribuidora || produto?.preco || 0
+  const precoLoja = produto?.preco_loja || produto?.preco || 0
+  const descontoFamiliaPct = produto?.desconto_pct_aplicado || 0
+  const nomeFamilia = produto?.nome_familia || null
   const ipi = produto?.ipi || 0
   const precoComIpi = precoTabela * (1 + ipi / 100)
 
   const descontoPercentualNum = parsearPercentual(descontoPercentual)
   let valorDesconto = 0
+  const precoNegociadoNum = Number(precoNegociado) || 0
+  const precoAcimaTabela = tipoDesconto === 'preco' && precoNegociadoNum > precoTabela
+
   if (tipoDesconto === 'percentual' && descontoPercentualNum > 0) {
     valorDesconto = precoTabela * (descontoPercentualNum / 100)
   } else if (tipoDesconto === 'valor') {
     valorDesconto = descontoReais
+  } else if (tipoDesconto === 'preco') {
+    if (precoNegociadoNum > 0 && precoNegociadoNum < precoTabela) {
+      valorDesconto = precoTabela - precoNegociadoNum
+    } else {
+      valorDesconto = 0
+    }
   }
 
   const precoLiquido = Math.max(0, precoTabela - valorDesconto)
@@ -120,11 +161,16 @@ function DetalheProdutoPedido() {
           produto_id: produtoId,
           produto_nome: produto?.nome,
           produto_codigo: produto?.codigo,
+          produto_fornecedor: produto?.fornecedores?.nome_fantasia || produto?.fornecedores?.nome || null,
           quantidade,
           preco_unitario: precoTabela,
+          preco_loja: precoLoja,
+          desconto_familia_pct: descontoFamiliaPct,
+          nome_familia: nomeFamilia,
           ipi,
           desconto: valorDesconto,
           desconto_percentual: tipoDesconto === 'percentual' ? descontoPercentualNum : null,
+          preco_negociado_direto: tipoDesconto === 'preco' ? precoNegociadoNum : null,
           subtotal
         }
 
@@ -143,7 +189,7 @@ function DetalheProdutoPedido() {
         .from('pedidos')
         .update({
           itens: novosItens,
-          valor_total: novoTotal
+          valor_bruto: novosItens.reduce((acc, it) => acc + (it.preco_unitario * it.quantidade), 0)
         })
         .eq('id', pedidoId)
 
@@ -199,22 +245,16 @@ function DetalheProdutoPedido() {
       </header>
 
       <div className="dpp-content">
-        {/* Foto */}
-        <div className="dpp-foto">
-          {produto?.fotos && produto.fotos.length > 0 ? (
-            <img src={produto.fotos[0]} alt={produto.nome} />
-          ) : (
-            <span className="dpp-sem-foto">📦</span>
-          )}
-        </div>
-
         {/* Informações */}
-        <div className="dpp-card">
+        <div className="dpp-card dpp-card-info">
+          {nomeFornecedor(produto) && (
+            <span className="dpp-badge-fornecedor">{nomeFornecedor(produto)}</span>
+          )}
           <h2 className="dpp-nome">{produto?.nome}</h2>
 
           <div className="dpp-info-grid">
             <div className="dpp-info-item">
-              <span className="dpp-info-label">Ref:</span>
+              <span className="dpp-info-label">Código:</span>
               <span className="dpp-info-valor">{produto?.codigo || '-'}</span>
             </div>
             <div className="dpp-info-item">
@@ -227,7 +267,7 @@ function DetalheProdutoPedido() {
             </div>
             {produto?.codigo_barras && (
               <div className="dpp-info-item">
-                <span className="dpp-info-label">Cód. barras:</span>
+                <span className="dpp-info-label">Referência:</span>
                 <span className="dpp-info-valor">{produto.codigo_barras}</span>
               </div>
             )}
@@ -284,6 +324,38 @@ function DetalheProdutoPedido() {
           </div>
         </div>
 
+        {/* Cascata de descontos */}
+        <div className="dpp-cascata">
+          <div className="dpp-cascata-linha">
+            <span>Preço de loja</span>
+            <span className={descontoFamiliaPct > 0 ? 'dpp-preco-riscado' : ''}>
+              {formatarValor(precoLoja)}
+            </span>
+          </div>
+
+          {descontoFamiliaPct > 0 && (
+            <div className="dpp-cascata-linha">
+              <span>
+                Política {nomeFamilia}
+                <span className="dpp-cascata-badge">−{descontoFamiliaPct}%</span>
+              </span>
+              <span>{formatarValor(precoTabela)}</span>
+            </div>
+          )}
+
+          {valorDesconto > 0 && (
+            <div className="dpp-cascata-linha dpp-cascata-rep">
+              <span>Desconto extra rep</span>
+              <span>−{formatarValor(valorDesconto)}</span>
+            </div>
+          )}
+
+          <div className="dpp-cascata-linha dpp-cascata-final">
+            <span>Preço final</span>
+            <span>{formatarValor(precoLiquido)}</span>
+          </div>
+        </div>
+
         {/* Desconto por item */}
         <div className="dpp-card">
           <div className="dpp-card-titulo">Desconto no item</div>
@@ -301,9 +373,15 @@ function DetalheProdutoPedido() {
             >
               R$
             </button>
+            <button
+              className={`dpp-desconto-btn ${tipoDesconto === 'preco' ? 'active' : ''}`}
+              onClick={() => setTipoDesconto('preco')}
+            >
+              Preço
+            </button>
           </div>
 
-          {tipoDesconto === 'percentual' ? (
+          {tipoDesconto === 'percentual' && (
             <div className="dpp-desconto-input">
               <span className="dpp-desconto-prefix">%</span>
               <input
@@ -314,7 +392,9 @@ function DetalheProdutoPedido() {
                 inputMode="decimal"
               />
             </div>
-          ) : (
+          )}
+
+          {tipoDesconto === 'valor' && (
             <div className="dpp-desconto-input">
               <input
                 type="text"
@@ -323,6 +403,36 @@ function DetalheProdutoPedido() {
                 onChange={(e) => handleDescontoReaisChange(e.target.value)}
                 inputMode="numeric"
               />
+            </div>
+          )}
+
+          {tipoDesconto === 'preco' && (
+            <div className="dpp-desconto-input">
+              <input
+                type="text"
+                placeholder="R$ 0,00"
+                value={precoNegociadoDisplay}
+                onChange={(e) => handlePrecoNegociadoChange(e.target.value)}
+                inputMode="numeric"
+              />
+            </div>
+          )}
+
+          {tipoDesconto === 'preco' && precoAcimaTabela && (
+            <div className="dpp-desconto-alerta">
+              Preço acima da tabela
+            </div>
+          )}
+
+          {tipoDesconto === 'preco' && precoNegociadoNum > 0 && precoNegociadoNum < precoTabela && (
+            <div className="dpp-desconto-hint">
+              Equivale a desconto de {((valorDesconto / precoTabela) * 100).toFixed(2).replace('.', ',')}% ({formatarValor(valorDesconto)})
+            </div>
+          )}
+
+          {tipoDesconto !== 'preco' && descontoFamiliaPct > 0 && (
+            <div className="dpp-desconto-hint">
+              Em cima do preço com política ({formatarValor(precoTabela)})
             </div>
           )}
 
@@ -360,6 +470,16 @@ function DetalheProdutoPedido() {
             <span>{formatarValor(subtotal)}</span>
           </div>
         </div>
+
+        {/* Foto (no final pra priorizar info do produto) */}
+        {produto?.fotos && produto.fotos.length > 0 && (
+          <div className="dpp-card">
+            <div className="dpp-card-titulo">Foto do produto</div>
+            <div className="dpp-foto-pequena">
+              <img src={produto.fotos[0]} alt={produto.nome} loading="lazy" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

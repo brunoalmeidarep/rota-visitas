@@ -15,6 +15,7 @@ function CadastroProduto() {
   const fileInputRef = useRef(null)
 
   const isEdicao = !!id
+  const isReadOnly = isEdicao && representadaSelecionada?.plano === 'enterprise'
 
   const [loading, setLoading] = useState(isEdicao)
   const [salvando, setSalvando] = useState(false)
@@ -34,6 +35,9 @@ function CadastroProduto() {
   const [fotos, setFotos] = useState([])
   const [fotosParaUpload, setFotosParaUpload] = useState([])
 
+  // Dados da política (read-only, vem da view)
+  const [politica, setPolitica] = useState(null)
+
   const [erroNome, setErroNome] = useState(false)
 
   // Detectar modo claro/escuro
@@ -44,6 +48,20 @@ function CadastroProduto() {
     mediaQuery.addEventListener('change', handler)
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
+
+  // Recalcula política em tempo real conforme rep edita o preço
+  useEffect(() => {
+    if (!politica) return
+    const precoNum = parseFloat(preco.replace(',', '.')) || 0
+    if (precoNum > 0 && politica.desconto_pct_aplicado > 0) {
+      const novoPrecoDist = precoNum * (1 - politica.desconto_pct_aplicado / 100)
+      setPolitica(prev => ({
+        ...prev,
+        preco_loja: precoNum,
+        preco_distribuidora: novoPrecoDist
+      }))
+    }
+  }, [preco]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carregar produto existente
   useEffect(() => {
@@ -78,6 +96,17 @@ function CadastroProduto() {
         setFotos(data.fotos || [])
       }
 
+      // Busca dados da política aplicada (read-only)
+      const { data: dataPolitica } = await supabase
+        .from('produtos_com_preco_distribuidora')
+        .select('preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia')
+        .eq('produto_id', id)
+        .single()
+
+      if (dataPolitica) {
+        setPolitica(dataPolitica)
+      }
+
       setLoading(false)
     }
 
@@ -106,8 +135,8 @@ function CadastroProduto() {
     if (files.length === 0) return
 
     const totalFotos = fotos.length + fotosParaUpload.length + files.length
-    if (totalFotos > 5) {
-      alert('Máximo de 5 fotos permitido')
+    if (totalFotos > 3) {
+      alert('Máximo de 3 fotos permitido')
       return
     }
 
@@ -295,51 +324,223 @@ function CadastroProduto() {
           </svg>
         </button>
         <span className="cp-header-titulo">{isEdicao ? 'Editar Produto' : 'Novo Produto'}</span>
-        <button
-          className="cp-salvar"
-          onClick={salvar}
-          disabled={salvando}
-        >
-          {salvando ? '...' : 'Salvar'}
-        </button>
+        {isReadOnly ? (
+          <div style={{ width: 60 }}></div>
+        ) : (
+          <button
+            className="cp-salvar"
+            onClick={salvar}
+            disabled={salvando}
+          >
+            {salvando ? '...' : 'Salvar'}
+          </button>
+        )}
       </header>
 
       <div className="cp-content">
-        {/* Fotos */}
-        <div className="cp-secao">
-          <label className="cp-secao-titulo">Fotos</label>
-          <p className="cp-secao-hint">A primeira foto é a principal. Máximo 5 fotos.</p>
+        {isReadOnly && (
+          <div className="cp-readonly-banner">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span>Catálogo gerenciado pela empresa. Visualização apenas.</span>
+          </div>
+        )}
 
-          <div className="cp-fotos-grid">
+        {/* Identificação */}
+        <div className="cp-secao">
+          <label className="cp-secao-titulo">Identificação</label>
+
+          <div className="cp-row">
+            <div className="cp-campo">
+              <label>Código / Referência</label>
+              <input
+                type="text"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+                placeholder="Ex: POLO-AZ-M"
+                disabled={isReadOnly}
+                readOnly={isReadOnly}
+              />
+            </div>
+            <div className="cp-campo">
+              <label>Código de barras</label>
+              <input
+                type="text"
+                value={codigoBarras}
+                onChange={(e) => setCodigoBarras(e.target.value)}
+                placeholder="EAN-13"
+                disabled={isReadOnly}
+                readOnly={isReadOnly}
+              />
+            </div>
+          </div>
+
+          <div className="cp-campo">
+            <label>
+              Nome do produto
+              <span className="cp-obrigatorio">*</span>
+            </label>
+            <input
+              type="text"
+              value={nome}
+              onChange={(e) => { setNome(e.target.value); setErroNome(false); }}
+              placeholder="Ex: Camiseta Polo Azul"
+              className={erroNome ? 'erro' : ''}
+              disabled={isReadOnly}
+              readOnly={isReadOnly}
+            />
+            {erroNome && <span className="cp-erro-msg">Nome é obrigatório</span>}
+          </div>
+
+          <div className="cp-campo">
+            <label>Descrição</label>
+            <textarea
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Descrição detalhada do produto (aparece no catálogo)"
+              rows={3}
+              disabled={isReadOnly}
+              readOnly={isReadOnly}
+            />
+          </div>
+
+          <div className="cp-row">
+            <div className="cp-campo">
+              <label>NCM</label>
+              <input
+                type="text"
+                value={ncm}
+                onChange={(e) => setNcm(e.target.value)}
+                placeholder="Ex: 6109.10.00"
+                disabled={isReadOnly}
+                readOnly={isReadOnly}
+              />
+            </div>
+            <div className="cp-campo">
+              <label>Unidade</label>
+              <select value={unidade} onChange={(e) => setUnidade(e.target.value)} disabled={isReadOnly}>
+                {UNIDADES.map(u => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
+            <div className="cp-campo">
+              <label>Múltiplo</label>
+              <input
+                type="number"
+                value={multiplo}
+                onChange={(e) => setMultiplo(e.target.value)}
+                placeholder="1"
+                min="1"
+                disabled={isReadOnly}
+                readOnly={isReadOnly}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Preços e Impostos */}
+        <div className="cp-secao">
+          <label className="cp-secao-titulo">Preços e Impostos</label>
+
+          <div className="cp-row">
+            <div className="cp-campo flex-2">
+              <label>Preço de tabela</label>
+              <div className="cp-input-prefix">
+                <span>R$</span>
+                <input
+                  type="text"
+                  value={preco}
+                  onChange={(e) => handlePrecoChange(e.target.value)}
+                  placeholder="0,00"
+                  inputMode="decimal"
+                  disabled={isReadOnly}
+                  readOnly={isReadOnly}
+                />
+              </div>
+            </div>
+            <div className="cp-campo flex-1">
+              <label>IPI %</label>
+              <input
+                type="number"
+                value={ipi}
+                onChange={(e) => setIpi(e.target.value)}
+                placeholder="0"
+                min="0"
+                step="0.01"
+                disabled={isReadOnly}
+                readOnly={isReadOnly}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Política de desconto (read-only) */}
+        {isEdicao && politica && (
+          <div className="cp-secao">
+            <label className="cp-secao-titulo">Política de desconto</label>
+            <div className="cp-politica-card">
+              <div className="cp-politica-row">
+                <span className="cp-politica-label">Família</span>
+                <span className="cp-politica-valor">
+                  {politica.nome_familia || '—'}
+                </span>
+              </div>
+              <div className="cp-politica-row">
+                <span className="cp-politica-label">Desconto aplicado</span>
+                <span className="cp-politica-valor">
+                  {politica.desconto_pct_aplicado > 0
+                    ? `${Math.round(politica.desconto_pct_aplicado)}%`
+                    : 'Sem desconto'}
+                </span>
+              </div>
+              {politica.desconto_pct_aplicado > 0 && politica.preco_distribuidora != null && (
+                <div className="cp-politica-row destaque">
+                  <span className="cp-politica-label">Preço final (distribuidora)</span>
+                  <span className="cp-politica-valor verde">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(politica.preco_distribuidora)}
+                  </span>
+                </div>
+              )}
+              <p className="cp-politica-hint">
+                A política é definida em Tabelas → Políticas. Esta seção é apenas informativa.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Foto do Produto */}
+        <div className="cp-secao">
+          <label className="cp-secao-titulo">Foto do Produto</label>
+          <p className="cp-secao-hint">A primeira foto é a principal. Máximo 3 fotos.</p>
+
+          <div className="cp-fotos-compact">
             {/* Fotos existentes */}
             {fotos.map((url, index) => (
-              <div key={`existing-${index}`} className="cp-foto-item">
+              <div key={`existing-${index}`} className="cp-foto-thumb">
                 <img src={url} alt={`Foto ${index + 1}`} />
-                <button className="cp-foto-remover" onClick={() => removerFotoExistente(index)}>
-                  ×
-                </button>
-                {index === 0 && <span className="cp-foto-principal">Principal</span>}
+                {!isReadOnly && (
+                  <button className="cp-foto-remover" onClick={() => removerFotoExistente(index)}>×</button>
+                )}
+                {index === 0 && <span className="cp-foto-badge">1ª</span>}
               </div>
             ))}
 
             {/* Fotos para upload */}
-            {fotosParaUpload.map((item, index) => (
-              <div key={`new-${index}`} className="cp-foto-item">
+            {!isReadOnly && fotosParaUpload.map((item, index) => (
+              <div key={`new-${index}`} className="cp-foto-thumb">
                 <img src={item.preview} alt={`Nova foto ${index + 1}`} />
-                <button className="cp-foto-remover" onClick={() => removerFotoNova(index)}>
-                  ×
-                </button>
-                {fotos.length === 0 && index === 0 && (
-                  <span className="cp-foto-principal">Principal</span>
-                )}
+                <button className="cp-foto-remover" onClick={() => removerFotoNova(index)}>×</button>
+                {fotos.length === 0 && index === 0 && <span className="cp-foto-badge">1ª</span>}
               </div>
             ))}
 
             {/* Botão adicionar */}
-            {totalFotos < 5 && (
-              <button className="cp-foto-add" onClick={() => fileInputRef.current?.click()}>
-                <span>+</span>
-                <span className="cp-foto-add-text">Adicionar</span>
+            {!isReadOnly && totalFotos < 3 && (
+              <button className="cp-foto-btn" onClick={() => fileInputRef.current?.click()}>
+                Escolher Foto
               </button>
             )}
           </div>
@@ -354,127 +555,13 @@ function CadastroProduto() {
           />
         </div>
 
-        {/* Identificação */}
-        <div className="cp-secao">
-          <label className="cp-secao-titulo">Identificação</label>
-
-          <div className="cp-campo">
-            <label>
-              Nome do produto
-              <span className="cp-obrigatorio">*</span>
-            </label>
-            <input
-              type="text"
-              value={nome}
-              onChange={(e) => { setNome(e.target.value); setErroNome(false); }}
-              placeholder="Ex: Camiseta Polo Azul"
-              className={erroNome ? 'erro' : ''}
-            />
-            {erroNome && <span className="cp-erro-msg">Nome é obrigatório</span>}
-          </div>
-
-          <div className="cp-campo">
-            <label>Código / Referência</label>
-            <input
-              type="text"
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value)}
-              placeholder="Ex: POLO-AZ-M"
-            />
-          </div>
-
-          <div className="cp-row">
-            <div className="cp-campo">
-              <label>NCM</label>
-              <input
-                type="text"
-                value={ncm}
-                onChange={(e) => setNcm(e.target.value)}
-                placeholder="Ex: 6109.10.00"
-              />
-            </div>
-            <div className="cp-campo">
-              <label>Código de barras</label>
-              <input
-                type="text"
-                value={codigoBarras}
-                onChange={(e) => setCodigoBarras(e.target.value)}
-                placeholder="EAN-13"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Preço e unidade */}
-        <div className="cp-secao">
-          <label className="cp-secao-titulo">Preço e unidade</label>
-
-          <div className="cp-row">
-            <div className="cp-campo flex-2">
-              <label>Preço de tabela</label>
-              <div className="cp-input-prefix">
-                <span>R$</span>
-                <input
-                  type="text"
-                  value={preco}
-                  onChange={(e) => handlePrecoChange(e.target.value)}
-                  placeholder="0,00"
-                  inputMode="decimal"
-                />
-              </div>
-            </div>
-            <div className="cp-campo flex-1">
-              <label>Unidade</label>
-              <select value={unidade} onChange={(e) => setUnidade(e.target.value)}>
-                {UNIDADES.map(u => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="cp-row">
-            <div className="cp-campo">
-              <label>Múltiplo de venda</label>
-              <input
-                type="number"
-                value={multiplo}
-                onChange={(e) => setMultiplo(e.target.value)}
-                placeholder="1"
-                min="1"
-              />
-            </div>
-            <div className="cp-campo">
-              <label>IPI %</label>
-              <input
-                type="number"
-                value={ipi}
-                onChange={(e) => setIpi(e.target.value)}
-                placeholder="0"
-                min="0"
-                step="0.01"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Descrição */}
-        <div className="cp-secao">
-          <label className="cp-secao-titulo">Descrição</label>
-          <textarea
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Descrição detalhada do produto (aparece no catálogo)"
-            rows={4}
-          />
-        </div>
-
         {/* Status */}
         <div className="cp-secao">
           <label className="cp-secao-titulo">Status</label>
           <button
             className={`cp-toggle-status ${ativo ? 'ativo' : 'inativo'}`}
-            onClick={() => setAtivo(!ativo)}
+            onClick={() => !isReadOnly && setAtivo(!ativo)}
+            disabled={isReadOnly}
           >
             <span className="cp-toggle-indicator"></span>
             <span className="cp-toggle-label">
@@ -483,8 +570,8 @@ function CadastroProduto() {
           </button>
         </div>
 
-        {/* Botão excluir (só em edição) */}
-        {isEdicao && (
+        {/* Botão excluir (só em edição e não read-only) */}
+        {isEdicao && !isReadOnly && (
           <button
             className="cp-btn-excluir"
             onClick={excluir}

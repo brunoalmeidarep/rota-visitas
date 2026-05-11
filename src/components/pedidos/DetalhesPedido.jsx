@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
+import { useEmpresaFeatures } from '../../hooks/useEmpresaFeatures'
 import { abrirPreviewPDF, compartilharPDF } from './PDFOrcamento'
 import { limparCarrinho } from '../../lib/carrinhoStorage'
+import { nomeFornecedorStr } from '../../utils/fornecedor'
+import { db } from '../../lib/db'
+import { atualizarComOuSemConexao } from '../../lib/queue'
 import './DetalhesPedido.css'
 
 function DetalhesPedido() {
@@ -13,6 +18,10 @@ function DetalhesPedido() {
   const { id: pedidoId } = useParams()
   const { repId } = useRepId()
   const { isStarter, isPro, isEnterprise, loading: loadingPlano } = usePlano()
+  const { features } = useEmpresaFeatures()
+
+  // Pedido saldo - buscar info do pedido origem
+  const [pedidoOrigem, setPedidoOrigem] = useState(null)
 
   // Navegacao contextual: se veio do perfil/historico do cliente, voltar para la
   const fromCliente = location.state?.from === 'cliente' || location.state?.from === 'historico'
@@ -40,6 +49,7 @@ function DetalhesPedido() {
   const [showEmailSheet, setShowEmailSheet] = useState(false)
   const [showPagamentoSheet, setShowPagamentoSheet] = useState(false)
   const [showTipoSheet, setShowTipoSheet] = useState(false)
+  const [showRupturaSheet, setShowRupturaSheet] = useState(false)
   const [gerandoPDF, setGerandoPDF] = useState(false)
   const [toast, setToast] = useState('')
   const [toastTipo, setToastTipo] = useState('sucesso') // 'sucesso' | 'erro'
@@ -50,6 +60,9 @@ function DetalhesPedido() {
   const [infoAdicionais, setInfoAdicionais] = useState('')
   const [ocCliente, setOcCliente] = useState('')
   const [erroCondicao, setErroCondicao] = useState(false)
+  const [regraRuptura, setRegraRuptura] = useState('')
+  const [planosDisponiveis, setPlanosDisponiveis] = useState([])
+  const [planoPagamentoId, setPlanoPagamentoId] = useState(null)
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -60,19 +73,33 @@ function DetalhesPedido() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar pedido e dados relacionados
+  // Carregar pedido e dados relacionados (IndexedDB primeiro, fallback Supabase)
   useEffect(() => {
     if (!pedidoId || !repId) return
 
     async function fetchPedido() {
       setLoading(true)
 
-      // Buscar pedido
-      const { data, error } = await supabase
-        .from('pedidos')
-        .select('*')
-        .eq('id', pedidoId)
-        .single()
+      // 1. Buscar pedido — primeiro do IndexedDB local
+      let data = null
+      let error = null
+
+      try {
+        data = await db.pedidos.get(pedidoId)
+      } catch (e) {
+        console.warn('[DetalhesPedido] Erro IndexedDB pedido:', e)
+      }
+
+      // Se não achou local E ID não é offline, busca no Supabase
+      if (!data && !String(pedidoId).startsWith('offline_')) {
+        const r = await supabase
+          .from('pedidos')
+          .select('*')
+          .eq('id', pedidoId)
+          .maybeSingle()
+        data = r.data
+        error = r.error
+      }
 
       if (error) {
         console.error('[DetalhesPedido] Erro:', error)
@@ -82,41 +109,124 @@ function DetalhesPedido() {
         setTipoPedido(data.tipo || 'Venda')
         setInfoAdicionais(data.info_adicionais || '')
         setOcCliente(data.oc_cliente || '')
+        setRegraRuptura(data.regra_ruptura || 'parcial_novo')
+        setPlanoPagamentoId(data.plano_pagamento_id || null)
 
-        // Buscar representada
-        if (data.representada_id) {
-          const { data: repData } = await supabase
-            .from('representadas')
-            .select('*')
-            .eq('id', data.representada_id)
-            .single()
-          if (repData) setRepresentada(repData)
+        // 2. Buscar cliente — IndexedDB primeiro
+        if (data.cliente_id) {
+          try {
+            const cliLocal = await db.clientes.get(data.cliente_id)
+            if (cliLocal) {
+              setCliente(cliLocal)
+            } else if (navigator.onLine) {
+              const { data: cliData } = await supabase
+                .from('clientes')
+                .select('*')
+                .eq('id', data.cliente_id)
+                .maybeSingle()
+              if (cliData) setCliente(cliData)
+            }
+          } catch (e) {
+            console.warn('[DetalhesPedido] Erro cliente:', e)
+          }
         }
 
-        // Buscar cliente
-        if (data.cliente_id) {
-          const { data: cliData } = await supabase
-            .from('clientes')
-            .select('*')
-            .eq('id', data.cliente_id)
-            .single()
-          if (cliData) setCliente(cliData)
+        // 3. Buscar representada/empresa (online)
+        if (data.representada_id && navigator.onLine) {
+          // Se pedido tem empresa_id, é enterprise → busca em 'empresas'
+          if (data.empresa_id) {
+            const { data: empData } = await supabase
+              .from('empresas')
+              .select('*')
+              .eq('id', data.empresa_id)
+              .maybeSingle()
+            if (empData) {
+              // Adapta formato pra ficar compatível com o que o componente espera de "representada"
+              setRepresentada({
+                ...empData,
+                tipo: 'empresa',
+                plano: 'enterprise'
+              })
+            }
+          } else {
+            // PRO: busca normal em 'representadas'
+            const { data: repData } = await supabase
+              .from('representadas')
+              .select('*')
+              .eq('id', data.representada_id)
+              .maybeSingle()
+            if (repData) setRepresentada(repData)
+          }
         }
       }
 
-      // Buscar representante
-      const { data: reprData } = await supabase
-        .from('representantes')
-        .select('*')
-        .eq('id', repId)
-        .single()
-      if (reprData) setRepresentante(reprData)
+      // 4. Buscar representante (só online)
+      if (navigator.onLine) {
+        const { data: reprData } = await supabase
+          .from('representantes')
+          .select('*')
+          .eq('id', repId)
+          .maybeSingle()
+        if (reprData) setRepresentante(reprData)
+      }
 
       setLoading(false)
     }
 
     fetchPedido()
   }, [pedidoId, repId])
+
+  // Buscar pedido origem se for pedido saldo
+  useEffect(() => {
+    if (!pedido?.pedido_origem_id) {
+      setPedidoOrigem(null)
+      return
+    }
+
+    async function fetchPedidoOrigem() {
+      const { data } = await supabase
+        .from('pedidos')
+        .select('id, numero')
+        .eq('id', pedido.pedido_origem_id)
+        .single()
+
+      if (data) {
+        setPedidoOrigem(data)
+      }
+    }
+
+    fetchPedidoOrigem()
+  }, [pedido?.pedido_origem_id])
+
+  // Carregar planos de pagamento do IndexedDB
+  useEffect(() => {
+    async function carregarPlanos() {
+      try {
+        // Determina empresa: enterprise usa empresa_id, PRO usa representada_id
+        let empresaId = null
+        if (representada?.plano === 'enterprise' && representada?.id) {
+          empresaId = representada.id
+        } else if (pedido?.empresa_id) {
+          empresaId = pedido.empresa_id
+        }
+        if (!empresaId) {
+          setPlanosDisponiveis([])
+          return
+        }
+        const planos = await db.planos_pagamento
+          .where('empresa_id')
+          .equals(empresaId)
+          .toArray()
+        const ativos = planos.filter(p => p.ativo === true)
+        ativos.sort((a, b) => (a.ordem_exibicao || 0) - (b.ordem_exibicao || 0))
+        setPlanosDisponiveis(ativos)
+      } catch (err) {
+        console.error('[DetalhesPedido] Erro carregando planos:', err)
+        setPlanosDisponiveis([])
+      }
+    }
+    carregarPlanos()
+  }, [representada, pedido?.empresa_id])
 
   function formatarValor(valor) {
     if (!valor || valor === 0) return 'R$ 0,00'
@@ -144,15 +254,20 @@ function DetalhesPedido() {
     })
   }
 
-  const isEditavel = pedido?.status === 'orcamento' && !isReadonly
+  // Pedido saldo: bloqueia edição
+  const isPedidoSaldo = !!pedido?.pedido_origem_id
+  const isEditavel = pedido?.status === 'orcamento' && !isReadonly && !isPedidoSaldo
+
+  // Feature de regra de ruptura
+  const mostrarRegraRuptura = features?.regra_ruptura === true
   const totalItens = pedido?.itens?.length || 0
   const subtotal = totalItens > 0
     ? (pedido?.itens || []).reduce((acc, item) =>
         acc + (item.subtotal || item.preco_unitario * item.quantidade || 0), 0
       )
-    : pedido?.valor_total || 0
+    : pedido?.valor_liquido || 0
   const descontoTotal = pedido?.valor_desconto || 0
-  const total = totalItens > 0 ? subtotal - descontoTotal : pedido?.valor_total || 0
+  const total = totalItens > 0 ? subtotal - descontoTotal : pedido?.valor_liquido || 0
 
   async function salvar() {
     console.log('[salvar] 1. Iniciando...')
@@ -171,39 +286,40 @@ function DetalhesPedido() {
 
     const dadosUpdate = {
       condicao_pagamento: condicaoPagamento.trim() || null,
+      plano_pagamento_id: planoPagamentoId || null,
       tipo: tipoPedido || 'Venda',
       info_adicionais: infoAdicionais.trim() || null,
       oc_cliente: ocCliente.trim() || null,
-      valor_total: total
+      valor_bruto: subtotal,
+      valor_desconto: descontoTotal
+    }
+    if (mostrarRegraRuptura) {
+      dadosUpdate.regra_ruptura = regraRuptura
     }
 
     console.log('[salvar] 2. Dados:', JSON.stringify(dadosUpdate, null, 2))
     console.log('[salvar] 3. pedidoId:', pedidoId)
 
     try {
-      const { data, error } = await supabase
-        .from('pedidos')
-        .update(dadosUpdate)
-        .eq('id', pedidoId)
-        .select()
+      const resultado = await atualizarComOuSemConexao(
+        'pedidos',
+        pedidoId,
+        dadosUpdate,
+        { tabelaLocal: 'pedidos' }
+      )
 
-      console.log('[salvar] 4. Supabase retornou:', { data, error })
+      console.log('[salvar] 4. Resultado:', resultado)
 
-      if (error) {
-        console.error('[salvar] ERRO Supabase:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        })
-        alert(`Erro ao salvar:\n${error.message}`)
+      if (!resultado.ok) {
+        console.error('[salvar] ERRO:', resultado.motivo)
+        alert('Erro ao salvar: ' + resultado.motivo)
         setSalvando(false)
         return
       }
 
       console.log('[salvar] 5. Sucesso! Mostrando toast...')
       setToastTipo('sucesso')
-      setToast('Pedido salvo!')
+      setToast(resultado.offline ? 'Pedido salvo offline' : 'Pedido salvo!')
 
       console.log('[salvar] 6. Aguardando 800ms...')
       setTimeout(() => {
@@ -220,6 +336,12 @@ function DetalhesPedido() {
   }
 
   async function gerarPedido() {
+    // Bloqueio offline — gerar pedido precisa de conexão (numeração sequencial)
+    if (!navigator.onLine) {
+      alert('Você precisa estar conectado à internet para gerar o pedido. Salve como orçamento e gere quando voltar online.')
+      return
+    }
+
     // Validar condição de pagamento
     if (!condicaoPagamento.trim()) {
       setErroCondicao(true)
@@ -260,11 +382,16 @@ function DetalhesPedido() {
         status: 'pedido',
         numero: novoNumero,
         condicao_pagamento: condicaoPagamento.trim() || null,
+        plano_pagamento_id: planoPagamentoId || null,
         tipo: tipoPedido || 'Venda',
         info_adicionais: infoAdicionais.trim() || null,
         oc_cliente: ocCliente.trim() || null,
-        valor_total: total,
+        valor_bruto: subtotal,
+        valor_desconto: descontoTotal,
         data_pedido: new Date().toISOString()
+      }
+      if (mostrarRegraRuptura) {
+        dadosUpdate.regra_ruptura = regraRuptura
       }
 
       // Se rep tem empresa_id (Enterprise), enviar para aprovação
@@ -282,13 +409,16 @@ function DetalhesPedido() {
         dadosUpdate.qtd_itens = pedido?.itens?.length || 0
       }
 
+      console.log('[gerarPedido] Vai dar update no pedido:', pedidoId)
+      console.log('[gerarPedido] Dados:', JSON.stringify(dadosUpdate, null, 2))
+
       const { error } = await supabase
         .from('pedidos')
         .update(dadosUpdate)
         .eq('id', pedidoId)
 
       if (error) {
-        console.error('[DetalhesPedido] Erro:', error)
+        console.error('[gerarPedido] ERRO COMPLETO:', JSON.stringify(error, null, 2))
         alert('Erro ao gerar pedido')
         setSalvando(false)
         return
@@ -299,7 +429,7 @@ function DetalhesPedido() {
         await supabase
           .from('clientes')
           .update({
-            ultimo_pedido_data: new Date().toISOString().split('T')[0],
+            ultimo_pedido_data: dataLocal(),
             ultimo_pedido_valor: total
           })
           .eq('id', pedido.cliente_id)
@@ -314,6 +444,16 @@ function DetalhesPedido() {
 
       if (pedidoAtualizado) {
         setPedido(pedidoAtualizado)
+        // Atualiza IndexedDB local pra refletir mudança imediatamente na ListaPedidos
+        try {
+          await db.pedidos.put({
+            ...pedidoAtualizado,
+            _synced_at: new Date().toISOString(),
+            _pending_sync: 0
+          })
+        } catch (err) {
+          console.error('[DetalhesPedido] Erro ao atualizar IndexedDB:', err)
+        }
       }
 
       // Mostrar mensagem de sucesso
@@ -322,7 +462,9 @@ function DetalhesPedido() {
       setTimeout(() => setToast(''), 3000)
 
     } catch (err) {
-      console.error('[DetalhesPedido] Exceção:', err)
+      console.error('[gerarPedido] Exceção COMPLETA:', err)
+      console.error('[gerarPedido] Stack:', err?.stack)
+      console.error('[gerarPedido] Detalhes:', err?.message, err?.details, err?.hint, err?.code)
       alert('Erro ao gerar pedido')
     }
 
@@ -474,6 +616,16 @@ function DetalhesPedido() {
         </div>
       )}
 
+      {/* Banner pedido saldo */}
+      {isPedidoSaldo && (
+        <div className="dp-banner-saldo">
+          <span className="dp-banner-saldo-titulo">📋 Pedido em saldo</span>
+          <span className="dp-banner-saldo-desc">
+            Gerado a partir do pedido #{pedidoOrigem?.numero ? String(pedidoOrigem.numero).padStart(3, '0') : '...'}
+          </span>
+        </div>
+      )}
+
       <div className="dp-content">
         {/* Informações básicas */}
         <div className="dp-card">
@@ -495,38 +647,97 @@ function DetalhesPedido() {
               {pedido?.canal === 'whatsapp' ? '💬 WhatsApp' : '🏪 Presencial'}
             </span>
           </div>
+          {mostrarRegraRuptura && (
+            <div
+              className={`dp-info-linha dp-info-ruptura ${isEditavel ? 'clicavel' : ''}`}
+              onClick={isEditavel ? () => setShowRupturaSheet(true) : undefined}
+              style={{ cursor: isEditavel ? 'pointer' : 'default' }}
+            >
+              <span className="dp-info-label">Em caso de ruptura</span>
+              <div className="dp-condicao-right">
+                <span style={{ color: isEditavel ? '#007aff' : '#888' }}>
+                  {regraRuptura === 'parcial_novo' && 'fatura parcial e cria novo pedido'}
+                  {regraRuptura === 'parcial_cancela' && 'fatura parcial e cancela saldo'}
+                  {regraRuptura === 'total' && 'entrega total'}
+                  {!regraRuptura && (isEditavel ? 'Selecionar' : '-')}
+                </span>
+                {isEditavel && <span className="dp-condicao-seta">›</span>}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Condições comerciais */}
         <div className="dp-card dp-condicoes">
           <div className="dp-card-titulo">Condições comerciais</div>
 
-          {/* Linha 1: Condição de pagamento (obrigatória) */}
-          <div
-            className={`dp-condicao-linha ${!isEditavel ? 'travado' : ''} ${erroCondicao ? 'erro' : ''}`}
-            onClick={isEditavel ? () => { setShowPagamentoSheet(true); setErroCondicao(false); } : undefined}
-            style={{ cursor: isEditavel ? 'pointer' : 'default' }}
-          >
-            <span className="dp-condicao-label">
-              Condição pagamento
+          {/* Condição de pagamento: dropdown se tiver planos, input livre se não */}
+          <div className="dp-campo" style={{ padding: '12px 16px' }}>
+            <label style={{ fontSize: 13, color: '#888', marginBottom: 6, display: 'block' }}>
+              Condição de pagamento
               {isEditavel && <span style={{ color: '#ff3b30', marginLeft: 2 }}>*</span>}
-            </span>
-            <div className="dp-condicao-right">
-              <span style={{
-                color: !isEditavel ? '#888' :
-                       condicaoPagamento ? '#007aff' :
-                       erroCondicao ? '#ff3b30' : '#ff9500'
-              }}>
-                {condicaoPagamento || (isEditavel ? 'Selecionar' : '-')}
+            </label>
+            {planosDisponiveis.length > 0 ? (
+              <select
+                value={planoPagamentoId || ''}
+                onChange={(e) => {
+                  const novoId = e.target.value || null
+                  setPlanoPagamentoId(novoId)
+                  if (novoId) {
+                    const plano = planosDisponiveis.find(p => p.id === novoId)
+                    if (plano) setCondicaoPagamento(plano.nome)
+                  } else {
+                    setCondicaoPagamento('')
+                  }
+                  setErroCondicao(false)
+                }}
+                className="dp-input"
+                disabled={!isEditavel}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: 15,
+                  borderRadius: 8,
+                  border: erroCondicao ? '1px solid #ff3b30' : '1px solid #ddd'
+                }}
+              >
+                <option value="">Selecione...</option>
+                {planosDisponiveis.map(plano => (
+                  <option key={plano.id} value={plano.id}>
+                    {plano.nome}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div
+                className={`dp-condicao-linha-inline ${erroCondicao ? 'erro' : ''}`}
+                onClick={isEditavel ? () => { setShowPagamentoSheet(true); setErroCondicao(false); } : undefined}
+                style={{
+                  cursor: isEditavel ? 'pointer' : 'default',
+                  padding: '10px 12px',
+                  border: erroCondicao ? '1px solid #ff3b30' : '1px solid #ddd',
+                  borderRadius: 8,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <span style={{
+                  color: !isEditavel ? '#888' :
+                         condicaoPagamento ? '#000' :
+                         erroCondicao ? '#ff3b30' : '#999'
+                }}>
+                  {condicaoPagamento || 'Selecionar...'}
+                </span>
+                {isEditavel && <span style={{ color: '#007aff' }}>›</span>}
+              </div>
+            )}
+            {erroCondicao && (
+              <span style={{ fontSize: 12, color: '#ff3b30', marginTop: 4, display: 'block' }}>
+                Condição de pagamento é obrigatória
               </span>
-              {isEditavel && <span className="dp-condicao-seta" style={{ color: erroCondicao ? '#ff3b30' : undefined }}>›</span>}
-            </div>
+            )}
           </div>
-          {erroCondicao && (
-            <div style={{ padding: '0 16px 8px', marginTop: -4 }}>
-              <span style={{ fontSize: 12, color: '#ff3b30' }}>Condição de pagamento é obrigatória</span>
-            </div>
-          )}
 
           {/* Linha 2: Tipo de pedido */}
           <div
@@ -603,6 +814,7 @@ function DetalhesPedido() {
                   const temDescontoItem = item.desconto_percentual > 0 || item.desconto_valor > 0
                   const temDescontoPolitica = item.politica_desconto
                   const precoOriginal = item.preco_tabela || item.preco_unitario
+                  const marcaNome = nomeFornecedorStr(item.produto_fornecedor)
                   return (
                     <div key={index} className="dp-produto-item">
                       <div className="dp-produto-info">
@@ -621,6 +833,9 @@ function DetalhesPedido() {
                         </div>
                       </div>
                       <div className="dp-produto-right">
+                        {marcaNome && (
+                          <span className="dp-badge-fornecedor">{marcaNome}</span>
+                        )}
                         <span className="dp-produto-qty">{item.quantidade} un</span>
                         <span className="dp-produto-valor">{formatarValor(item.subtotal)}</span>
                         {temDescontoItem && (
@@ -687,8 +902,14 @@ function DetalhesPedido() {
           <div className="dp-acoes">
             {isEditavel ? (
               <>
-                <button className="dp-btn-gerar" onClick={gerarPedido} disabled={salvando}>
-                  Gerar pedido
+                <button
+                  className="dp-btn-gerar"
+                  onClick={gerarPedido}
+                  disabled={salvando || !navigator.onLine}
+                  title={!navigator.onLine ? 'Conecte-se à internet para gerar o pedido' : ''}
+                  style={!navigator.onLine ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                >
+                  {!navigator.onLine ? '🔌 Gerar pedido (offline)' : 'Gerar pedido'}
                 </button>
                 <button
                   className="dp-btn-cancelar-orcamento"
@@ -717,15 +938,6 @@ function DetalhesPedido() {
           </div>
         )}
 
-        {/* Transmitir (Enterprise) */}
-        {!isReadonly && isEnterprise && pedido?.status === 'pedido' && (
-          <button
-            className="dp-btn-transmitir"
-            onClick={() => alert('Transmissão em desenvolvimento')}
-          >
-            Transmitir para indústria
-          </button>
-        )}
       </div>
 
       {/* Sheet de e-mail */}
@@ -826,6 +1038,38 @@ function DetalhesPedido() {
                     }}
                   >
                     {opcao}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sheet de regra de ruptura */}
+      {showRupturaSheet && (
+        <div className="dp-sheet-overlay" onClick={() => setShowRupturaSheet(false)}>
+          <div className="dp-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="dp-sheet-header">
+              <span>Em caso de ruptura</span>
+              <button onClick={() => setShowRupturaSheet(false)}>✕</button>
+            </div>
+            <div className="dp-sheet-content">
+              <div className="dp-sheet-opcoes">
+                {[
+                  { value: 'parcial_novo', label: 'Fatura parcial e cria novo pedido com saldo' },
+                  { value: 'parcial_cancela', label: 'Fatura parcial e cancela saldo' },
+                  { value: 'total', label: 'Entrega total' }
+                ].map(opcao => (
+                  <button
+                    key={opcao.value}
+                    className={`dp-sheet-opcao ${regraRuptura === opcao.value ? 'active' : ''}`}
+                    onClick={() => {
+                      setRegraRuptura(opcao.value)
+                      setShowRupturaSheet(false)
+                    }}
+                  >
+                    {opcao.label}
                   </button>
                 ))}
               </div>

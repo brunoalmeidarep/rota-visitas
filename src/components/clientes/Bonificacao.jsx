@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
 import './Bonificacao.css'
@@ -146,7 +147,7 @@ function Bonificacao() {
     setSalvando(true)
 
     try {
-      const hoje = new Date().toISOString().split('T')[0]
+      const hoje = dataLocal()
       const representadaNome = representadas.find(r => r.id === representadaId)?.nome || null
 
       // Tabela bonificacoes: id, cliente_id, cliente_nome, representada_id, representada_nome, motivo, valor_total, parcelas, status, rep_id

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import './HistoricoCliente.css'
 
@@ -75,63 +76,59 @@ function HistoricoCliente() {
 
   // Carregar cliente
   useEffect(() => {
+    if (!id) return
     async function fetchCliente() {
-      if (!id) return
-
-      const { data } = await supabase
-        .from('clientes')
-        .select('id, nome')
-        .eq('id', id)
-        .single()
-
-      if (data) setCliente(data)
+      try {
+        const localData = await db.clientes.get(id)
+        if (localData) {
+          setCliente({ id: localData.id, nome: localData.nome })
+        } else if (navigator.onLine) {
+          const { data } = await supabase
+            .from('clientes')
+            .select('id, nome')
+            .eq('id', id)
+            .maybeSingle()
+          if (data) setCliente(data)
+        }
+      } catch (err) {
+        console.error('[HistoricoCliente] Erro:', err)
+      }
     }
-
     fetchCliente()
   }, [id])
 
   // Carregar dados
   useEffect(() => {
+    if (!id || !repId) return
     async function fetchDados() {
-      if (!id || !repId) return
-
       setLoading(true)
+      try {
+        const visitasData = await db.visitas
+          .where('cliente_id')
+          .equals(id)
+          .toArray()
+        const visitasFiltradas = visitasData.filter(v => v.rep_id === repId)
+        visitasFiltradas.sort((a, b) => (b.data || '').localeCompare(a.data || ''))
+        setVisitas(visitasFiltradas)
 
-      // Visitas (todas, sem limite)
-      const { data: visitasData } = await supabase
-        .from('visitas')
-        .select('id, data, hora, tipo, obs')
-        .eq('cliente_id', id)
-        .eq('rep_id', repId)
-        .order('data', { ascending: false })
+        const todosPedidos = await db.pedidos
+          .where('cliente_id')
+          .equals(id)
+          .toArray()
+        const pedidosDoRep = todosPedidos.filter(p => p.rep_id === repId)
 
-      if (visitasData) setVisitas(visitasData)
+        const pedidosFinalizados = pedidosDoRep.filter(p => p.status === 'pedido')
+        pedidosFinalizados.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        setPedidos(pedidosFinalizados)
 
-      // Pedidos
-      const { data: pedidosData } = await supabase
-        .from('pedidos')
-        .select('id, numero, valor_total, created_at, status, representada_nome, canal')
-        .eq('cliente_id', id)
-        .eq('rep_id', repId)
-        .eq('status', 'pedido')
-        .order('created_at', { ascending: false })
-
-      if (pedidosData) setPedidos(pedidosData)
-
-      // Orcamentos
-      const { data: orcamentosData } = await supabase
-        .from('pedidos')
-        .select('id, numero, valor_total, created_at, status, representada_nome, canal')
-        .eq('cliente_id', id)
-        .eq('rep_id', repId)
-        .eq('status', 'orcamento')
-        .order('created_at', { ascending: false })
-
-      if (orcamentosData) setOrcamentos(orcamentosData)
-
+        const orcamentosData = pedidosDoRep.filter(p => p.status === 'orcamento')
+        orcamentosData.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        setOrcamentos(orcamentosData)
+      } catch (err) {
+        console.error('[HistoricoCliente] Erro dados:', err)
+      }
       setLoading(false)
     }
-
     fetchDados()
   }, [id, repId])
 
@@ -287,7 +284,7 @@ function HistoricoCliente() {
                       </div>
                     </div>
                     <div className="hc-item-right">
-                      <span className="hc-item-valor">{formatarValor(p.valor_total)}</span>
+                      <span className="hc-item-valor">{formatarValor(p.valor_liquido)}</span>
                       <span className="hc-item-seta">›</span>
                     </div>
                   </button>
@@ -323,7 +320,7 @@ function HistoricoCliente() {
                       </div>
                     </div>
                     <div className="hc-item-right">
-                      <span className="hc-item-valor">{formatarValor(o.valor_total)}</span>
+                      <span className="hc-item-valor">{formatarValor(o.valor_liquido)}</span>
                       <span className="hc-item-seta">›</span>
                     </div>
                   </button>

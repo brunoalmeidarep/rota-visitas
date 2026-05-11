@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { usePlano } from '../../hooks/usePlano'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
+import { useEmpresaFeatures } from '../../hooks/useEmpresaFeatures'
+import { salvarComOuSemConexao } from '../../lib/queue'
+import { db } from '../../lib/db'
 import './NovoPedido.css'
 
 const CATEGORIAS_GASTO = [
@@ -20,6 +24,10 @@ function NovoPedido() {
   const { repId } = useRepId()
   const { plano, isStarter, isPro, loading: loadingPlano } = usePlano()
   const { representadaSelecionada } = useRepresentada()
+  const { features } = useEmpresaFeatures()
+
+  // Regra de ruptura - verificar se feature ativa (usado para default no pedido)
+  const mostrarRegraRuptura = features?.regra_ruptura === true
 
   // Log do plano para debug
   useEffect(() => {
@@ -81,18 +89,27 @@ function NovoPedido() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar clientes
+  // Carregar clientes (do IndexedDB local — funciona offline e online)
   useEffect(() => {
     if (!repId) return
 
     async function fetchClientes() {
-      const { data } = await supabase
-        .from('clientes')
-        .select('id, nome, cidade')
-        .eq('rep_id', repId)
-        .order('nome')
-
-      if (data) setClientes(data)
+      try {
+        const data = await db.clientes
+          .where('rep_id')
+          .equals(repId)
+          .sortBy('nome')
+        setClientes(data || [])
+      } catch (err) {
+        console.error('[NovoPedido] Erro ao carregar clientes do IndexedDB:', err)
+        // Fallback: tenta supabase se IndexedDB falhar
+        const { data } = await supabase
+          .from('clientes')
+          .select('id, nome, cidade')
+          .eq('rep_id', repId)
+          .order('nome')
+        if (data) setClientes(data)
+      }
     }
 
     fetchClientes()
@@ -109,7 +126,7 @@ function NovoPedido() {
     async function fetchUltimoPedido() {
       const { data } = await supabase
         .from('pedidos')
-        .select('id, valor_total, created_at, status, representada_nome')
+        .select('id, valor_liquido, created_at, status, representada_nome')
         .eq('cliente_id', clienteId)
         .eq('rep_id', repId)
         .eq('status', 'pedido')
@@ -138,7 +155,7 @@ function NovoPedido() {
     async function fetchOrcamentos() {
       const { data } = await supabase
         .from('pedidos')
-        .select('id, valor_total, created_at, status, representada_id, representada_nome')
+        .select('id, valor_liquido, created_at, status, representada_id, representada_nome')
         .eq('cliente_id', clienteId)
         .eq('rep_id', repId)
         .eq('status', 'orcamento')
@@ -251,68 +268,69 @@ function NovoPedido() {
     setSalvando(true)
 
     try {
-      const hoje = new Date().toISOString().split('T')[0]
+      const hoje = dataLocal()
       const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       const cliente = clientes.find(c => c.id === clienteId)
+      const estaOffline = !navigator.onLine
 
       let visitaId = null
 
       // Se presencial, verificar/criar check-in
       if (canal === 'presencial') {
-        // Verificar se já existe visita do dia
-        const { data: visitaExistente } = await supabase
-          .from('visitas')
-          .select('id')
-          .eq('cliente_id', clienteId)
-          .eq('rep_id', repId)
-          .eq('data', hoje)
-          .single()
+        // Tenta buscar visita existente do dia (só funciona online)
+        let visitaExistente = null
+        if (!estaOffline) {
+          const { data } = await supabase
+            .from('visitas')
+            .select('id')
+            .eq('cliente_id', clienteId)
+            .eq('rep_id', repId)
+            .eq('data', hoje)
+            .maybeSingle()
+          visitaExistente = data
+        }
 
         if (visitaExistente) {
           visitaId = visitaExistente.id
         } else {
-          // Criar nova visita
-          const { data: novaVisita, error: erroVisita } = await supabase
-            .from('visitas')
-            .insert({
-              cliente_id: clienteId,
-              rep_id: repId,
-              nome_cliente: cliente?.nome,
-              cidade: cliente?.cidade,
-              data: hoje,
-              hora: agora,
-              tipo: 'presencial'
-            })
-            .select()
-            .single()
+          // Criar nova visita (online ou offline)
+          const resultadoVisita = await salvarComOuSemConexao('visitas', {
+            cliente_id: clienteId,
+            rep_id: repId,
+            nome_cliente: cliente?.nome,
+            cidade: cliente?.cidade,
+            data: hoje,
+            hora: agora,
+            tipo: 'presencial'
+          }, { tabelaLocal: 'visitas' })
 
-          if (erroVisita) {
-            console.error('[NovoPedido] Erro visita:', erroVisita)
+          if (resultadoVisita.ok) {
+            visitaId = resultadoVisita.registro.id
+
+            // Atualizar ultima_visita do cliente (só online — offline ignora)
+            if (!estaOffline) {
+              await supabase
+                .from('clientes')
+                .update({ ultima_visita: hoje })
+                .eq('id', clienteId)
+            }
           } else {
-            visitaId = novaVisita.id
-
-            // Atualizar ultima_visita do cliente
-            await supabase
-              .from('clientes')
-              .update({ ultima_visita: hoje })
-              .eq('id', clienteId)
+            console.error('[NovoPedido] Erro visita:', resultadoVisita.motivo)
           }
         }
 
         // Se tem gasto, salvar
         if (mostrarGasto && gastoCategoria && gastoValor) {
-          await supabase
-            .from('gastos_cliente')
-            .insert({
-              cliente_id: clienteId,
-              rep_id: repId,
-              visita_id: visitaId,
-              cliente_nome: cliente?.nome,
-              categoria: gastoCategoria,
-              valor: parsearValor(gastoValor),
-              descricao: gastoObs.trim() || null,
-              data: hoje
-            })
+          await salvarComOuSemConexao('gastos_cliente', {
+            cliente_id: clienteId,
+            rep_id: repId,
+            visita_id: visitaId,
+            cliente_nome: cliente?.nome,
+            categoria: gastoCategoria,
+            valor: parsearValor(gastoValor),
+            descricao: gastoObs.trim() || null,
+            data: hoje
+          })
         }
       }
 
@@ -323,44 +341,46 @@ function NovoPedido() {
         cliente_nome: cliente?.nome,
         visita_id: visitaId,
         representada_id: representadaSelecionada.id,
+        empresa_id: representadaSelecionada.plano === 'enterprise' ? representadaSelecionada.empresa_id : null,
         representada_nome: representadaSelecionada.nome,
         status: 'orcamento',
         canal: canal,
-        valor_total: 0,
+        valor_bruto: 0,
         itens: []
       }
 
-      console.log('[NovoPedido] Inserindo pedido:', JSON.stringify(dadosPedido, null, 2))
+      if (mostrarRegraRuptura) {
+        dadosPedido.regra_ruptura = 'parcial_novo'
+      }
 
-      const { data: novoPedido, error: erroPedido } = await supabase
-        .from('pedidos')
-        .insert(dadosPedido)
-        .select()
-        .single()
+      console.log('[NovoPedido] Salvando pedido (offline=' + estaOffline + '):', dadosPedido)
 
-      if (erroPedido) {
-        console.error('[NovoPedido] Erro pedido:', {
-          message: erroPedido.message,
-          code: erroPedido.code,
-          details: erroPedido.details,
-          hint: erroPedido.hint
-        })
-        alert(`Erro ao criar pedido:\n${erroPedido.message}\n\nCódigo: ${erroPedido.code || '-'}\nDetalhes: ${erroPedido.details || '-'}\nHint: ${erroPedido.hint || '-'}`)
+      const resultadoPedido = await salvarComOuSemConexao('pedidos', dadosPedido, { tabelaLocal: 'pedidos' })
+
+      if (!resultadoPedido.ok) {
+        console.error('[NovoPedido] Erro pedido:', resultadoPedido.motivo)
+        alert('Erro ao criar pedido: ' + resultadoPedido.motivo)
         setSalvando(false)
         return
       }
 
-      console.log('[NovoPedido] Pedido criado:', novoPedido)
+      const novoPedido = resultadoPedido.registro
+      console.log('[NovoPedido] Pedido salvo:', novoPedido)
 
       // Limpar sessionStorage
       sessionStorage.removeItem('novoPedido')
+
+      // Aviso se foi salvo offline
+      if (resultadoPedido.offline) {
+        alert('Você está offline. O pedido foi salvo no celular e será enviado quando voltar a conexão.')
+      }
 
       // Navegar para catálogo
       navigate(`/pedidos/${novoPedido.id}/catalogo`)
 
     } catch (err) {
       console.error('[NovoPedido] Exceção:', err)
-      alert('Erro ao criar pedido')
+      alert('Erro ao criar pedido: ' + (err?.message || err))
     }
 
     setSalvando(false)
@@ -498,7 +518,7 @@ function NovoPedido() {
             <div className="np-up-info">
               <span className="np-up-titulo">Último pedido</span>
               <div className="np-up-detalhes">
-                <span className="np-up-valor">{formatarValor(ultimoPedido.valor_total)}</span>
+                <span className="np-up-valor">{formatarValor(ultimoPedido.valor_liquido)}</span>
                 <span className="np-up-sep">·</span>
                 <span className="np-up-data">{formatarData(ultimoPedido.created_at)}</span>
                 <span
@@ -546,7 +566,7 @@ function NovoPedido() {
                     </div>
                     <span className="np-oa-rep">{orc.representada_nome}</span>
                     <div className="np-oa-item-meta">
-                      <span className="np-oa-valor">{formatarValor(orc.valor_total)}</span>
+                      <span className="np-oa-valor">{formatarValor(orc.valor_liquido)}</span>
                       <span className="np-oa-sep">·</span>
                       <span className="np-oa-data">{formatarData(orc.created_at)}</span>
                     </div>

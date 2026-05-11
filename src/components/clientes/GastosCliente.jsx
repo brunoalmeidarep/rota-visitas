@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
 import './GastosCliente.css'
@@ -155,7 +156,7 @@ function GastosCliente() {
     setSalvando(true)
 
     try {
-      const hoje = new Date().toISOString().split('T')[0]
+      const hoje = dataLocal()
 
       const { error } = await supabase
         .from('gastos_cliente')

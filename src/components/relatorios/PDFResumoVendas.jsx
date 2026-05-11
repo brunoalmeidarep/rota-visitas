@@ -105,7 +105,7 @@ function PDFResumoVendas({ totalVendido, qtdPedidos, ticketMedio, porRepresentad
                 <Text style={[styles.tabelaCell, styles.colCliente]}>{p.cliente_nome || '-'}</Text>
                 <Text style={[styles.tabelaCellSecondary, styles.colData]}>{formatarData(p.created_at)}</Text>
                 <Text style={[styles.tabelaCellSecondary, styles.colRep]}>{p.representada_nome || '-'}</Text>
-                <Text style={[styles.tabelaCell, styles.colValor]}>{formatarValor(p.valor_total)}</Text>
+                <Text style={[styles.tabelaCell, styles.colValor]}>{formatarValor(p.valor_liquido)}</Text>
               </View>
             ))}
           </View>

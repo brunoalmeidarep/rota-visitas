@@ -326,6 +326,24 @@
   color: #007aff;
 }
 
+/* Container de badges */
+.lp-item-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Badge SALDO */
+.lp-item-badge-saldo {
+  background: #FAEEDA;
+  color: #854F0B;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
 /* Botão cancelar no swipe */
 .lp-item-cancelar {
   position: absolute;

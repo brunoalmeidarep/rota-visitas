@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { formatarInputMoeda, parseMoeda } from '../../utils/formatarMoeda'
 import './DespesaRapida.css'
@@ -41,7 +42,7 @@ function DespesaRapida({ onClose, onSuccess, isDark }) {
     setSalvando(true)
 
     try {
-      const hoje = new Date().toISOString().split('T')[0]
+      const hoje = dataLocal()
       const categoriaNome = CATEGORIAS.find(c => c.id === categoria)?.nome || categoria
 
       const registro = {
