@@ -6,6 +6,8 @@ workflows:
     environment:
       groups:
         - app_config
+      integrations:
+        app_store_connect: Codemagic
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.minharotarp.app
