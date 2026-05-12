@@ -36,8 +36,7 @@ workflows:
       - name: Increment build number
         script: |
           cd ios/App
-          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_APPLE_ID" 2>/dev/null || echo "0")
-          agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))
+          agvtool new-version -all $(($BUILD_NUMBER + 200))
 
       - name: Build .ipa
         script: |
