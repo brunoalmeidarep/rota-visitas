@@ -3,11 +3,11 @@ workflows:
     name: iOS Build
     instance_type: mac_mini_m2
     max_build_duration: 60
+    integrations:
+      app_store_connect: Codemagic
     environment:
       groups:
         - app_config
-      integrations:
-        app_store_connect: Codemagic
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.minharotarp.app
