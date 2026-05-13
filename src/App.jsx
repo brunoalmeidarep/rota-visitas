@@ -79,21 +79,70 @@ function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const [debugMsg, setDebugMsg] = useState('Iniciando...')
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+    setDebugMsg('Conectando ao Supabase...')
+
+    const timeoutId = setTimeout(() => {
+      setDebugMsg('Timeout no getSession - forçando login')
       setLoading(false)
-    })
+    }, 5000)
+
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        clearTimeout(timeoutId)
+        if (error) {
+          setDebugMsg('Erro: ' + error.message)
+        } else {
+          setDebugMsg('Sessão OK')
+        }
+        setUser(session?.user ?? null)
+        setLoading(false)
+      })
+      .catch(err => {
+        clearTimeout(timeoutId)
+        setDebugMsg('Exception: ' + (err?.message || String(err)))
+        setLoading(false)
+      })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeoutId)
+      subscription.unsubscribe()
+    }
   }, [])
 
   if (loading) {
-    return <div className="loading">Carregando...</div>
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: '#ffffff',
+        color: '#000000',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '18px',
+        textAlign: 'center'
+      }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '12px' }}>
+          Minha Rota RP
+        </div>
+        <div style={{ fontSize: '14px', color: '#666' }}>
+          {debugMsg}
+        </div>
+      </div>
+    )
   }
 
   if (!user) {
