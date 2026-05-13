@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import ScrollToTop from './components/shared/ScrollToTop'
+import SwipeBack from './components/shared/SwipeBack'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { supabase } from './lib/supabase'
 import { RepresentadaProvider } from './contexts/RepresentadaContext'
@@ -153,6 +154,7 @@ function App() {
   return (
     <RepresentadaProvider>
       <ScrollToTop />
+      <SwipeBack />
       <div className="app">
         <Suspense fallback={<TelaCarregando />}>
           <Routes>

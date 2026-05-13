@@ -1,6 +1,4 @@
-Vou implementar swipe-to-go-back via JavaScript já que allowsBackForwardNavigationGestures não funciona com HashRouter.
-Passo 1: Crie um novo arquivo C:\Users\Bruno\Documents\v2\src\components\shared\SwipeBack.jsx com este conteúdo:
-jsximport { useEffect } from 'react'
+import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 export default function SwipeBack() {
@@ -53,13 +51,3 @@ export default function SwipeBack() {
 
   return null
 }
-Passo 2: No src/App.jsx, adicione o import e use o componente junto com o ScrollToTop:
-a) Adicione o import:
-jsximport SwipeBack from './components/shared/SwipeBack'
-b) Dentro do <RepresentadaProvider>, adicione <SwipeBack /> logo após o <ScrollToTop />:
-jsx<RepresentadaProvider>
-  <ScrollToTop />
-  <SwipeBack />
-  <div className="app">
-    ...
-Confirme as duas mudanças e mostre o trecho final do JSX no App.jsx.
