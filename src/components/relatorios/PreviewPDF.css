@@ -161,16 +161,6 @@
   color: #ffffff;
 }
 
-.pp-btn.email {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-
-.pp-btn.download {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-
 .pp-btn svg {
   flex-shrink: 0;
 }
@@ -223,9 +213,4 @@
     border-top-color: #e0e0e0;
   }
 
-  .pp-btn.email,
-  .pp-btn.download {
-    background: #f2f2f7;
-    color: #000000;
-  }
 }

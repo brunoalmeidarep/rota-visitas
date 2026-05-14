@@ -100,12 +100,6 @@ function PreviewPDF() {
     setSharing(false)
   }
 
-  function handleEmail() {
-    const assunto = encodeURIComponent(titulo || 'Relatorio Minha Rota RP')
-    const corpo = encodeURIComponent(`Segue em anexo o relatorio "${titulo || 'Relatorio'}".\n\nGerado por Minha Rota RP`)
-    window.location.href = `mailto:?subject=${assunto}&body=${corpo}`
-  }
-
   function handleDownload() {
     if (!pdfBlob || downloading) return
     setDownloading(true)
@@ -173,38 +167,19 @@ function PreviewPDF() {
       {/* Rodape */}
       {!loading && !erro && (
         <footer className="pp-footer">
-          <button className="pp-btn compartilhar" onClick={handleCompartilhar} disabled={sharing}>
-            {sharing ? (
-              <div className="pp-btn-spinner"></div>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
-                <polyline points="16 6 12 2 8 6"/>
-                <line x1="12" y1="2" x2="12" y2="15"/>
-              </svg>
-            )}
-            {sharing ? 'Aguarde...' : 'Compartilhar'}
-          </button>
-          <button className="pp-btn email" onClick={handleEmail}>
+        <button className="pp-btn compartilhar" onClick={handleCompartilhar} disabled={sharing}>
+          {sharing ? (
+            <div className="pp-btn-spinner"></div>
+          ) : (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
+              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
             </svg>
-            E-mail
-          </button>
-          <button className="pp-btn download" onClick={handleDownload} disabled={downloading}>
-            {downloading ? (
-              <div className="pp-btn-spinner"></div>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-            )}
-            {downloading ? 'Baixando...' : 'Download'}
-          </button>
-        </footer>
+          )}
+          {sharing ? 'Aguarde...' : 'Compartilhar'}
+        </button>
+      </footer>
       )}
     </div>
   )
