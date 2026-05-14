@@ -81,30 +81,19 @@ function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const [debugMsg, setDebugMsg] = useState('Iniciando...')
-
   useEffect(() => {
-    setDebugMsg('Conectando ao Supabase...')
-
     const timeoutId = setTimeout(() => {
-      setDebugMsg('Timeout no getSession - forçando login')
       setLoading(false)
     }, 5000)
 
     supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
+      .then(({ data: { session } }) => {
         clearTimeout(timeoutId)
-        if (error) {
-          setDebugMsg('Erro: ' + error.message)
-        } else {
-          setDebugMsg('Sessão OK')
-        }
         setUser(session?.user ?? null)
         setLoading(false)
       })
-      .catch(err => {
+      .catch(() => {
         clearTimeout(timeoutId)
-        setDebugMsg('Exception: ' + (err?.message || String(err)))
         setLoading(false)
       })
 
@@ -126,23 +115,16 @@ function App() {
         left: 0,
         right: 0,
         bottom: 0,
-        background: '#ffffff',
-        color: '#000000',
+        background: '#1a3a6b',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '18px',
-        textAlign: 'center'
+        justifyContent: 'center'
       }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '12px' }}>
-          Minha Rota RP
-        </div>
-        <div style={{ fontSize: '14px', color: '#666' }}>
-          {debugMsg}
-        </div>
+        <img
+          src="/icon-192.png"
+          alt="Minha Rota RP"
+          style={{ width: 96, height: 96, opacity: 0.9 }}
+        />
       </div>
     )
   }
