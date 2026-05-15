@@ -45,14 +45,12 @@ function Mapa() {
     loadGoogleMaps()
       .then(() => {
         map.current = new window.google.maps.Map(mapContainer.current, {
-          center: { lat: -26.3045, lng: -48.8487 }, // Joinville default
+          center: { lat: -26.3045, lng: -48.8487 },
           zoom: 12,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
         })
-
-        infoWindowRef.current = new window.google.maps.InfoWindow()
         setMapReady(true)
       })
       .catch(err => console.warn('[Mapa] Erro ao carregar Google Maps:', err))
@@ -60,7 +58,12 @@ function Mapa() {
     return () => {
       markersRef.current.forEach(m => m.setMap(null))
       markersRef.current = []
+      if (infoWindowRef.current) {
+        infoWindowRef.current.close()
+        infoWindowRef.current = null
+      }
       map.current = null
+      setMapReady(false)
     }
   }, [])
 
@@ -124,9 +127,13 @@ function Mapa() {
   useEffect(() => {
     if (!map.current || !mapReady || loading) return
 
-    // Limpar markers anteriores
+    // Limpar markers e InfoWindow anteriores
     markersRef.current.forEach(m => m.setMap(null))
     markersRef.current = []
+    if (infoWindowRef.current) {
+      infoWindowRef.current.close()
+    }
+    infoWindowRef.current = new window.google.maps.InfoWindow()
 
     const clientesFiltrados = filtroStatus === 'todos'
       ? clientes
@@ -181,6 +188,11 @@ function Mapa() {
     }
 
     return () => {
+      markersRef.current.forEach(m => m.setMap(null))
+      markersRef.current = []
+      if (infoWindowRef.current) {
+        infoWindowRef.current.close()
+      }
       delete window.navegarCliente
     }
   }, [clientes, filtroStatus, mapReady, loading, navigate])
