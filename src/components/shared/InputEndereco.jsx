@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { loadGoogleMaps } from '../../lib/googleMaps'
 import './InputEndereco.css'
 
-const GOOGLE_MAPS_KEY = 'AIzaSyA8MEv3kZLzuEbykwI9dfqfw3_R9udDTWo'
-const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
+const GEOCODING_API_KEY = import.meta.env.VITE_GEOCODING_API_KEY
 
 function InputEndereco({
   value = '',
@@ -22,55 +22,16 @@ function InputEndereco({
   const debounceRef = useRef(null)
   const containerRef = useRef(null)
 
-  // Carregar Google Maps SDK dinamicamente
-  const loadGoogleMaps = useCallback(() => {
-    return new Promise((resolve) => {
-      if (window.google?.maps?.places?.AutocompleteService) {
-        resolve(true)
-        return
-      }
-
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
-      if (existingScript) {
-        const checkReady = () => {
-          if (window.google?.maps?.places?.AutocompleteService) {
-            resolve(true)
-          } else {
-            setTimeout(checkReady, 100)
-          }
-        }
-        existingScript.addEventListener('load', checkReady)
-        setTimeout(checkReady, 500)
-        return
-      }
-
-      const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places&v=weekly`
-      script.async = true
-      script.defer = true
-      script.onload = () => {
-        const checkReady = () => {
-          if (window.google?.maps?.places?.AutocompleteService) {
-            resolve(true)
-          } else {
-            setTimeout(checkReady, 100)
-          }
-        }
-        checkReady()
-      }
-      script.onerror = () => resolve(false)
-      document.head.appendChild(script)
-    })
-  }, [])
-
   // Inicializar AutocompleteService
   useEffect(() => {
-    loadGoogleMaps().then(loaded => {
-      if (loaded && window.google?.maps?.places?.AutocompleteService) {
-        autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
-      }
-    })
-  }, [loadGoogleMaps])
+    loadGoogleMaps()
+      .then(() => {
+        if (window.google?.maps?.places?.AutocompleteService) {
+          autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
+        }
+      })
+      .catch(err => console.warn('[InputEndereco] Erro ao carregar Google Maps:', err))
+  }, [])
 
   // Fechar dropdown ao clicar fora ou pressionar Escape
   useEffect(() => {

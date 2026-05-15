@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
+import { loadGoogleMaps } from '../../lib/googleMaps'
 import InputEndereco from '../shared/InputEndereco'
 import './Planner.css'
 
-const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
+const GEOCODING_API_KEY = import.meta.env.VITE_GEOCODING_API_KEY
 
 const NOMES_DIA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const NOMES_DIA_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -121,6 +122,11 @@ function Planner() {
   const originalConsoleRef = useRef({})
   const logIdRef = useRef(0)
   const isLoggingRef = useRef(false)
+
+  // Carregar Google Maps SDK ao montar
+  useEffect(() => {
+    loadGoogleMaps().catch(err => console.warn('[Planner] Erro ao carregar Google Maps:', err))
+  }, [])
 
   // Interceptar console.log, console.error, console.warn
   useEffect(() => {

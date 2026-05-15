@@ -1,13 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import mapboxgl from 'mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { loadGoogleMaps } from '../../lib/googleMaps'
 import './Mapa.css'
-
-// Token do Mapbox
-mapboxgl.accessToken = 'pk.eyJ1IjoiYnJ1bm9tcnAiLCJhIjoiY21vMHZpenBhMGNpNDJycHV3N3Z4a2NreiJ9.gjgY__dvCLzH69odm4OSLQ'
 
 const STATUS_CONFIG = {
   ativo: { cor: '#34c759', label: 'Ativo', emoji: '🟢', desc: '≤30 dias' },
@@ -18,7 +14,7 @@ const STATUS_CONFIG = {
 
 function calcularStatus(ultimaVisita) {
   if (!ultimaVisita) return 'prospect'
-  const dias = Math.floor((new Date() - new Date(ultimaVisita)) / (1000 * 60 * 60 * 24))
+  const dias = Math.floor((Date.now() - new Date(ultimaVisita).getTime()) / (1000 * 60 * 60 * 24))
   if (dias <= 30) return 'ativo'
   if (dias <= 90) return 'atencao'
   return 'inativo'
@@ -26,7 +22,7 @@ function calcularStatus(ultimaVisita) {
 
 function diasDesde(data) {
   if (!data) return null
-  return Math.floor((new Date() - new Date(data)) / (1000 * 60 * 60 * 24))
+  return Math.floor((Date.now() - new Date(data).getTime()) / (1000 * 60 * 60 * 24))
 }
 
 function Mapa() {
@@ -35,34 +31,36 @@ function Mapa() {
   const mapContainer = useRef(null)
   const map = useRef(null)
   const markersRef = useRef([])
+  const infoWindowRef = useRef(null)
 
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [mapReady, setMapReady] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState('todos')
 
-  // Inicializar mapa imediatamente ao montar
+  // Inicializar mapa
   useEffect(() => {
     if (!mapContainer.current || map.current) return
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [-48.8487, -26.3045], // Joinville default
-      zoom: 12
-    })
+    loadGoogleMaps()
+      .then(() => {
+        map.current = new window.google.maps.Map(mapContainer.current, {
+          center: { lat: -26.3045, lng: -48.8487 }, // Joinville default
+          zoom: 12,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        })
 
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
-
-    map.current.on('load', () => {
-      setMapReady(true)
-    })
+        infoWindowRef.current = new window.google.maps.InfoWindow()
+        setMapReady(true)
+      })
+      .catch(err => console.warn('[Mapa] Erro ao carregar Google Maps:', err))
 
     return () => {
-      if (map.current) {
-        map.current.remove()
-        map.current = null
-      }
+      markersRef.current.forEach(m => m.setMap(null))
+      markersRef.current = []
+      map.current = null
     }
   }, [])
 
@@ -73,7 +71,6 @@ function Mapa() {
     async function fetchDados() {
       setLoading(true)
 
-      // Buscar centro do representante
       const { data: repData } = await supabase
         .from('representantes')
         .select('lat_base, lng_base')
@@ -81,10 +78,9 @@ function Mapa() {
         .single()
 
       if (repData?.lat_base && repData?.lng_base && map.current) {
-        map.current.setCenter([repData.lng_base, repData.lat_base])
+        map.current.setCenter({ lat: repData.lat_base, lng: repData.lng_base })
       }
 
-      // Buscar clientes com coordenadas
       const { data: clientesData } = await supabase
         .from('clientes')
         .select('id, nome, cidade, lat, lng')
@@ -98,14 +94,12 @@ function Mapa() {
         return
       }
 
-      // Buscar última visita de cada cliente (busca todas e agrupa no frontend)
       const { data: visitasData } = await supabase
         .from('visitas')
         .select('cliente_id, data')
         .eq('rep_id', repId)
         .order('data', { ascending: false })
 
-      // Agrupar última visita por cliente
       const ultimaVisitaPorCliente = {}
       visitasData?.forEach(v => {
         if (!ultimaVisitaPorCliente[v.cliente_id]) {
@@ -113,7 +107,6 @@ function Mapa() {
         }
       })
 
-      // Calcular status de cada cliente
       const clientesComStatus = clientesData.map(c => ({
         ...c,
         ultimaVisita: ultimaVisitaPorCliente[c.id] || null,
@@ -127,37 +120,40 @@ function Mapa() {
     fetchDados()
   }, [repId])
 
-  // Adicionar markers quando mapa e dados estiverem prontos
+  // Adicionar markers
   useEffect(() => {
     if (!map.current || !mapReady || loading) return
 
     // Limpar markers anteriores
-    markersRef.current.forEach(m => m.remove())
+    markersRef.current.forEach(m => m.setMap(null))
     markersRef.current = []
 
-    // Filtrar clientes
     const clientesFiltrados = filtroStatus === 'todos'
       ? clientes
       : clientes.filter(c => c.status === filtroStatus)
 
-    // Criar markers
     clientesFiltrados.forEach(cliente => {
       const config = STATUS_CONFIG[cliente.status]
 
-      // Criar elemento do marker
-      const el = document.createElement('div')
-      el.className = 'mapa-marker'
-      el.innerHTML = `
-        <div class="mapa-marker-dot" style="background: ${config.cor}; box-shadow: 0 0 12px ${config.cor}80;"></div>
-        <div class="mapa-marker-label">${cliente.nome.split(' ')[0]}</div>
-      `
+      const marker = new window.google.maps.Marker({
+        position: { lat: cliente.lat, lng: cliente.lng },
+        map: map.current,
+        title: cliente.nome,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: config.cor,
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        }
+      })
 
-      // Criar popup
-      const dias = diasDesde(cliente.ultimaVisita)
-      const visitaTexto = dias !== null ? `${dias} dias atrás` : 'Nunca visitado'
+      marker.addListener('click', () => {
+        const dias = diasDesde(cliente.ultimaVisita)
+        const visitaTexto = dias !== null ? `${dias} dias atrás` : 'Nunca visitado'
 
-      const popup = new mapboxgl.Popup({ offset: 25, closeButton: false })
-        .setHTML(`
+        infoWindowRef.current.setContent(`
           <div class="mapa-popup">
             <div class="mapa-popup-nome">${cliente.nome}</div>
             <div class="mapa-popup-cidade">${cliente.cidade || '-'}</div>
@@ -167,28 +163,21 @@ function Mapa() {
             </button>
           </div>
         `)
-
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([cliente.lng, cliente.lat])
-        .setPopup(popup)
-        .addTo(map.current)
+        infoWindowRef.current.open(map.current, marker)
+      })
 
       markersRef.current.push(marker)
     })
 
-    // Função global para navegação (popup não tem acesso ao React)
     window.navegarCliente = (id) => {
       navigate(`/clientes/${id}`)
     }
 
     // Ajustar bounds se houver clientes
-    if (clientesFiltrados.length > 0) {
-      const bounds = new mapboxgl.LngLatBounds()
-      clientesFiltrados.forEach(c => bounds.extend([c.lng, c.lat]))
-
-      if (clientesFiltrados.length > 1) {
-        map.current.fitBounds(bounds, { padding: 60, maxZoom: 14 })
-      }
+    if (clientesFiltrados.length > 1) {
+      const bounds = new window.google.maps.LatLngBounds()
+      clientesFiltrados.forEach(c => bounds.extend({ lat: c.lat, lng: c.lng }))
+      map.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 })
     }
 
     return () => {

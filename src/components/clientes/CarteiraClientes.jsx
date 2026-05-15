@@ -5,7 +5,7 @@ import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import './CarteiraClientes.css'
 
-const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
+const GEOCODING_API_KEY = import.meta.env.VITE_GEOCODING_API_KEY
 
 // Normaliza texto para Title Case
 function toTitleCase(str) {

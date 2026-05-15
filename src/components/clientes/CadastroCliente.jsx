@@ -5,7 +5,7 @@ import { useRepId } from '../../hooks/useRepId'
 import InputEndereco from '../shared/InputEndereco'
 import './CadastroCliente.css'
 
-const GEOCODING_API_KEY = 'AIzaSyCwgVzb1CW3_rN-3t6LAkBC1IOPYN5zqJI'
+const GEOCODING_API_KEY = import.meta.env.VITE_GEOCODING_API_KEY
 
 // Normaliza texto para Title Case (primeira letra maiúscula de cada palavra)
 function toTitleCase(str) {

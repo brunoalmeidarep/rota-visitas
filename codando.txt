@@ -1,102 +1,102 @@
-Substitua o conteúdo completo do arquivo src/components/shared/SwipeBack.jsx por esta versão com animação:
-jsximport { useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-
-export default function SwipeBack() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const stateRef = useRef({
-    startX: null,
-    startY: null,
-    startTime: null,
-    tracking: false,
-  })
-
-  useEffect(() => {
-    const root = document.getElementById('root')
-    if (!root) return
-
-    function onTouchStart(e) {
-      const touch = e.touches[0]
-      // Só dispara se começou nos primeiros 30px da borda esquerda
-      if (touch.clientX > 30) return
-      // Não anima se está na raiz
-      if (location.pathname === '/') return
-
-      stateRef.current = {
-        startX: touch.clientX,
-        startY: touch.clientY,
-        startTime: Date.now(),
-        tracking: true,
-      }
-    }
-
-    function onTouchMove(e) {
-      const s = stateRef.current
-      if (!s.tracking) return
-
-      const touch = e.touches[0]
-      const deltaX = Math.max(0, touch.clientX - s.startX)
-      const deltaY = Math.abs(touch.clientY - s.startY)
-
-      // Se moveu muito pra baixo/cima, cancela (é scroll, não swipe)
-      if (deltaY > 50) {
-        s.tracking = false
-        root.style.transition = 'transform 200ms ease-out'
-        root.style.transform = ''
-        return
-      }
-
-      // Aplica a translação seguindo o dedo
-      root.style.transition = 'none'
-      root.style.transform = `translateX(${deltaX}px)`
-    }
-
-    function onTouchEnd(e) {
-      const s = stateRef.current
-      if (!s.tracking) return
-      s.tracking = false
-
-      const touch = e.changedTouches[0]
-      const deltaX = touch.clientX - s.startX
-      const deltaTime = Date.now() - s.startTime
-      const screenWidth = window.innerWidth
-
-      // Critério pra "voltar":
-      // - deslocou mais de 40% da tela, OU
-      // - movimento rápido (>80px em <400ms — flick)
-      const passedThreshold = deltaX > screenWidth * 0.4
-      const wasFlick = deltaX > 80 && deltaTime < 400
-
-      if (passedThreshold || wasFlick) {
-        // Anima até sair da tela e navega
-        root.style.transition = 'transform 250ms ease-out'
-        root.style.transform = `translateX(${screenWidth}px)`
-        setTimeout(() => {
-          root.style.transition = 'none'
-          root.style.transform = ''
-          navigate(-1)
-        }, 250)
-      } else {
-        // Cancela e volta pra posição original
-        root.style.transition = 'transform 200ms ease-out'
-        root.style.transform = ''
-      }
-    }
-
-    document.addEventListener('touchstart', onTouchStart, { passive: true })
-    document.addEventListener('touchmove', onTouchMove, { passive: true })
-    document.addEventListener('touchend', onTouchEnd, { passive: true })
-
-    return () => {
-      document.removeEventListener('touchstart', onTouchStart)
-      document.removeEventListener('touchmove', onTouchMove)
-      document.removeEventListener('touchend', onTouchEnd)
-      root.style.transition = ''
-      root.style.transform = ''
-    }
-  }, [navigate, location])
-
-  return null
+No arquivo src/components/mapa/Mapa.jsx, faça 4 alterações pra restaurar a lógica de status original:
+1. Substitua o objeto STATUS_CONFIG por:
+jsconst STATUS_CONFIG = {
+  ativo: { cor: '#34c759', label: 'Ativo', emoji: '🟢', desc: '≤30 dias' },
+  atencao: { cor: '#ff9500', label: 'Atenção', emoji: '🟠', desc: '31-90 dias' },
+  inativo: { cor: '#ff3b30', label: 'Inativo', emoji: '🔴', desc: '90+ dias' },
+  prospect: { cor: '#007aff', label: 'Prospect', emoji: '🔵', desc: 'nunca visitado' }
 }
-Confirme a alteração e me mostre as primeiras 30 linhas do arquivo.
+2. Substitua a função calcularStatus por:
+jsfunction calcularStatus(ultimaVisita) {
+  if (!ultimaVisita) return 'prospect'
+  const dias = Math.floor((Date.now() - new Date(ultimaVisita).getTime()) / (1000 * 60 * 60 * 24))
+  if (dias <= 30) return 'ativo'
+  if (dias <= 90) return 'atencao'
+  return 'inativo'
+}
+3. Atualize o objeto contagens pra usar os nomes antigos:
+jsconst contagens = {
+  todos: clientes.length,
+  ativo: clientes.filter(c => c.status === 'ativo').length,
+  atencao: clientes.filter(c => c.status === 'atencao').length,
+  inativo: clientes.filter(c => c.status === 'inativo').length,
+  prospect: clientes.filter(c => c.status === 'prospect').length
+}
+4. Restaure o JSX completo (header + filtros + canvas) com o layout original. Substitua o return por:
+jsx  const clientesNoMapa = filtroStatus === 'todos'
+    ? clientes.length
+    : contagens[filtroStatus]
+
+  return (
+    <div className="mapa-container">
+      {/* Header */}
+      <header className="mapa-header">
+        <button className="mapa-voltar" onClick={() => navigate('/')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <h1>Mapa de Clientes</h1>
+        <div className="mapa-header-spacer"></div>
+      </header>
+
+      {/* Legenda */}
+      <div className="mapa-legenda">
+        {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+          <div key={key} className="mapa-legenda-item">
+            <span>{config.emoji}</span>
+            <span className="mapa-legenda-label">{config.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Mapa */}
+      <div ref={mapContainer} className="mapa-canvas" />
+      {loading && (
+        <div className="mapa-loading">
+          <span>Carregando...</span>
+        </div>
+      )}
+
+      {/* Filtros */}
+      <div className="mapa-filtros">
+        <div className="mapa-filtros-pills">
+          <button
+            className={`mapa-filtro ${filtroStatus === 'todos' ? 'active' : ''}`}
+            onClick={() => setFiltroStatus('todos')}
+          >
+            Todos ({contagens.todos})
+          </button>
+          <button
+            className={`mapa-filtro ${filtroStatus === 'ativo' ? 'active' : ''}`}
+            onClick={() => setFiltroStatus('ativo')}
+          >
+            {STATUS_CONFIG.ativo.emoji} Ativos ({contagens.ativo})
+          </button>
+          <button
+            className={`mapa-filtro ${filtroStatus === 'atencao' ? 'active' : ''}`}
+            onClick={() => setFiltroStatus('atencao')}
+          >
+            {STATUS_CONFIG.atencao.emoji} Atenção ({contagens.atencao})
+          </button>
+          <button
+            className={`mapa-filtro ${filtroStatus === 'inativo' ? 'active' : ''}`}
+            onClick={() => setFiltroStatus('inativo')}
+          >
+            {STATUS_CONFIG.inativo.emoji} Inativos ({contagens.inativo})
+          </button>
+          <button
+            className={`mapa-filtro ${filtroStatus === 'prospect' ? 'active' : ''}`}
+            onClick={() => setFiltroStatus('prospect')}
+          >
+            {STATUS_CONFIG.prospect.emoji} Prospects ({contagens.prospect})
+          </button>
+        </div>
+        <div className="mapa-filtros-count">
+          {clientesNoMapa} cliente{clientesNoMapa !== 1 ? 's' : ''} no mapa
+        </div>
+      </div>
+    </div>
+  )
+Mantenha a função diasDesde, os useEffects (init do mapa, fetch de dados, criação de markers), e os refs sem mudança.
+Confirme as 4 alterações.
