@@ -114,9 +114,9 @@ function VendasProduto() {
   }
 
   function getPeriodoLabel() {
-    if (periodo === 30) return 'Ultimos 30 dias'
-    if (periodo === 90) return 'Ultimos 90 dias'
-    return 'Ultimo ano'
+    if (periodo === 30) return 'Últimos 30 dias'
+    if (periodo === 90) return 'Últimos 90 dias'
+    return 'Último ano'
   }
 
   function exportarPDF() {
