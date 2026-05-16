@@ -394,26 +394,22 @@ function Home() {
         {/* Linha 4: Planejar rota + Tarefas */}
         <div className="home-grid-row">
           {/* Card Planejar Rota */}
-          <button className="home-rota-card-small" onClick={() => navigate('/planner')}>
-            <span className="home-rota-icon">🗺️</span>
-            <div className="home-rota-text">
-              <span className="home-rota-titulo">Planejar rota</span>
-              <span className="home-rota-subtitulo">Rota otimizada com km e custo</span>
-            </div>
+          <button className="home-card home-rota-card-small" onClick={() => navigate('/planner')}>
+            <span className="home-card-icon">🗺️</span>
+            <span className="home-card-titulo">Planejar rota</span>
+            <span className="home-card-subtitulo">Rota otimizada</span>
           </button>
 
           {/* Card Tarefas */}
-          <button className="home-tarefas-card" onClick={() => navigate('/tarefas')}>
+          <button className="home-card home-tarefas-card" onClick={() => navigate('/tarefas')}>
             {tarefasPendentes > 0 && (
               <span className="home-tarefas-badge">{tarefasPendentes}</span>
             )}
-            <span className="home-tarefas-icon">📝</span>
-            <div className="home-tarefas-text">
-              <span className="home-tarefas-titulo">Tarefas</span>
-              <span className="home-tarefas-subtitulo">
-                {tarefasPendentes > 0 ? `${tarefasPendentes} pendente${tarefasPendentes > 1 ? 's' : ''}` : 'Nenhuma pendente'}
-              </span>
-            </div>
+            <span className="home-card-icon">📝</span>
+            <span className="home-card-titulo">Tarefas</span>
+            <span className="home-card-subtitulo">
+              {tarefasPendentes > 0 ? `${tarefasPendentes} pendente${tarefasPendentes > 1 ? 's' : ''}` : 'Nenhuma pendente'}
+            </span>
           </button>
         </div>
 

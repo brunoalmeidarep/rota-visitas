@@ -263,65 +263,20 @@
   gap: 12px;
 }
 
-/* Card Planejar Rota (pequeno) */
+/* Card Planejar Rota */
 .home-rota-card-small {
   background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
   border: none;
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  cursor: pointer;
-  transition: transform 0.15s;
 }
 
-.home-rota-card-small:active {
-  transform: scale(0.97);
-}
-
-.home-rota-icon {
-  font-size: 28px;
-}
-
-.home-rota-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-}
-
-.home-rota-titulo {
-  font-size: 15px;
-  font-weight: 600;
+.home-rota-card-small .home-card-titulo,
+.home-rota-card-small .home-card-subtitulo {
   color: #ffffff;
-}
-
-.home-rota-subtitulo {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
-  text-align: left;
-  line-height: 1.3;
 }
 
 /* Card Tarefas */
 .home-tarefas-card {
   position: relative;
-  background: var(--home-card-bg);
-  border: 1px solid var(--home-border);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-
-.home-tarefas-card:active {
-  transform: scale(0.97);
 }
 
 .home-tarefas-badge {
@@ -340,29 +295,6 @@
   justify-content: center;
   padding: 0 6px;
   box-shadow: 0 2px 6px rgba(255, 59, 48, 0.4);
-}
-
-.home-tarefas-icon {
-  font-size: 28px;
-}
-
-.home-tarefas-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-}
-
-.home-tarefas-titulo {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--home-text);
-}
-
-.home-tarefas-subtitulo {
-  font-size: 11px;
-  color: var(--home-text-secondary);
-  text-align: left;
 }
 
 /* Card Mapa */
