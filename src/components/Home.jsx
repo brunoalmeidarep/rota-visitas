@@ -366,19 +366,83 @@ function Home() {
           <div className="home-mapa-preview">
             {/* SVG ilustrativo de mapa */}
             <svg viewBox="0 0 200 100" className="home-mapa-svg">
-              {/* Grid de fundo */}
+              {/* Fundo do mapa - verde claro estilo iOS Maps */}
               <rect width="200" height="100" fill="#e8f5e9" />
-              <path d="M0 25 L200 25 M0 50 L200 50 M0 75 L200 75" stroke="#c8e6c9" strokeWidth="1" />
-              <path d="M40 0 L40 100 M80 0 L80 100 M120 0 L120 100 M160 0 L160 100" stroke="#c8e6c9" strokeWidth="1" />
-              {/* Ruas */}
-              <path d="M20 60 Q60 40, 100 55 T180 45" stroke="#a5d6a7" strokeWidth="3" fill="none" />
-              <path d="M30 80 L170 30" stroke="#81c784" strokeWidth="2" fill="none" />
-              {/* Pins */}
-              <circle cx="50" cy="50" r="6" fill="#f44336" />
-              <circle cx="100" cy="40" r="6" fill="#f44336" />
-              <circle cx="150" cy="55" r="6" fill="#f44336" />
-              <circle cx="80" cy="70" r="5" fill="#ff7043" />
-              <circle cx="130" cy="30" r="5" fill="#ff7043" />
+
+              {/* Manchas de área verde (parques/áreas) */}
+              <path d="M0 0 L60 0 L70 15 L50 30 L0 25 Z" fill="#c8e6c9" opacity="0.6" />
+              <path d="M140 75 L200 70 L200 100 L150 100 Z" fill="#c8e6c9" opacity="0.6" />
+
+              {/* Rio/água azul */}
+              <path
+                d="M0 65 Q40 60, 80 70 T160 65 L200 70 L200 80 Q160 78, 120 80 T40 78 L0 80 Z"
+                fill="#bbdefb"
+                opacity="0.7"
+              />
+
+              {/* Estrada principal horizontal */}
+              <path d="M-5 45 L210 45" stroke="#ffffff" strokeWidth="4" fill="none" />
+              <path d="M-5 45 L210 45" stroke="#ffd54f" strokeWidth="1.5" strokeDasharray="3,3" fill="none" />
+
+              {/* Estrada secundária vertical */}
+              <path d="M110 -5 L110 105" stroke="#ffffff" strokeWidth="3" fill="none" />
+
+              {/* Estradas pequenas */}
+              <path d="M40 -5 L40 45" stroke="#ffffff" strokeWidth="2" fill="none" />
+              <path d="M170 45 L170 105" stroke="#ffffff" strokeWidth="2" fill="none" />
+              <path d="M-5 25 L110 25" stroke="#ffffff" strokeWidth="2" fill="none" />
+
+              {/* Quarteirões sutis */}
+              <rect x="10" y="50" width="25" height="12" fill="#ffffff" opacity="0.4" rx="1" />
+              <rect x="115" y="50" width="50" height="12" fill="#ffffff" opacity="0.4" rx="1" />
+              <rect x="115" y="10" width="20" height="12" fill="#ffffff" opacity="0.4" rx="1" />
+              <rect x="60" y="10" width="40" height="10" fill="#ffffff" opacity="0.4" rx="1" />
+
+              {/* Pin principal (em destaque) */}
+              <g transform="translate(95, 20)">
+                <ellipse cx="0" cy="22" rx="4" ry="1" fill="#000000" opacity="0.15" />
+                <path
+                  d="M0 0 C-5 0, -8 4, -8 9 C-8 15, 0 22, 0 22 C0 22, 8 15, 8 9 C8 4, 5 0, 0 0 Z"
+                  fill="#ff3b30"
+                  stroke="#ffffff"
+                  strokeWidth="1.2"
+                />
+                <circle cx="0" cy="9" r="3" fill="#ffffff" />
+              </g>
+
+              {/* Pins menores (secundários) */}
+              <g transform="translate(45, 55)">
+                <ellipse cx="0" cy="14" rx="3" ry="0.8" fill="#000000" opacity="0.15" />
+                <path
+                  d="M0 0 C-3.5 0, -5.5 2.5, -5.5 6 C-5.5 10, 0 14, 0 14 C0 14, 5.5 10, 5.5 6 C5.5 2.5, 3.5 0, 0 0 Z"
+                  fill="#007aff"
+                  stroke="#ffffff"
+                  strokeWidth="1"
+                />
+                <circle cx="0" cy="6" r="2" fill="#ffffff" />
+              </g>
+
+              <g transform="translate(155, 35)">
+                <ellipse cx="0" cy="14" rx="3" ry="0.8" fill="#000000" opacity="0.15" />
+                <path
+                  d="M0 0 C-3.5 0, -5.5 2.5, -5.5 6 C-5.5 10, 0 14, 0 14 C0 14, 5.5 10, 5.5 6 C5.5 2.5, 3.5 0, 0 0 Z"
+                  fill="#007aff"
+                  stroke="#ffffff"
+                  strokeWidth="1"
+                />
+                <circle cx="0" cy="6" r="2" fill="#ffffff" />
+              </g>
+
+              <g transform="translate(75, 80)">
+                <ellipse cx="0" cy="14" rx="3" ry="0.8" fill="#000000" opacity="0.15" />
+                <path
+                  d="M0 0 C-3.5 0, -5.5 2.5, -5.5 6 C-5.5 10, 0 14, 0 14 C0 14, 5.5 10, 5.5 6 C5.5 2.5, 3.5 0, 0 0 Z"
+                  fill="#007aff"
+                  stroke="#ffffff"
+                  strokeWidth="1"
+                />
+                <circle cx="0" cy="6" r="2" fill="#ffffff" />
+              </g>
             </svg>
           </div>
           <div className="home-mapa-info">
