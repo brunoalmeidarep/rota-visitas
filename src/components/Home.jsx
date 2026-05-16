@@ -9,6 +9,62 @@ import Onboarding from './shared/Onboarding'
 import DespesaRapida from './shared/DespesaRapida'
 import './Home.css'
 
+function IconePlanner() {
+  const hoje = new Date()
+  const dia = hoje.getDate()
+  const mes = hoje
+    .toLocaleDateString('pt-BR', { month: 'short' })
+    .toUpperCase()
+    .replace('.', '')
+
+  return (
+    <svg
+      width="36"
+      height="36"
+      viewBox="0 0 48 48"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect
+        x="6" y="8"
+        width="36" height="34"
+        rx="4"
+        fill="#FFFFFF"
+        stroke="#E0E0E0"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M6 12 C6 9.79 7.79 8 10 8 L38 8 C40.21 8 42 9.79 42 12 L42 16 L6 16 Z"
+        fill="#FF3B30"
+      />
+      <rect x="14" y="5" width="2.5" height="6" rx="1.25" fill="#9E9E9E"/>
+      <rect x="31.5" y="5" width="2.5" height="6" rx="1.25" fill="#9E9E9E"/>
+      <text
+        x="24"
+        y="14"
+        textAnchor="middle"
+        fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+        fontSize="5"
+        fontWeight="700"
+        fill="#FFFFFF"
+      >
+        {mes}
+      </text>
+      <text
+        x="24"
+        y="36"
+        textAnchor="middle"
+        fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
+        fontSize="16"
+        fontWeight="700"
+        fill="#1C1C1E"
+      >
+        {dia}
+      </text>
+    </svg>
+  )
+}
+
 function Home() {
   const navigate = useNavigate()
   const { repId } = useRepId()
@@ -185,7 +241,7 @@ function Home() {
     },
     {
       id: 'planner',
-      icone: '📅',
+      icone: <IconePlanner />,
       titulo: 'Planner',
       subtitulo: 'Agenda e rotas',
       rota: '/planner',
