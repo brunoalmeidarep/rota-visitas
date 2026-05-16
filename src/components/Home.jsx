@@ -168,7 +168,7 @@ function Home() {
     },
     {
       id: 'visitas',
-      icone: '✅',
+      icone: '💼',
       titulo: 'Visitas',
       subtitulo: 'Carteira de clientes',
       rota: '/clientes',
@@ -351,7 +351,7 @@ function Home() {
             {tarefasPendentes > 0 && (
               <span className="home-tarefas-badge">{tarefasPendentes}</span>
             )}
-            <span className="home-tarefas-icon">☑️</span>
+            <span className="home-tarefas-icon">📝</span>
             <div className="home-tarefas-text">
               <span className="home-tarefas-titulo">Tarefas</span>
               <span className="home-tarefas-subtitulo">
