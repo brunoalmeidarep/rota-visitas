@@ -9,7 +9,7 @@ import './Planner.css'
 
 const GEOCODING_API_KEY = import.meta.env.VITE_GEOCODING_API_KEY
 
-const NOMES_DIA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+const NOMES_DIA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 const NOMES_DIA_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const NOMES_MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
@@ -1441,7 +1441,7 @@ function Planner() {
           <div className="planner-body">
             <div className="planner-dia-header">
               <div>
-                <div className="planner-dia-titulo">{NOMES_DIA[plannerDiaSel.getDay()]}-feira</div>
+                <div className="planner-dia-titulo">{NOMES_DIA[plannerDiaSel.getDay()]}</div>
                 <div className="planner-dia-data">
                   {plannerDiaSel.getDate()} de {NOMES_MES[plannerDiaSel.getMonth()]}
                   {ehHoje && ' · Hoje'}
@@ -1594,7 +1594,7 @@ function Planner() {
           <div className="planner-body">
             <div className="planner-dia-header">
               <div>
-                <div className="planner-dia-titulo">{NOMES_DIA[plannerDiaSel.getDay()]}-feira</div>
+                <div className="planner-dia-titulo">{NOMES_DIA[plannerDiaSel.getDay()]}</div>
                 <div className="planner-dia-data">
                   {plannerDiaSel.getDate()} de {NOMES_MES[plannerDiaSel.getMonth()]}
                   {ehHoje && ' · Hoje'}
