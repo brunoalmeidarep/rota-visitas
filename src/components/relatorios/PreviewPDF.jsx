@@ -86,7 +86,7 @@ function PreviewPDF() {
       try {
         await navigator.share({
           files: [file],
-          title: titulo || 'Relatorio',
+          title: titulo || 'Relatório',
         })
       } catch (err) {
         if (err.name !== 'AbortError') {

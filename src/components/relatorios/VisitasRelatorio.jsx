@@ -229,7 +229,7 @@ function VisitasRelatorio() {
           periodo: getPeriodoLabel()
         },
         nomeArquivo: `visitas-${hoje}.pdf`,
-        titulo: 'Relatorio de Visitas'
+        titulo: 'Relatório de Visitas'
       }
     })
   }
@@ -244,7 +244,7 @@ function VisitasRelatorio() {
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <h1>Relatorio de Visitas</h1>
+        <h1>Relatório de Visitas</h1>
         <button className="vr-export" onClick={exportarPDF} disabled={loading || visitas.length === 0}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -315,7 +315,7 @@ function VisitasRelatorio() {
             {visitas.length === 0 ? (
               <div className="vr-vazio">
                 <span className="vr-vazio-icon">✅</span>
-                <p>Nenhuma visita no periodo</p>
+                <p>Nenhuma visita no período</p>
               </div>
             ) : (
               <div className="vr-lista">

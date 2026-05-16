@@ -114,7 +114,7 @@ function PDFMetaVendas({ vendidoMes, metaMes, percentual, historico, nomeRep, pe
       {/* Historico */}
       {historico.length > 0 && (
         <>
-          <Text style={styles.secaoTitulo}>Historico</Text>
+          <Text style={styles.secaoTitulo}>Histórico</Text>
           <View style={styles.tabela}>
             <View style={styles.tabelaHeader}>
               <Text style={[styles.tabelaHeaderCell, styles.colMes]}>Mes</Text>

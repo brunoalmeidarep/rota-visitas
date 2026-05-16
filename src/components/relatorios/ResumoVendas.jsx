@@ -321,7 +321,7 @@ function ResumoVendas() {
             {/* Lista de pedidos */}
             {pedidos.length > 0 && (
               <div className="rv-secao">
-                <h3>Pedidos do periodo</h3>
+                <h3>Pedidos do período</h3>
                 <div className="rv-pedidos">
                   {pedidos.map(p => (
                     <div
@@ -350,7 +350,7 @@ function ResumoVendas() {
             {pedidos.length === 0 && (
               <div className="rv-vazio">
                 <span className="rv-vazio-icon">📊</span>
-                <p>Nenhum pedido no periodo</p>
+                <p>Nenhum pedido no período</p>
               </div>
             )}
           </>

@@ -602,14 +602,14 @@ function MetaVendas() {
             {/* Estado 3: Sem vendas e sem meta */}
             {estado === 3 && (
               <div className="mv-vazio">
-                <p>Nenhum dado para exibir neste periodo</p>
+                <p>Nenhum dado para exibir neste período</p>
               </div>
             )}
 
             {/* Historico - so mostrar se tiver dados */}
             {historico.length > 0 && estado !== 3 && (
               <div className="mv-historico">
-                <h3>Historico</h3>
+                <h3>Histórico</h3>
                 <div className="mv-historico-lista">
                   {historico.map((h, idx) => (
                     <div key={idx} className={`mv-historico-item ${h.meta > 0 ? (h.bateu ? 'bateu' : 'nao-bateu') : ''}`}>

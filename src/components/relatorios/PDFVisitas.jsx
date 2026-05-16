@@ -62,7 +62,7 @@ function PDFVisitas({ visitas, totalVisitas, clientesVisitados, nomeRep, periodo
 
   return (
     <PDFRelatorio
-      titulo="Relatorio de Visitas"
+      titulo="Relatório de Visitas"
       nomeRep={nomeRep}
       periodo={periodo}
       infoResumo={`${totalVisitas} visitas`}

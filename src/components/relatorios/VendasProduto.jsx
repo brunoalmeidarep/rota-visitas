@@ -189,7 +189,7 @@ function VendasProduto() {
         ) : produtos.length === 0 ? (
           <div className="vp-vazio">
             <span className="vp-vazio-icon">📦</span>
-            <p>Nenhum produto vendido no periodo</p>
+            <p>Nenhum produto vendido no período</p>
           </div>
         ) : (
           <>

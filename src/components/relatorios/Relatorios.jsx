@@ -29,7 +29,7 @@ function Relatorios() {
       id: 'resumo',
       icone: '📊',
       titulo: 'Resumo de Vendas',
-      subtitulo: 'Total vendido por periodo',
+      subtitulo: 'Total vendido por período',
       rota: '/relatorios/resumo',
       cor: '#007aff'
     },
@@ -54,15 +54,15 @@ function Relatorios() {
       id: 'inativos',
       icone: '⚠️',
       titulo: 'Clientes Inativos',
-      subtitulo: 'Sem compra ha 90+ dias',
+      subtitulo: 'Sem compra há 90+ dias',
       rota: '/relatorios/inativos',
       cor: '#ff9500'
     },
     {
       id: 'visitas',
       icone: '✅',
-      titulo: 'Relatorio de Visitas',
-      subtitulo: 'Historico de visitas',
+      titulo: 'Relatório de Visitas',
+      subtitulo: 'Histórico de visitas',
       rota: '/relatorios/visitas',
       cor: '#30d158'
     }
@@ -76,7 +76,7 @@ function Relatorios() {
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <h1>Relatorios</h1>
+        <h1>Relatórios</h1>
       </header>
 
       <div className="relatorios-content">

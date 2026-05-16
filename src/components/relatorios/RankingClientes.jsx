@@ -195,7 +195,7 @@ function RankingClientes() {
         ) : ranking.length === 0 ? (
           <div className="rc-vazio">
             <span className="rc-vazio-icon">🏆</span>
-            <p>Nenhum pedido no periodo</p>
+            <p>Nenhum pedido no período</p>
           </div>
         ) : (
           <>
