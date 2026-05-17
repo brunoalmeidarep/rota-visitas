@@ -90,12 +90,12 @@ function VisitasRelatorio() {
 
       console.log('[VisitasRelatorio] Buscando visitas:', {
         rep_id: repId,
-        data_inicio: inicio.toISOString().split('T')[0],
-        data_fim: fim.toISOString().split('T')[0]
+        data_inicio: dataLocal(inicio),
+        data_fim: dataLocal(fim)
       })
 
-      const inicioStr = inicio.toISOString().split('T')[0]
-      const fimStr = fim.toISOString().split('T')[0]
+      const inicioStr = dataLocal(inicio)
+      const fimStr = dataLocal(fim)
 
       const todas = await db.visitas.where('rep_id').equals(repId).toArray()
       const data = todas

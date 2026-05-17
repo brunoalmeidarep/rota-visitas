@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { db } from '../../lib/db'
+import { dataLocal } from '../../lib/data'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import './ResumoVendas.css'
@@ -83,19 +84,23 @@ function ResumoVendas() {
     try {
       const { inicio, fim } = getPeriodo()
 
+      const inicioStr = dataLocal(inicio)
+      const fimStr = dataLocal(fim)
+
       console.log('[ResumoVendas] Buscando pedidos:', {
         rep_id: repId,
         representada: representadaSelecionada,
-        data_inicio: inicio.toISOString(),
-        data_fim: fim.toISOString()
+        data_inicio: inicioStr,
+        data_fim: fimStr
       })
 
       const todos = await db.pedidos.where('rep_id').equals(repId).toArray()
-      let data = todos.filter(p =>
-        p.status === 'pedido' &&
-        p.created_at >= inicio.toISOString() &&
-        p.created_at <= fim.toISOString() + 'T23:59:59'
-      )
+      let data = todos.filter(p => {
+        if (p.status !== 'pedido') return false
+        if (!p.created_at) return false
+        const dataPedido = p.created_at.split('T')[0]
+        return dataPedido >= inicioStr && dataPedido <= fimStr
+      })
 
       // Filtrar por representada ou empresa conforme o tipo selecionado
       if (representadaSelecionada.tipo === 'empresa') {
