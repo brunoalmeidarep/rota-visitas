@@ -164,6 +164,7 @@ function App() {
             <Route path="/produtos/novo" element={<CadastroProduto />} />
             <Route path="/produtos/:id" element={<CadastroProduto />} />
             <Route path="/planner" element={<Planner />} />
+            <Route path="/rota" element={<Planner initialView="rotas" />} />
             <Route path="/opcoes" element={<Mais />} />
             <Route path="/mais" element={<Mais />} />
             <Route path="/mais/perfil" element={<MeuPerfil />} />

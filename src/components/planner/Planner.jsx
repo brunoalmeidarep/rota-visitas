@@ -64,12 +64,17 @@ function cidadesIguais(a, b) {
   return a.trim().toLowerCase().replace(/\s+/g, ' ') === b.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
-function Planner() {
+function Planner({ initialView }) {
   const navigate = useNavigate()
   const { repId, loading: loadingRep } = useRepId()
 
   // Estados principais do Planner
-  const [plannerView, setPlannerView] = useState('semana') // 'semana' | 'mes' | 'rotas'
+  const [plannerView, setPlannerView] = useState(initialView || 'semana') // 'semana' | 'mes' | 'rotas'
+
+  // Reagir a mudanças de initialView (quando navega de /planner para /rota ou vice-versa)
+  useEffect(() => {
+    if (initialView) setPlannerView(initialView)
+  }, [initialView])
   const [plannerRef, setPlannerRef] = useState(new Date())
   const [plannerDiaSel, setPlannerDiaSel] = useState(new Date())
   const [plannerDados, setPlannerDados] = useState({})
@@ -1447,15 +1452,6 @@ function Planner() {
                   {ehHoje && ' · Hoje'}
                 </div>
               </div>
-            </div>
-
-            {/* Card Rota Inteligente */}
-            <div className="planner-rota-card" onClick={() => setPlannerView('rotas')}>
-              <div className="planner-rota-card-info">
-                <div className="planner-rota-card-titulo">🗺️ Monte sua rota</div>
-                <div className="planner-rota-card-sub">Otimize suas visitas do dia</div>
-              </div>
-              <button className="planner-rota-card-btn">Planejar Rota →</button>
             </div>
 
             {/* Compromissos */}

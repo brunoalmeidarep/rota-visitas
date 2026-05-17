@@ -394,7 +394,7 @@ function Home() {
         {/* Linha 4: Planejar rota + Tarefas */}
         <div className="home-grid-row">
           {/* Card Planejar Rota */}
-          <button className="home-card home-rota-card-small" onClick={() => navigate('/planner')}>
+          <button className="home-card home-rota-card-small" onClick={() => navigate('/rota')}>
             <span className="home-card-icon">🗺️</span>
             <span className="home-card-titulo">Planejar rota</span>
             <span className="home-card-subtitulo">Rota otimizada</span>
