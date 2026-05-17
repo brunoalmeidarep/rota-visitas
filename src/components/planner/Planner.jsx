@@ -814,7 +814,7 @@ function Planner({ initialView }) {
       calcularHaversine()
     }
 
-    const { error } = await supabase.from('rotas').insert({
+    const { data, error } = await supabase.from('rotas').insert({
       nome: rotaNome.trim(),
       clientes_ids: clientesSelecionados,
       ordem_otimizada: ordemOtimizada,
@@ -826,7 +826,7 @@ function Planner({ initialView }) {
       tipo_chegada: rotaChegadaTipo,
       ponto_chegada: endChegada,
       nome_hotel: rotaChegadaTipo === 'hotel' ? rotaChegadaInput : null
-    })
+    }).select().single()
 
     setSalvandoRota(false)
 
@@ -834,6 +834,14 @@ function Planner({ initialView }) {
       console.error('[Rotas] Erro ao salvar:', error)
       alert('Erro ao salvar rota')
       return
+    }
+
+    if (data) {
+      await db.rotas.put({
+        ...data,
+        _synced_at: new Date().toISOString(),
+        _pending_sync: 0
+      })
     }
 
     setModalRotaAberto(false)
