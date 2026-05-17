@@ -958,7 +958,13 @@ function Planner({ initialView }) {
               <polyline points="9 22 9 12 15 12 15 22"/>
             </svg>
           </button>
-          <button className="planner-nav-btn" onClick={() => setPlannerView('semana')}>‹</button>
+          <button className="planner-nav-btn" onClick={() => {
+            if (initialView === 'rotas') {
+              navigate('/')
+            } else {
+              setPlannerView('semana')
+            }
+          }}>‹</button>
           <div className="planner-nav-centro">
             <div className="planner-titulo">Rotas salvas</div>
           </div>
