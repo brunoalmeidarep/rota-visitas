@@ -8,6 +8,7 @@ import InputEndereco from '../shared/InputEndereco'
 import './Planner.css'
 
 const GEOCODING_API_KEY = import.meta.env.VITE_GEOCODING_API_KEY
+const SHOW_DEBUG = import.meta.env.DEV
 
 const NOMES_DIA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 const NOMES_DIA_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -123,7 +124,7 @@ function Planner({ initialView }) {
 
   // ==================== DEBUG PANEL ====================
   const [debugLogs, setDebugLogs] = useState([])
-  const [debugPanelAberto, setDebugPanelAberto] = useState(true)
+  const [debugPanelAberto, setDebugPanelAberto] = useState(SHOW_DEBUG)
   const originalConsoleRef = useRef({})
   const logIdRef = useRef(0)
   const isLoggingRef = useRef(false)
@@ -135,6 +136,8 @@ function Planner({ initialView }) {
 
   // Interceptar console.log, console.error, console.warn
   useEffect(() => {
+    if (!SHOW_DEBUG) return  // early return seguro: SHOW_DEBUG é constante de build
+
     // Salvar referências originais
     originalConsoleRef.current = {
       log: console.log,
@@ -428,18 +431,14 @@ function Planner({ initialView }) {
   // Geocodifica um endereço
   async function geocodificarEndereco(endereco) {
     if (!endereco) return null
-    console.log('[Geocoding] Endereço base a geocodificar:', endereco)
 
     try {
       const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(endereco)}&key=${GEOCODING_API_KEY}`
       const res = await fetch(url)
       const data = await res.json()
 
-      console.log('[Geocoding] Resposta:', { status: data.status, results: data.results?.length || 0 })
-
       if (data.status === 'OK' && data.results?.length > 0) {
         const loc = data.results[0].geometry.location
-        console.log('[Geocoding] ✅ Coordenadas:', { lat: loc.lat, lng: loc.lng })
         return { lat: loc.lat, lng: loc.lng }
       }
       console.warn('[Geocoding] ⚠️ Sem resultados')
@@ -569,7 +568,6 @@ function Planner({ initialView }) {
   // Callback quando endereço base é geocodificado
   function handleEnderecoBaseGeocode(lat, lng) {
     enderecoBaseCoordsRef.current = { lat, lng }
-    console.log('[Planner] Endereço base geocodificado:', { lat, lng })
   }
 
   function fecharModalRota() {
@@ -1006,7 +1004,7 @@ function Planner({ initialView }) {
         {modalRotaAberto && (
           <div className="rota-modal-overlay" onClick={fecharModalRota}>
             {/* Debug Panel - estilo terminal */}
-            {debugPanelAberto && (
+            {SHOW_DEBUG && debugPanelAberto && (
               <div className="debug-panel" onClick={e => e.stopPropagation()}>
                 <div className="debug-panel-header">
                   <span>🔧 DEBUG</span>
@@ -1028,7 +1026,7 @@ function Planner({ initialView }) {
             )}
 
             {/* Botão para reabrir debug panel */}
-            {!debugPanelAberto && (
+            {SHOW_DEBUG && !debugPanelAberto && (
               <button
                 className="debug-panel-toggle"
                 onClick={e => { e.stopPropagation(); setDebugPanelAberto(true); }}
