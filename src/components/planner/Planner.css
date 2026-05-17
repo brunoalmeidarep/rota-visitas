@@ -698,8 +698,9 @@
 =========================================== */
 @media (min-width: 768px) {
   .planner {
-    max-width: 600px;
+    max-width: 90vw;
     margin: 0 auto;
+    padding: 0 24px;
   }
 
   .planner-modal-sheet {
@@ -715,6 +716,12 @@
   .planner-dia-mini {
     min-width: 60px;
     flex: 0 0 auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .planner {
+    max-width: 1000px;
   }
 }
 
