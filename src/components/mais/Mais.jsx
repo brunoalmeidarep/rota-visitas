@@ -6,6 +6,14 @@ import './Mais.css'
 
 const THROTTLE_MS = 2 * 60 * 1000 // 2 minutos
 
+function abrirTermos() {
+  window.open('/termos.html', '_blank')
+}
+
+function abrirPrivacidade() {
+  window.open('/privacidade.html', '_blank')
+}
+
 function Mais() {
   const navigate = useNavigate()
   const { sync } = useRepresentada()
@@ -246,12 +254,12 @@ function Mais() {
         <section className="mais-secao">
           <h2 className="mais-secao-titulo">Conta</h2>
           <div className="mais-lista">
-            <button className="mais-lista-item" onClick={() => placeholder('Termos de uso')}>
+            <button className="mais-lista-item" onClick={abrirTermos}>
               <span className="mais-lista-icon">📄</span>
               <span className="mais-lista-texto">Termos de uso</span>
               <span className="mais-lista-seta">›</span>
             </button>
-            <button className="mais-lista-item" onClick={() => placeholder('Privacidade')}>
+            <button className="mais-lista-item" onClick={abrirPrivacidade}>
               <span className="mais-lista-icon">🔒</span>
               <span className="mais-lista-texto">Privacidade</span>
               <span className="mais-lista-seta">›</span>
