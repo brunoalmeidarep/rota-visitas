@@ -46,16 +46,29 @@ const createStyles = (corPrimaria = '#1a3a6b') => StyleSheet.create({
     alignItems: 'flex-end'
   },
   badge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginBottom: 6
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8
   },
-  badgeText: {
+  badgeOrcamento: {
+    backgroundColor: '#ff9500'
+  },
+  badgePedido: {
+    backgroundColor: '#1c1c1e'
+  },
+  badgeTitulo: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 1.5,
+    marginBottom: 2
+  },
+  badgeNumero: {
     color: '#ffffff',
     fontSize: 11,
-    fontWeight: 'bold'
+    opacity: 0.9
   },
   headerData: {
     color: 'rgba(255,255,255,0.9)',
@@ -247,6 +260,13 @@ const createStyles = (corPrimaria = '#1a3a6b') => StyleSheet.create({
     fontSize: 9,
     color: '#adb5bd',
     fontStyle: 'italic'
+  },
+  avisoOrcamento: {
+    fontSize: 8,
+    color: '#666666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 10
   }
 })
 
@@ -305,10 +325,11 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{numero}</Text>
+            <View style={[styles.badge, isOrcamento ? styles.badgeOrcamento : styles.badgePedido]}>
+              <Text style={styles.badgeTitulo}>{isOrcamento ? 'ORÇAMENTO' : 'PEDIDO'}</Text>
+              <Text style={styles.badgeNumero}>{numero}</Text>
             </View>
-            <Text style={styles.headerData}>Emissao: {formatarData(pedido.created_at)}</Text>
+            <Text style={styles.headerData}>Emissão: {formatarData(pedido.created_at)}</Text>
             {isOrcamento && (
               <Text style={styles.headerData}>Validade: {adicionarDias(pedido.created_at, 7)}</Text>
             )}
@@ -455,6 +476,13 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
             <Text style={styles.rodapeMarca}>Minha Rota RP</Text>
           </View>
         </View>
+
+        {/* Aviso de orçamento */}
+        {isOrcamento && (
+          <Text style={styles.avisoOrcamento}>
+            Este documento é um orçamento e não tem valor fiscal. Para confirmar, retorne ao representante.
+          </Text>
+        )}
       </Page>
     </Document>
   )

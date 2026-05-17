@@ -902,6 +902,12 @@ function DetalhesPedido() {
           <div className="dp-acoes">
             {isEditavel ? (
               <>
+                <button className="dp-btn-acao" onClick={handleCompartilhar} disabled={salvando}>
+                  📤 Compartilhar
+                </button>
+                <button className="dp-btn-acao" onClick={verPDF} disabled={salvando}>
+                  📄 Ver PDF
+                </button>
                 <button
                   className="dp-btn-gerar"
                   onClick={gerarPedido}
@@ -909,14 +915,14 @@ function DetalhesPedido() {
                   title={!navigator.onLine ? 'Conecte-se à internet para gerar o pedido' : ''}
                   style={!navigator.onLine ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                 >
-                  {!navigator.onLine ? '🔌 Gerar pedido (offline)' : 'Gerar pedido'}
+                  {!navigator.onLine ? '🔌 Gerar pedido (offline)' : '✅ Gerar pedido'}
                 </button>
                 <button
                   className="dp-btn-cancelar-orcamento"
                   onClick={cancelarOrcamento}
                   disabled={salvando}
                 >
-                  🗑️ Cancelar orçamento
+                  🗑️ Cancelar
                 </button>
               </>
             ) : (
