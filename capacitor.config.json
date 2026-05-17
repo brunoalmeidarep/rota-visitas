@@ -9,7 +9,6 @@
     "contentInset": "always",
     "minVersion": "15.0",
     "backgroundColor": "#1c1c1e",
-    "scrollEnabled": false,
     "limitsNavigationsToAppBoundDomains": false
   },
   "android": {
