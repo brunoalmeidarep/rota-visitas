@@ -704,6 +704,10 @@
     padding: 0 24px;
   }
 
+  .planner > * {
+    width: 100%;
+  }
+
   .planner-modal-sheet {
     border-radius: 20px;
     margin-bottom: 20px;
