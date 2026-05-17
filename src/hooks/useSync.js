@@ -17,6 +17,7 @@ export function useSync(empresaId) {
   const [erro, setErro] = useState(null)
   const [pendentesFila, setPendentesFila] = useState(0)
   const ultimoSyncRef = useRef(0)
+  const sincronizandoRef = useRef(false)
 
   // Função de sync exposta (manual ou automática)
   const sincronizar = useCallback(async (forcar = false) => {
@@ -25,7 +26,8 @@ export function useSync(empresaId) {
       setErro('Sem conexão com a internet')
       return { ok: false, motivo: 'offline' }
     }
-    if (sincronizando) return { ok: false, motivo: 'ja_sincronizando' }
+    if (sincronizandoRef.current) return { ok: false, motivo: 'ja_sincronizando' }
+    sincronizandoRef.current = true
 
     // Throttle: não sincroniza se já fez nos últimos 5min (a menos que force)
     const agora = Date.now()
@@ -60,9 +62,10 @@ export function useSync(empresaId) {
       setErro(msg)
       return { ok: false, motivo: msg }
     } finally {
+      sincronizandoRef.current = false
       setSincronizando(false)
     }
-  }, [empresaId, sincronizando])
+  }, [empresaId])
 
   // Detecta online/offline
   useEffect(() => {
@@ -91,7 +94,7 @@ export function useSync(empresaId) {
     getSyncTimestamp('produtos').then(ts => {
       if (ts) setUltimoSync(ts)
     })
-  }, [empresaId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [empresaId, sincronizar])
 
   return {
     online,
