@@ -232,11 +232,13 @@ function Mais() {
                 </span>
               </div>
             </button>
+            {/* TODO v2.1: Implementar importar clientes (CSV upload)
             <button className="mais-lista-item" onClick={() => placeholder('Importar clientes')}>
               <span className="mais-lista-icon">📥</span>
               <span className="mais-lista-texto">Importar clientes</span>
               <span className="mais-lista-seta">›</span>
             </button>
+            */}
           </div>
         </section>
 
