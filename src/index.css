@@ -6,15 +6,19 @@
 
 html, body {
   overflow-x: hidden;
+  overflow-y: auto;
   max-width: 100vw;
   position: relative;
-  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
 }
 
 #root {
   overflow-x: hidden;
+  overflow-y: auto;
   max-width: 100vw;
-  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
 }
 
 /* Fix modo escuro em inputs */
