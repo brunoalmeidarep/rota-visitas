@@ -86,16 +86,26 @@ export function RepresentadaProvider({ children }) {
         console.log('[Enterprise] errorEnterprise:', errorEnterprise)
         console.log('[Enterprise] enterpriseList:', enterpriseList)
 
-        // 3. Unificar as duas listas
-        const todasRepresentadas = [...proList, ...enterpriseList]
-        console.log('[RepresentadaContext] PRO:', proList.length, 'Enterprise:', enterpriseList.length)
+        // 3. Deduplicar: se Enterprise já cobre uma empresa (mesmo nome),
+        // remove da lista PRO. Enterprise tem prioridade.
+        const nomesEnterprise = new Set(
+          enterpriseList.map(e => e.nome.toLowerCase().trim())
+        )
+        const proListFiltrada = proList.filter(p =>
+          !nomesEnterprise.has(p.nome.toLowerCase().trim())
+        )
+
+        // 4. Unificar: Enterprise primeiro, depois PRO filtrada
+        const todasRepresentadas = [...enterpriseList, ...proListFiltrada]
+        console.log('[RepresentadaContext] Enterprise:', enterpriseList.length, 'PRO:', proListFiltrada.length)
 
         setRepresentadas(todasRepresentadas)
 
-        // Restaurar selecionada do localStorage ou usar a primeira
+        // Restaurar selecionada do localStorage com validação
         const salvaId = localStorage.getItem('representada_selecionada')
-        if (salvaId && todasRepresentadas.find(r => r.id === salvaId)) {
-          setRepresentadaSelecionada(todasRepresentadas.find(r => r.id === salvaId))
+        const encontrada = todasRepresentadas.find(r => r.id === salvaId)
+        if (encontrada) {
+          setRepresentadaSelecionada(encontrada)
         } else if (todasRepresentadas.length > 0) {
           setRepresentadaSelecionada(todasRepresentadas[0])
           localStorage.setItem('representada_selecionada', todasRepresentadas[0].id)
@@ -179,7 +189,15 @@ export function RepresentadaProvider({ children }) {
         empresa_id: v.empresa_id
       }))
 
-    const todasRepresentadas = [...proList, ...enterpriseList]
+    // Deduplicar: Enterprise tem prioridade sobre PRO com mesmo nome
+    const nomesEnterprise = new Set(
+      enterpriseList.map(e => e.nome.toLowerCase().trim())
+    )
+    const proListFiltrada = proList.filter(p =>
+      !nomesEnterprise.has(p.nome.toLowerCase().trim())
+    )
+
+    const todasRepresentadas = [...enterpriseList, ...proListFiltrada]
     setRepresentadas(todasRepresentadas)
 
     // Se a selecionada nao existe mais, selecionar a primeira
