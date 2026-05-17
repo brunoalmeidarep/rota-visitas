@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import { loadGoogleMaps } from '../../lib/googleMaps'
+import { dataLocal } from '../../lib/data'
 import InputEndereco from '../shared/InputEndereco'
 import './Planner.css'
 
@@ -18,11 +19,6 @@ const COR_MAP = {
   blue: 'var(--primary)',
   orange: 'var(--warning)',
   green: 'var(--success)'
-}
-
-// Formata Date para 'YYYY-MM-DD'
-function dataStr(d) {
-  return d.toISOString().split('T')[0]
 }
 
 // Retorna início da semana (domingo)
@@ -304,7 +300,7 @@ function Planner({ initialView }) {
 
   useEffect(() => {
     if (repId) {
-      carregarVisitasDia(dataStr(plannerDiaSel))
+      carregarVisitasDia(dataLocal(plannerDiaSel))
     }
   }, [repId, plannerDiaSel, carregarVisitasDia])
 
@@ -313,7 +309,7 @@ function Planner({ initialView }) {
   async function adicionarCompromisso() {
     if (!modalTxt.trim()) return
 
-    const ds = dataStr(plannerDiaSel)
+    const ds = dataLocal(plannerDiaSel)
 
     try {
       const { data: novoEvento, error } = await supabase
@@ -353,7 +349,7 @@ function Planner({ initialView }) {
   }
 
   async function deletarCompromisso(eventoId) {
-    const ds = dataStr(plannerDiaSel)
+    const ds = dataLocal(plannerDiaSel)
 
     try {
       const { error } = await supabase
@@ -926,8 +922,8 @@ function Planner({ initialView }) {
   }
 
   const hoje = new Date()
-  const hojeStr = dataStr(hoje)
-  const selStr = dataStr(plannerDiaSel)
+  const hojeStr = dataLocal(hoje)
+  const selStr = dataLocal(plannerDiaSel)
   const dadosSel = getDadosDia(selStr)
   const ehHoje = selStr === hojeStr
 
@@ -1424,7 +1420,7 @@ function Planner({ initialView }) {
               for (let i = 0; i < 7; i++) {
                 const d = new Date(ini)
                 d.setDate(d.getDate() + i)
-                const ds = dataStr(d)
+                const ds = dataLocal(d)
                 const dadosDia = getDadosDia(ds)
                 const ehHojeD = ds === hojeStr
                 const ehSel = ds === selStr
@@ -1548,7 +1544,7 @@ function Planner({ initialView }) {
 
                 for (let d = 1; d <= diasNoMes; d++) {
                   const data = new Date(ano, mes, d)
-                  const ds = dataStr(data)
+                  const ds = dataLocal(data)
                   const dadosDia = getDadosDia(ds)
                   const ehHojeD = ds === hojeStr
                   const ehSel = ds === selStr
