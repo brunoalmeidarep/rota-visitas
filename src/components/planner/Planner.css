@@ -698,6 +698,7 @@
 =========================================== */
 @media (min-width: 768px) {
   .planner {
+    width: 100%;
     max-width: 90vw;
     margin: 0 auto;
     padding: 0 24px;
