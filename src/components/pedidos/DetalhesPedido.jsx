@@ -905,9 +905,6 @@ function DetalhesPedido() {
                 <button className="dp-btn-acao" onClick={handleCompartilhar} disabled={salvando}>
                   📤 Compartilhar
                 </button>
-                <button className="dp-btn-acao" onClick={verPDF} disabled={salvando}>
-                  📄 Ver PDF
-                </button>
                 <button
                   className="dp-btn-gerar"
                   onClick={gerarPedido}
