@@ -19,14 +19,6 @@ export function RepresentadaProvider({ children }) {
       setLoading(true)
 
       try {
-        // 0. Buscar plano do representante
-        const { data: repData } = await supabase
-          .from('representantes')
-          .select('plano')
-          .eq('id', repId)
-          .single()
-        const planoRep = (repData?.plano || 'starter').toLowerCase()
-
         // 1. Buscar representadas manuais do rep
         const { data: representadasPro, error: errorPro } = await supabase
           .from('representadas')
@@ -38,11 +30,11 @@ export function RepresentadaProvider({ children }) {
           console.error('[RepresentadaContext] Erro representadas PRO:', errorPro)
         }
 
-        // Adicionar tipo/plano às representadas manuais (usa plano do rep)
+        // Adicionar tipo/plano às representadas manuais (PRO por padrão)
         const proList = (representadasPro || []).map(r => ({
           ...r,
           tipo: 'representada',
-          plano: planoRep
+          plano: 'pro'
         }))
 
         // 2. Buscar vínculos enterprise (representante_empresas JOIN empresas)
@@ -138,14 +130,6 @@ export function RepresentadaProvider({ children }) {
   async function recarregarRepresentadas() {
     if (!repId) return
 
-    // 0. Buscar plano do representante
-    const { data: repData } = await supabase
-      .from('representantes')
-      .select('plano')
-      .eq('id', repId)
-      .single()
-    const planoRep = (repData?.plano || 'starter').toLowerCase()
-
     // 1. Representadas manuais
     const { data: representadasPro } = await supabase
       .from('representadas')
@@ -156,7 +140,7 @@ export function RepresentadaProvider({ children }) {
     const proList = (representadasPro || []).map(r => ({
       ...r,
       tipo: 'representada',
-      plano: planoRep
+      plano: 'pro'
     }))
 
     // 2. Vínculos Enterprise
