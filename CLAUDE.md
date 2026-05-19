@@ -5,6 +5,25 @@
 
 ---
 
+## Sistema Offline-First (LEIA ANTES DE MEXER)
+
+O app tem offline-first implementado e funcionando. Antes de qualquer mudança que envolva:
+- Dexie / IndexedDB
+- Tabelas locais (clientes, produtos, pedidos, visitas, etc)
+- Queries Supabase
+- Sincronização de dados
+- Funções salvarComOuSemConexao, atualizarComOuSemConexao, enfileirar, processarFila
+
+LEIA PRIMEIRO o arquivo OFFLINE.md no raiz do projeto. Ele documenta:
+- Arquitetura completa (Dexie + sync_queue + IDs offline)
+- Quais arquivos já usam offline
+- Quais buracos existem e devem ser corrigidos
+- O que é decisão de produto (online-only)
+
+NÃO reimplemente offline-first. Já existe.
+
+---
+
 ## ⚠️ ATENÇÃO — APLICATIVO NATIVO
 Todo o desenvolvimento do v2 deve considerar que será empacotado como aplicativo nativo via Capacitor para Apple Store e Google Play. Isso significa:
 - Todas as funcionalidades devem funcionar em ambiente nativo (iOS e Android)
