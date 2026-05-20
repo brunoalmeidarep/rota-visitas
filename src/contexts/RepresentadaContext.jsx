@@ -43,13 +43,13 @@ export function RepresentadaProvider({ children }) {
           .select(`
             rep_id,
             empresa_id,
-            plano,
             codigo,
             empresas (
               id,
               nome,
               logo_url,
-              cor_primaria
+              cor_primaria,
+              plano
             )
           `)
           .eq('rep_id', repId)
@@ -68,7 +68,7 @@ export function RepresentadaProvider({ children }) {
             logo_url: v.empresas.logo_url,
             cor_primaria: v.empresas.cor_primaria,
             tipo: 'empresa',
-            plano: v.plano || 'enterprise',
+            plano: v.empresas?.plano || 'enterprise',
             empresa_id: v.empresa_id
           }))
 
@@ -169,7 +169,7 @@ export function RepresentadaProvider({ children }) {
         logo_url: v.empresas.logo_url,
         cor_primaria: v.empresas.cor_primaria,
         tipo: 'empresa',
-        plano: v.plano || 'enterprise',
+        plano: v.empresas?.plano || 'enterprise',
         empresa_id: v.empresa_id
       }))
 
