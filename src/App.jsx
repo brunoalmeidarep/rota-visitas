@@ -4,6 +4,7 @@ import SwipeBack from './components/shared/SwipeBack'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { supabase } from './lib/supabase'
 import { RepresentadaProvider } from './contexts/RepresentadaContext'
+import DebugBanner from './components/DebugBanner'
 
 // Eager: telas críticas que carregam no bundle inicial
 import Login from './components/shared/Login'
@@ -135,6 +136,7 @@ function App() {
 
   return (
     <RepresentadaProvider>
+      <DebugBanner />
       <ScrollToTop />
       <SwipeBack />
       <div className="app">
