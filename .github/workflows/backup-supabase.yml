@@ -1,0 +1,40 @@
+name: Backup Supabase to R2
+
+on:
+  schedule:
+    - cron: '0 5 * * *'  # Todo dia às 02:00 BRT (05:00 UTC)
+  workflow_dispatch:  # Permite rodar manualmente também
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Run pg_dump
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%d_%H-%M-%S")
+          FILENAME="backup_${TIMESTAMP}.sql.gz"
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+          pg_dump "$DB_URL" --no-owner --no-acl | gzip > "$FILENAME"
+          ls -lh "$FILENAME"
+
+      - name: Upload to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          aws s3 cp "$FILENAME" "s3://$R2_BUCKET/$FILENAME" --endpoint-url "$R2_ENDPOINT"
+
+      - name: Cleanup local file
+        run: rm -f "$FILENAME"
