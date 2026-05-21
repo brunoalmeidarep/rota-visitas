@@ -95,9 +95,9 @@ function NovoPedido() {
 
     async function fetchClientes() {
       try {
+        // Inclui clientes do rep + órfãos (rep_id null) que vieram no sync
         const data = await db.clientes
-          .where('rep_id')
-          .equals(repId)
+          .filter(c => c.rep_id === repId || c.rep_id == null)
           .sortBy('nome')
         setClientes(data || [])
       } catch (err) {
@@ -106,7 +106,7 @@ function NovoPedido() {
         const { data } = await supabase
           .from('clientes')
           .select('id, nome, cidade')
-          .eq('rep_id', repId)
+          .or(`rep_id.eq.${repId},rep_id.is.null`)
           .order('nome')
         if (data) setClientes(data)
       }
