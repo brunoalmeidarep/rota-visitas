@@ -27,7 +27,7 @@ export async function syncProdutos(empresaId) {
       const offset = pagina * PAGE_SIZE
       const { data, error } = await supabase
         .from('produtos_com_preco_distribuidora')
-        .select('id, codigo, codigo_barras, nome, preco, preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia, ipi, unidade, fotos, foto_url, ativo, desativado_manualmente, empresa_id, fornecedor_id')
+        .select('id, codigo, codigo_barras, nome, preco, preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia, ipi, unidade, fotos, foto_url, ativo, desativado_manualmente, empresa_id, fornecedor_id, fornecedor_nome')
         .eq('empresa_id', empresaId)
         .eq('desativado_manualmente', false)
         .order('nome')
