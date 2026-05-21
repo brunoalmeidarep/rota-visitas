@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
+import { useRepresentada } from '../../contexts/RepresentadaContext'
 import InputEndereco from '../shared/InputEndereco'
 import './CadastroCliente.css'
 
@@ -22,6 +23,7 @@ function toTitleCase(str) {
 function CadastroCliente() {
   const navigate = useNavigate()
   const { repId, loading: loadingRep } = useRepId()
+  const { representadaSelecionada } = useRepresentada()
   const coordsRef = useRef(null)
 
   // Dados do cliente
@@ -280,13 +282,6 @@ function CadastroCliente() {
     setSalvando(true)
     setErro('')
 
-    // Buscar empresa_id do representante
-    const { data: rep } = await supabase
-      .from('representantes')
-      .select('empresa_id')
-      .eq('id', repId)
-      .single()
-
     const cidadeCompleta = estado ? `${cidade} - ${estado}` : cidade
 
     // Usa razão social como nome principal, nome fantasia como fallback
@@ -315,7 +310,11 @@ function CadastroCliente() {
       lat: coords?.lat || null,
       lng: coords?.lng || null,
       rep_id: repId,
-      empresa_id: rep?.empresa_id || null
+      empresa_id: representadaSelecionada
+        ? (representadaSelecionada.plano === 'enterprise'
+            ? representadaSelecionada.empresa_id
+            : representadaSelecionada.id)
+        : null
     }
 
     console.log('[CadastroCliente] Salvando:', novoCliente)

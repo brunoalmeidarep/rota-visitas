@@ -67,11 +67,13 @@ export async function syncClientes(repId, empresaId) {
   const inicio = Date.now()
 
   try {
+    // Traz os clientes do rep + os órfãos da empresa (rep_id null = carteira geral).
+    // A RLS no Supabase autoriza o rep a ler os órfãos quando a empresa tem a flag ligada.
     const { data, error } = await supabase
       .from('clientes')
       .select('*')
       .eq('empresa_id', empresaId)
-      .eq('rep_id', repId)
+      .or(`rep_id.eq.${repId},rep_id.is.null`)
       .order('nome')
 
     if (error) throw error

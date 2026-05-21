@@ -50,9 +50,10 @@ function CarteiraClientes() {
     if (!repId) return
     setLoading(true)
     try {
+      // Mostra os clientes do rep + os órfãos (rep_id null) que vieram no sync,
+      // misturados na mesma lista.
       const data = await db.clientes
-        .where('rep_id')
-        .equals(repId)
+        .filter(c => c.rep_id === repId || c.rep_id == null)
         .sortBy('nome')
       setClientes(data || [])
     } catch (err) {
