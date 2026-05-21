@@ -200,7 +200,7 @@ function PerfilCliente() {
     return (
       <div className={`perfil-cliente ${isDark ? 'dark' : 'light'}`}>
         <header className="perfil-header">
-          <button className="perfil-voltar" onClick={() => navigate(-1)}>
+          <button className="perfil-voltar" onClick={() => navigate('/clientes')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
@@ -209,7 +209,7 @@ function PerfilCliente() {
         </header>
         <div className="perfil-erro">
           <p>{erro || 'Cliente não encontrado'}</p>
-          <button onClick={() => navigate(-1)}>Voltar</button>
+          <button onClick={() => navigate('/clientes')}>Voltar</button>
         </div>
       </div>
     )
@@ -221,7 +221,7 @@ function PerfilCliente() {
     <div className={`perfil-cliente ${isDark ? 'dark' : 'light'}`}>
       {/* Header */}
       <header className="perfil-header">
-        <button className="perfil-voltar" onClick={() => navigate(-1)}>
+        <button className="perfil-voltar" onClick={() => navigate('/clientes')}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
