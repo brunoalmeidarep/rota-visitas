@@ -132,15 +132,15 @@ function DadosCliente() {
 
           <div className="dados-campo">
             <span className="dados-campo-label">Razão Social</span>
-            <span className={`dados-campo-valor ${!cliente.razao_social ? 'vazio' : ''}`}>
-              {cliente.razao_social || 'Não informado'}
+            <span className={`dados-campo-valor ${!cliente.nome ? 'vazio' : ''}`}>
+              {cliente.nome || 'Não informado'}
             </span>
           </div>
 
           <div className="dados-campo">
             <span className="dados-campo-label">CNPJ</span>
-            <span className={`dados-campo-valor ${!cliente.cnpj ? 'vazio' : ''}`}>
-              {formatarCnpj(cliente.cnpj) || 'Não informado'}
+            <span className={`dados-campo-valor ${!cliente.cnpj_cpf ? 'vazio' : ''}`}>
+              {formatarCnpj(cliente.cnpj_cpf) || 'Não informado'}
             </span>
           </div>
 
