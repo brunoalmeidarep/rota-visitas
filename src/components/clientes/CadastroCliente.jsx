@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
 import InputEndereco from '../shared/InputEndereco'
@@ -335,6 +336,13 @@ function CadastroCliente() {
         setErro(error.message || 'Erro ao salvar cliente')
       }
       return
+    }
+
+    // Grava no IndexedDB local pra aparecer na lista imediatamente, sem esperar o próximo sync
+    try {
+      await db.clientes.put({ ...data, _synced_at: new Date().toISOString(), _pending_sync: 0 })
+    } catch (e) {
+      console.warn('[CadastroCliente] Falha ao gravar no IndexedDB local:', e)
     }
 
     // Mostrar aviso se geocodificação falhou
