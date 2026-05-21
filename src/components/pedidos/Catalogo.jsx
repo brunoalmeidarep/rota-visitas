@@ -123,14 +123,12 @@ function Catalogo() {
           todos = todos.filter(p => p.rep_id === repId)
         }
 
-        // Filtro por busca (nome, código, código_barras — case insensitive)
-        const termo = (buscaDebounced || '').replace(/,/g, ' ').trim().toLowerCase()
-        if (termo) {
+        // Filtro por busca (todas as palavras devem existir em nome, código ou código_barras)
+        const termos = (buscaDebounced || '').replace(/,/g, ' ').trim().toLowerCase().split(/\s+/).filter(Boolean)
+        if (termos.length > 0) {
           todos = todos.filter(p => {
-            const nome = (p.nome || '').toLowerCase()
-            const codigo = (p.codigo || '').toLowerCase()
-            const codBarras = (p.codigo_barras || '').toLowerCase()
-            return nome.includes(termo) || codigo.includes(termo) || codBarras.includes(termo)
+            const alvo = `${p.nome || ''} ${p.codigo || ''} ${p.codigo_barras || ''}`.toLowerCase()
+            return termos.every(t => alvo.includes(t))
           })
         }
 
