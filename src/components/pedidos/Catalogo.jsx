@@ -127,7 +127,7 @@ function Catalogo() {
         const termos = (buscaDebounced || '').replace(/,/g, ' ').trim().toLowerCase().split(/\s+/).filter(Boolean)
         if (termos.length > 0) {
           todos = todos.filter(p => {
-            const alvo = `${p.nome || ''} ${p.codigo || ''} ${p.codigo_barras || ''}`.toLowerCase()
+            const alvo = `${p.nome || ''} ${p.codigo || ''} ${p.codigo_barras || ''} ${p.fornecedor_nome || ''} ${p.nome_familia || ''}`.toLowerCase()
             return termos.every(t => alvo.includes(t))
           })
         }

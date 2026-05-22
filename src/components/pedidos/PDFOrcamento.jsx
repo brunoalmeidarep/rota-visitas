@@ -316,8 +316,8 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            {representada?.logo && (
-              <Image src={representada.logo} style={styles.logo} />
+            {representada?.logo_url && (
+              <Image src={representada.logo_url} style={styles.logo} />
             )}
             <View style={styles.headerInfo}>
               <Text style={styles.empresaNome}>{representada?.nome || 'Empresa'}</Text>
