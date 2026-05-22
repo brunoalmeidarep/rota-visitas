@@ -276,6 +276,7 @@ function Catalogo() {
           produto_nome: produto?.nome,
           produto_codigo: produto?.codigo,
           produto_fornecedor: fornecedorNome,
+          produto_familia: produto?.nome_familia || null,
           quantidade,
           preco_unitario: produto?.preco || 0,
           ipi: produto?.ipi || 0,

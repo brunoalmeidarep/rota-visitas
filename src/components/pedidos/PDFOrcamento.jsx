@@ -400,7 +400,17 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
             <View key={index} style={styles.tabelaRow}>
               <View style={styles.colProduto}>
                 <Text style={styles.produtoNome}>{item.produto_nome}</Text>
-                <Text style={styles.produtoCodigo}>{item.produto_codigo}</Text>
+                <Text style={styles.produtoCodigo}>
+                  {[
+                    item.produto_codigo,
+                    item.produto_fornecedor
+                      ? (item.produto_fornecedor.length > 20
+                          ? item.produto_fornecedor.slice(0, 20) + '...'
+                          : item.produto_fornecedor)
+                      : null,
+                    item.produto_familia
+                  ].filter(Boolean).join(' · ')}
+                </Text>
                 <Text style={styles.produtoPreco}>{formatarValor(item.preco_unitario)}/un</Text>
               </View>
               <Text style={[styles.cellText, styles.colQtd]}>{item.quantidade}</Text>
