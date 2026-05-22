@@ -99,7 +99,7 @@ function CadastroProduto() {
       // Busca dados da política aplicada (read-only)
       const { data: dataPolitica } = await supabase
         .from('produtos_com_preco_distribuidora')
-        .select('preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia')
+        .select('preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia, fornecedor_nome')
         .eq('produto_id', id)
         .single()
 
@@ -392,6 +392,16 @@ function CadastroProduto() {
               readOnly={isReadOnly}
             />
             {erroNome && <span className="cp-erro-msg">Nome é obrigatório</span>}
+          </div>
+
+          <div className="cp-campo">
+            <label>Fornecedor (marca)</label>
+            <input
+              type="text"
+              value={politica?.fornecedor_nome || '—'}
+              disabled
+              readOnly
+            />
           </div>
 
           <div className="cp-campo">
