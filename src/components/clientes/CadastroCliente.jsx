@@ -93,6 +93,12 @@ function CadastroCliente() {
       setComprador(data.comprador || '')
       setSegmento(data.segmento || '')
       setVeioDoMicrovix(!!data.cod_cliente_erp)
+      setCep(data.cep || '')
+      setBairro(data.bairro || '')
+      setNumero(data.endereco_numero || '')
+      setEstado(data.estado || '')
+      setCidade(data.cidade || '')
+      setRua(data.endereco || '')
       if (data.lat && data.lng) {
         coordsRef.current = { lat: data.lat, lng: data.lng }
       }
