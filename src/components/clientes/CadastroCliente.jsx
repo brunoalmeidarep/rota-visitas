@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
@@ -23,6 +23,8 @@ function toTitleCase(str) {
 
 function CadastroCliente() {
   const navigate = useNavigate()
+  const { id } = useParams()
+  const isEdicao = !!id
   const { repId, loading: loadingRep } = useRepId()
   const { representadaSelecionada } = useRepresentada()
   const coordsRef = useRef(null)
@@ -53,6 +55,7 @@ function CadastroCliente() {
   const [cidadeEstadoTravado, setCidadeEstadoTravado] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
+  const [veioDoMicrovix, setVeioDoMicrovix] = useState(false)
 
   // Carrega segmentos do Supabase
   useEffect(() => {
@@ -70,6 +73,32 @@ function CadastroCliente() {
 
     fetchSegmentos()
   }, [repId])
+
+  // Carrega o cliente em modo edição
+  useEffect(() => {
+    if (!isEdicao) return
+    async function fetchCliente() {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('id', id)
+        .single()
+      if (error || !data) {
+        setErro('Cliente não encontrado')
+        return
+      }
+      setRazaoSocial(data.nome || '')
+      setCnpj(data.cnpj_cpf || '')
+      setTelefone(data.telefone || '')
+      setComprador(data.comprador || '')
+      setSegmento(data.segmento || '')
+      setVeioDoMicrovix(!!data.cod_cliente_erp)
+      if (data.lat && data.lng) {
+        coordsRef.current = { lat: data.lat, lng: data.lng }
+      }
+    }
+    fetchCliente()
+  }, [isEdicao, id])
 
   // Callback quando InputEndereco retorna componentes do endereço
   function handleAddressComponents(components) {
@@ -320,11 +349,14 @@ function CadastroCliente() {
 
     console.log('[CadastroCliente] Salvando:', novoCliente)
 
-    const { data, error } = await supabase
-      .from('clientes')
-      .insert(novoCliente)
-      .select()
-      .single()
+    // No update, não mexe em rep_id/empresa_id (não captura cliente órfão ao editar)
+    const dadosUpdate = { ...novoCliente }
+    delete dadosUpdate.rep_id
+    delete dadosUpdate.empresa_id
+    const query = isEdicao
+      ? supabase.from('clientes').update(dadosUpdate).eq('id', id)
+      : supabase.from('clientes').insert(novoCliente)
+    const { data, error } = await query.select().single()
 
     setSalvando(false)
 
@@ -366,7 +398,7 @@ function CadastroCliente() {
         <button className="btn-voltar" onClick={() => navigate('/clientes')}>
           ← Voltar
         </button>
-        <h1>Novo Cliente</h1>
+        <h1>{isEdicao ? 'Editar Cliente' : 'Novo Cliente'}</h1>
         <button className="btn-salvar-header" onClick={salvar} disabled={salvando}>
           {salvando ? '...' : 'Salvar'}
         </button>
@@ -388,6 +420,8 @@ function CadastroCliente() {
               placeholder="00.000.000/0000-00"
               className={cnpjErro ? 'campo-erro' : ''}
               autoFocus
+              disabled={veioDoMicrovix}
+              readOnly={veioDoMicrovix}
             />
             {cnpjCarregando && <span className="campo-loader"></span>}
           </div>
@@ -403,6 +437,8 @@ function CadastroCliente() {
             value={razaoSocial}
             onChange={(e) => setRazaoSocial(e.target.value)}
             placeholder="Nome da empresa"
+            disabled={veioDoMicrovix}
+            readOnly={veioDoMicrovix}
           />
         </div>
 

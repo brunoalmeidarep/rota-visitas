@@ -52,15 +52,6 @@ const Tarefas = lazy(() => import('./components/tarefas/Tarefas'))
 const Mapa = lazy(() => import('./components/mapa/Mapa'))
 
 
-const EditarCliente = () => (
-  <div className="screen">
-    <header className="screen-header">
-      <button className="voltar-btn" onClick={() => window.history.back()}>← Voltar</button>
-      <h1>Editar Cliente</h1>
-    </header>
-    <div className="screen-content"><p>Em desenvolvimento...</p></div>
-  </div>
-)
 
 // Loader simples enquanto cada chunk carrega
 function TelaCarregando() {
@@ -151,7 +142,7 @@ function App() {
             <Route path="/clientes/novo" element={<CadastroCliente />} />
             <Route path="/clientes/:id" element={<PerfilCliente />} />
             <Route path="/clientes/:id/dados" element={<DadosCliente />} />
-            <Route path="/clientes/:id/editar" element={<EditarCliente />} />
+            <Route path="/clientes/:id/editar" element={<CadastroCliente />} />
             <Route path="/clientes/:id/bonificacao" element={<Bonificacao />} />
             <Route path="/clientes/:id/gastos" element={<GastosCliente />} />
             <Route path="/clientes/:id/visitas" element={<HistoricoCliente />} />
