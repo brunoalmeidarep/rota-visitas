@@ -96,16 +96,16 @@ function DadosCliente() {
     )
   }
 
-  // Extrair componentes do endereço se existirem
+  // Campos de endereço (separados; com fallback pro formato antigo)
   const enderecoPartes = cliente.endereco?.split(',').map(p => p.trim()) || []
   const rua = enderecoPartes[0] || null
-  const numero = enderecoPartes[1] || null
-  const bairro = enderecoPartes[2] || null
+  const numero = cliente.endereco_numero || enderecoPartes[1] || null
+  const bairro = cliente.bairro || enderecoPartes[2] || null
 
-  // Extrair cidade e estado do campo cidade
+  // Cidade e estado (separados; com fallback pro formato antigo "Cidade - UF")
   const cidadeEstado = cliente.cidade?.split(' - ') || []
-  const cidade = cidadeEstado[0] || cliente.cidade || null
-  const estado = cidadeEstado[1] || null
+  const cidade = cidadeEstado[0]?.trim() || cliente.cidade || null
+  const estado = cliente.estado || cidadeEstado[1]?.trim() || null
 
   return (
     <div className={`dados-cliente ${isDark ? 'dark' : 'light'}`}>
