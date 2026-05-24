@@ -335,9 +335,15 @@ function CadastroCliente() {
       }
     }
 
+    // Sem representada selecionada não há empresa_id válido — bloqueia pra não criar cliente órfão de empresa
+    if (!isEdicao && !representadaSelecionada) {
+      setErro('Selecione uma representada antes de cadastrar o cliente.')
+      return
+    }
+
     const novoCliente = {
       nome: nomePrincipal,
-      cnpj_cpf: cnpj.trim() || null,
+      cnpj_cpf: cnpj.replace(/\D/g, '') || null,
       telefone: telefone.trim() || null,
       comprador: comprador.trim() || null,
       segmento: segmento || null,
