@@ -177,7 +177,14 @@ function PerfilCliente() {
     if (cliente.lat && cliente.lng) {
       window.open(`https://www.google.com/maps?q=${cliente.lat},${cliente.lng}`, '_blank')
     } else if (cliente.endereco && cliente.cidade) {
-      const endereco = encodeURIComponent(`${cliente.endereco}, ${cliente.cidade}`)
+      const partes = [
+        cliente.endereco,
+        cliente.endereco_numero,
+        cliente.bairro,
+        cliente.cidade,
+        cliente.estado
+      ].filter(Boolean).join(', ')
+      const endereco = encodeURIComponent(partes)
       window.open(`https://www.google.com/maps/search/${endereco}`, '_blank')
     } else {
       alert('Endereço não disponível')
