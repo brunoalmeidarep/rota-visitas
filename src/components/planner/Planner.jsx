@@ -1340,7 +1340,7 @@ function Planner({ initialView }) {
                       <div className="rota-trecho-num">{i + 1}</div>
                       <div className="rota-trecho-info">
                         <div className="rota-trecho-nome">{cliente.nome}</div>
-                        <div className="rota-trecho-meta">{normalizarCidade(cliente.cidade)} {cliente.endereco ? '• ' + cliente.endereco : ''}</div>
+                        <div className="rota-trecho-meta">{normalizarCidade(cliente.cidade)} {cliente.endereco ? '• ' + cliente.endereco + (cliente.endereco_numero ? ', ' + cliente.endereco_numero : '') : ''}</div>
                       </div>
                     </div>
                   )

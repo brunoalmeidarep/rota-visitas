@@ -194,7 +194,10 @@ function CarteiraClientes() {
   async function geocodificarEndereco(cliente) {
     const partes = []
     if (cliente.endereco) partes.push(cliente.endereco)
+    if (cliente.endereco_numero) partes.push(cliente.endereco_numero)
+    if (cliente.bairro) partes.push(cliente.bairro)
     if (cliente.cidade) partes.push(cliente.cidade)
+    if (cliente.estado) partes.push(cliente.estado)
     const enderecoCompleto = partes.join(', ')
 
     if (!enderecoCompleto) return null
