@@ -254,7 +254,7 @@ function PerfilCliente() {
           </div>
           <div className="perfil-stat">
             <div className="perfil-stat-valor">
-              {formatarValor(cliente.ultimo_pedido_valor || 0)}
+              {cliente.rep_id === repId ? formatarValor(cliente.ultimo_pedido_valor || 0) : '—'}
             </div>
             <div className="perfil-stat-label">Último pedido</div>
           </div>

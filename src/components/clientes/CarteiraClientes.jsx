@@ -551,7 +551,7 @@ function CarteiraClientes() {
                 <div className="cliente-info">
                   <h3 className="cliente-nome">{cliente.nome}</h3>
                   <p className="cliente-cidade">{toTitleCase(cliente.cidade) || 'Cidade não informada'}</p>
-                  {cliente.ultimo_pedido_valor && (
+                  {cliente.rep_id === repId && cliente.ultimo_pedido_valor && (
                     <p className="cliente-pedido">
                       {formatarValor(cliente.ultimo_pedido_valor)}
                       {cliente.ultimo_pedido_data && (
