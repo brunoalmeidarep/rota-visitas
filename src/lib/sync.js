@@ -74,6 +74,7 @@ export async function syncClientes(repId, empresaId) {
       .select('*')
       .eq('empresa_id', empresaId)
       .or(`rep_id.eq.${repId},rep_id.is.null`)
+      .not('inativado_manualmente', 'is', true)
       .order('nome')
 
     if (error) throw error
