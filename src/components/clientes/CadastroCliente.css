@@ -279,3 +279,11 @@
 .pac-matched {
   font-weight: 600;
 }
+
+/* Campos bloqueados (ex: CNPJ e Razão Social de cliente vindo do Microvix) */
+.cadastro-cliente input:disabled,
+.cadastro-cliente input[readonly] {
+  background-color: #f0f0f0;
+  color: #888;
+  cursor: not-allowed;
+}
