@@ -341,7 +341,7 @@ function CadastroCliente() {
       telefone: telefone.trim() || null,
       comprador: comprador.trim() || null,
       segmento: segmento || null,
-      endereco: montarEndereco() || null,
+      endereco: (rua || '').trim() || null,
       cidade: (cidade || '').trim() || null,
       estado: estado || null,
       endereco_numero: numero || null,
