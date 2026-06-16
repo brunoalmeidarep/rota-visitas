@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { atualizarComOuSemConexao } from '../../lib/queue'
 import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
 import { nomeFornecedor } from '../../utils/fornecedor'
 import './DetalheProdutoPedido.css'
@@ -205,19 +206,21 @@ function DetalheProdutoPedido() {
         const precoEfetivo = calcularPrecoEfetivo(it)
         return acc + (((Number(it.preco_unitario) || 0) - precoEfetivo) * (Number(it.quantidade) || 0))
       }, 0)
-      const { error } = await supabase
-        .from('pedidos')
-        .update({
+      const resultado = await atualizarComOuSemConexao(
+        'pedidos',
+        pedidoId,
+        {
           itens: novosItens,
           valor_bruto: valorBrutoTotal,
           valor_desconto: valorDescontoTotal
           // valor_liquido é generated column no banco — calculado automaticamente
-        })
-        .eq('id', pedidoId)
+        },
+        { tabelaLocal: 'pedidos' }
+      )
 
-      if (error) {
-        console.error('[DetalheProdutoPedido] Erro:', error)
-        alert('Erro ao salvar')
+      if (!resultado.ok) {
+        console.error('[DetalheProdutoPedido] Erro:', resultado.motivo)
+        alert('Erro ao salvar: ' + resultado.motivo)
         setSalvando(false)
         return
       }
