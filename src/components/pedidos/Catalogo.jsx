@@ -20,7 +20,7 @@ function Catalogo() {
 
   const [pedido, setPedido] = useState(null)
   const [produtos, setProdutos] = useState([])
-  const [itens, setItens] = useState({}) // { produtoId: quantidade }
+  const [itens, setItens] = useState({}) // { produtoId: { quantidade, preco_unitario, preco_loja, desconto_familia_pct, nome_familia, ipi, desconto, desconto_percentual, preco_negociado_direto, subtotal } }
   const [busca, setBusca] = useState('')
   const [buscaDebounced, setBuscaDebounced] = useState('')
   const [loading, setLoading] = useState(true)
@@ -82,7 +82,8 @@ function Catalogo() {
         } else if (data.itens && Array.isArray(data.itens)) {
           const itensObj = {}
           data.itens.forEach(item => {
-            itensObj[item.produto_id] = item.quantidade
+            // Guarda o item rico inteiro — preserva preço negociado/desconto do detalhe
+            itensObj[item.produto_id] = { ...item }
           })
           setItens(itensObj)
         }
@@ -190,13 +191,61 @@ function Catalogo() {
     const multiplo = produto?.multiplo_venda || produto?.multiplo || 1
 
     setItens(prev => {
-      const atual = prev[produtoId] || 0
-      const nova = Math.max(0, atual + (delta * multiplo))
-      if (nova === 0) {
+      const itemAtual = prev[produtoId]
+      const qtdAtual = itemAtual?.quantidade || 0
+      const novaQtd = Math.max(0, qtdAtual + (delta * multiplo))
+
+      // Remove item se zerou
+      if (novaQtd === 0) {
         const { [produtoId]: _, ...rest } = prev
         return rest
       }
-      return { ...prev, [produtoId]: nova }
+
+      // Se item já existe (com possível desconto/preço negociado), mantém tudo e só recalcula subtotal
+      if (itemAtual) {
+        // Preço efetivo: respeita preco_negociado_direto, desconto em R$ ou %, ou usa preco_unitario puro
+        const precoBase = Number(itemAtual.preco_unitario) || 0
+        const ipiPct = Number(itemAtual.ipi) || 0
+        let precoEfetivo = precoBase
+        if (itemAtual.preco_negociado_direto != null && Number(itemAtual.preco_negociado_direto) > 0) {
+          precoEfetivo = Number(itemAtual.preco_negociado_direto)
+        } else if (itemAtual.desconto_percentual != null && Number(itemAtual.desconto_percentual) > 0) {
+          precoEfetivo = precoBase * (1 - Number(itemAtual.desconto_percentual) / 100)
+        } else if (itemAtual.desconto != null && Number(itemAtual.desconto) > 0) {
+          precoEfetivo = Math.max(0, precoBase - Number(itemAtual.desconto))
+        }
+        const precoEfetivoComIpi = precoEfetivo * (1 + ipiPct / 100)
+        const novoSubtotal = precoEfetivoComIpi * novaQtd
+        return { ...prev, [produtoId]: { ...itemAtual, quantidade: novaQtd, subtotal: novoSubtotal } }
+      }
+
+      // Item NOVO — cria com preço de catálogo (com desconto família já aplicado), sem desconto extra
+      const precoBase = Number(produto?.preco) || 0
+      const precoLoja = Number(produto?.preco_loja) || precoBase
+      const descontoFamiliaPct = Number(produto?.desconto_pct_aplicado) || 0
+      const nomeFamilia = produto?.nome_familia || null
+      const ipiPct = Number(produto?.ipi) || 0
+      const precoComIpi = precoBase * (1 + ipiPct / 100)
+      const subtotal = precoComIpi * novaQtd
+      return {
+        ...prev,
+        [produtoId]: {
+          produto_id: produtoId,
+          produto_nome: produto?.nome,
+          produto_codigo: produto?.codigo,
+          produto_fornecedor: produto?.fornecedores?.nome_fantasia || produto?.fornecedores?.nome || null,
+          quantidade: novaQtd,
+          preco_unitario: precoBase,
+          preco_loja: precoLoja,
+          desconto_familia_pct: descontoFamiliaPct,
+          nome_familia: nomeFamilia,
+          ipi: ipiPct,
+          desconto: 0,
+          desconto_percentual: null,
+          preco_negociado_direto: null,
+          subtotal
+        }
+      }
     })
   }
 
@@ -209,9 +258,10 @@ function Catalogo() {
     const partes = []
     let totalUn = 0
 
-    Object.entries(itens).forEach(([produtoId, qtd]) => {
+    Object.entries(itens).forEach(([produtoId, item]) => {
       const produto = produtos.find(p => p.id === produtoId)
       const multiplo = produto?.multiplo_venda || produto?.multiplo || 1
+      const qtd = item?.quantidade || 0
       totalUn += qtd
 
       if (multiplo > 1 && qtd >= multiplo) {
@@ -237,12 +287,9 @@ function Catalogo() {
 
   // Totais (do carrinho)
   const totalItens = Object.keys(itens).length
-  const totalValor = Object.entries(itens).reduce((acc, [produtoId, qtd]) => {
-    const produto = produtos.find(p => p.id === produtoId)
-    if (!produto) return acc
-    const ipiValor = Number(produto.ipi) || 0
-    const precoComIpi = (produto.preco || 0) * (1 + ipiValor / 100)
-    return acc + (precoComIpi * qtd)
+  // Total é a soma dos subtotais salvos no item (já com IPI e desconto aplicados)
+  const totalValor = Object.values(itens).reduce((acc, item) => {
+    return acc + (Number(item?.subtotal) || 0)
   }, 0)
 
   async function concluir() {
@@ -265,38 +312,67 @@ function Catalogo() {
         produtosCarrinho = [...produtosCarrinho, ...faltantesValidos]
       }
 
-      const itensArray = Object.entries(itens).map(([produtoId, quantidade]) => {
+      // Helper: calcula preço efetivo do item (respeita preco_negociado_direto > desconto_percentual > desconto R$ > preco_unitario)
+      function calcularPrecoEfetivo(item) {
+        const precoBase = Number(item.preco_unitario) || 0
+        if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
+          return Number(item.preco_negociado_direto)
+        }
+        if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
+          return precoBase * (1 - Number(item.desconto_percentual) / 100)
+        }
+        if (item.desconto != null && Number(item.desconto) > 0) {
+          return Math.max(0, precoBase - Number(item.desconto))
+        }
+        return precoBase
+      }
+
+      // Monta itensArray a partir do state rico (preserva preço negociado/desconto)
+      const itensArray = Object.entries(itens).map(([produtoId, item]) => {
         const produto = produtosCarrinho.find(p => p.id === produtoId)
-        const fornecedorNome = produto?.fornecedores?.nome_fantasia
+        const fornecedorNome = item.produto_fornecedor
+          || produto?.fornecedores?.nome_fantasia
           || produto?.fornecedores?.nome
           || produto?.fornecedor_nome
           || null
+        const precoEfetivo = calcularPrecoEfetivo(item)
+        const ipiPct = Number(item.ipi) || 0
+        const subtotalCalculado = precoEfetivo * (1 + ipiPct / 100) * (Number(item.quantidade) || 0)
         return {
           produto_id: produtoId,
-          produto_nome: produto?.nome,
-          produto_codigo: produto?.codigo,
+          produto_nome: item.produto_nome || produto?.nome,
+          produto_codigo: item.produto_codigo || produto?.codigo,
           produto_fornecedor: fornecedorNome,
-          produto_familia: produto?.nome_familia || null,
-          quantidade,
-          preco_unitario: produto?.preco || 0,
-          ipi: produto?.ipi || 0,
-          desconto: 0,
-          subtotal: (produto?.preco || 0) * quantidade
+          produto_familia: item.nome_familia || produto?.nome_familia || null,
+          quantidade: Number(item.quantidade) || 0,
+          preco_unitario: Number(item.preco_unitario) || 0,
+          preco_loja: Number(item.preco_loja) || 0,
+          desconto_familia_pct: Number(item.desconto_familia_pct) || 0,
+          nome_familia: item.nome_familia || null,
+          ipi: ipiPct,
+          desconto: Number(item.desconto) || 0,
+          desconto_percentual: item.desconto_percentual != null ? Number(item.desconto_percentual) : null,
+          preco_negociado_direto: item.preco_negociado_direto != null ? Number(item.preco_negociado_direto) : null,
+          subtotal: subtotalCalculado
         }
       })
 
-      const valorTotalFinal = itensArray.reduce((acc, it) => {
-        const ipiValor = Number(it.ipi) || 0
-        const precoComIpi = (it.preco_unitario || 0) * (1 + ipiValor / 100)
-        return acc + (precoComIpi * it.quantidade)
+      // Totais do pedido (sem IPI nos campos bruto/desconto/líquido, mantém convenção do DetalheProdutoPedido)
+      const valorBruto = itensArray.reduce((acc, it) => acc + (it.preco_unitario * it.quantidade), 0)
+      const valorDesconto = itensArray.reduce((acc, it) => {
+        const precoEfetivo = calcularPrecoEfetivo(it)
+        return acc + ((it.preco_unitario - precoEfetivo) * it.quantidade)
       }, 0)
+      const valorLiquido = valorBruto - valorDesconto
 
       const resultado = await atualizarComOuSemConexao(
         'pedidos',
         pedidoId,
         {
           itens: itensArray,
-          valor_bruto: valorTotalFinal
+          valor_bruto: valorBruto,
+          valor_desconto: valorDesconto,
+          valor_liquido: valorLiquido
         },
         { tabelaLocal: 'pedidos' }
       )
@@ -380,7 +456,7 @@ function Catalogo() {
         ) : (
           <>
             {produtos.map(produto => {
-              const quantidade = itens[produto.id] || 0
+              const quantidade = itens[produto.id]?.quantidade || 0
               const ipiValor = Number(produto.ipi) || 0
               const temIpi = ipiValor > 0
               const precoComIpi = (produto.preco || 0) * (1 + ipiValor / 100)

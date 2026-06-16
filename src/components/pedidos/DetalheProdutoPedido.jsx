@@ -185,11 +185,35 @@ function DetalheProdutoPedido() {
       // Recalcular total
       const novoTotal = novosItens.reduce((acc, item) => acc + (item.subtotal || 0), 0)
 
+      // Helper: calcula preço efetivo do item (mesma cascata do Catalogo)
+      function calcularPrecoEfetivo(item) {
+        const precoBase = Number(item.preco_unitario) || 0
+        if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
+          return Number(item.preco_negociado_direto)
+        }
+        if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
+          return precoBase * (1 - Number(item.desconto_percentual) / 100)
+        }
+        if (item.desconto != null && Number(item.desconto) > 0) {
+          return Math.max(0, precoBase - Number(item.desconto))
+        }
+        return precoBase
+      }
+
+      const valorBruto = novosItens.reduce((acc, it) => acc + ((Number(it.preco_unitario) || 0) * (Number(it.quantidade) || 0)), 0)
+      const valorDesconto = novosItens.reduce((acc, it) => {
+        const precoEfetivo = calcularPrecoEfetivo(it)
+        return acc + (((Number(it.preco_unitario) || 0) - precoEfetivo) * (Number(it.quantidade) || 0))
+      }, 0)
+      const valorLiquido = valorBruto - valorDesconto
+
       const { error } = await supabase
         .from('pedidos')
         .update({
           itens: novosItens,
-          valor_bruto: novosItens.reduce((acc, it) => acc + (it.preco_unitario * it.quantidade), 0)
+          valor_bruto: valorBruto,
+          valor_desconto: valorDesconto,
+          valor_liquido: valorLiquido
         })
         .eq('id', pedidoId)
 
