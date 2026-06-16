@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRepId } from '../../hooks/useRepId'
 import { useRepresentada } from '../../contexts/RepresentadaContext'
@@ -15,6 +15,7 @@ const DEBOUNCE_MS = 350
 function Catalogo() {
   const navigate = useNavigate()
   const { id: pedidoId } = useParams()
+  const location = useLocation()
   const { repId } = useRepId()
   const { representadaSelecionada } = useRepresentada()
 
@@ -76,16 +77,19 @@ function Catalogo() {
 
       if (data) {
         setPedido(data)
-        const itensStorage = lerCarrinho(pedidoId)
-        if (itensStorage && Object.keys(itensStorage).length > 0) {
-          setItens(itensStorage)
-        } else if (data.itens && Array.isArray(data.itens)) {
+        // Prioridade: BANCO como fonte da verdade (preserva desconto/preço do detalhe).
+        // sessionStorage só como fallback se banco não tiver itens (pedido novo / offline)
+        if (data.itens && Array.isArray(data.itens) && data.itens.length > 0) {
           const itensObj = {}
           data.itens.forEach(item => {
-            // Guarda o item rico inteiro — preserva preço negociado/desconto do detalhe
             itensObj[item.produto_id] = { ...item }
           })
           setItens(itensObj)
+        } else {
+          const itensStorage = lerCarrinho(pedidoId)
+          if (itensStorage && Object.keys(itensStorage).length > 0) {
+            setItens(itensStorage)
+          }
         }
         carregouDoBanco.current = true
       } else {
@@ -93,7 +97,7 @@ function Catalogo() {
       }
     }
     fetchPedido()
-  }, [pedidoId])
+  }, [pedidoId, location.key])
 
   // Salvar carrinho no sessionStorage quando itens mudar
   useEffect(() => {
