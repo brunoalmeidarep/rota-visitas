@@ -200,8 +200,8 @@ function DetalheProdutoPedido() {
       // Recalcular total
       const novoTotal = novosItens.reduce((acc, item) => acc + (item.subtotal || 0), 0)
 
-      const valorBruto = novosItens.reduce((acc, it) => acc + ((Number(it.preco_unitario) || 0) * (Number(it.quantidade) || 0)), 0)
-      const valorDesconto = novosItens.reduce((acc, it) => {
+      const valorBrutoTotal = novosItens.reduce((acc, it) => acc + ((Number(it.preco_unitario) || 0) * (Number(it.quantidade) || 0)), 0)
+      const valorDescontoTotal = novosItens.reduce((acc, it) => {
         const precoEfetivo = calcularPrecoEfetivo(it)
         return acc + (((Number(it.preco_unitario) || 0) - precoEfetivo) * (Number(it.quantidade) || 0))
       }, 0)
@@ -209,8 +209,8 @@ function DetalheProdutoPedido() {
         .from('pedidos')
         .update({
           itens: novosItens,
-          valor_bruto: valorBruto,
-          valor_desconto: valorDesconto
+          valor_bruto: valorBrutoTotal,
+          valor_desconto: valorDescontoTotal
           // valor_liquido é generated column no banco — calculado automaticamente
         })
         .eq('id', pedidoId)
