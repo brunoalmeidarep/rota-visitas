@@ -292,6 +292,21 @@ function Catalogo() {
     return acc + (Number(item?.subtotal) || 0)
   }, 0)
 
+  // Helper: calcula preço efetivo do item (mesma cascata do DetalheProdutoPedido/PDFOrcamento)
+  const calcularPrecoEfetivo = (item) => {
+    const precoBase = Number(item.preco_unitario) || 0
+    if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
+      return Number(item.preco_negociado_direto)
+    }
+    if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
+      return precoBase * (1 - Number(item.desconto_percentual) / 100)
+    }
+    if (item.desconto != null && Number(item.desconto) > 0) {
+      return Math.max(0, precoBase - Number(item.desconto))
+    }
+    return precoBase
+  }
+
   async function concluir() {
     if (totalItens === 0) {
       alert('Adicione pelo menos um produto')
@@ -310,21 +325,6 @@ function Catalogo() {
         const faltantes = await db.produtos.bulkGet(idsFaltantes)
         const faltantesValidos = (faltantes || []).filter(Boolean)
         produtosCarrinho = [...produtosCarrinho, ...faltantesValidos]
-      }
-
-      // Helper: calcula preço efetivo do item (respeita preco_negociado_direto > desconto_percentual > desconto R$ > preco_unitario)
-      function calcularPrecoEfetivo(item) {
-        const precoBase = Number(item.preco_unitario) || 0
-        if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
-          return Number(item.preco_negociado_direto)
-        }
-        if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
-          return precoBase * (1 - Number(item.desconto_percentual) / 100)
-        }
-        if (item.desconto != null && Number(item.desconto) > 0) {
-          return Math.max(0, precoBase - Number(item.desconto))
-        }
-        return precoBase
       }
 
       // Monta itensArray a partir do state rico (preserva preço negociado/desconto)
