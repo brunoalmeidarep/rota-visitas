@@ -23,15 +23,20 @@ export async function syncProdutos(empresaId) {
   let total = 0
 
   try {
+    const ultimoSync = await getSyncTimestamp('produtos')
     while (true) {
       const offset = pagina * PAGE_SIZE
-      const { data, error } = await supabase
+      let query = supabase
         .from('produtos_com_preco_distribuidora')
-        .select('id, codigo, codigo_barras, nome, preco, preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia, ipi, unidade, fotos, foto_url, ativo, desativado_manualmente, empresa_id, fornecedor_id, fornecedor_nome')
+        .select('id, codigo, codigo_barras, nome, preco, preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia, ipi, unidade, fotos, foto_url, ativo, desativado_manualmente, empresa_id, fornecedor_id, fornecedor_nome, microvix_synced_at')
         .eq('empresa_id', empresaId)
         .eq('desativado_manualmente', false)
-        .order('nome')
+        .order('microvix_synced_at', { ascending: true })
         .range(offset, offset + PAGE_SIZE - 1)
+      if (ultimoSync) {
+        query = query.gt('microvix_synced_at', ultimoSync)
+      }
+      const { data, error } = await query
 
       if (error) throw error
       if (!data || data.length === 0) break
