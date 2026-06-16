@@ -300,15 +300,41 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
   const isOrcamento = pedido.status === 'orcamento'
   const numero = isOrcamento ? `ORC-${String(pedido.id).slice(-3).toUpperCase()}` : `#${String(pedido.numero).padStart(3, '0')}`
 
-  // Calcular totais
   const itens = pedido.itens || []
-  const subtotal = itens.reduce((acc, item) => acc + (item.preco_unitario * item.quantidade), 0)
-  const totalIpi = itens.reduce((acc, item) => {
-    const ipi = item.ipi || 0
-    return acc + ((item.preco_unitario * item.quantidade) * ipi / 100)
+
+  // Helper: calcula preço efetivo do item (mesma cascata do Catalogo/DetalheProdutoPedido)
+  function calcularPrecoEfetivo(item) {
+    const precoBase = Number(item.preco_unitario) || 0
+    if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
+      return Number(item.preco_negociado_direto)
+    }
+    if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
+      return precoBase * (1 - Number(item.desconto_percentual) / 100)
+    }
+    if (item.desconto != null && Number(item.desconto) > 0) {
+      return Math.max(0, precoBase - Number(item.desconto))
+    }
+    return precoBase
+  }
+
+  // Subtotal = soma dos preços efetivos × quantidade (já com desconto). IPI sobre o efetivo.
+  const subtotal = itens.reduce((acc, item) => {
+    const precoEfetivo = calcularPrecoEfetivo(item)
+    return acc + (precoEfetivo * (Number(item.quantidade) || 0))
   }, 0)
-  const descontos = pedido.valor_desconto || 0
-  const total = subtotal + totalIpi - descontos + (pedido.frete || 0)
+  const totalIpi = itens.reduce((acc, item) => {
+    const precoEfetivo = calcularPrecoEfetivo(item)
+    const ipi = Number(item.ipi) || 0
+    return acc + ((precoEfetivo * (Number(item.quantidade) || 0)) * ipi / 100)
+  }, 0)
+  // Desconto INFORMATIVO no rodapé (não soma ao total — já está embutido no preço efetivo)
+  const descontos = itens.reduce((acc, item) => {
+    const precoEfetivo = calcularPrecoEfetivo(item)
+    const precoBase = Number(item.preco_unitario) || 0
+    return acc + ((precoBase - precoEfetivo) * (Number(item.quantidade) || 0))
+  }, 0)
+  const subtotalTabela = subtotal + descontos
+  const total = subtotal + totalIpi + (Number(pedido.frete) || 0)
 
   return (
     <Document>
@@ -411,7 +437,7 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
                     item.produto_familia
                   ].filter(Boolean).join(' · ')}
                 </Text>
-                <Text style={styles.produtoPreco}>{formatarValor(item.preco_unitario)}/un</Text>
+                <Text style={styles.produtoPreco}>{formatarValor(calcularPrecoEfetivo(item))}/un</Text>
               </View>
               <Text style={[styles.cellText, styles.colQtd]}>{item.quantidade}</Text>
               <Text style={[styles.cellText, styles.colUn]}>{item.unidade || 'UN'}</Text>
@@ -419,7 +445,7 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
                 {item.ipi ? `${item.ipi}%` : '-'}
               </Text>
               <Text style={[styles.cellText, styles.colSubtotal]}>
-                {formatarValor(item.subtotal || (item.preco_unitario * item.quantidade))}
+                {formatarValor(item.subtotal || (calcularPrecoEfetivo(item) * (1 + (Number(item.ipi) || 0) / 100) * (Number(item.quantidade) || 0)))}
               </Text>
             </View>
           ))}
@@ -433,22 +459,28 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
               {itens.reduce((acc, i) => acc + i.quantidade, 0)} un
             </Text>
           </View>
+          {descontos > 0 && (
+            <>
+              <View style={styles.totaisLinha}>
+                <Text style={styles.totaisLabel}>Valor de tabela</Text>
+                <Text style={styles.totaisValor}>{formatarValor(subtotalTabela)}</Text>
+              </View>
+              <View style={styles.totaisLinha}>
+                <Text style={styles.totaisLabel}>Desconto</Text>
+                <Text style={[styles.totaisValor, { color: '#28a745' }]}>
+                  - {formatarValor(descontos)}
+                </Text>
+              </View>
+            </>
+          )}
           <View style={styles.totaisLinha}>
-            <Text style={styles.totaisLabel}>Subtotal produtos</Text>
+            <Text style={styles.totaisLabel}>Subtotal</Text>
             <Text style={styles.totaisValor}>{formatarValor(subtotal)}</Text>
           </View>
           {totalIpi > 0 && (
             <View style={styles.totaisLinha}>
               <Text style={styles.totaisLabel}>IPI</Text>
               <Text style={styles.totaisValor}>{formatarValor(totalIpi)}</Text>
-            </View>
-          )}
-          {descontos > 0 && (
-            <View style={styles.totaisLinha}>
-              <Text style={styles.totaisLabel}>Descontos</Text>
-              <Text style={[styles.totaisValor, { color: '#28a745' }]}>
-                - {formatarValor(descontos)}
-              </Text>
             </View>
           )}
           {pedido.frete > 0 && (
