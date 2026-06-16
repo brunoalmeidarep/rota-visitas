@@ -363,16 +363,14 @@ function Catalogo() {
         const precoEfetivo = calcularPrecoEfetivo(it)
         return acc + ((it.preco_unitario - precoEfetivo) * it.quantidade)
       }, 0)
-      const valorLiquido = valorBruto - valorDesconto
-
       const resultado = await atualizarComOuSemConexao(
         'pedidos',
         pedidoId,
         {
           itens: itensArray,
           valor_bruto: valorBruto,
-          valor_desconto: valorDesconto,
-          valor_liquido: valorLiquido
+          valor_desconto: valorDesconto
+          // valor_liquido é generated column no banco — calculado automaticamente
         },
         { tabelaLocal: 'pedidos' }
       )

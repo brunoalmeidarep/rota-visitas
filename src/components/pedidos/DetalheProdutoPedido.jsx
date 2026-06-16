@@ -205,15 +205,13 @@ function DetalheProdutoPedido() {
         const precoEfetivo = calcularPrecoEfetivo(it)
         return acc + (((Number(it.preco_unitario) || 0) - precoEfetivo) * (Number(it.quantidade) || 0))
       }, 0)
-      const valorLiquido = valorBruto - valorDesconto
-
       const { error } = await supabase
         .from('pedidos')
         .update({
           itens: novosItens,
           valor_bruto: valorBruto,
-          valor_desconto: valorDesconto,
-          valor_liquido: valorLiquido
+          valor_desconto: valorDesconto
+          // valor_liquido é generated column no banco — calculado automaticamente
         })
         .eq('id', pedidoId)
 
