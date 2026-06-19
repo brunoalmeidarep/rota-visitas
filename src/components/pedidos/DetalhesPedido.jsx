@@ -12,6 +12,21 @@ import { db } from '../../lib/db'
 import { atualizarComOuSemConexao } from '../../lib/queue'
 import './DetalhesPedido.css'
 
+// Helper: calcula preço efetivo do item (mesma cascata do Catalogo/DetalheProdutoPedido/PDFOrcamento)
+const calcularPrecoEfetivo = (item) => {
+  const precoBase = Number(item.preco_unitario) || 0
+  if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
+    return Number(item.preco_negociado_direto)
+  }
+  if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
+    return precoBase * (1 - Number(item.desconto_percentual) / 100)
+  }
+  if (item.desconto != null && Number(item.desconto) > 0) {
+    return Math.max(0, precoBase - Number(item.desconto))
+  }
+  return precoBase
+}
+
 function DetalhesPedido() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -811,9 +826,12 @@ function DetalhesPedido() {
             ) : (
               <div className="dp-produtos-lista">
                 {pedido.itens.map((item, index) => {
-                  const temDescontoItem = item.desconto_percentual > 0 || item.desconto_valor > 0
-                  const temDescontoPolitica = item.politica_desconto
-                  const precoOriginal = item.preco_tabela || item.preco_unitario
+                  const precoEfetivo = calcularPrecoEfetivo(item)
+                  const precoTabela = Number(item.preco_unitario) || 0
+                  const temDesconto = precoEfetivo < precoTabela && precoTabela > 0
+                  const descontoPct = temDesconto
+                    ? Math.round((1 - precoEfetivo / precoTabela) * 100)
+                    : 0
                   const marcaNome = nomeFornecedorStr(item.produto_fornecedor)
                   return (
                     <div key={index} className="dp-produto-item">
@@ -821,14 +839,9 @@ function DetalhesPedido() {
                         <span className="dp-produto-nome">{item.produto_nome}</span>
                         <span className="dp-produto-codigo">{item.produto_codigo}</span>
                         <div className="dp-produto-precos">
-                          {temDescontoItem && (
-                            <>
-                              <span className="dp-preco-riscado">{formatarValor(precoOriginal)}/un</span>
-                              <span className="dp-preco-liquido">{formatarValor(item.preco_unitario)}/un</span>
-                            </>
-                          )}
-                          {!temDescontoItem && (
-                            <span className="dp-preco-normal">{formatarValor(item.preco_unitario)}/un</span>
+                          <span className="dp-preco-normal">{formatarValor(precoEfetivo)}/un</span>
+                          {temDesconto && (
+                            <span className="dp-badge-desconto-item">−{descontoPct}%</span>
                           )}
                         </div>
                       </div>
@@ -838,14 +851,6 @@ function DetalhesPedido() {
                         )}
                         <span className="dp-produto-qty">{item.quantidade} un</span>
                         <span className="dp-produto-valor">{formatarValor(item.subtotal)}</span>
-                        {temDescontoItem && (
-                          <span className="dp-badge-desconto-item">
-                            desc. {item.desconto_percentual || Math.round((1 - item.preco_unitario / precoOriginal) * 100)}%
-                          </span>
-                        )}
-                        {temDescontoPolitica && (
-                          <span className="dp-badge-desconto-politica">{item.politica_desconto}</span>
-                        )}
                       </div>
                     </div>
                   )
