@@ -311,6 +311,38 @@ function Catalogo() {
     return precoBase
   }
 
+  // Persiste state atual no banco antes de navegar pro detalhe.
+  // Resolve bug: detalhe lia do banco enquanto state do Catalogo só ia pro banco no Concluir.
+  async function irParaDetalhe(produtoId) {
+    if (Object.keys(itens).length === 0) {
+      // Catálogo vazio — nada a persistir, só navega
+      navigate(`/pedidos/${pedidoId}/produto/${produtoId}`)
+      return
+    }
+    const itensArray = Object.values(itens)
+    const valorBrutoTotal = itensArray.reduce(
+      (acc, it) => acc + ((Number(it.preco_unitario) || 0) * (Number(it.quantidade) || 0)),
+      0
+    )
+    const valorDescontoTotal = itensArray.reduce((acc, it) => {
+      const precoEfetivo = calcularPrecoEfetivo(it)
+      return acc + (((Number(it.preco_unitario) || 0) - precoEfetivo) * (Number(it.quantidade) || 0))
+    }, 0)
+
+    await atualizarComOuSemConexao(
+      'pedidos',
+      pedidoId,
+      {
+        itens: itensArray,
+        valor_bruto: valorBrutoTotal,
+        valor_desconto: valorDescontoTotal
+      },
+      { tabelaLocal: 'pedidos' }
+    )
+
+    navigate(`/pedidos/${pedidoId}/produto/${produtoId}`)
+  }
+
   async function concluir() {
     if (totalItens === 0) {
       alert('Adicione pelo menos um produto')
@@ -469,7 +501,7 @@ function Catalogo() {
                 <div
                   key={produto.id}
                   className="cat-produto"
-                  onClick={() => navigate(`/pedidos/${pedidoId}/produto/${produto.id}`)}
+                  onClick={() => irParaDetalhe(produto.id)}
                 >
                   <div className="cat-produto-foto">
                     {fotoUrl ? (
