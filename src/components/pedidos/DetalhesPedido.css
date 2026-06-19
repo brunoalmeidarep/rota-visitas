@@ -979,3 +979,39 @@
   color: var(--dp-text-secondary) !important;
   font-weight: 400 !important;
 }
+
+.dp-produto-controles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dp-qty-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: transparent;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dp-qty-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.dp-excluir-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #dc3545;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.dp-excluir-btn:hover {
+  background: rgba(220, 53, 69, 0.1);
+}

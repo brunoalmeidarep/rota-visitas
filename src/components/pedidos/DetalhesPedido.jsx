@@ -54,6 +54,76 @@ function DetalhesPedido() {
     }
   }
 
+  // Persiste lista de itens recalculando totais (#5)
+  async function persistirItens(novosItens) {
+    const valorBrutoTotal = novosItens.reduce(
+      (acc, it) => acc + ((Number(it.preco_unitario) || 0) * (Number(it.quantidade) || 0)),
+      0
+    )
+    const valorDescontoTotal = novosItens.reduce((acc, it) => {
+      const precoEfetivo = calcularPrecoEfetivo(it)
+      return acc + (((Number(it.preco_unitario) || 0) - precoEfetivo) * (Number(it.quantidade) || 0))
+    }, 0)
+
+    const resultado = await atualizarComOuSemConexao(
+      'pedidos',
+      pedidoId,
+      {
+        itens: novosItens,
+        valor_bruto: valorBrutoTotal,
+        valor_desconto: valorDescontoTotal
+      },
+      { tabelaLocal: 'pedidos' }
+    )
+
+    if (!resultado.ok) {
+      console.error('[DetalhesPedido] Erro ao persistir itens:', resultado.motivo)
+      setToast('Erro ao salvar: ' + resultado.motivo)
+      setToastTipo('erro')
+      return false
+    }
+
+    // Atualiza state local
+    setPedido(prev => ({
+      ...prev,
+      itens: novosItens,
+      valor_bruto: valorBrutoTotal,
+      valor_desconto: valorDescontoTotal
+    }))
+    return true
+  }
+
+  async function alterarQuantidadeItem(produtoId, delta) {
+    const itens = pedido?.itens || []
+    const item = itens.find(i => i.produto_id === produtoId)
+    if (!item) return
+
+    const novaQtd = Math.max(0, (Number(item.quantidade) || 0) + delta)
+
+    let novosItens
+    if (novaQtd === 0) {
+      novosItens = itens.filter(i => i.produto_id !== produtoId)
+    } else {
+      // Recalcula subtotal mantendo desconto/preço negociado
+      const precoEfetivo = calcularPrecoEfetivo(item)
+      const ipiPct = Number(item.ipi) || 0
+      const novoSubtotal = precoEfetivo * (1 + ipiPct / 100) * novaQtd
+      novosItens = itens.map(i =>
+        i.produto_id === produtoId
+          ? { ...i, quantidade: novaQtd, subtotal: novoSubtotal }
+          : i
+      )
+    }
+    await persistirItens(novosItens)
+  }
+
+  async function excluirItem(produtoId) {
+    if (!confirm('Remover este item do pedido?')) return
+    const itens = pedido?.itens || []
+    const novosItens = itens.filter(i => i.produto_id !== produtoId)
+    await persistirItens(novosItens)
+  }
+
   const [pedido, setPedido] = useState(null)
   const [representada, setRepresentada] = useState(null)
   const [representante, setRepresentante] = useState(null)
@@ -849,7 +919,34 @@ function DetalhesPedido() {
                         {marcaNome && (
                           <span className="dp-badge-fornecedor">{marcaNome}</span>
                         )}
-                        <span className="dp-produto-qty">{item.quantidade} un</span>
+                        {isEditavel ? (
+                          <div className="dp-produto-controles">
+                            <button
+                              className="dp-qty-btn"
+                              onClick={() => alterarQuantidadeItem(item.produto_id, -1)}
+                              aria-label="Diminuir"
+                            >
+                              −
+                            </button>
+                            <span className="dp-produto-qty">{item.quantidade}</span>
+                            <button
+                              className="dp-qty-btn"
+                              onClick={() => alterarQuantidadeItem(item.produto_id, +1)}
+                              aria-label="Aumentar"
+                            >
+                              +
+                            </button>
+                            <button
+                              className="dp-excluir-btn"
+                              onClick={() => excluirItem(item.produto_id)}
+                              aria-label="Excluir item"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="dp-produto-qty">{item.quantidade} un</span>
+                        )}
                         <span className="dp-produto-valor">{formatarValor(item.subtotal)}</span>
                       </div>
                     </div>
