@@ -429,3 +429,18 @@
   margin-top: 2px;
 }
 
+.cat-qty-input {
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-weight: bold;
+  font-size: inherit;
+  width: 50px;
+  font-family: inherit;
+  cursor: text;
+}
+.cat-qty-input:focus {
+  outline: 2px solid #007aff;
+  border-radius: 4px;
+}
+

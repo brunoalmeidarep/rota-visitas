@@ -928,7 +928,34 @@ function DetalhesPedido() {
                             >
                               −
                             </button>
-                            <span className="dp-produto-qty">{item.quantidade}</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="dp-produto-qty dp-qty-input"
+                              value={item.quantidade}
+                              onChange={(e) => {
+                                const novaQtd = Math.max(0, parseInt(String(e.target.value).replace(/\D/g, ''), 10) || 0)
+                                setPedido(prev => ({
+                                  ...prev,
+                                  itens: (prev?.itens || []).map(i => {
+                                    if (i.produto_id !== item.produto_id) return i
+                                    const precoEfetivo = calcularPrecoEfetivo(i)
+                                    const ipiPct = Number(i.ipi) || 0
+                                    const novoSubtotal = precoEfetivo * (1 + ipiPct / 100) * novaQtd
+                                    return { ...i, quantidade: novaQtd, subtotal: novoSubtotal }
+                                  })
+                                }))
+                              }}
+                              onBlur={() => {
+                                const itensAtuais = pedido?.itens || []
+                                // Se qtd ficou 0, remove o item antes de persistir
+                                const itensValidos = itensAtuais.filter(i => Number(i.quantidade) > 0)
+                                persistirItens(itensValidos)
+                              }}
+                              onFocus={(e) => e.target.select()}
+                              aria-label="Quantidade"
+                            />
                             <button
                               className="dp-qty-btn"
                               onClick={() => alterarQuantidadeItem(item.produto_id, +1)}

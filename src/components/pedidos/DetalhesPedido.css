@@ -1015,3 +1015,20 @@
 .dp-excluir-btn:hover {
   background: rgba(220, 53, 69, 0.1);
 }
+
+.dp-qty-input {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: transparent;
+  text-align: center;
+  font-weight: bold;
+  width: 50px;
+  height: 32px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: text;
+}
+.dp-qty-input:focus {
+  outline: 2px solid #007aff;
+  outline-offset: -1px;
+}

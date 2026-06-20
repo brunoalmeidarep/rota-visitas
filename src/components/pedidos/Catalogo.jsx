@@ -253,6 +253,64 @@ function Catalogo() {
     })
   }
 
+  // Igual a alterarQuantidade mas com valor ABSOLUTO (pra input de teclado #4)
+  function setQuantidadeItem(produtoId, novaQtdRaw) {
+    const novaQtd = Math.max(0, parseInt(String(novaQtdRaw).replace(/\D/g, ''), 10) || 0)
+    const produto = produtos.find(p => p.id === produtoId)
+
+    setItens(prev => {
+      const itemAtual = prev[produtoId]
+
+      if (novaQtd === 0) {
+        const { [produtoId]: _, ...rest } = prev
+        return rest
+      }
+
+      if (itemAtual) {
+        // Mantém preço/desconto já negociados, só recalcula subtotal
+        const precoBase = Number(itemAtual.preco_unitario) || 0
+        const ipiPct = Number(itemAtual.ipi) || 0
+        let precoEfetivo = precoBase
+        if (itemAtual.preco_negociado_direto != null && Number(itemAtual.preco_negociado_direto) > 0) {
+          precoEfetivo = Number(itemAtual.preco_negociado_direto)
+        } else if (itemAtual.desconto_percentual != null && Number(itemAtual.desconto_percentual) > 0) {
+          precoEfetivo = precoBase * (1 - Number(itemAtual.desconto_percentual) / 100)
+        } else if (itemAtual.desconto != null && Number(itemAtual.desconto) > 0) {
+          precoEfetivo = Math.max(0, precoBase - Number(itemAtual.desconto))
+        }
+        const novoSubtotal = precoEfetivo * (1 + ipiPct / 100) * novaQtd
+        return { ...prev, [produtoId]: { ...itemAtual, quantidade: novaQtd, subtotal: novoSubtotal } }
+      }
+
+      // Item NOVO
+      const precoBase = Number(produto?.preco) || 0
+      const precoLoja = Number(produto?.preco_loja) || precoBase
+      const descontoFamiliaPct = Number(produto?.desconto_pct_aplicado) || 0
+      const nomeFamilia = produto?.nome_familia || null
+      const ipiPct = Number(produto?.ipi) || 0
+      const subtotal = precoBase * (1 + ipiPct / 100) * novaQtd
+      return {
+        ...prev,
+        [produtoId]: {
+          produto_id: produtoId,
+          produto_nome: produto?.nome,
+          produto_codigo: produto?.codigo,
+          produto_fornecedor: produto?.fornecedores?.nome_fantasia || produto?.fornecedores?.nome || null,
+          quantidade: novaQtd,
+          preco_unitario: precoBase,
+          preco_loja: precoLoja,
+          desconto_familia_pct: descontoFamiliaPct,
+          nome_familia: nomeFamilia,
+          ipi: ipiPct,
+          desconto: 0,
+          desconto_percentual: null,
+          preco_negociado_direto: null,
+          subtotal
+        }
+      }
+    })
+  }
+
   function getUnidadeMultiplo(unidade) {
     const map = { 'UN': 'cx', 'PC': 'cx', 'KG': 'fd', 'L': 'cx', 'M': 'rl' }
     return map[unidade] || 'cx'
@@ -568,9 +626,17 @@ function Catalogo() {
                           >
                             −{multiplo > 1 ? multiplo : ''}
                           </button>
-                          <span className={`cat-qty ${quantidade > 0 ? 'active' : ''}`}>
-                            {quantidade}
-                          </span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            className={`cat-qty cat-qty-input ${quantidade > 0 ? 'active' : ''}`}
+                            value={quantidade}
+                            onChange={(e) => setQuantidadeItem(produto.id, e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            onClick={(e) => { e.stopPropagation(); e.target.select() }}
+                            aria-label="Quantidade"
+                          />
                           <button
                             className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
                             onClick={() => alterarQuantidade(produto.id, 1)}
