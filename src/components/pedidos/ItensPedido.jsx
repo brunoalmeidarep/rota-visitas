@@ -177,6 +177,11 @@ export default function ItensPedido() {
     }).format(valor)
   }
 
+  // Valor sempre completo (sem abreviação k/M) — usado no footer de totais
+  function formatarValorCompleto(valor) {
+    return (Number(valor) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  }
+
   async function salvar() {
     setSalvando(true)
     // persistirItens já salva automaticamente quando user altera qtd/exclui.
@@ -334,17 +339,17 @@ export default function ItensPedido() {
       <footer className="dp-footer-fixo ip-footer">
         <div className="ip-footer-row">
           <span className="lbl">Subtotal</span>
-          <span className="val">{formatarValor(subtotal)}</span>
+          <span className="val">{formatarValorCompleto(subtotal)}</span>
         </div>
         {desconto > 0 && (
           <div className="ip-footer-row desc">
             <span className="lbl">Descontos</span>
-            <span className="val">−{formatarValor(desconto)}</span>
+            <span className="val">−{formatarValorCompleto(desconto)}</span>
           </div>
         )}
         <div className="ip-footer-row total">
           <span className="lbl">Total</span>
-          <span className="val">{formatarValor(total)}</span>
+          <span className="val">{formatarValorCompleto(total)}</span>
         </div>
       </footer>
 

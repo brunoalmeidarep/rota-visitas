@@ -36,10 +36,8 @@
   justify-content: space-between;
   padding: 10px 14px 0 88px;
   margin-top: 10px;
-  border-top: 0.5px dashed #e8e8e4;
 }
 .ip-tela.dark .ip-subtotal-row {
-  border-top-color: #444441;
 }
 
 .ip-tela .ip-subtotal-label {

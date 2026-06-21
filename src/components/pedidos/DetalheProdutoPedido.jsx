@@ -188,6 +188,7 @@ function DetalheProdutoPedido() {
           produto_id: produtoId,
           produto_nome: produto?.nome,
           produto_codigo: produto?.codigo,
+          codigo_barras: produto?.codigo_barras || null,
           produto_fornecedor: produto?.fornecedores?.nome_fantasia || produto?.fornecedores?.nome || null,
           quantidade,
           preco_unitario: precoTabela,
