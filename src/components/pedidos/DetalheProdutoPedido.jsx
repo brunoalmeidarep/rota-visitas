@@ -12,10 +12,14 @@ function DetalheProdutoPedido() {
   const location = useLocation()
 
   function handleVoltar() {
-    const fromItens = location.state?.from === 'itens'
+    const from = location.state?.from
     const pid = location.state?.pedidoId || pedidoId
-    if (fromItens && pid) {
+    if (from === 'itens' && pid) {
       navigate(`/pedidos/${pid}/itens`)
+      return
+    }
+    if (from === 'descontos' && pid) {
+      navigate(`/pedidos/${pid}/descontos`)
       return
     }
     navigate(-1)

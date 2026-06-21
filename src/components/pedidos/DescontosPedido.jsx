@@ -1,19 +1,41 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import './DescontosPedido.css'
+
+// Preço efetivo do item (mesma cascata do DetalhesPedido): preço negociado > desconto % > desconto R$ > preço base.
+// O preco_unitario já vem com o desconto de família embutido (silencioso).
+const calcularPrecoEfetivo = (item) => {
+  const precoBase = Number(item.preco_unitario) || 0
+  if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
+    return Number(item.preco_negociado_direto)
+  }
+  if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
+    return precoBase * (1 - Number(item.desconto_percentual) / 100)
+  }
+  if (item.desconto != null && Number(item.desconto) > 0) {
+    return Math.max(0, precoBase - Number(item.desconto))
+  }
+  return precoBase
+}
 
 function DescontosPedido() {
   const navigate = useNavigate()
   const { id: pedidoId } = useParams()
 
   const [pedido, setPedido] = useState(null)
-  const [politicas, setPoliticas] = useState([])
-  const [politicasAtivas, setPoliticasAtivas] = useState({}) // { politicaId: boolean }
+  const [pedidoItens, setPedidoItens] = useState([])
   const [descontosRep, setDescontosRep] = useState([]) // [{ motivo, tipo, valor }]
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [isDark, setIsDark] = useState(false)
+
+  // Sheet de add/edit de desconto global
+  const [showSheetDesc, setShowSheetDesc] = useState(false)
+  const [editandoIdxDesc, setEditandoIdxDesc] = useState(null)
+  const [draftMotivo, setDraftMotivo] = useState('')
+  const [draftTipo, setDraftTipo] = useState('percentual')
+  const [draftValor, setDraftValor] = useState('')
 
   // Detectar modo claro/escuro
   useEffect(() => {
@@ -24,12 +46,11 @@ function DescontosPedido() {
     return () => mediaQuery.removeEventListener('change', handler)
   }, [])
 
-  // Carregar pedido e políticas
+  // Carregar pedido + itens (itens ficam na coluna JSONB pedido.itens)
   useEffect(() => {
     async function fetchDados() {
       setLoading(true)
 
-      // Buscar pedido
       const { data: pedidoData } = await supabase
         .from('pedidos')
         .select('*')
@@ -38,32 +59,13 @@ function DescontosPedido() {
 
       if (pedidoData) {
         setPedido(pedidoData)
-
-        // Carregar descontos existentes
-        if (pedidoData.politicas_ativas) {
-          setPoliticasAtivas(pedidoData.politicas_ativas)
-        }
-        if (pedidoData.descontos_rep) {
-          setDescontosRep(pedidoData.descontos_rep)
-        }
-
-        // Buscar políticas da representada
-        if (pedidoData.representada_id) {
-          const { data: politicasData } = await supabase
-            .from('politica_comercial')
-            .select('*')
-            .eq('representada_id', pedidoData.representada_id)
-            .eq('ativo', true)
-            .order('nome')
-
-          if (politicasData) {
-            // Remover duplicatas por ID
-            const politicasUnicas = politicasData.filter((pol, index, self) =>
-              index === self.findIndex(p => p.id === pol.id)
-            )
-            setPoliticas(politicasUnicas)
-          }
-        }
+        setPedidoItens(pedidoData.itens || [])
+        // Normaliza valores (dados antigos podem ter string com vírgula)
+        const descs = (pedidoData.descontos_rep || []).map(d => ({
+          ...d,
+          valor: parseFloat(String(d.valor).replace(',', '.')) || 0
+        }))
+        setDescontosRep(descs)
       }
 
       setLoading(false)
@@ -80,106 +82,99 @@ function DescontosPedido() {
     }).format(valor)
   }
 
-  function formatarNomePolitica(condicaoPagamento) {
-    const nomes = {
-      'boleto_curto': 'Boleto curto',
-      'boleto_longo': 'Boleto longo',
-      'pix': 'PIX',
-      'cartao': 'Cartao'
+  // Cálculo central: descontos por item (família já está no preço; aqui é só o manual do rep)
+  // + descontos globais em cascata sobre o subtotal pós-item.
+  const calc = useMemo(() => {
+    let subtotalBruto = 0
+    let subtotalAposItem = 0
+    const itensComDesc = []
+
+    pedidoItens.forEach(item => {
+      const qtd = Number(item.quantidade) || 0
+      const precoBase = Number(item.preco_unitario) || 0
+      const precoEf = calcularPrecoEfetivo(item)
+      const bruto = precoBase * qtd
+      const liquidoItem = precoEf * qtd
+      const descontoItem = bruto - liquidoItem
+
+      subtotalBruto += bruto
+      subtotalAposItem += liquidoItem
+
+      if (descontoItem > 0.01) {
+        const pctItem = precoBase > 0 ? ((precoBase - precoEf) / precoBase) * 100 : 0
+        itensComDesc.push({ ...item, _descontoValor: descontoItem, _descontoPct: pctItem })
+      }
+    })
+
+    const totalDescItem = subtotalBruto - subtotalAposItem
+
+    // Cascata dos globais sobre subtotal pós-item
+    let valorAtual = subtotalAposItem
+    const globaisComValor = descontosRep.map(d => {
+      const valorNum = Number(d.valor) || 0
+      const valor = d.tipo === 'percentual'
+        ? valorAtual * (valorNum / 100)
+        : Math.min(valorNum, valorAtual)
+      valorAtual = Math.max(0, valorAtual - valor)
+      return { ...d, valor: valorNum, _valorReal: valor }
+    })
+    const totalDescGlobal = globaisComValor.reduce((s, g) => s + g._valorReal, 0)
+
+    const totalDesc = totalDescItem + totalDescGlobal
+    const totalGeral = Math.max(0, valorAtual)
+    const descontoMedioPct = subtotalBruto > 0 ? (totalDesc / subtotalBruto) * 100 : 0
+
+    return {
+      subtotalBruto, itensComDesc, totalDescItem,
+      globaisComValor, totalDescGlobal,
+      totalDesc, totalGeral, descontoMedioPct,
+      qtdItens: pedidoItens.length,
     }
-    return nomes[condicaoPagamento] || condicaoPagamento || 'Politica'
+  }, [pedidoItens, descontosRep])
+
+  function abrirAddDesconto() {
+    setEditandoIdxDesc(null)
+    setDraftMotivo('')
+    setDraftTipo('percentual')
+    setDraftValor('')
+    setShowSheetDesc(true)
   }
 
-  function togglePolitica(politicaId) {
-    setPoliticasAtivas(prev => ({
-      ...prev,
-      [politicaId]: !prev[politicaId]
-    }))
+  function abrirEditDesconto(idx) {
+    const d = descontosRep[idx]
+    setEditandoIdxDesc(idx)
+    setDraftMotivo(d.motivo || '')
+    setDraftTipo(d.tipo || 'percentual')
+    setDraftValor(String(d.valor || ''))
+    setShowSheetDesc(true)
   }
 
-  function adicionarDesconto() {
-    setDescontosRep(prev => [...prev, { motivo: '', tipo: 'percentual', valor: '' }])
+  function confirmarDesconto() {
+    const valor = parseFloat(String(draftValor).replace(',', '.')) || 0
+    if (!draftMotivo.trim() || valor <= 0) return
+    const novo = { motivo: draftMotivo.trim(), tipo: draftTipo, valor }
+    if (editandoIdxDesc !== null) {
+      const next = [...descontosRep]
+      next[editandoIdxDesc] = novo
+      setDescontosRep(next)
+    } else {
+      setDescontosRep([...descontosRep, novo])
+    }
+    setShowSheetDesc(false)
   }
 
-  function atualizarDesconto(index, campo, novoValor) {
-    setDescontosRep(prev => {
-      const novos = [...prev]
-      novos[index] = { ...novos[index], [campo]: novoValor }
-      return novos
-    })
+  function removerDesconto(idx) {
+    setDescontosRep(descontosRep.filter((_, i) => i !== idx))
   }
 
-  function removerDesconto(index) {
-    setDescontosRep(prev => prev.filter((_, i) => i !== index))
-  }
-
-  function parsearValor(str) {
-    if (!str) return 0
-    return parseFloat(str.toString().replace(',', '.')) || 0
-  }
-
-  // Calcular subtotal dos itens
-  const subtotalTabela = (pedido?.itens || []).reduce((acc, item) => {
-    return acc + (item.preco_unitario || 0) * (item.quantidade || 0)
-  }, 0)
-
-  // Calcular descontos em cascata
-  function calcularCascata() {
-    let valorAtual = subtotalTabela
-    const passos = []
-
-    // Aplicar políticas ativas
-    politicas.forEach(pol => {
-      if (politicasAtivas[pol.id]) {
-        let desconto = 0
-        if (pol.valor_tipo === 'percentual') {
-          desconto = valorAtual * (pol.valor / 100)
-        } else {
-          desconto = pol.valor
-        }
-        valorAtual -= desconto
-        passos.push({
-          nome: pol.nome,
-          valor: desconto,
-          percentual: pol.valor_tipo === 'percentual' ? pol.valor : null
-        })
-      }
-    })
-
-    // Aplicar descontos do rep
-    descontosRep.forEach(desc => {
-      if (desc.valor) {
-        let desconto = 0
-        if (desc.tipo === 'percentual') {
-          desconto = valorAtual * (parsearValor(desc.valor) / 100)
-        } else {
-          desconto = parsearValor(desc.valor)
-        }
-        valorAtual -= desconto
-        passos.push({
-          nome: desc.motivo || 'Desconto manual',
-          valor: desconto,
-          percentual: desc.tipo === 'percentual' ? parsearValor(desc.valor) : null
-        })
-      }
-    })
-
-    return { passos, total: valorAtual, totalDesconto: subtotalTabela - valorAtual }
-  }
-
-  const { passos, total, totalDesconto } = calcularCascata()
-
-  async function aplicar() {
+  async function salvar() {
     setSalvando(true)
 
     const dadosUpdate = {
-      politicas_ativas: politicasAtivas,
       descontos_rep: descontosRep,
-      valor_bruto: subtotalTabela,
-      valor_desconto: totalDesconto
+      valor_bruto: calc.subtotalBruto,
+      valor_desconto: calc.totalDesc
     }
-
-    console.log('[DescontosPedido] Salvando:', JSON.stringify(dadosUpdate, null, 2))
 
     try {
       const { error } = await supabase
@@ -199,7 +194,7 @@ function DescontosPedido() {
         return
       }
 
-      navigate(-1)
+      navigate(`/pedidos/${pedidoId}`)
 
     } catch (err) {
       console.error('[DescontosPedido] Exceção:', err)
@@ -211,173 +206,154 @@ function DescontosPedido() {
 
   if (loading) {
     return (
-      <div className={`descontos-pedido ${isDark ? 'dark' : 'light'}`}>
-        <header className="desc-header">
-          <button className="desc-voltar" onClick={() => navigate(-1)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-          </button>
-          <span className="desc-header-titulo">Descontos</span>
-          <div style={{ width: 60 }}></div>
-        </header>
-        <div className="desc-loading">Carregando...</div>
+      <div className={`desc-redesign ${isDark ? 'dark' : 'light'}`}>
+        <div className="desc-header">
+          <button className="desc-voltar" onClick={() => navigate(`/pedidos/${pedidoId}`)}>‹</button>
+          <span className="desc-titulo">Descontos</span>
+          <div style={{ width: 48 }}></div>
+        </div>
+        <div className="desc-conteudo">Carregando...</div>
       </div>
     )
   }
 
   return (
-    <div className={`descontos-pedido ${isDark ? 'dark' : 'light'}`}>
-      {/* Header */}
-      <header className="desc-header">
-        <button className="desc-voltar" onClick={() => navigate(-1)}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
+    <div className={`desc-redesign ${isDark ? 'dark' : 'light'}`}>
+      <div className="desc-header">
+        <button className="desc-voltar" onClick={() => navigate(`/pedidos/${pedidoId}`)}>‹</button>
+        <span className="desc-titulo">Descontos</span>
+        <button className="desc-salvar-btn" onClick={salvar} disabled={salvando}>
+          {salvando ? '...' : 'Salvar'}
         </button>
-        <span className="desc-header-titulo">Descontos</span>
-        <button
-          className="desc-aplicar"
-          onClick={aplicar}
-          disabled={salvando}
-        >
-          {salvando ? '...' : 'Aplicar'}
-        </button>
-      </header>
+      </div>
 
-      <div className="desc-content">
-        {/* Política comercial */}
-        {politicas.length > 0 && (
-          <div className="desc-secao">
-            <div className="desc-secao-header">
-              <span className="desc-secao-titulo">Política comercial</span>
-              <span className="desc-secao-empresa">{pedido?.representada_nome}</span>
-            </div>
-
-            {politicas.map(pol => {
-              const ativa = politicasAtivas[pol.id]
-              // TODO: Verificar se condição foi atingida
-              const condicaoAtingida = true
-
-              return (
-                <div
-                  key={pol.id}
-                  className={`desc-politica ${!condicaoAtingida ? 'inativa' : ''}`}
-                >
-                  <div className="desc-politica-info">
-                    <span className="desc-politica-nome">
-                      {pol.nome || formatarNomePolitica(pol.condicao_pagamento)}
-                    </span>
-                    <span className="desc-politica-detalhe">
-                      {pol.tipo === 'desconto' ? 'Desconto' : 'Acrescimo'} de {pol.valor_tipo === 'percentual' ? `${pol.valor}%` : formatarValor(pol.valor)}
-                    </span>
-                    {!condicaoAtingida && (
-                      <span className="desc-politica-falta">
-                        Faltam {formatarValor(pol.condicao_valor - subtotalTabela)} para atingir
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    className={`desc-politica-toggle ${ativa ? 'ativa' : ''}`}
-                    onClick={() => togglePolitica(pol.id)}
-                    disabled={!condicaoAtingida}
-                  >
-                    <span className="desc-toggle-thumb"></span>
-                  </button>
-                </div>
-              )
-            })}
+      <div className="desc-conteudo">
+        {/* Métricas */}
+        <div className="desc-metricas">
+          <div className="desc-metrica">
+            <div className="desc-metrica-label">Total</div>
+            <div className="desc-metrica-valor verde">{formatarValor(calc.totalDesc)}</div>
           </div>
-        )}
-
-        {/* Desconto do representante */}
-        <div className="desc-secao">
-          <div className="desc-secao-header">
-            <span className="desc-secao-titulo">Desconto do representante</span>
+          <div className="desc-metrica">
+            <div className="desc-metrica-label">Médio</div>
+            <div className="desc-metrica-valor">{calc.descontoMedioPct.toFixed(1)}%</div>
           </div>
+          <div className="desc-metrica">
+            <div className="desc-metrica-label">Itens c/ desc</div>
+            <div className="desc-metrica-valor">{calc.itensComDesc.length} de {calc.qtdItens}</div>
+          </div>
+        </div>
 
-          {descontosRep.map((desc, index) => (
-            <div key={index} className="desc-rep-item">
-              <div className="desc-rep-header">
-                <span>Desconto {index + 1}</span>
-                <button
-                  className="desc-rep-remover"
-                  onClick={() => removerDesconto(index)}
-                >
-                  ×
-                </button>
+        {/* Por item */}
+        <div className="desc-section-label">Por item</div>
+        <div className="desc-card">
+          {calc.itensComDesc.length === 0 ? (
+            <div className="desc-empty">Nenhum desconto manual em itens</div>
+          ) : calc.itensComDesc.map(item => (
+            <button
+              key={item.produto_id}
+              className="desc-linha-item"
+              onClick={() => navigate(`/pedidos/${pedidoId}/produto/${item.produto_id}`, { state: { from: 'descontos' } })}
+            >
+              <div className="desc-linha-info">
+                <div className="desc-linha-nome">{item.produto_nome}</div>
+                <div className="desc-linha-sub">{item.quantidade} un · {item._descontoPct.toFixed(1)}%</div>
               </div>
+              <span className="desc-linha-valor">−{formatarValor(item._descontoValor)}</span>
+            </button>
+          ))}
+        </div>
 
-              <input
-                type="text"
-                className="desc-rep-motivo"
-                placeholder="Motivo do desconto"
-                value={desc.motivo}
-                onChange={(e) => atualizarDesconto(index, 'motivo', e.target.value)}
-              />
-
-              <div className="desc-rep-valor-row">
-                <div className="desc-rep-toggle">
-                  <button
-                    className={desc.tipo === 'percentual' ? 'active' : ''}
-                    onClick={() => atualizarDesconto(index, 'tipo', 'percentual')}
-                  >
-                    %
-                  </button>
-                  <button
-                    className={desc.tipo === 'valor' ? 'active' : ''}
-                    onClick={() => atualizarDesconto(index, 'tipo', 'valor')}
-                  >
-                    R$
-                  </button>
+        {/* Global */}
+        <div className="desc-section-label">Global do pedido</div>
+        <div className="desc-card">
+          {calc.globaisComValor.length === 0 ? (
+            <div className="desc-empty">Nenhum desconto global</div>
+          ) : calc.globaisComValor.map((d, idx) => (
+            <div key={idx} className="desc-linha-global">
+              <button className="desc-linha-info" onClick={() => abrirEditDesconto(idx)}>
+                <div className="desc-linha-nome">{d.motivo}</div>
+                <div className="desc-linha-sub">
+                  {d.tipo === 'percentual' ? `${d.valor}% sobre subtotal` : `R$ ${Number(d.valor).toFixed(2)} fixo`}
                 </div>
-                <div className="desc-rep-input">
-                  <span>{desc.tipo === 'percentual' ? '%' : 'R$'}</span>
-                  <input
-                    type="text"
-                    placeholder="0,00"
-                    value={desc.valor}
-                    onChange={(e) => {
-                      let limpo = e.target.value.replace(/[^\d,]/g, '')
-                      atualizarDesconto(index, 'valor', limpo)
-                    }}
-                    inputMode="decimal"
-                  />
-                </div>
-              </div>
+              </button>
+              <span className="desc-linha-valor">−{formatarValor(d._valorReal)}</span>
+              <button className="desc-linha-remover" onClick={() => removerDesconto(idx)}>🗑</button>
             </div>
           ))}
-
-          <button className="desc-adicionar" onClick={adicionarDesconto}>
-            + Adicionar desconto
+          <button className="desc-add-btn" onClick={abrirAddDesconto}>
+            + Adicionar desconto global
           </button>
         </div>
 
-        {/* Resumo em cascata */}
-        <div className="desc-resumo">
-          <div className="desc-resumo-titulo">Resumo dos descontos</div>
-
+        {/* Resumo */}
+        <div className="desc-section-label">Resumo</div>
+        <div className="desc-card desc-resumo">
           <div className="desc-resumo-linha">
-            <span>Subtotal tabela</span>
-            <span>{formatarValor(subtotalTabela)}</span>
+            <span>Subtotal</span><span>{formatarValor(calc.subtotalBruto)}</span>
           </div>
-
-          {passos.map((passo, index) => (
-            <div key={index} className="desc-resumo-linha desconto">
-              <span>
-                ↳ {passo.nome}
-                {passo.percentual && ` (${passo.percentual}%)`}
-              </span>
-              <span>− {formatarValor(passo.valor)}</span>
+          {calc.totalDescItem > 0.01 && (
+            <div className="desc-resumo-linha desc-verde">
+              <span>− Descontos por item</span><span>−{formatarValor(calc.totalDescItem)}</span>
             </div>
-          ))}
-
+          )}
+          {calc.totalDescGlobal > 0.01 && (
+            <div className="desc-resumo-linha desc-verde">
+              <span>− Descontos globais</span><span>−{formatarValor(calc.totalDescGlobal)}</span>
+            </div>
+          )}
           <div className="desc-resumo-total">
-            <span>Total final</span>
-            <span>{formatarValor(total)}</span>
+            <span>Total</span><span className="verde">{formatarValor(calc.totalGeral)}</span>
           </div>
         </div>
       </div>
+
+      {/* Sheet add/edit desconto global */}
+      {showSheetDesc && (
+        <div className="desc-sheet-overlay" onClick={() => setShowSheetDesc(false)}>
+          <div className="desc-sheet" onClick={e => e.stopPropagation()}>
+            <div className="desc-sheet-handle" />
+            <div className="desc-sheet-header">
+              <span>{editandoIdxDesc !== null ? 'Editar desconto' : 'Adicionar desconto'}</span>
+              <button onClick={() => setShowSheetDesc(false)}>✕</button>
+            </div>
+            <div className="desc-sheet-body">
+              <label className="desc-sheet-label">Motivo</label>
+              <input
+                type="text"
+                className="desc-sheet-input"
+                placeholder="Ex: Negociação fim de ano"
+                value={draftMotivo}
+                onChange={e => setDraftMotivo(e.target.value)}
+                autoFocus
+              />
+              <label className="desc-sheet-label">Tipo</label>
+              <div className="desc-sheet-tipos">
+                <button
+                  className={`desc-sheet-tipo ${draftTipo === 'percentual' ? 'ativo' : ''}`}
+                  onClick={() => setDraftTipo('percentual')}
+                >%</button>
+                <button
+                  className={`desc-sheet-tipo ${draftTipo === 'valor' ? 'ativo' : ''}`}
+                  onClick={() => setDraftTipo('valor')}
+                >R$</button>
+              </div>
+              <label className="desc-sheet-label">Valor</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                className="desc-sheet-input"
+                placeholder={draftTipo === 'percentual' ? '3' : '100,00'}
+                value={draftValor}
+                onChange={e => setDraftValor(e.target.value.replace(/[^\d,.]/g, ''))}
+              />
+              <button className="desc-sheet-confirmar" onClick={confirmarDesconto}>
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

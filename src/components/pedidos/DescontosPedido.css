@@ -385,3 +385,67 @@
   font-weight: 700;
   color: var(--primary, #007aff);
 }
+
+/* ============== DescontosPedido redesign ============== */
+.desc-redesign { background: #f5f5f3; min-height: 100vh; padding-bottom: 24px; }
+.desc-redesign.dark { background: #1a1a18; color: #f4f4f0; }
+
+.desc-header {
+  background: #1a1a1c; color: #fff;
+  padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 10;
+}
+.desc-voltar { background: none; border: none; color: #fff; font-size: 24px; padding: 0 8px; cursor: pointer; }
+.desc-titulo { font-size: 16px; font-weight: 500; }
+.desc-salvar-btn { background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.desc-salvar-btn:disabled { opacity: 0.5; }
+
+.desc-conteudo { padding: 12px 16px; }
+
+.desc-metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.desc-metrica { background: #fff; border: 0.5px solid #e8e8e4; border-radius: 8px; padding: 12px 8px; text-align: center; }
+.desc-metrica-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+.desc-metrica-valor { font-size: 15px; font-weight: 500; }
+.desc-metrica-valor.verde { color: #15803d; }
+
+.desc-section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.6px; padding: 16px 4px 8px; font-weight: 500; }
+
+.desc-card { background: #fff; border: 0.5px solid #e8e8e4; border-radius: 8px; overflow: hidden; }
+.desc-empty { padding: 18px; text-align: center; color: #999; font-size: 13px; }
+
+.desc-linha-item, .desc-linha-global { width: 100%; padding: 12px 16px; display: flex; align-items: center; gap: 8px; background: transparent; border: none; border-bottom: 0.5px solid #f0f0ed; text-align: left; cursor: pointer; }
+.desc-linha-item:last-child, .desc-linha-global:last-child { border-bottom: none; }
+.desc-linha-info { flex: 1; min-width: 0; background: none; border: none; text-align: left; padding: 0; cursor: pointer; }
+.desc-linha-nome { font-size: 13px; color: #1a1a1a; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.desc-linha-sub { font-size: 11px; color: #888; }
+.desc-linha-valor { font-size: 13px; color: #15803d; font-weight: 500; white-space: nowrap; }
+.desc-linha-remover { background: none; border: none; color: #c33; cursor: pointer; padding: 4px 8px; font-size: 16px; }
+
+.desc-add-btn { width: 100%; background: transparent; border: none; padding: 12px 16px; text-align: left; font-size: 13px; color: #2563eb; cursor: pointer; }
+
+.desc-resumo { padding: 14px 16px; }
+.desc-resumo-linha { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; color: #555; }
+.desc-resumo-linha.desc-verde span:last-child { color: #15803d; }
+.desc-resumo-total { display: flex; justify-content: space-between; padding: 10px 0 0; font-size: 15px; font-weight: 500; border-top: 0.5px solid #e8e8e4; margin-top: 4px; }
+.desc-resumo-total .verde { color: #15803d; }
+
+/* Sheet add/edit */
+.desc-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; z-index: 100; }
+.desc-sheet { width: 100%; background: #fff; border-radius: 16px 16px 0 0; max-height: 80vh; display: flex; flex-direction: column; }
+.desc-sheet-handle { width: 36px; height: 4px; background: #d0d0d0; border-radius: 2px; margin: 8px auto 4px; }
+.desc-sheet-header { padding: 8px 16px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ececec; font-size: 16px; font-weight: 500; }
+.desc-sheet-header button { background: none; border: none; font-size: 20px; cursor: pointer; }
+.desc-sheet-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.desc-sheet-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 8px; }
+.desc-sheet-input { width: 100%; padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 8px; font-size: 15px; font-family: inherit; outline: none; }
+.desc-sheet-tipos { display: flex; gap: 8px; }
+.desc-sheet-tipo { flex: 1; padding: 10px; border: 1px solid #d0d0d0; border-radius: 8px; background: #fff; font-size: 15px; cursor: pointer; }
+.desc-sheet-tipo.ativo { background: #2563eb; color: #fff; border-color: #2563eb; }
+.desc-sheet-confirmar { margin-top: 16px; padding: 12px; background: #15803d; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; }
+
+/* Dark mode */
+.desc-redesign.dark .desc-metrica, .desc-redesign.dark .desc-card { background: #2a2a28; border-color: #444441; }
+.desc-redesign.dark .desc-metrica-valor, .desc-redesign.dark .desc-linha-nome, .desc-redesign.dark .desc-resumo-total { color: #f4f4f0; }
+.desc-redesign.dark .desc-linha-item, .desc-redesign.dark .desc-linha-global { border-bottom-color: #3a3a38; }
+.desc-redesign.dark .desc-sheet { background: #232321; color: #f4f4f0; }
+.desc-redesign.dark .desc-sheet-input, .desc-redesign.dark .desc-sheet-tipo { background: #1f1f1d; border-color: #444441; color: #f4f4f0; }
