@@ -634,3 +634,24 @@
   margin-top: 2px;
 }
 
+/* === Fine-tune pós feedback do print real === */
+
+/* 1. Estreitar meta direita (dá mais espaço ao nome) */
+.cat-produto-meta {
+  max-width: 100px;
+}
+
+/* 2. Reduzir o "0" da quantidade pra ficar proporcional ao preço */
+.cat-qty-input {
+  font-size: 18px;
+  width: 40px;
+}
+.cat-qty-wrap {
+  min-width: 42px;
+}
+
+/* 3. Alinhar footer com info de cima (pula a foto + gap) */
+.cat-produto-bottom {
+  padding-left: 74px;
+}
+
