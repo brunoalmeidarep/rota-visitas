@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { db } from '../../lib/db'
 import { useRepId } from '../../hooks/useRepId'
@@ -38,7 +38,18 @@ function diasDesde(data) {
 function PerfilCliente() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const location = useLocation()
   const { repId } = useRepId()
+
+  function handleVoltar() {
+    const fromPedido = location.state?.from === 'pedido'
+    const pedidoId = location.state?.pedidoId
+    if (fromPedido && pedidoId) {
+      navigate(`/pedidos/${pedidoId}`)
+    } else {
+      navigate('/clientes')
+    }
+  }
 
   const [cliente, setCliente] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -207,7 +218,7 @@ function PerfilCliente() {
     return (
       <div className={`perfil-cliente ${isDark ? 'dark' : 'light'}`}>
         <header className="perfil-header">
-          <button className="perfil-voltar" onClick={() => navigate('/clientes')}>
+          <button className="perfil-voltar" onClick={handleVoltar}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
@@ -216,7 +227,7 @@ function PerfilCliente() {
         </header>
         <div className="perfil-erro">
           <p>{erro || 'Cliente não encontrado'}</p>
-          <button onClick={() => navigate('/clientes')}>Voltar</button>
+          <button onClick={handleVoltar}>Voltar</button>
         </div>
       </div>
     )
@@ -228,7 +239,7 @@ function PerfilCliente() {
     <div className={`perfil-cliente ${isDark ? 'dark' : 'light'}`}>
       {/* Header */}
       <header className="perfil-header">
-        <button className="perfil-voltar" onClick={() => navigate('/clientes')}>
+        <button className="perfil-voltar" onClick={handleVoltar}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>

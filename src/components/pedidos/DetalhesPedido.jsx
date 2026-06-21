@@ -737,7 +737,7 @@ function DetalhesPedido() {
       <div className="dp-content-novo">
 
         {/* Card cliente em destaque */}
-        <div className="dp-cliente-card" onClick={() => pedido?.cliente_id && navigate(`/clientes/${pedido.cliente_id}`)}>
+        <div className="dp-cliente-card" onClick={() => pedido?.cliente_id && navigate(`/clientes/${pedido.cliente_id}`, { state: { from: 'pedido', pedidoId } })}>
           <div className="dp-cliente-avatar">{getIniciais(pedido?.cliente_nome)}</div>
           <div className="dp-cliente-info">
             <span className="dp-cliente-nome">{pedido?.cliente_nome || 'Cliente'}</span>
