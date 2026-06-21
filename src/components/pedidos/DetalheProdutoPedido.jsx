@@ -134,7 +134,7 @@ function DetalheProdutoPedido() {
   } else if (tipoDesconto === 'valor') {
     valorDesconto = descontoReais
   } else if (tipoDesconto === 'preco') {
-    if (precoNegociadoNum > 0 && precoNegociadoNum < precoTabela) {
+    if (precoNegociadoNum > 0) {
       valorDesconto = precoTabela - precoNegociadoNum
     } else {
       valorDesconto = 0
