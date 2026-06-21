@@ -658,31 +658,57 @@ function DetalhesPedido() {
     )
   }
 
+  const getIniciais = (nome) => {
+    if (!nome) return '?'
+    const partes = nome.trim().split(/\s+/).filter(Boolean)
+    if (partes.length === 0) return '?'
+    if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase()
+    return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
+  }
+
+  const labelRuptura = regraRuptura === 'parcial_novo'
+    ? 'Fatura parcial e cria novo pedido'
+    : regraRuptura === 'parcial_cancela'
+      ? 'Fatura parcial e cancela saldo'
+      : regraRuptura === 'total'
+        ? 'Entrega total'
+        : 'Selecione'
+
   return (
-    <div className={`detalhes-pedido ${isDark ? 'dark' : 'light'} ${isReadonly ? 'readonly' : ''}`}>
-      {/* Header */}
-      <header className="dp-header">
-        <button className="dp-voltar" onClick={handleVoltar}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
+    <div className={`detalhes-pedido dp-redesign ${isDark ? 'dark' : 'light'} ${isReadonly ? 'readonly' : ''}`}>
+
+      {/* Header escuro */}
+      <header className="dp-header-novo">
+        <button className="dp-voltar" onClick={handleVoltar} aria-label="Voltar">
+          ‹
         </button>
-        <span className={`dp-badge ${pedido?.status}`}>
-          {pedido?.status === 'orcamento' ? 'Em orçamento' :
-           pedido?.status === 'transmitido' ? 'Transmitido' :
-           `Pedido #${String(pedido?.numero || 0).padStart(3, '0')}`}
+        <span className="dp-titulo">
+          {pedido?.status === 'orcamento'
+            ? 'Orçamento'
+            : `Pedido #${String(pedido?.numero || 0).padStart(3, '0')}`}
         </span>
-        {isEditavel && !isReadonly && (
-          <button
-            className="dp-salvar"
-            onClick={salvar}
-            disabled={salvando}
-          >
+        {isEditavel && !isReadonly ? (
+          <button className="dp-salvar" onClick={salvar} disabled={salvando}>
             {salvando ? '...' : 'Salvar'}
           </button>
+        ) : (
+          <div style={{ width: 60 }}></div>
         )}
-        {(!isEditavel || isReadonly) && <div style={{ width: 60 }}></div>}
       </header>
+
+      {/* Status badge */}
+      <div className={`dp-status-badge dp-status-${
+        pedido?.status === 'orcamento' ? 'orcamento'
+          : pedido?.status === 'transmitido' ? 'enviado'
+          : 'aprovado'
+      }`}>
+        <span className="dp-status-dot"></span>
+        <span className="dp-status-text">
+          {pedido?.status === 'orcamento' ? 'Em orçamento'
+            : pedido?.status === 'transmitido' ? 'Transmitido'
+            : `Pedido #${String(pedido?.numero || 0).padStart(3, '0')}`}
+        </span>
+      </div>
 
       {/* Banner somente leitura */}
       {isReadonly && (
@@ -708,163 +734,102 @@ function DetalhesPedido() {
         </div>
       )}
 
-      <div className="dp-content">
-        {/* Informações básicas */}
-        <div className="dp-card">
-          <div className="dp-info-linha">
-            <span className="dp-info-label">Cliente</span>
-            <span className="dp-info-valor">{pedido?.cliente_nome}</span>
-          </div>
-          <div className="dp-info-linha">
-            <span className="dp-info-label">Representada</span>
-            <span className="dp-info-valor">{pedido?.representada_nome || '-'}</span>
-          </div>
-          <div className="dp-info-linha">
-            <span className="dp-info-label">Data emissão</span>
-            <span className="dp-info-valor">{formatarData(pedido?.created_at)}</span>
-          </div>
-          <div className="dp-info-linha">
-            <span className="dp-info-label">Canal</span>
-            <span className="dp-info-valor">
+      <div className="dp-content-novo">
+
+        {/* Card cliente em destaque */}
+        <div className="dp-cliente-card" onClick={() => pedido?.cliente_id && navigate(`/clientes/${pedido.cliente_id}`)}>
+          <div className="dp-cliente-avatar">{getIniciais(pedido?.cliente_nome)}</div>
+          <div className="dp-cliente-info">
+            <span className="dp-cliente-nome">{pedido?.cliente_nome || 'Cliente'}</span>
+            <span className="dp-cliente-sub">
+              {cliente?.cnpj_cpf || ''}
+              {cliente?.cnpj_cpf && (representada?.nome || pedido?.representada_nome) ? ' · ' : ''}
+              {representada?.nome || pedido?.representada_nome || ''}
+            </span>
+            {pedido?.visita_id && pedido?.created_at && (
+              <span className="dp-cliente-micro dp-cliente-checkin">
+                ✓ Check-in {formatarData(pedido.created_at)}
+              </span>
+            )}
+            <span className="dp-cliente-micro">
               {pedido?.canal === 'whatsapp' ? '💬 WhatsApp' : '🏪 Presencial'}
             </span>
           </div>
+          <span className="dp-cliente-arrow">›</span>
+        </div>
+
+        {/* Botões de ação */}
+        <button
+          className="dp-btn-primary"
+          onClick={() => navigate(`/pedidos/${pedidoId}/catalogo`)}
+          disabled={!isEditavel}
+        >
+          + Adicionar produtos
+        </button>
+        <button
+          className="dp-btn-secondary"
+          onClick={isEditavel ? () => navigate(`/pedidos/${pedidoId}/descontos`) : undefined}
+          disabled={!isEditavel}
+        >
+          🏷 Definir descontos
+        </button>
+
+        {/* DETALHES */}
+        <span className="dp-section-label">Detalhes</span>
+        <div className="dp-list">
+          <div className="dp-row">
+            <span className="dp-row-label">Data emissão</span>
+            <span className="dp-row-value">{formatarData(pedido?.created_at)}</span>
+          </div>
+          <div
+            className={`dp-row ${isEditavel ? 'clicavel' : ''}`}
+            onClick={isEditavel ? () => setShowTipoSheet(true) : undefined}
+          >
+            <span className="dp-row-label">Tipo de pedido</span>
+            <span className="dp-row-value">{tipoPedido}</span>
+            {isEditavel && <span className="dp-row-arrow">›</span>}
+          </div>
+          <div
+            className={`dp-row ${isEditavel ? 'clicavel' : ''} ${erroCondicao ? 'erro' : ''}`}
+            onClick={isEditavel ? () => { setShowPagamentoSheet(true); setErroCondicao(false); } : undefined}
+          >
+            <span className="dp-row-label">
+              Condição de pagamento{!condicaoPagamento && <span className="dp-required">*</span>}
+            </span>
+            <span className="dp-row-value">{condicaoPagamento || 'Selecione'}</span>
+            {isEditavel && <span className="dp-row-arrow">›</span>}
+          </div>
           {mostrarRegraRuptura && (
             <div
-              className={`dp-info-linha dp-info-ruptura ${isEditavel ? 'clicavel' : ''}`}
+              className={`dp-row ${isEditavel ? 'clicavel' : ''}`}
               onClick={isEditavel ? () => setShowRupturaSheet(true) : undefined}
-              style={{ cursor: isEditavel ? 'pointer' : 'default' }}
             >
-              <span className="dp-info-label">Em caso de ruptura</span>
-              <div className="dp-condicao-right">
-                <span style={{ color: isEditavel ? '#007aff' : '#888' }}>
-                  {regraRuptura === 'parcial_novo' && 'fatura parcial e cria novo pedido'}
-                  {regraRuptura === 'parcial_cancela' && 'fatura parcial e cancela saldo'}
-                  {regraRuptura === 'total' && 'entrega total'}
-                  {!regraRuptura && (isEditavel ? 'Selecionar' : '-')}
-                </span>
-                {isEditavel && <span className="dp-condicao-seta">›</span>}
-              </div>
+              <span className="dp-row-label">Em caso de ruptura</span>
+              <span className="dp-row-value">{labelRuptura}</span>
+              {isEditavel && <span className="dp-row-arrow">›</span>}
             </div>
           )}
         </div>
 
-        {/* Condições comerciais */}
-        <div className="dp-card dp-condicoes">
-          <div className="dp-card-titulo">Condições comerciais</div>
-
-          {/* Condição de pagamento: dropdown se tiver planos, input livre se não */}
-          <div className="dp-campo" style={{ padding: '12px 16px' }}>
-            <label style={{ fontSize: 13, color: '#888', marginBottom: 6, display: 'block' }}>
-              Condição de pagamento
-              {isEditavel && <span style={{ color: '#ff3b30', marginLeft: 2 }}>*</span>}
-            </label>
-            {planosDisponiveis.length > 0 ? (
-              <select
-                value={planoPagamentoId || ''}
-                onChange={(e) => {
-                  const novoId = e.target.value || null
-                  setPlanoPagamentoId(novoId)
-                  if (novoId) {
-                    const plano = planosDisponiveis.find(p => p.id === novoId)
-                    if (plano) setCondicaoPagamento(plano.nome)
-                  } else {
-                    setCondicaoPagamento('')
-                  }
-                  setErroCondicao(false)
-                }}
-                className="dp-input"
-                disabled={!isEditavel}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  fontSize: 15,
-                  borderRadius: 8,
-                  border: erroCondicao ? '1px solid #ff3b30' : '1px solid #ddd'
-                }}
-              >
-                <option value="">Selecione...</option>
-                {planosDisponiveis.map(plano => (
-                  <option key={plano.id} value={plano.id}>
-                    {plano.nome}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div
-                className={`dp-condicao-linha-inline ${erroCondicao ? 'erro' : ''}`}
-                onClick={isEditavel ? () => { setShowPagamentoSheet(true); setErroCondicao(false); } : undefined}
-                style={{
-                  cursor: isEditavel ? 'pointer' : 'default',
-                  padding: '10px 12px',
-                  border: erroCondicao ? '1px solid #ff3b30' : '1px solid #ddd',
-                  borderRadius: 8,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <span style={{
-                  color: !isEditavel ? '#888' :
-                         condicaoPagamento ? '#000' :
-                         erroCondicao ? '#ff3b30' : '#999'
-                }}>
-                  {condicaoPagamento || 'Selecionar...'}
-                </span>
-                {isEditavel && <span style={{ color: '#007aff' }}>›</span>}
-              </div>
-            )}
-            {erroCondicao && (
-              <span style={{ fontSize: 12, color: '#ff3b30', marginTop: 4, display: 'block' }}>
-                Condição de pagamento é obrigatória
-              </span>
-            )}
+        {/* Total + Ver Itens */}
+        <div className="dp-total-card">
+          <div className="dp-total-row">
+            <span className="dp-total-label">Total</span>
+            <span className="dp-total-val">{formatarValor(total)}</span>
           </div>
-
-          {/* Linha 2: Tipo de pedido */}
-          <div
-            className={`dp-condicao-linha ${!isEditavel ? 'travado' : ''}`}
-            onClick={isEditavel ? () => setShowTipoSheet(true) : undefined}
-            style={{ cursor: isEditavel ? 'pointer' : 'default' }}
-          >
-            <span className="dp-condicao-label">Tipo de pedido</span>
-            <div className="dp-condicao-right">
-              <span style={{ color: isEditavel ? '#007aff' : '#888' }}>
-                {tipoPedido || 'Venda'}
-              </span>
-              {isEditavel && <span className="dp-condicao-seta">›</span>}
-            </div>
-          </div>
-
-          {/* Linha 3: Descontos */}
-          <div
-            className={`dp-condicao-linha ${!isEditavel ? 'travado' : ''}`}
-            onClick={isEditavel ? () => navigate(`/pedidos/${pedidoId}/descontos`) : undefined}
-            style={{ cursor: isEditavel ? 'pointer' : 'default' }}
-          >
-            <span className="dp-condicao-label">Descontos</span>
-            <div className="dp-condicao-right">
-              {descontoTotal > 0 ? (
-                <>
-                  {pedido?.politica_nome && (
-                    <span className="dp-condicao-badge">{pedido.politica_nome}</span>
-                  )}
-                  <span style={{ color: isEditavel ? '#34c759' : '#888', fontWeight: 600 }}>
-                    − {formatarValor(descontoTotal)}
-                  </span>
-                  {isEditavel && <span className="dp-condicao-seta">›</span>}
-                </>
-              ) : (
-                <>
-                  <span style={{ color: '#888' }}>
-                    {isEditavel ? 'Nenhum desconto' : '-'}
-                  </span>
-                  {isEditavel && <span className="dp-condicao-link">Definir ›</span>}
-                </>
-              )}
-            </div>
+          <div className="dp-ver-itens" onClick={() => {
+            const el = document.getElementById('dp-produtos-sec')
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}>
+            <span className="dp-ver-itens-label">
+              📦 Ver itens <span className="dp-badge-count">{totalItens}</span>
+            </span>
+            <span className="dp-row-arrow">›</span>
           </div>
         </div>
+
+        {/* PRODUTOS (lista original preservada, reposicionada) */}
+        <div id="dp-produtos-sec" className="dp-produtos-secao">
 
         {/* Produtos - só mostra seção completa para Pro/Enterprise */}
         {!isStarter && (
@@ -973,54 +938,46 @@ function DetalhesPedido() {
           </div>
         )}
 
-        {/* Resumo */}
-        <div className="dp-card dp-resumo">
-          <div className="dp-resumo-linha">
-            <span>Subtotal</span>
-            <span>{formatarValor(subtotal)}</span>
-          </div>
-          {descontoTotal > 0 && (
-            <div className="dp-resumo-linha desconto">
-              <span>Descontos</span>
-              <span>− {formatarValor(descontoTotal)}</span>
-            </div>
-          )}
-          <div className="dp-resumo-total">
-            <span>Total</span>
-            <span>{formatarValor(total)}</span>
-          </div>
         </div>
 
-        {/* Informações adicionais */}
-        <div className="dp-card">
-          <div className="dp-card-titulo">Informações adicionais</div>
-          <textarea
-            className="dp-textarea"
-            placeholder="Observações, instruções de entrega..."
-            value={infoAdicionais}
-            onChange={(e) => setInfoAdicionais(e.target.value)}
-            disabled={!isEditavel}
-            rows={4}
-          />
-
-          <div className="dp-campo" style={{ marginTop: 14 }}>
-            <label>OC do cliente</label>
+        {/* OC do cliente */}
+        <span className="dp-section-label">OC do cliente</span>
+        <div className="dp-list">
+          <div className="dp-row">
             <input
-              type="text"
-              placeholder="Ex: 29848773"
+              className="dp-row-input"
               value={ocCliente}
               onChange={(e) => setOcCliente(e.target.value)}
+              placeholder="Ex: 29848773"
               disabled={!isEditavel}
             />
           </div>
         </div>
 
-        {/* Ações (escondidas no modo readonly) */}
-        {!isReadonly && (
-          <div className="dp-acoes">
-            {isEditavel ? (
-              <>
-                <button className="dp-btn-acao" onClick={handleCompartilhar} disabled={salvando}>
+        {/* Informações adicionais */}
+        <span className="dp-section-label">Informações adicionais</span>
+        <div className="dp-textarea-card">
+          <textarea
+            value={infoAdicionais}
+            onChange={(e) => setInfoAdicionais(e.target.value)}
+            placeholder="Observações, instruções de entrega…"
+            disabled={!isEditavel}
+          />
+        </div>
+
+      </div>
+
+      {/* Footer fixo */}
+      {!isReadonly && (
+        <footer className="dp-footer-fixo">
+          {isEditavel ? (
+            <>
+              <div className="dp-footer-actions">
+                <button
+                  className="dp-btn-compartilhar"
+                  onClick={handleCompartilhar}
+                  disabled={gerandoPDF}
+                >
                   📤 Compartilhar
                 </button>
                 <button
@@ -1028,38 +985,32 @@ function DetalhesPedido() {
                   onClick={gerarPedido}
                   disabled={salvando || !navigator.onLine}
                   title={!navigator.onLine ? 'Conecte-se à internet para gerar o pedido' : ''}
-                  style={!navigator.onLine ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                 >
-                  {!navigator.onLine ? '🔌 Gerar pedido (offline)' : '✅ Gerar pedido'}
+                  {!navigator.onLine ? '🔌 Gerar (offline)' : '✓ Gerar pedido'}
                 </button>
-                <button
-                  className="dp-btn-cancelar-orcamento"
-                  onClick={cancelarOrcamento}
-                  disabled={salvando}
-                >
-                  🗑️ Cancelar
-                </button>
-              </>
-            ) : (
-              <>
-                <button className="dp-btn-acao" onClick={duplicarPedido} disabled={salvando}>
-                  Duplicar
-                </button>
-                <button className="dp-btn-acao" onClick={verPDF} disabled={salvando}>
-                  Ver PDF
-                </button>
-                <button className="dp-btn-acao" onClick={() => setShowEmailSheet(true)} disabled={salvando}>
-                  E-mail
-                </button>
-                <button className="dp-btn-acao" onClick={handleCompartilhar} disabled={salvando}>
-                  Compartilhar
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
-      </div>
+              </div>
+              <button className="dp-btn-cancelar" onClick={cancelarOrcamento} disabled={salvando}>
+                🗑 Cancelar pedido
+              </button>
+            </>
+          ) : (
+            <div className="dp-footer-actions">
+              <button className="dp-btn-compartilhar" onClick={duplicarPedido} disabled={salvando}>
+                Duplicar
+              </button>
+              <button className="dp-btn-compartilhar" onClick={verPDF} disabled={salvando}>
+                Ver PDF
+              </button>
+              <button className="dp-btn-compartilhar" onClick={() => setShowEmailSheet(true)} disabled={salvando}>
+                E-mail
+              </button>
+              <button className="dp-btn-compartilhar" onClick={handleCompartilhar} disabled={salvando}>
+                Compartilhar
+              </button>
+            </div>
+          )}
+        </footer>
+      )}
 
       {/* Sheet de e-mail */}
       {showEmailSheet && (

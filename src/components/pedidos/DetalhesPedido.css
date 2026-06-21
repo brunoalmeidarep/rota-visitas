@@ -1032,3 +1032,368 @@
   outline: 2px solid #007aff;
   outline-offset: -1px;
 }
+
+/* ===========================================
+   Refator visual DetalhesPedido (estilo Mercos)
+   =========================================== */
+
+.detalhes-pedido.dp-redesign {
+  background: #f1f3f5;
+  min-height: 100vh;
+  padding-bottom: 160px;
+}
+
+.dp-redesign.dark { background: #1a1a1a; }
+
+/* Header */
+.dp-redesign .dp-header-novo {
+  background: #2c2c2a;
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.dp-redesign .dp-header-novo .dp-voltar {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+}
+.dp-redesign .dp-titulo {
+  font-size: 16px;
+  font-weight: 500;
+  flex: 1;
+  text-align: center;
+}
+.dp-redesign .dp-salvar {
+  background: #185fa5;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.dp-redesign .dp-salvar:disabled { opacity: 0.5; }
+
+/* Status badge */
+.dp-redesign .dp-status-badge {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.dp-redesign .dp-status-orcamento { background: #fef3c7; color: #92400e; }
+.dp-redesign .dp-status-orcamento .dp-status-dot { background: #d97706; }
+.dp-redesign .dp-status-aprovado { background: #d1fae5; color: #065f46; }
+.dp-redesign .dp-status-aprovado .dp-status-dot { background: #1d9e75; }
+.dp-redesign .dp-status-enviado { background: #dbeafe; color: #1e40af; }
+.dp-redesign .dp-status-enviado .dp-status-dot { background: #185fa5; }
+.dp-redesign .dp-status-rejeitado { background: #fee2e2; color: #991b1b; }
+.dp-redesign .dp-status-rejeitado .dp-status-dot { background: #c03434; }
+.dp-redesign .dp-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Content */
+.dp-redesign .dp-content-novo {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Card cliente */
+.dp-redesign .dp-cliente-card {
+  background: white;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.dp-redesign .dp-cliente-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #e6f1fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  color: #185fa5;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.dp-redesign .dp-cliente-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dp-redesign .dp-cliente-nome {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dp-redesign .dp-cliente-sub {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dp-redesign .dp-cliente-micro {
+  font-size: 11px;
+  color: #777;
+  margin-top: 1px;
+}
+.dp-redesign .dp-cliente-checkin { color: #1d9e75; }
+.dp-redesign .dp-cliente-arrow {
+  color: #999;
+  font-size: 20px;
+}
+
+/* Botões grandes */
+.dp-redesign .dp-btn-primary {
+  background: #185fa5;
+  color: white;
+  border: none;
+  padding: 13px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.dp-redesign .dp-btn-secondary {
+  background: white;
+  color: #1a1a1a;
+  border: 1px solid #d3d1c7;
+  padding: 13px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.dp-redesign .dp-btn-primary:disabled,
+.dp-redesign .dp-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Section label */
+.dp-redesign .dp-section-label {
+  font-size: 11px;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 500;
+  padding: 0 4px;
+  margin-top: 4px;
+}
+
+/* Lista hairline */
+.dp-redesign .dp-list {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.dp-redesign .dp-row {
+  display: flex;
+  align-items: center;
+  padding: 13px 16px;
+  border-bottom: 0.5px solid #f0f0f0;
+}
+.dp-redesign .dp-row:last-child { border-bottom: none; }
+.dp-redesign .dp-row.clicavel { cursor: pointer; }
+.dp-redesign .dp-row.erro .dp-row-label { color: #c03434; }
+.dp-redesign .dp-row-label {
+  flex: 1;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+.dp-redesign .dp-required { color: #c03434; margin-left: 2px; }
+.dp-redesign .dp-row-value {
+  font-size: 14px;
+  color: #888;
+  text-align: right;
+}
+.dp-redesign .dp-row-arrow {
+  color: #ccc;
+  font-size: 18px;
+  margin-left: 8px;
+}
+.dp-redesign .dp-row-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: #1a1a1a;
+  font-family: inherit;
+  outline: none;
+}
+.dp-redesign .dp-row-input::placeholder { color: #b4b2a9; }
+
+/* Textarea card */
+.dp-redesign .dp-textarea-card {
+  background: white;
+  border-radius: 10px;
+  padding: 13px 16px;
+}
+.dp-redesign .dp-textarea-card textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: #1a1a1a;
+  font-family: inherit;
+  resize: none;
+  min-height: 70px;
+  outline: none;
+}
+.dp-redesign .dp-textarea-card textarea::placeholder { color: #b4b2a9; }
+
+/* Total card */
+.dp-redesign .dp-total-card {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.dp-redesign .dp-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+.dp-redesign .dp-total-label {
+  font-size: 13px;
+  color: #777;
+}
+.dp-redesign .dp-total-val {
+  font-size: 22px;
+  font-weight: 500;
+  color: #1d9e75;
+}
+.dp-redesign .dp-ver-itens {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 0.5px solid #f0f0f0;
+  cursor: pointer;
+}
+.dp-redesign .dp-ver-itens-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 500;
+}
+.dp-redesign .dp-badge-count {
+  background: #e6f1fb;
+  color: #185fa5;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Seção produtos (envelopa a lista atual; estilos da lista herdam do CSS antigo) */
+.dp-redesign .dp-produtos-secao {
+  /* Sem styles extras — a lista atual já tem suas classes */
+}
+
+/* Footer fixo */
+.dp-redesign .dp-footer-fixo {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e8e8e4;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 5;
+}
+.dp-redesign .dp-footer-actions {
+  display: flex;
+  gap: 8px;
+}
+.dp-redesign .dp-btn-compartilhar {
+  flex: 1;
+  background: white;
+  color: #1a1a1a;
+  border: 1px solid #d3d1c7;
+  padding: 11px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.dp-redesign .dp-btn-gerar {
+  flex: 1;
+  background: #1d9e75;
+  color: white;
+  border: none;
+  padding: 11px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.dp-redesign .dp-btn-gerar:disabled { opacity: 0.5; cursor: not-allowed; }
+.dp-redesign .dp-btn-cancelar {
+  background: transparent;
+  color: #c03434;
+  border: 1px solid #f0c4c4;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Dark mode adjustments */
+.dp-redesign.dark .dp-cliente-card,
+.dp-redesign.dark .dp-list,
+.dp-redesign.dark .dp-textarea-card,
+.dp-redesign.dark .dp-total-card,
+.dp-redesign.dark .dp-btn-secondary,
+.dp-redesign.dark .dp-btn-compartilhar,
+.dp-redesign.dark .dp-footer-fixo {
+  background: #2c2c2a;
+  color: #f4f4f0;
+}
+.dp-redesign.dark .dp-cliente-nome,
+.dp-redesign.dark .dp-row-label,
+.dp-redesign.dark .dp-row-input,
+.dp-redesign.dark .dp-textarea-card textarea {
+  color: #f4f4f0;
+}
+.dp-redesign.dark .dp-row { border-bottom-color: #444441; }
+.dp-redesign.dark .dp-ver-itens { border-top-color: #444441; }
