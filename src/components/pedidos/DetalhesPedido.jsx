@@ -30,7 +30,7 @@ const calcularPrecoEfetivo = (item) => {
 // Agrupa planos de pagamento por família (para o sheet de Condição de pagamento)
 function familiaPlano(nome) {
   const n = (nome || '').toUpperCase()
-  if (n.includes('VIACREDI')) return 'Boleto Viacredi'
+  if (n.includes('BOLETO VIACREDI')) return 'Boleto Viacredi'
   if (n.startsWith('BOLETO')) return 'Boleto'
   if (n.includes('STONE')) return 'Cartão'
   if (n.startsWith('CHEQUE')) return 'Cheque'
