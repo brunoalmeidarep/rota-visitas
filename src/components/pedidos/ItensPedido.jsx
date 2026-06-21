@@ -30,6 +30,7 @@ export default function ItensPedido() {
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [isDark, setIsDark] = useState(false)
+  const [draftQtd, setDraftQtd] = useState({})
 
   // Detectar modo claro/escuro (mesmo pattern do DetalhesPedido)
   useEffect(() => {
@@ -298,8 +299,26 @@ export default function ItensPedido() {
                           inputMode="numeric"
                           pattern="[0-9]*"
                           className="cat-qty cat-qty-input active"
-                          value={qtd}
-                          onChange={e => setQuantidadeItem(item.produto_id, e.target.value)}
+                          value={
+                            draftQtd[item.produto_id] !== undefined
+                              ? draftQtd[item.produto_id]
+                              : String(item.quantidade)
+                          }
+                          onChange={e => {
+                            const limpo = e.target.value.replace(/\D/g, '')
+                            setDraftQtd(prev => ({ ...prev, [item.produto_id]: limpo }))
+                          }}
+                          onBlur={() => {
+                            const novoValor = parseInt(draftQtd[item.produto_id]) || 0
+                            if (novoValor >= 1) {
+                              setQuantidadeItem(item.produto_id, novoValor)
+                            }
+                            setDraftQtd(prev => {
+                              const novo = { ...prev }
+                              delete novo[item.produto_id]
+                              return novo
+                            })
+                          }}
                           onFocus={e => e.target.select()}
                           onClick={e => { e.stopPropagation(); e.target.select() }}
                           aria-label="Quantidade"
