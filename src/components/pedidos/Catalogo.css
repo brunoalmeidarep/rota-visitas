@@ -444,3 +444,193 @@
   border-radius: 4px;
 }
 
+/* ===========================================
+   Card de produto refatorado (I2 — estilo Mercos)
+   Sobrescreve regras antigas via mesma especificidade.
+   =========================================== */
+
+/* Card vira coluna (top + bottom), sem linha divisória interna */
+.cat-produto {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+/* Andar de cima: foto + info + meta */
+.cat-produto-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* Foto maior */
+.cat-produto-foto {
+  width: 62px;
+  height: 62px;
+}
+
+/* Info central */
+.cat-produto-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+/* Nome: 2 linhas no máx, sem ellipsis horizontal */
+.cat-produto-nome {
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 15px;
+  line-height: 1.3;
+  font-weight: 500;
+  flex: initial;
+}
+
+/* Label "Ref:" abaixo do nome */
+.cat-produto-label {
+  font-size: 13px;
+  color: var(--cat-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cat-produto-label-val {
+  color: var(--cat-text);
+  font-weight: 500;
+}
+
+/* Coluna direita: fornecedor + categoria + cód */
+.cat-produto-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+  max-width: 130px;
+  text-align: right;
+  padding-top: 2px;
+}
+.cat-produto-meta-forn {
+  font-size: 11px;
+  color: var(--cat-text);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cat-produto-meta-cat {
+  font-size: 10px;
+  color: var(--cat-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cat-produto-meta-cod {
+  font-size: 12px;
+  color: var(--cat-text-muted);
+  white-space: nowrap;
+  margin-top: 2px;
+}
+.cat-produto-meta-cod-val {
+  color: var(--cat-text);
+  font-weight: 500;
+}
+
+/* Andar de baixo: preço (esq) + controles (dir) — SEM linha interna */
+.cat-produto-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cat-produto-preco-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+/* Preço grande, único (sem strikethrough) */
+.cat-produto-preco {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--cat-text);
+}
+.cat-produto-preco.com-desconto {
+  color: #1d9e75;
+}
+
+/* Bolinha verde "$" — indica desconto família ativo */
+.cat-badge-desconto-familia {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1d9e75;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Controles +/-/qtd */
+.cat-produto-acoes {
+  gap: 8px;
+}
+
+/* Botão −: cinza claro / + : escuro */
+.cat-btn-minus {
+  background: #f0f0f0;
+  color: var(--cat-text);
+}
+.cat-btn-plus {
+  background: var(--cat-header-bg, #1a1a1a);
+  color: white;
+}
+.cat-btn-minus.active,
+.cat-btn-plus.active {
+  background: var(--primary, #007aff);
+  color: white;
+}
+.cat-btn-qty {
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+}
+
+/* Quantidade central com label "UN" embaixo */
+.cat-qty-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 50px;
+}
+.cat-qty-input {
+  font-size: 22px;
+  font-weight: 500;
+  width: 50px;
+}
+.cat-qty-un {
+  font-size: 10px;
+  color: var(--cat-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}
+

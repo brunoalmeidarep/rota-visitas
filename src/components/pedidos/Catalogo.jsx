@@ -555,97 +555,90 @@ function Catalogo() {
               const fotoUrl = (produto.fotos && produto.fotos[0]) || produto.foto_url
 
               const marcaNome = nomeFornecedor(produto)
+              const temDescontoFamilia = (produto.desconto_pct_aplicado || 0) > 0
               return (
                 <div
                   key={produto.id}
                   className="cat-produto"
                   onClick={() => irParaDetalhe(produto.id)}
                 >
-                  <div className="cat-produto-foto">
-                    {fotoUrl ? (
-                      <img src={fotoUrl} alt={produto.nome} loading="lazy" />
-                    ) : (
-                      <span className="cat-produto-sem-foto">📦</span>
-                    )}
-                  </div>
-
-                  <div className="cat-produto-info">
-                    <div className="cat-produto-header">
-                      <span className="cat-produto-nome">{produto.nome}</span>
-                      {marcaNome && (
-                        <span className="cat-badge-fornecedor">{marcaNome}</span>
+                  <div className="cat-produto-top">
+                    <div className="cat-produto-foto">
+                      {fotoUrl ? (
+                        <img src={fotoUrl} alt={produto.nome} loading="lazy" />
+                      ) : (
+                        <span className="cat-produto-sem-foto">📦</span>
                       )}
                     </div>
-                    <span className="cat-produto-codigo">
-                      Cód: {produto.codigo || '-'}
+
+                    <div className="cat-produto-info">
+                      <span className="cat-produto-nome">{produto.nome}</span>
                       {produto.codigo_barras && (
-                        <> · Ref: {produto.codigo_barras}</>
+                        <span className="cat-produto-label">
+                          Ref: <span className="cat-produto-label-val">{produto.codigo_barras}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="cat-produto-meta">
+                      {marcaNome && (
+                        <span className="cat-produto-meta-forn">{marcaNome}</span>
                       )}
                       {produto.nome_familia && (
-                        <> · {produto.nome_familia}</>
+                        <span className="cat-produto-meta-cat">{produto.nome_familia}</span>
                       )}
-                    </span>
-                    <div className="cat-produto-preco-row">
-                      {produto.desconto_pct_aplicado > 0 ? (
-                        <>
-                          <span className="cat-produto-preco-riscado">
-                            {formatarValor(produto.preco_loja)}/{produto.unidade || 'UN'}
-                          </span>
-                          <span className="cat-produto-preco-destaque">
-                            {formatarValor(produto.preco)}/{produto.unidade || 'UN'}
-                          </span>
-                          <span className="cat-badge-desconto">
-                            −{produto.desconto_pct_aplicado}%
-                          </span>
-                        </>
-                      ) : (
-                        <span className="cat-produto-preco">
-                          {formatarValor(produto.preco)}/{produto.unidade || 'UN'}
-                        </span>
-                      )}
+                      <span className="cat-produto-meta-cod">
+                        Cód: <span className="cat-produto-meta-cod-val">{produto.codigo || '-'}</span>
+                      </span>
                     </div>
-                    {temIpi && (
-                      <div className="cat-produto-ipi-row">
-                        <span className="cat-badge-ipi">IPI {produto.ipi}%</span>
-                        <span className="cat-produto-preco-ipi">
-                          c/ IPI: {formatarValor(precoComIpi)}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
-                  <div className="cat-produto-acoes" onClick={e => e.stopPropagation()}>
-                    {(() => {
-                      const multiplo = produto.multiplo_venda || produto.multiplo || 1
-                      return (
-                        <>
-                          <button
-                            className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
-                            onClick={() => alterarQuantidade(produto.id, -1)}
-                            disabled={quantidade === 0}
-                          >
-                            −{multiplo > 1 ? multiplo : ''}
-                          </button>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            className={`cat-qty cat-qty-input ${quantidade > 0 ? 'active' : ''}`}
-                            value={quantidade}
-                            onChange={(e) => setQuantidadeItem(produto.id, e.target.value)}
-                            onFocus={(e) => e.target.select()}
-                            onClick={(e) => { e.stopPropagation(); e.target.select() }}
-                            aria-label="Quantidade"
-                          />
-                          <button
-                            className={`cat-btn-qty ${quantidade > 0 ? 'active' : ''}`}
-                            onClick={() => alterarQuantidade(produto.id, 1)}
-                          >
-                            +{multiplo > 1 ? multiplo : ''}
-                          </button>
-                        </>
-                      )
-                    })()}
+                  <div className="cat-produto-bottom">
+                    <div className="cat-produto-preco-area">
+                      <span className={`cat-produto-preco ${temDescontoFamilia ? 'com-desconto' : ''}`}>
+                        {formatarValor(produto.preco)}/{produto.unidade || 'UN'}
+                      </span>
+                      {temDescontoFamilia && (
+                        <span className="cat-badge-desconto-familia" aria-label="Desconto família ativo">$</span>
+                      )}
+                    </div>
+
+                    <div className="cat-produto-acoes" onClick={e => e.stopPropagation()}>
+                      {(() => {
+                        const multiplo = produto.multiplo_venda || produto.multiplo || 1
+                        return (
+                          <>
+                            <button
+                              className={`cat-btn-qty cat-btn-minus ${quantidade > 0 ? 'active' : ''}`}
+                              onClick={() => alterarQuantidade(produto.id, -1)}
+                              disabled={quantidade === 0}
+                            >
+                              −{multiplo > 1 ? multiplo : ''}
+                            </button>
+                            <div className="cat-qty-wrap">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                className={`cat-qty cat-qty-input ${quantidade > 0 ? 'active' : ''}`}
+                                value={quantidade}
+                                onChange={(e) => setQuantidadeItem(produto.id, e.target.value)}
+                                onFocus={(e) => e.target.select()}
+                                onClick={(e) => { e.stopPropagation(); e.target.select() }}
+                                aria-label="Quantidade"
+                              />
+                              <span className="cat-qty-un">UN</span>
+                            </div>
+                            <button
+                              className={`cat-btn-qty cat-btn-plus ${quantidade > 0 ? 'active' : ''}`}
+                              onClick={() => alterarQuantidade(produto.id, 1)}
+                            >
+                              +{multiplo > 1 ? multiplo : ''}
+                            </button>
+                          </>
+                        )
+                      })()}
+                    </div>
                   </div>
                 </div>
               )
