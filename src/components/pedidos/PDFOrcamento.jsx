@@ -317,24 +317,38 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
     return precoBase
   }
 
-  // Subtotal = soma dos preços efetivos × quantidade (já com desconto). IPI sobre o efetivo.
-  const subtotal = itens.reduce((acc, item) => {
-    const precoEfetivo = calcularPrecoEfetivo(item)
-    return acc + (precoEfetivo * (Number(item.quantidade) || 0))
-  }, 0)
+  // Soma preço de tabela (preco_unitario × qtd — antes do desconto manual; família já embutida no preco_unitario)
+  const subtotalTabela = itens.reduce((acc, item) =>
+    acc + (Number(item.preco_unitario) || 0) * (Number(item.quantidade) || 0), 0)
+
+  // Subtotal pós-item (precoEfetivo × qtd — descontos por item aplicados)
+  const subtotalAposItem = itens.reduce((acc, item) =>
+    acc + calcularPrecoEfetivo(item) * (Number(item.quantidade) || 0), 0)
+
+  const totalDescItem = subtotalTabela - subtotalAposItem
+
+  // IPI sobre o efetivo por item
   const totalIpi = itens.reduce((acc, item) => {
-    const precoEfetivo = calcularPrecoEfetivo(item)
-    const ipi = Number(item.ipi) || 0
-    return acc + ((precoEfetivo * (Number(item.quantidade) || 0)) * ipi / 100)
+    const precoEf = calcularPrecoEfetivo(item)
+    const ipiPct = Number(item.ipi) || 0
+    return acc + precoEf * (Number(item.quantidade) || 0) * (ipiPct / 100)
   }, 0)
-  // Desconto INFORMATIVO no rodapé (não soma ao total — já está embutido no preço efetivo)
-  const descontos = itens.reduce((acc, item) => {
-    const precoEfetivo = calcularPrecoEfetivo(item)
-    const precoBase = Number(item.preco_unitario) || 0
-    return acc + ((precoBase - precoEfetivo) * (Number(item.quantidade) || 0))
-  }, 0)
-  const subtotalTabela = subtotal + descontos
-  const total = subtotal + totalIpi + (Number(pedido.frete) || 0)
+
+  // Cascata dos descontos globais (descontos_rep) sobre subtotal pós-item — mesma fórmula das outras telas
+  let valorAtualGlobal = subtotalAposItem
+  let totalDescGlobal = 0
+  ;(pedido?.descontos_rep || []).forEach(d => {
+    const valorNum = parseFloat(String(d.valor).replace(',', '.')) || 0
+    const valor = d.tipo === 'percentual'
+      ? valorAtualGlobal * (valorNum / 100)
+      : Math.min(valorNum, valorAtualGlobal)
+    totalDescGlobal += valor
+    valorAtualGlobal = Math.max(0, valorAtualGlobal - valor)
+  })
+
+  const subtotalLiquido = subtotalAposItem - totalDescGlobal
+  const frete = Number(pedido?.frete) || 0
+  const total = subtotalLiquido + totalIpi + frete
 
   return (
     <Document>
@@ -459,34 +473,36 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
               {itens.reduce((acc, i) => acc + i.quantidade, 0)} un
             </Text>
           </View>
-          {descontos > 0 && (
-            <>
-              <View style={styles.totaisLinha}>
-                <Text style={styles.totaisLabel}>Valor de tabela</Text>
-                <Text style={styles.totaisValor}>{formatarValor(subtotalTabela)}</Text>
-              </View>
-              <View style={styles.totaisLinha}>
-                <Text style={styles.totaisLabel}>Desconto</Text>
-                <Text style={[styles.totaisValor, { color: '#28a745' }]}>
-                  - {formatarValor(descontos)}
-                </Text>
-              </View>
-            </>
+          <View style={styles.totaisLinha}>
+            <Text style={styles.totaisLabel}>Valor de tabela</Text>
+            <Text style={styles.totaisValor}>{formatarValor(subtotalTabela)}</Text>
+          </View>
+          {totalDescItem > 0.01 && (
+            <View style={styles.totaisLinha}>
+              <Text style={styles.totaisLabel}>Desconto por item</Text>
+              <Text style={[styles.totaisValor, { color: '#28a745' }]}>− {formatarValor(totalDescItem)}</Text>
+            </View>
+          )}
+          {totalDescGlobal > 0.01 && (
+            <View style={styles.totaisLinha}>
+              <Text style={styles.totaisLabel}>Desconto global</Text>
+              <Text style={[styles.totaisValor, { color: '#28a745' }]}>− {formatarValor(totalDescGlobal)}</Text>
+            </View>
           )}
           <View style={styles.totaisLinha}>
             <Text style={styles.totaisLabel}>Subtotal</Text>
-            <Text style={styles.totaisValor}>{formatarValor(subtotal)}</Text>
+            <Text style={styles.totaisValor}>{formatarValor(subtotalLiquido)}</Text>
           </View>
-          {totalIpi > 0 && (
+          {totalIpi > 0.01 && (
             <View style={styles.totaisLinha}>
               <Text style={styles.totaisLabel}>IPI</Text>
               <Text style={styles.totaisValor}>{formatarValor(totalIpi)}</Text>
             </View>
           )}
-          {pedido.frete > 0 && (
+          {frete > 0.01 && (
             <View style={styles.totaisLinha}>
               <Text style={styles.totaisLabel}>Frete</Text>
-              <Text style={styles.totaisValor}>{formatarValor(pedido.frete)}</Text>
+              <Text style={styles.totaisValor}>{formatarValor(frete)}</Text>
             </View>
           )}
           <View style={styles.totaisTotal}>
