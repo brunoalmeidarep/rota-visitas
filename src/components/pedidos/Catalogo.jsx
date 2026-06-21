@@ -549,9 +549,6 @@ function Catalogo() {
           <>
             {produtos.map(produto => {
               const quantidade = itens[produto.id]?.quantidade || 0
-              const ipiValor = Number(produto.ipi) || 0
-              const temIpi = ipiValor > 0
-              const precoComIpi = (produto.preco || 0) * (1 + ipiValor / 100)
               const fotoUrl = (produto.fotos && produto.fotos[0]) || produto.foto_url
 
               const marcaNome = nomeFornecedor(produto)
