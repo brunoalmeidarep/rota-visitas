@@ -548,11 +548,17 @@ function Catalogo() {
         ) : (
           <>
             {produtos.map(produto => {
-              const quantidade = itens[produto.id]?.quantidade || 0
+              const item = itens[produto.id]
+              const quantidade = item?.quantidade || 0
               const fotoUrl = (produto.fotos && produto.fotos[0]) || produto.foto_url
 
               const marcaNome = nomeFornecedor(produto)
               const temDescontoFamilia = (produto.desconto_pct_aplicado || 0) > 0
+              const precoEfetivo = (item && quantidade > 0)
+                ? calcularPrecoEfetivo(item)
+                : (produto.preco || 0)
+              const temDescontoRep = item && quantidade > 0 && precoEfetivo < (produto.preco || 0)
+              const precoComDesconto = temDescontoFamilia || temDescontoRep
               return (
                 <div
                   key={produto.id}
@@ -592,8 +598,8 @@ function Catalogo() {
 
                   <div className="cat-produto-bottom">
                     <div className="cat-produto-preco-area">
-                      <span className={`cat-produto-preco ${temDescontoFamilia ? 'com-desconto' : ''}`}>
-                        {formatarValor(produto.preco)}/{produto.unidade || 'UN'}
+                      <span className={`cat-produto-preco ${precoComDesconto ? 'com-desconto' : ''}`}>
+                        {formatarValor(precoEfetivo)}/{produto.unidade || 'UN'}
                       </span>
                       {temDescontoFamilia && (
                         <span className="cat-badge-desconto-familia" aria-label="Desconto família ativo">$</span>
