@@ -77,10 +77,22 @@ export default function ItensPedido() {
       (acc, it) => acc + ((Number(it.preco_unitario) || 0) * (Number(it.quantidade) || 0)),
       0
     )
-    const valorDescontoTotal = novosItens.reduce((acc, it) => {
+    const totalDescItem = novosItens.reduce((acc, it) => {
       const precoEfetivo = calcularPrecoEfetivo(it)
       return acc + (((Number(it.preco_unitario) || 0) - precoEfetivo) * (Number(it.quantidade) || 0))
     }, 0)
+    // Descontos globais (descontos_rep) em cascata sobre o subtotal pós-item — preserva o que a tela de Descontos gravou
+    let valorAtualGlobal = valorBrutoTotal - totalDescItem
+    let totalDescGlobal = 0
+    ;(pedido?.descontos_rep || []).forEach(d => {
+      const valorNum = parseFloat(String(d.valor).replace(',', '.')) || 0
+      const valor = d.tipo === 'percentual'
+        ? valorAtualGlobal * (valorNum / 100)
+        : Math.min(valorNum, valorAtualGlobal)
+      totalDescGlobal += valor
+      valorAtualGlobal = Math.max(0, valorAtualGlobal - valor)
+    })
+    const valorDescontoTotal = totalDescItem + totalDescGlobal
 
     const resultado = await atualizarComOuSemConexao(
       'pedidos',
