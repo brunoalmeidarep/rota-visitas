@@ -319,6 +319,9 @@ function DetalheProdutoPedido() {
             <span className="dpp-preco-label">Tabela de preço</span>
             <span className="dpp-preco-valor">
               {formatarValor(precoTabela)}/{produto?.unidade || 'UN'}
+              {descontoFamiliaPct > 0 && (
+                <span className="dpp-badge-desconto-familia" aria-label="Desconto família ativo">$</span>
+              )}
             </span>
           </div>
 
@@ -339,45 +342,26 @@ function DetalheProdutoPedido() {
             >
               −
             </button>
-            <span className="dpp-qty-valor">{quantidade}</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              className="dpp-qty-input"
+              value={quantidade}
+              onChange={(e) => {
+                const novaQtd = parseInt(e.target.value.replace(/\D/g, ''), 10) || 0
+                setQuantidade(novaQtd)
+              }}
+              onFocus={(e) => e.target.select()}
+              onClick={(e) => { e.stopPropagation(); e.target.select() }}
+              aria-label="Quantidade"
+            />
             <button
               className="dpp-qty-btn"
               onClick={() => setQuantidade(quantidade + (produto?.multiplo || 1))}
             >
               +
             </button>
-          </div>
-        </div>
-
-        {/* Cascata de descontos */}
-        <div className="dpp-cascata">
-          <div className="dpp-cascata-linha">
-            <span>Preço de loja</span>
-            <span className={descontoFamiliaPct > 0 ? 'dpp-preco-riscado' : ''}>
-              {formatarValor(precoLoja)}
-            </span>
-          </div>
-
-          {descontoFamiliaPct > 0 && (
-            <div className="dpp-cascata-linha">
-              <span>
-                Política {nomeFamilia}
-                <span className="dpp-cascata-badge">−{descontoFamiliaPct}%</span>
-              </span>
-              <span>{formatarValor(precoTabela)}</span>
-            </div>
-          )}
-
-          {valorDesconto > 0 && (
-            <div className="dpp-cascata-linha dpp-cascata-rep">
-              <span>Desconto extra rep</span>
-              <span>−{formatarValor(valorDesconto)}</span>
-            </div>
-          )}
-
-          <div className="dpp-cascata-linha dpp-cascata-final">
-            <span>Preço final</span>
-            <span>{formatarValor(precoLiquido)}</span>
           </div>
         </div>
 
@@ -470,24 +454,20 @@ function DetalheProdutoPedido() {
 
         {/* Resumo */}
         <div className="dpp-card dpp-resumo">
-          <div className="dpp-resumo-linha">
-            <span>Preço tabela</span>
-            <span>{formatarValor(precoTabela)}</span>
-          </div>
           {ipi > 0 && (
-            <div className="dpp-resumo-linha">
-              <span>IPI ({ipi}%)</span>
-              <span>+ {formatarValor(precoTabela * ipi / 100)}</span>
-            </div>
-          )}
-          {valorDesconto > 0 && (
-            <div className="dpp-resumo-linha desconto">
-              <span>Desconto</span>
-              <span>− {formatarValor(valorDesconto)}</span>
-            </div>
+            <>
+              <div className="dpp-resumo-linha">
+                <span>Preço líquido</span>
+                <span>{formatarValor(precoLiquido)}</span>
+              </div>
+              <div className="dpp-resumo-linha">
+                <span>IPI ({ipi}%)</span>
+                <span>+ {formatarValor(precoLiquido * ipi / 100)}</span>
+              </div>
+            </>
           )}
           <div className="dpp-resumo-linha liquido">
-            <span>Preço líquido</span>
+            <span>Preço final</span>
             <span>{formatarValor(precoLiquidoComIpi)}</span>
           </div>
           <div className="dpp-resumo-total">

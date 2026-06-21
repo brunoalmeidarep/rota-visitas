@@ -495,3 +495,34 @@
   margin-top: 8px;
   text-align: center;
 }
+
+.dpp-qty-input {
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 700;
+  width: 80px;
+  font-family: inherit;
+  cursor: text;
+  color: inherit;
+}
+.dpp-qty-input:focus {
+  outline: 2px solid #007aff;
+  border-radius: 4px;
+}
+
+.dpp-badge-desconto-familia {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1d9e75;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+  vertical-align: middle;
+}
