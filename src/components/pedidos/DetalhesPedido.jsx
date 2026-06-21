@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { dataLocal } from '../../lib/data'
@@ -26,6 +26,20 @@ const calcularPrecoEfetivo = (item) => {
   }
   return precoBase
 }
+
+// Agrupa planos de pagamento por família (para o sheet de Condição de pagamento)
+function familiaPlano(nome) {
+  const n = (nome || '').toUpperCase()
+  if (n.includes('VIACREDI')) return 'Boleto Viacredi'
+  if (n.startsWith('BOLETO')) return 'Boleto'
+  if (n.includes('STONE')) return 'Cartão'
+  if (n.startsWith('CHEQUE')) return 'Cheque'
+  if (n.includes('PIX') || n.includes('DINHEIRO') || n.includes('A VISTA') || n.includes('À VISTA')) return 'À vista'
+  if (n.includes('VISA') || n.includes('MASTER') || n.includes('CARTAO') || n.includes('CARTÃO') || n.includes('CRÉDITO') || n.includes('CREDITO') || n.includes('DÉBITO') || n.includes('DEBITO')) return 'Cartão'
+  return 'Outros'
+}
+
+const ORDEM_FAMILIAS = ['À vista', 'Boleto', 'Boleto Viacredi', 'Cartão', 'Cheque', 'Outros']
 
 function DetalhesPedido() {
   const navigate = useNavigate()
@@ -148,6 +162,7 @@ function DetalhesPedido() {
   const [erroCondicao, setErroCondicao] = useState(false)
   const [regraRuptura, setRegraRuptura] = useState('')
   const [planosDisponiveis, setPlanosDisponiveis] = useState([])
+  const [buscaPlano, setBuscaPlano] = useState('')
   const [planoPagamentoId, setPlanoPagamentoId] = useState(null)
 
   // Detectar modo claro/escuro
@@ -313,6 +328,23 @@ function DetalhesPedido() {
     }
     carregarPlanos()
   }, [representada, pedido?.empresa_id])
+
+  // Planos de pagamento filtrados pela busca e agrupados por família (sheet de Condição de pagamento)
+  const planosAgrupados = useMemo(() => {
+    const termo = buscaPlano.trim().toLowerCase()
+    const filtrados = termo
+      ? planosDisponiveis.filter(p => (p.nome || '').toLowerCase().includes(termo))
+      : planosDisponiveis
+    const grupos = {}
+    for (const p of filtrados) {
+      const fam = familiaPlano(p.nome)
+      if (!grupos[fam]) grupos[fam] = []
+      grupos[fam].push(p)
+    }
+    return ORDEM_FAMILIAS
+      .filter(f => grupos[f]?.length > 0)
+      .map(f => ({ familia: f, planos: grupos[f] }))
+  }, [planosDisponiveis, buscaPlano])
 
   function formatarValor(valor) {
     if (!valor || valor === 0) return 'R$ 0,00'
@@ -941,40 +973,51 @@ function DetalhesPedido() {
       {/* Sheet de condição de pagamento */}
       {showPagamentoSheet && (
         <div className="dp-sheet-overlay" onClick={() => setShowPagamentoSheet(false)}>
-          <div className="dp-sheet" onClick={(e) => e.stopPropagation()}>
+          <div className="dp-sheet dp-sheet-pagamento" onClick={e => e.stopPropagation()}>
+            <div className="dp-sheet-handle" />
             <div className="dp-sheet-header">
               <span>Condição de pagamento</span>
               <button onClick={() => setShowPagamentoSheet(false)}>✕</button>
             </div>
-            <div className="dp-sheet-content">
-              <div className="dp-sheet-opcoes">
-                {['À vista', '30 dias', '30/60', '30/60/90', '28/56/84', 'Boleto 21 dias'].map(opcao => (
-                  <button
-                    key={opcao}
-                    className={`dp-sheet-opcao ${condicaoPagamento === opcao ? 'active' : ''}`}
-                    onClick={() => {
-                      setCondicaoPagamento(opcao)
-                      setShowPagamentoSheet(false)
-                    }}
-                  >
-                    {opcao}
-                  </button>
-                ))}
-              </div>
-              <div className="dp-sheet-custom">
-                <input
-                  type="text"
-                  placeholder="Ou digite personalizado..."
-                  value={condicaoPagamento}
-                  onChange={(e) => setCondicaoPagamento(e.target.value)}
-                />
-                <button
-                  className="dp-sheet-confirmar"
-                  onClick={() => setShowPagamentoSheet(false)}
-                >
-                  Confirmar
-                </button>
-              </div>
+            <div className="dp-sheet-search">
+              <input
+                type="text"
+                placeholder="Buscar plano..."
+                value={buscaPlano}
+                onChange={e => setBuscaPlano(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="dp-sheet-lista">
+              {planosAgrupados.length === 0 && (
+                <div className="dp-sheet-empty">Nenhum plano encontrado</div>
+              )}
+              {planosAgrupados.map(grupo => (
+                <div key={grupo.familia} className="dp-sheet-grupo">
+                  <div className="dp-sheet-grupo-header">{grupo.familia}</div>
+                  {grupo.planos.map(p => (
+                    <button
+                      key={p.id}
+                      className={`dp-sheet-item ${planoPagamentoId === p.id ? 'selecionado' : ''}`}
+                      onClick={() => {
+                        setPlanoPagamentoId(p.id)
+                        setCondicaoPagamento(p.nome)
+                        setErroCondicao(false)
+                        setBuscaPlano('')
+                        setShowPagamentoSheet(false)
+                      }}
+                    >
+                      <div className="dp-sheet-item-info">
+                        <span className="dp-sheet-item-nome">{p.nome}</span>
+                        {p.qtde_parcelas ? (
+                          <span className="dp-sheet-item-sub">{p.qtde_parcelas}x</span>
+                        ) : null}
+                      </div>
+                      {planoPagamentoId === p.id && <span className="dp-sheet-item-check">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
         </div>
