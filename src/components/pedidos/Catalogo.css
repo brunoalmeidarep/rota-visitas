@@ -655,3 +655,18 @@
   padding-left: 74px;
 }
 
+/* === Fine-tune 2: card maior, nome menor (cabe mais info) === */
+
+/* Card com mais respiro vertical */
+.cat-produto {
+  padding: 14px;
+  gap: 12px;
+}
+
+/* Nome um tico menor, até 3 linhas */
+.cat-produto-nome {
+  font-size: 13px;
+  line-height: 1.35;
+  -webkit-line-clamp: 3;
+}
+
