@@ -88,7 +88,8 @@ function DetalhesPedido() {
       ...prev,
       itens: novosItens,
       valor_bruto: valorBrutoTotal,
-      valor_desconto: valorDescontoTotal
+      valor_desconto: valorDescontoTotal,
+      valor_liquido: valorBrutoTotal - valorDescontoTotal
     }))
     return true
   }
@@ -346,13 +347,9 @@ function DetalhesPedido() {
   // Feature de regra de ruptura
   const mostrarRegraRuptura = features?.regra_ruptura === true
   const totalItens = pedido?.itens?.length || 0
-  const subtotal = totalItens > 0
-    ? (pedido?.itens || []).reduce((acc, item) =>
-        acc + (item.subtotal || item.preco_unitario * item.quantidade || 0), 0
-      )
-    : pedido?.valor_liquido || 0
+  const subtotal = pedido?.valor_bruto || 0
   const descontoTotal = pedido?.valor_desconto || 0
-  const total = totalItens > 0 ? subtotal - descontoTotal : pedido?.valor_liquido || 0
+  const total = pedido?.valor_liquido || (subtotal - descontoTotal)
 
   async function salvar() {
     console.log('[salvar] 1. Iniciando...')
@@ -897,11 +894,6 @@ function DetalhesPedido() {
               <div className="dp-produtos-lista">
                 {pedido.itens.map((item, index) => {
                   const precoEfetivo = calcularPrecoEfetivo(item)
-                  const precoTabela = Number(item.preco_unitario) || 0
-                  const temDesconto = precoEfetivo < precoTabela && precoTabela > 0
-                  const descontoPct = temDesconto
-                    ? Math.round((1 - precoEfetivo / precoTabela) * 100)
-                    : 0
                   const marcaNome = nomeFornecedorStr(item.produto_fornecedor)
                   return (
                     <div key={index} className="dp-produto-item">
@@ -910,9 +902,6 @@ function DetalhesPedido() {
                         <span className="dp-produto-codigo">{item.produto_codigo}</span>
                         <div className="dp-produto-precos">
                           <span className="dp-preco-normal">{formatarValor(precoEfetivo)}/un</span>
-                          {temDesconto && (
-                            <span className="dp-badge-desconto-item">−{descontoPct}%</span>
-                          )}
                         </div>
                       </div>
                       <div className="dp-produto-right">
