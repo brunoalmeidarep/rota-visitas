@@ -817,127 +817,12 @@ function DetalhesPedido() {
             <span className="dp-total-label">Total</span>
             <span className="dp-total-val">{formatarValor(total)}</span>
           </div>
-          <div className="dp-ver-itens" onClick={() => {
-            const el = document.getElementById('dp-produtos-sec')
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }}>
+          <div className="dp-ver-itens" onClick={() => navigate(`/pedidos/${pedidoId}/itens`)}>
             <span className="dp-ver-itens-label">
               📦 Ver itens <span className="dp-badge-count">{totalItens}</span>
             </span>
             <span className="dp-row-arrow">›</span>
           </div>
-        </div>
-
-        {/* PRODUTOS (lista original preservada, reposicionada) */}
-        <div id="dp-produtos-sec" className="dp-produtos-secao">
-
-        {/* Produtos - só mostra seção completa para Pro/Enterprise */}
-        {!isStarter && (
-          <div className="dp-card">
-            <div className="dp-card-header">
-              <span className="dp-card-titulo">Produtos ({totalItens})</span>
-              {isEditavel && (
-                <button
-                  className="dp-btn-adicionar"
-                  onClick={() => navigate(`/pedidos/${pedidoId}/catalogo`)}
-                >
-                  + Adicionar
-                </button>
-              )}
-            </div>
-
-            {totalItens === 0 ? (
-              <div className="dp-produtos-vazio">
-                <p>Nenhum produto adicionado</p>
-                {isEditavel && (
-                  <button onClick={() => navigate(`/pedidos/${pedidoId}/catalogo`)}>
-                    Adicionar produtos
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="dp-produtos-lista">
-                {pedido.itens.map((item, index) => {
-                  const precoEfetivo = calcularPrecoEfetivo(item)
-                  const marcaNome = nomeFornecedorStr(item.produto_fornecedor)
-                  return (
-                    <div key={index} className="dp-produto-item">
-                      <div className="dp-produto-info">
-                        <span className="dp-produto-nome">{item.produto_nome}</span>
-                        <span className="dp-produto-codigo">{item.produto_codigo}</span>
-                        <div className="dp-produto-precos">
-                          <span className="dp-preco-normal">{formatarValor(precoEfetivo)}/un</span>
-                        </div>
-                      </div>
-                      <div className="dp-produto-right">
-                        {marcaNome && (
-                          <span className="dp-badge-fornecedor">{marcaNome}</span>
-                        )}
-                        {isEditavel ? (
-                          <div className="dp-produto-controles">
-                            <button
-                              className="dp-qty-btn"
-                              onClick={() => alterarQuantidadeItem(item.produto_id, -1)}
-                              aria-label="Diminuir"
-                            >
-                              −
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              className="dp-produto-qty dp-qty-input"
-                              value={item.quantidade}
-                              onChange={(e) => {
-                                const novaQtd = Math.max(0, parseInt(String(e.target.value).replace(/\D/g, ''), 10) || 0)
-                                setPedido(prev => ({
-                                  ...prev,
-                                  itens: (prev?.itens || []).map(i => {
-                                    if (i.produto_id !== item.produto_id) return i
-                                    const precoEfetivo = calcularPrecoEfetivo(i)
-                                    const ipiPct = Number(i.ipi) || 0
-                                    const novoSubtotal = precoEfetivo * (1 + ipiPct / 100) * novaQtd
-                                    return { ...i, quantidade: novaQtd, subtotal: novoSubtotal }
-                                  })
-                                }))
-                              }}
-                              onBlur={() => {
-                                const itensAtuais = pedido?.itens || []
-                                // Se qtd ficou 0, remove o item antes de persistir
-                                const itensValidos = itensAtuais.filter(i => Number(i.quantidade) > 0)
-                                persistirItens(itensValidos)
-                              }}
-                              onFocus={(e) => e.target.select()}
-                              aria-label="Quantidade"
-                            />
-                            <button
-                              className="dp-qty-btn"
-                              onClick={() => alterarQuantidadeItem(item.produto_id, +1)}
-                              aria-label="Aumentar"
-                            >
-                              +
-                            </button>
-                            <button
-                              className="dp-excluir-btn"
-                              onClick={() => excluirItem(item.produto_id)}
-                              aria-label="Excluir item"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="dp-produto-qty">{item.quantidade} un</span>
-                        )}
-                        <span className="dp-produto-valor">{formatarValor(item.subtotal)}</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
         </div>
 
         {/* OC do cliente */}

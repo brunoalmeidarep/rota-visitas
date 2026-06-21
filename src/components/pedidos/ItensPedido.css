@@ -1,0 +1,99 @@
+.ip-tela .ip-lista {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ip-tela.dark .ip-lista { background: #2c2c2a; }
+
+.ip-tela .ip-lista .cat-produto {
+  cursor: pointer;
+  margin-bottom: 0;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+}
+.ip-tela .ip-lista .cat-produto:last-child {
+  border-bottom: none;
+}
+.ip-tela.dark .ip-lista .cat-produto {
+  border-bottom-color: #444441;
+}
+
+.ip-tela .ip-vazio {
+  background: white;
+  border-radius: 10px;
+  padding: 40px 16px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+.ip-tela.dark .ip-vazio { background: #2c2c2a; }
+
+.ip-tela .ip-subtotal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 0 88px;
+  margin-top: 10px;
+  border-top: 0.5px dashed #e8e8e4;
+}
+.ip-tela.dark .ip-subtotal-row {
+  border-top-color: #444441;
+}
+
+.ip-tela .ip-subtotal-label {
+  font-size: 12px;
+  color: #777;
+}
+.ip-tela .ip-subtotal-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.ip-tela.dark .ip-subtotal-val { color: #f4f4f0; }
+
+.ip-tela .ip-excluir {
+  width: 32px;
+  height: 32px;
+  background: #fee2e2;
+  color: #c03434;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ip-tela .ip-footer {
+  padding: 14px 16px;
+}
+.ip-tela .ip-footer-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.ip-tela .ip-footer-row .lbl { color: #777; }
+.ip-tela .ip-footer-row .val { color: #1a1a1a; font-weight: 500; }
+.ip-tela.dark .ip-footer-row .val { color: #f4f4f0; }
+.ip-tela .ip-footer-row.desc .val { color: #1d9e75; }
+.ip-tela .ip-footer-row.total {
+  padding-top: 8px;
+  border-top: 0.5px solid #f0f0f0;
+  margin-top: 4px;
+}
+.ip-tela.dark .ip-footer-row.total { border-top-color: #444441; }
+.ip-tela .ip-footer-row.total .lbl {
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+.ip-tela.dark .ip-footer-row.total .lbl { color: #f4f4f0; }
+.ip-tela .ip-footer-row.total .val {
+  font-size: 20px;
+  font-weight: 500;
+  color: #1d9e75;
+}

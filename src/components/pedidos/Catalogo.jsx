@@ -481,7 +481,7 @@ function Catalogo() {
       }
 
       limparCarrinho(pedidoId)
-      navigate(`/pedidos/${pedidoId}`)
+      navigate(location.state?.from === 'itens' ? `/pedidos/${pedidoId}/itens` : `/pedidos/${pedidoId}`)
     } catch (err) {
       console.error('[Catalogo] Exceção:', err)
       alert('Erro ao salvar produtos: ' + (err?.message || err))
@@ -490,7 +490,7 @@ function Catalogo() {
   }
 
   function cancelar() {
-    navigate(`/pedidos/${pedidoId}`)
+    navigate(location.state?.from === 'itens' ? `/pedidos/${pedidoId}/itens` : `/pedidos/${pedidoId}`)
   }
 
   return (

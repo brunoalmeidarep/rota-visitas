@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { atualizarComOuSemConexao } from '../../lib/queue'
 import { formatarInputMoeda, parseMoeda, formatarValor } from '../../utils/formatarMoeda'
@@ -9,6 +9,17 @@ import './DetalheProdutoPedido.css'
 function DetalheProdutoPedido() {
   const navigate = useNavigate()
   const { id: pedidoId, produtoId } = useParams()
+  const location = useLocation()
+
+  function handleVoltar() {
+    const fromItens = location.state?.from === 'itens'
+    const pid = location.state?.pedidoId || pedidoId
+    if (fromItens && pid) {
+      navigate(`/pedidos/${pid}/itens`)
+      return
+    }
+    navigate(-1)
+  }
 
   const [produto, setProduto] = useState(null)
   const [pedido, setPedido] = useState(null)
@@ -225,7 +236,7 @@ function DetalheProdutoPedido() {
         return
       }
 
-      navigate(-1)
+      handleVoltar()
 
     } catch (err) {
       console.error('[DetalheProdutoPedido] Exceção:', err)
@@ -239,7 +250,7 @@ function DetalheProdutoPedido() {
     return (
       <div className={`detalhe-produto-pedido ${isDark ? 'dark' : 'light'}`}>
         <header className="dpp-header">
-          <button className="dpp-cancelar" onClick={() => navigate(-1)}>Voltar</button>
+          <button className="dpp-cancelar" onClick={handleVoltar}>Voltar</button>
           <span className="dpp-header-titulo">Produto</span>
           <div style={{ width: 60 }}></div>
         </header>
@@ -252,7 +263,7 @@ function DetalheProdutoPedido() {
     <div className={`detalhe-produto-pedido ${isDark ? 'dark' : 'light'}`}>
       {/* Header */}
       <header className="dpp-header">
-        <button className="dpp-cancelar" onClick={() => navigate(-1)}>
+        <button className="dpp-cancelar" onClick={handleVoltar}>
           Voltar
         </button>
         <span className="dpp-header-titulo">

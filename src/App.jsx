@@ -26,6 +26,7 @@ const NovoPedido = lazy(() => import('./components/pedidos/NovoPedido'))
 const DetalhesPedido = lazy(() => import('./components/pedidos/DetalhesPedido'))
 const Catalogo = lazy(() => import('./components/pedidos/Catalogo'))
 const DetalheProdutoPedido = lazy(() => import('./components/pedidos/DetalheProdutoPedido'))
+const ItensPedido = lazy(() => import('./components/pedidos/ItensPedido'))
 const DescontosPedido = lazy(() => import('./components/pedidos/DescontosPedido'))
 
 const Planner = lazy(() => import('./components/planner/Planner'))
@@ -135,6 +136,7 @@ function App() {
             <Route path="/pedidos" element={<ListaPedidos />} />
             <Route path="/pedidos/novo" element={<NovoPedido />} />
             <Route path="/pedidos/:id" element={<DetalhesPedido />} />
+            <Route path="/pedidos/:id/itens" element={<ItensPedido />} />
             <Route path="/pedidos/:id/catalogo" element={<Catalogo />} />
             <Route path="/pedidos/:id/produto/:produtoId" element={<DetalheProdutoPedido />} />
             <Route path="/pedidos/:id/descontos" element={<DescontosPedido />} />
