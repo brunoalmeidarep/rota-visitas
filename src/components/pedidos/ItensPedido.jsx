@@ -318,7 +318,7 @@ export default function ItensPedido() {
                   <div className="ip-subtotal-row" onClick={e => e.stopPropagation()}>
                     <div>
                       <span className="ip-subtotal-label">Subtotal: </span>
-                      <span className="ip-subtotal-val">{formatarValor(subtotalItem)}</span>
+                      <span className="ip-subtotal-val">{formatarValorCompleto(subtotalItem)}</span>
                     </div>
                     <button
                       className="ip-excluir"

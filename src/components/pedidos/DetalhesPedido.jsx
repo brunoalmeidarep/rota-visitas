@@ -328,6 +328,11 @@ function DetalhesPedido() {
     }).format(valor)
   }
 
+  // Valor sempre completo (sem abreviação k/M) — usado no card de Total
+  function formatarValorCompleto(valor) {
+    return (Number(valor) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  }
+
   function formatarData(dataStr) {
     if (!dataStr) return '-'
     const d = new Date(dataStr)
@@ -815,7 +820,7 @@ function DetalhesPedido() {
         <div className="dp-total-card">
           <div className="dp-total-row">
             <span className="dp-total-label">Total</span>
-            <span className="dp-total-val">{formatarValor(total)}</span>
+            <span className="dp-total-val">{formatarValorCompleto(total)}</span>
           </div>
           <div className="dp-ver-itens" onClick={() => navigate(`/pedidos/${pedidoId}/itens`)}>
             <span className="dp-ver-itens-label">
