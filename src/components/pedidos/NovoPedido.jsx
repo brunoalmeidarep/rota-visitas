@@ -346,6 +346,7 @@ function NovoPedido() {
         status: 'orcamento',
         canal: canal,
         valor_bruto: 0,
+        valor_desconto: 0,
         itens: []
       }
 
