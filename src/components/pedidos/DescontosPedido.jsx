@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { atualizarComOuSemConexao } from '../../lib/queue'
 import './DescontosPedido.css'
 
 // Preço efetivo do item (mesma cascata do DetalhesPedido): preço negociado > desconto % > desconto R$ > preço base.
@@ -177,19 +178,16 @@ function DescontosPedido() {
     }
 
     try {
-      const { error } = await supabase
-        .from('pedidos')
-        .update(dadosUpdate)
-        .eq('id', pedidoId)
+      const resultado = await atualizarComOuSemConexao(
+        'pedidos',
+        pedidoId,
+        dadosUpdate,
+        { tabelaLocal: 'pedidos' }
+      )
 
-      if (error) {
-        console.error('[DescontosPedido] Erro ao salvar:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        })
-        alert(`Erro ao salvar descontos:\n${error.message}\n\nCódigo: ${error.code || '-'}\nDetalhes: ${error.details || '-'}`)
+      if (!resultado.ok) {
+        console.error('[DescontosPedido] Erro ao salvar:', resultado.motivo)
+        alert(`Erro ao salvar descontos:\n${resultado.motivo || '-'}`)
         setSalvando(false)
         return
       }
