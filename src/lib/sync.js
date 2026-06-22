@@ -286,6 +286,7 @@ export async function syncPlanos(empresaId) {
       .select('*')
       .eq('empresa_id', empresaId)
       .eq('ativo', true)
+      .eq('desativado_manualmente', false)
       .order('ordem_exibicao', { ascending: true })
     if (error) throw error
     const agora = new Date().toISOString()
