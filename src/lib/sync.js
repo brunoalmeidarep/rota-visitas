@@ -21,14 +21,16 @@ export async function syncProdutos(empresaId) {
   const inicio = Date.now()
   let pagina = 0
   let total = 0
+  let bytes = 0
 
   try {
     const ultimoSync = await getSyncTimestamp('produtos')
     while (true) {
       const offset = pagina * PAGE_SIZE
+      // 'fotos' (array JSONB) removido do escopo — o catálogo usa só foto_url no thumbnail.
       let query = supabase
         .from('produtos_com_preco_distribuidora')
-        .select('id, codigo, codigo_barras, nome, preco, preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia, ipi, unidade, fotos, foto_url, ativo, desativado_manualmente, empresa_id, fornecedor_id, fornecedor_nome, microvix_synced_at')
+        .select('id, codigo, codigo_barras, nome, preco, preco_loja, preco_distribuidora, desconto_pct_aplicado, nome_familia, ipi, unidade, foto_url, ativo, desativado_manualmente, empresa_id, fornecedor_id, fornecedor_nome, microvix_synced_at')
         .eq('empresa_id', empresaId)
         .eq('desativado_manualmente', false)
         .order('microvix_synced_at', { ascending: true })
@@ -41,6 +43,8 @@ export async function syncProdutos(empresaId) {
       if (error) throw error
       if (!data || data.length === 0) break
 
+      bytes += JSON.stringify(data).length
+
       const agora = new Date().toISOString()
       const registros = data.map(p => ({ ...p, _synced_at: agora }))
 
@@ -52,7 +56,7 @@ export async function syncProdutos(empresaId) {
     }
 
     await setSyncTimestamp('produtos')
-    console.log(`[sync] produtos: ${total} registros em ${Date.now() - inicio}ms`)
+    console.log(`[sync] produtos: ${total} linhas, ~${(bytes / 1048576).toFixed(2)} MB em ${Date.now() - inicio}ms`)
     return { ok: true, total, duracao_ms: Date.now() - inicio }
   } catch (error) {
     console.error('[sync] erro syncProdutos:', error)
