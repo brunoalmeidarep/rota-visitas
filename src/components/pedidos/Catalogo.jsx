@@ -7,6 +7,7 @@ import { salvarCarrinho, lerCarrinho, limparCarrinho } from '../../lib/carrinhoS
 import { nomeFornecedor } from '../../utils/fornecedor'
 import { db } from '../../lib/db'
 import { atualizarComOuSemConexao } from '../../lib/queue'
+import { calcularPrecoEfetivo } from '../../lib/precos'
 import './Catalogo.css'
 
 const PAGE_SIZE = 50
@@ -355,21 +356,6 @@ function Catalogo() {
   const totalValor = Object.values(itens).reduce((acc, item) => {
     return acc + (Number(item?.subtotal) || 0)
   }, 0)
-
-  // Helper: calcula preço efetivo do item (mesma cascata do DetalheProdutoPedido/PDFOrcamento)
-  const calcularPrecoEfetivo = (item) => {
-    const precoBase = Number(item.preco_unitario) || 0
-    if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
-      return Number(item.preco_negociado_direto)
-    }
-    if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
-      return precoBase * (1 - Number(item.desconto_percentual) / 100)
-    }
-    if (item.desconto != null && Number(item.desconto) > 0) {
-      return Math.max(0, precoBase - Number(item.desconto))
-    }
-    return precoBase
-  }
 
   // Persiste state atual no banco antes de navegar pro detalhe.
   // Resolve bug: detalhe lia do banco enquanto state do Catalogo só ia pro banco no Concluir.

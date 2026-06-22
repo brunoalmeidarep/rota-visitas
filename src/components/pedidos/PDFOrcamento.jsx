@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Image, Font, pdf } from '@react-pdf/renderer'
+import { calcularPrecoEfetivo } from '../../lib/precos'
 
 // Estilos do PDF
 const createStyles = (corPrimaria = '#1a3a6b') => StyleSheet.create({
@@ -301,21 +302,6 @@ function DocumentoPDF({ pedido, representada, representante, cliente }) {
   const numero = isOrcamento ? `ORC-${String(pedido.id).slice(-3).toUpperCase()}` : `#${String(pedido.numero).padStart(3, '0')}`
 
   const itens = pedido.itens || []
-
-  // Helper: calcula preço efetivo do item (mesma cascata do Catalogo/DetalheProdutoPedido)
-  function calcularPrecoEfetivo(item) {
-    const precoBase = Number(item.preco_unitario) || 0
-    if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
-      return Number(item.preco_negociado_direto)
-    }
-    if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
-      return precoBase * (1 - Number(item.desconto_percentual) / 100)
-    }
-    if (item.desconto != null && Number(item.desconto) > 0) {
-      return Math.max(0, precoBase - Number(item.desconto))
-    }
-    return precoBase
-  }
 
   // Soma preço de tabela (preco_unitario × qtd — antes do desconto manual; família já embutida no preco_unitario)
   const subtotalTabela = itens.reduce((acc, item) =>

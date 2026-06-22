@@ -2,23 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { atualizarComOuSemConexao } from '../../lib/queue'
+import { calcularPrecoEfetivo } from '../../lib/precos'
 import './DescontosPedido.css'
-
-// Preço efetivo do item (mesma cascata do DetalhesPedido): preço negociado > desconto % > desconto R$ > preço base.
-// O preco_unitario já vem com o desconto de família embutido (silencioso).
-const calcularPrecoEfetivo = (item) => {
-  const precoBase = Number(item.preco_unitario) || 0
-  if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
-    return Number(item.preco_negociado_direto)
-  }
-  if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
-    return precoBase * (1 - Number(item.desconto_percentual) / 100)
-  }
-  if (item.desconto != null && Number(item.desconto) > 0) {
-    return Math.max(0, precoBase - Number(item.desconto))
-  }
-  return precoBase
-}
 
 function DescontosPedido() {
   const navigate = useNavigate()

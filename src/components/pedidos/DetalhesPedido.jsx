@@ -10,22 +10,8 @@ import { limparCarrinho } from '../../lib/carrinhoStorage'
 import { nomeFornecedorStr } from '../../utils/fornecedor'
 import { db } from '../../lib/db'
 import { atualizarComOuSemConexao } from '../../lib/queue'
+import { calcularPrecoEfetivo } from '../../lib/precos'
 import './DetalhesPedido.css'
-
-// Helper: calcula preço efetivo do item (mesma cascata do Catalogo/DetalheProdutoPedido/PDFOrcamento)
-const calcularPrecoEfetivo = (item) => {
-  const precoBase = Number(item.preco_unitario) || 0
-  if (item.preco_negociado_direto != null && Number(item.preco_negociado_direto) > 0) {
-    return Number(item.preco_negociado_direto)
-  }
-  if (item.desconto_percentual != null && Number(item.desconto_percentual) > 0) {
-    return precoBase * (1 - Number(item.desconto_percentual) / 100)
-  }
-  if (item.desconto != null && Number(item.desconto) > 0) {
-    return Math.max(0, precoBase - Number(item.desconto))
-  }
-  return precoBase
-}
 
 // Agrupa planos de pagamento por família (para o sheet de Condição de pagamento)
 function familiaPlano(nome) {
